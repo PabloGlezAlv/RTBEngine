@@ -147,10 +147,12 @@ xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(O
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Core\Application.cpp" />
     <ClCompile Include="Engine\main.cpp" />
     <ClCompile Include="Engine\Core\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Core\Application.h" />
     <ClInclude Include="Engine\Core\Window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

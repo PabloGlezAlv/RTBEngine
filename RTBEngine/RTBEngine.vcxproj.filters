@@ -21,9 +21,15 @@
     <ClCompile Include="Engine\Core\Window.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Core\Application.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Core\Window.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Core\Application.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
   </ItemGroup>
