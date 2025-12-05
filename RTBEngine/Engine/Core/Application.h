@@ -21,7 +21,7 @@ namespace RTBEngine {
 			void Render();
 		private:
 			bool isRunning = false;
-			Uint32 lastTime;
+			Uint32 lastTime = 0;
 			float deltaTime = 0.0f;
 
 			Window* window;

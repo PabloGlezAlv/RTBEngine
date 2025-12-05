@@ -1,4 +1,5 @@
 #include "Application.h"
+#include <GL/glew.h> 
 
 RTBEngine::Core::Application::Application() : window(nullptr), lastTime(0), isRunning(false)
 {
@@ -23,6 +24,8 @@ bool RTBEngine::Core::Application::Initialize()
 
 void RTBEngine::Core::Application::Run()
 {
+	isRunning = true;
+
 	while (isRunning)
 	{
 		ProcessInput();
@@ -40,7 +43,12 @@ void RTBEngine::Core::Application::Run()
 void RTBEngine::Core::Application::Shutdown()
 {
 	isRunning = false;
-	delete window;
+
+	if (window)
+	{
+		delete window;
+		window = nullptr;
+	}
 }
 
 void RTBEngine::Core::Application::ProcessInput()
@@ -62,5 +70,7 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 
 void RTBEngine::Core::Application::Render()
 {
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	window->SwapBuffers();
 }

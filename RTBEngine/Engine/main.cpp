@@ -10,10 +10,7 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    while (true)
-    {
-        app.Run();
-    }
-
+    app.Run();
+    
     return 0;
 }
