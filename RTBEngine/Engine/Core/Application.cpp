@@ -1,5 +1,6 @@
 #include "Application.h"
 #include <GL/glew.h> 
+#include "../Input/Input.h"
 
 RTBEngine::Core::Application::Application() : window(nullptr), lastTime(0), isRunning(false)
 {
@@ -28,6 +29,8 @@ void RTBEngine::Core::Application::Run()
 
 	while (isRunning)
 	{
+		Input::InputManager::GetInstance().Update();
+
 		ProcessInput();
 
 		Uint32 currentTime = SDL_GetTicks();
@@ -53,13 +56,19 @@ void RTBEngine::Core::Application::Shutdown()
 
 void RTBEngine::Core::Application::ProcessInput()
 {
+	Input::InputManager& input = Input::InputManager::GetInstance();
+
 	SDL_Event event;
 	while (SDL_PollEvent(&event))
 	{
+		input.ProcessEvent(event);
+
 		if (event.type == SDL_QUIT)
 			isRunning = false;
 	}
 
+	if (input.IsKeyJustPressed(Input::KeyCode::Escape))
+		isRunning = false;
 }
 
 void RTBEngine::Core::Application::Update(float deltaTime)
