@@ -1,8 +1,10 @@
 #include "Application.h"
 #include <GL/glew.h> 
 #include "../Input/Input.h"
+#include "../Rendering/Shader.h"
+#include <iostream>
 
-RTBEngine::Core::Application::Application() : window(nullptr), lastTime(0), isRunning(false)
+RTBEngine::Core::Application::Application() : window(nullptr), lastTime(0), isRunning(false), testShader(nullptr), VAO(0), VBO(0)
 {
 }
 
@@ -19,6 +21,36 @@ bool RTBEngine::Core::Application::Initialize()
 	}
 
 	lastTime = SDL_GetTicks();
+
+	// TEST: Crear shader
+	testShader = new Rendering::Shader();
+	if (!testShader->LoadFromFiles("Assets/Shaders/basic.vert", "Assets/Shaders/basic.frag")) {
+		std::cerr << "Failed to load shader!" << std::endl;
+		return false;
+	}
+
+	// TEST: Crear triángulo
+	float vertices[] = {
+		-0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
+		 0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
+		 0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f
+	};
+
+	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &VBO);
+
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 
 	return true;
 }
@@ -46,6 +78,19 @@ void RTBEngine::Core::Application::Run()
 void RTBEngine::Core::Application::Shutdown()
 {
 	isRunning = false;
+
+	if (VAO != 0) {
+		glDeleteVertexArrays(1, &VAO);
+		VAO = 0;
+	}
+	if (VBO != 0) {
+		glDeleteBuffers(1, &VBO);
+		VBO = 0;
+	}
+	if (testShader) {
+		delete testShader;
+		testShader = nullptr;
+	}
 
 	if (window)
 	{
@@ -79,7 +124,14 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 
 void RTBEngine::Core::Application::Render()
 {
+	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	testShader->Bind();
+	glBindVertexArray(VAO);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+	glBindVertexArray(0);
+	testShader->Unbind();
 
 	window->SwapBuffers();
 }

@@ -93,4 +93,8 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Assets\Shaders\basic.vert" />
+    <None Include="Assets\Shaders\basic.frag" />
+  </ItemGroup>
 </Project>

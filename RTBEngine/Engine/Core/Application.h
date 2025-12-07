@@ -3,6 +3,12 @@
 #include "Window.h"
 
 namespace RTBEngine {
+	namespace Rendering {
+		class Shader;
+	}
+}
+
+namespace RTBEngine {
 	namespace Core {
 		class Application
 		{
@@ -25,6 +31,10 @@ namespace RTBEngine {
 			float deltaTime = 0.0f;
 
 			Window* window;
+
+			Rendering::Shader* testShader;
+			unsigned int VAO;
+			unsigned int VBO;
 
 			Application(const Application&) = delete;
 			Application& operator=(const Application&) = delete;
