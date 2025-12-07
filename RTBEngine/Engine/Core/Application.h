@@ -7,6 +7,7 @@ namespace RTBEngine {
 		class Shader;
 		class Camera;
 		class Mesh;
+		class Texture;
 	}
 }
 
@@ -37,6 +38,7 @@ namespace RTBEngine {
 
 			Rendering::Shader* testShader;
 			Rendering::Mesh* testMesh;
+			Rendering::Texture* testTexture;
 
 			Application(const Application&) = delete;
 			Application& operator=(const Application&) = delete;

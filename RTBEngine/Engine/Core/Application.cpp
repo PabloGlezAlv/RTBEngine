@@ -5,7 +5,9 @@
 
 #include <iostream>
 
-RTBEngine::Core::Application::Application() : window(nullptr), lastTime(0), isRunning(false), testShader(nullptr), testMesh(nullptr), camera(nullptr)
+RTBEngine::Core::Application::Application() 
+	: window(nullptr), lastTime(0), isRunning(false), 
+	testShader(nullptr), testMesh(nullptr), camera(nullptr), testTexture(nullptr)
 {
 }
 
@@ -27,6 +29,12 @@ bool RTBEngine::Core::Application::Initialize()
 	testShader = new Rendering::Shader();
 	if (!testShader->LoadFromFiles("Assets/Shaders/basic.vert", "Assets/Shaders/basic.frag")) {
 		std::cerr << "Failed to load shader!" << std::endl;
+		return false;
+	}
+
+	testTexture = new Rendering::Texture();
+	if (!testTexture->LoadFromFile("Assets/Textures/testTexture.png")) {
+		std::cerr << "Failed to load texture!" << std::endl;
 		return false;
 	}
 
@@ -129,6 +137,8 @@ void RTBEngine::Core::Application::Render()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	testShader->Bind();
+	testTexture->Bind(0);
+	testShader->SetInt("uTexture", 0);
 
 	Math::Matrix4 model = Math::Matrix4::Identity();
 	testShader->SetMatrix4("uModel", model);
