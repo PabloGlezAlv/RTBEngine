@@ -5,6 +5,7 @@
 namespace RTBEngine {
 	namespace Rendering {
 		class Shader;
+		class Camera;
 	}
 }
 
@@ -31,6 +32,7 @@ namespace RTBEngine {
 			float deltaTime = 0.0f;
 
 			Window* window;
+			Rendering::Camera* camera;
 
 			Rendering::Shader* testShader;
 			unsigned int VAO;

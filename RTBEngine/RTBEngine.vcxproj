@@ -173,6 +173,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(O
     <ClInclude Include="Engine\Math\Matrix\Matrix4.h" />
     <ClInclude Include="Engine\Math\Quaternions\Quaternion.h" />
     <ClInclude Include="Engine\Input\InputManager.h" />
+    <ClInclude Include="Engine\Rendering\Rendering.h" />
     <ClInclude Include="Engine\Rendering\Shader.h" />
   </ItemGroup>
   <ItemGroup>

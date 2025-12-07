@@ -1,10 +1,11 @@
 #include "Application.h"
 #include <GL/glew.h> 
 #include "../Input/Input.h"
-#include "../Rendering/Shader.h"
+#include "../Rendering/Rendering.h"
+
 #include <iostream>
 
-RTBEngine::Core::Application::Application() : window(nullptr), lastTime(0), isRunning(false), testShader(nullptr), VAO(0), VBO(0)
+RTBEngine::Core::Application::Application() : window(nullptr), lastTime(0), isRunning(false), testShader(nullptr), VAO(0), VBO(0), camera(nullptr)
 {
 }
 
@@ -22,14 +23,13 @@ bool RTBEngine::Core::Application::Initialize()
 
 	lastTime = SDL_GetTicks();
 
-	// TEST: Crear shader
+	// Shader testing
 	testShader = new Rendering::Shader();
 	if (!testShader->LoadFromFiles("Assets/Shaders/basic.vert", "Assets/Shaders/basic.frag")) {
 		std::cerr << "Failed to load shader!" << std::endl;
 		return false;
 	}
 
-	// TEST: Crear triángulo
 	float vertices[] = {
 		-0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
 		 0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
@@ -51,6 +51,16 @@ bool RTBEngine::Core::Application::Initialize()
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
+
+	camera = new Rendering::Camera(
+		Math::Vector3(0.0f, 0.0f, 3.0f),  
+		45.0f,                              
+		800.0f / 600.0f,                    
+		0.1f,                               
+		100.0f                              
+	);
+
+	camera->SetRotation(0.0f, 180.0f);
 
 	return true;
 }
@@ -78,6 +88,11 @@ void RTBEngine::Core::Application::Run()
 void RTBEngine::Core::Application::Shutdown()
 {
 	isRunning = false;
+
+	if (camera) {
+		delete camera;
+		camera = nullptr;
+	}
 
 	if (VAO != 0) {
 		glDeleteVertexArrays(1, &VAO);
@@ -128,6 +143,12 @@ void RTBEngine::Core::Application::Render()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	testShader->Bind();
+	//Send Camera data
+	Math::Matrix4 model = Math::Matrix4::Identity();
+	testShader->SetMatrix4("uModel", model);
+	testShader->SetMatrix4("uView", camera->GetViewMatrix());
+	testShader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
+
 	glBindVertexArray(VAO);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 	glBindVertexArray(0);

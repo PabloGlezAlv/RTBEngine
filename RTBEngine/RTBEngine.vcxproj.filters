@@ -92,6 +92,9 @@
     <ClInclude Include="Engine\Rendering\Shader.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Rendering\Rendering.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\basic.vert" />
