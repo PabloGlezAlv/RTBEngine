@@ -3,22 +3,49 @@
 #include <string>
 
 namespace RTBEngine {
-	namespace Rendering {
+    namespace Rendering {
+
+        enum class TextureFilter {
+            Nearest,
+            Linear
+        };
+
+        enum class TextureWrap {
+            Repeat,
+            ClampToEdge,
+            MirroredRepeat
+        };
+
         class Texture {
         public:
             Texture();
             ~Texture();
 
+            Texture(const Texture&) = delete;
+            Texture& operator=(const Texture&) = delete;
+
             bool LoadFromFile(const std::string& path);
+
             void Bind(unsigned int slot = 0) const;
             void Unbind() const;
 
-            unsigned int GetWidth() const;
-            unsigned int GetHeight() const;
-            GLuint GetID() const;
+            void SetFilter(TextureFilter minFilter, TextureFilter magFilter);
+            void SetWrap(TextureWrap wrapS, TextureWrap wrapT);
+
+            int GetWidth() const { return width; }
+            int GetHeight() const { return height; }
+            int GetChannels() const { return channels; }
+            GLuint GetID() const { return textureID; }
+
         private:
+            GLenum GetGLFilter(TextureFilter filter) const;
+            GLenum GetGLWrap(TextureWrap wrap) const;
+
             GLuint textureID;
-            int width, height, channels;
+            int width;
+            int height;
+            int channels;
         };
-	}
+
+    }
 }
