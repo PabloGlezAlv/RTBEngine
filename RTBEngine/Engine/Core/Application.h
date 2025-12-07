@@ -6,6 +6,7 @@ namespace RTBEngine {
 	namespace Rendering {
 		class Shader;
 		class Camera;
+		class Mesh;
 	}
 }
 
@@ -35,8 +36,7 @@ namespace RTBEngine {
 			Rendering::Camera* camera;
 
 			Rendering::Shader* testShader;
-			unsigned int VAO;
-			unsigned int VBO;
+			Rendering::Mesh* testMesh;
 
 			Application(const Application&) = delete;
 			Application& operator=(const Application&) = delete;

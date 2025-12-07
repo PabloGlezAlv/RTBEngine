@@ -5,7 +5,7 @@
 
 #include <iostream>
 
-RTBEngine::Core::Application::Application() : window(nullptr), lastTime(0), isRunning(false), testShader(nullptr), VAO(0), VBO(0), camera(nullptr)
+RTBEngine::Core::Application::Application() : window(nullptr), lastTime(0), isRunning(false), testShader(nullptr), testMesh(nullptr), camera(nullptr)
 {
 }
 
@@ -30,30 +30,18 @@ bool RTBEngine::Core::Application::Initialize()
 		return false;
 	}
 
-	float vertices[] = {
-		-0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
-		 0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
-		 0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f
+	std::vector<Rendering::Vertex> vertices = {
+		{ { -0.5f, -0.5f, 0.0f }, { 0,0,1 }, { 0,0 } },
+		{ {  0.5f, -0.5f, 0.0f }, { 0,0,1 }, { 1,0 } },
+		{ {  0.0f,  0.5f, 0.0f }, { 0,0,1 }, { 0.5f,1 } }
 	};
 
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
+	std::vector<unsigned int> indices = { 0, 1, 2 };
 
-	glBindVertexArray(VAO);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
+	testMesh = new Rendering::Mesh(vertices, indices);
 
 	camera = new Rendering::Camera(
-		Math::Vector3(0.0f, 0.0f, 3.0f),  
+		Math::Vector3(0.0f, 0.0f, 10.0f),  
 		45.0f,                              
 		800.0f / 600.0f,                    
 		0.1f,                               
@@ -94,14 +82,12 @@ void RTBEngine::Core::Application::Shutdown()
 		camera = nullptr;
 	}
 
-	if (VAO != 0) {
-		glDeleteVertexArrays(1, &VAO);
-		VAO = 0;
+	if (testMesh)
+	{
+		delete testMesh;
+		testMesh = nullptr;
 	}
-	if (VBO != 0) {
-		glDeleteBuffers(1, &VBO);
-		VBO = 0;
-	}
+
 	if (testShader) {
 		delete testShader;
 		testShader = nullptr;
@@ -143,15 +129,14 @@ void RTBEngine::Core::Application::Render()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	testShader->Bind();
-	//Send Camera data
+
 	Math::Matrix4 model = Math::Matrix4::Identity();
 	testShader->SetMatrix4("uModel", model);
 	testShader->SetMatrix4("uView", camera->GetViewMatrix());
 	testShader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
 
-	glBindVertexArray(VAO);
-	glDrawArrays(GL_TRIANGLES, 0, 3);
-	glBindVertexArray(0);
+	testMesh->Draw();
+
 	testShader->Unbind();
 
 	window->SwapBuffers();
