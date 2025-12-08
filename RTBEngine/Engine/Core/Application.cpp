@@ -2,15 +2,16 @@
 #include <GL/glew.h> 
 #include "../Input/Input.h"
 #include "../Rendering/Rendering.h"
+#include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
 #include "../ECS/MeshRenderer.h"
 
-
 #include <iostream>
 
-RTBEngine::Core::Application::Application() 
-	: window(nullptr), lastTime(0), isRunning(false), 
-	testShader(nullptr), testMesh(nullptr), camera(nullptr), testTexture(nullptr)
+RTBEngine::Core::Application::Application()
+	: window(nullptr), lastTime(0), isRunning(false),
+	testShader(nullptr), testMesh(nullptr), testTexture(nullptr),
+	testMaterial(nullptr), testScene(nullptr), camera(nullptr)
 {
 }
 
@@ -28,7 +29,6 @@ bool RTBEngine::Core::Application::Initialize()
 
 	lastTime = SDL_GetTicks();
 
-	// Shader testing
 	testShader = new Rendering::Shader();
 	if (!testShader->LoadFromFiles("Assets/Shaders/basic.vert", "Assets/Shaders/basic.frag")) {
 		std::cerr << "Failed to load shader!" << std::endl;
@@ -56,22 +56,25 @@ bool RTBEngine::Core::Application::Initialize()
 	testMaterial->SetColor(Math::Vector4(1.0f, 1.0f, 0.0f, 1.0f));
 
 	camera = new Rendering::Camera(
-		Math::Vector3(0.0f, 0.0f, 10.0f),  
-		45.0f,                              
-		800.0f / 600.0f,                    
-		0.1f,                               
-		100.0f                              
+		Math::Vector3(0.0f, 0.0f, 10.0f),
+		45.0f,
+		800.0f / 600.0f,
+		0.1f,
+		100.0f
 	);
 
 	camera->SetRotation(0.0f, 180.0f);
 
-	testGameObject = new ECS::GameObject("TestObject");
+	testScene = new ECS::Scene("Test Scene");
+
+	ECS::GameObject* triangleObj = new ECS::GameObject("Triangle");
 	ECS::MeshRenderer* meshRenderer = new ECS::MeshRenderer();
 	meshRenderer->SetMesh(testMesh);
 	meshRenderer->SetMaterial(testMaterial);
-	testGameObject->AddComponent(meshRenderer);
+	triangleObj->AddComponent(meshRenderer);
+	triangleObj->GetTransform().SetPosition(Math::Vector3(0.0f, 0.0f, 0.0f));
 
-	testGameObject->GetTransform().SetPosition(Math::Vector3(0.0f, 0.0f, 0.0f));
+	testScene->AddGameObject(triangleObj);
 
 	return true;
 }
@@ -100,9 +103,9 @@ void RTBEngine::Core::Application::Shutdown()
 {
 	isRunning = false;
 
-	if (testGameObject) {
-		delete testGameObject;
-		testGameObject = nullptr;
+	if (testScene) {
+		delete testScene;
+		testScene = nullptr;
 	}
 
 	if (testMaterial) {
@@ -113,6 +116,11 @@ void RTBEngine::Core::Application::Shutdown()
 	if (testTexture) {
 		delete testTexture;
 		testTexture = nullptr;
+	}
+
+	if (testMesh) {
+		delete testMesh;
+		testMesh = nullptr;
 	}
 
 	if (camera) {
@@ -151,8 +159,8 @@ void RTBEngine::Core::Application::ProcessInput()
 
 void RTBEngine::Core::Application::Update(float deltaTime)
 {
-	if (testGameObject) {
-		testGameObject->Update(deltaTime);
+	if (testScene) {
+		testScene->Update(deltaTime);
 	}
 }
 
@@ -161,11 +169,8 @@ void RTBEngine::Core::Application::Render()
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	if (testGameObject) {
-		ECS::MeshRenderer* renderer = testGameObject->GetComponent<ECS::MeshRenderer>();
-		if (renderer) {
-			renderer->Render(camera);
-		}
+	if (testScene) {
+		testScene->Render(camera);
 	}
 
 	window->SwapBuffers();

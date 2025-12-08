@@ -164,6 +164,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(O
     <ClCompile Include="Engine\Rendering\Material.cpp" />
     <ClCompile Include="Engine\ECS\GameObject.cpp" />
     <ClCompile Include="Engine\ECS\MeshRenderer.cpp" />
+    <ClCompile Include="Engine\ECS\Scene.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
     <ClCompile Include="Engine\ECS\Transform.cpp" />
   </ItemGroup>
@@ -190,6 +191,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(O
     <ClInclude Include="Engine\Rendering\Material.h" />
     <ClInclude Include="Engine\ECS\GameObject.h" />
     <ClInclude Include="Engine\ECS\MeshRenderer.h" />
+    <ClInclude Include="Engine\ECS\Scene.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
     <ClInclude Include="Engine\ECS\Transform.h" />
   </ItemGroup>

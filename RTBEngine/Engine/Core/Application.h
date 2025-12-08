@@ -13,7 +13,7 @@ namespace RTBEngine {
 
 	namespace ECS
 	{
-		class GameObject;
+		class Scene;
 	}
 }
 
@@ -46,11 +46,10 @@ namespace RTBEngine {
 			Rendering::Mesh* testMesh;
 			Rendering::Texture* testTexture;
 			Rendering::Material* testMaterial;
-			ECS::GameObject* testGameObject;
+			ECS::Scene* testScene;
 
 			Application(const Application&) = delete;
 			Application& operator=(const Application&) = delete;
 		};
 	}
 }
-
