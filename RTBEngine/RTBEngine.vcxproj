@@ -147,6 +147,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(O
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\ECS\Component.cpp" />
     <ClCompile Include="Engine\Rendering\Camera.cpp" />
     <ClCompile Include="Engine\Core\Application.cpp" />
     <ClCompile Include="Engine\main.cpp" />
@@ -160,9 +161,14 @@ xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(O
     <ClCompile Include="Engine\Rendering\Shader.cpp" />
     <ClCompile Include="Engine\Rendering\Mesh.cpp" />
     <ClCompile Include="Engine\Rendering\Texture.cpp" />
+    <ClCompile Include="Engine\Rendering\Material.cpp" />
+    <ClCompile Include="Engine\ECS\GameObject.cpp" />
+    <ClCompile Include="Engine\ECS\MeshRenderer.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
+    <ClCompile Include="Engine\ECS\Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\ECS\Component.h" />
     <ClInclude Include="Engine\Rendering\Camera.h" />
     <ClInclude Include="Engine\Core\Application.h" />
     <ClInclude Include="Engine\Core\Window.h" />
@@ -181,7 +187,11 @@ xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(O
     <ClInclude Include="Engine\Rendering\Vertex.h" />
     <ClInclude Include="Engine\Rendering\Mesh.h" />
     <ClInclude Include="Engine\Rendering\Texture.h" />
+    <ClInclude Include="Engine\Rendering\Material.h" />
+    <ClInclude Include="Engine\ECS\GameObject.h" />
+    <ClInclude Include="Engine\ECS\MeshRenderer.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
+    <ClInclude Include="Engine\ECS\Transform.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\basic.frag" />

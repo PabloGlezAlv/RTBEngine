@@ -8,6 +8,12 @@ namespace RTBEngine {
 		class Camera;
 		class Mesh;
 		class Texture;
+		class Material;
+	}
+
+	namespace ECS
+	{
+		class GameObject;
 	}
 }
 
@@ -39,6 +45,8 @@ namespace RTBEngine {
 			Rendering::Shader* testShader;
 			Rendering::Mesh* testMesh;
 			Rendering::Texture* testTexture;
+			Rendering::Material* testMaterial;
+			ECS::GameObject* testGameObject;
 
 			Application(const Application&) = delete;
 			Application& operator=(const Application&) = delete;

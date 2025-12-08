@@ -2,6 +2,9 @@
 #include <GL/glew.h> 
 #include "../Input/Input.h"
 #include "../Rendering/Rendering.h"
+#include "../ECS/GameObject.h"
+#include "../ECS/MeshRenderer.h"
+
 
 #include <iostream>
 
@@ -48,6 +51,10 @@ bool RTBEngine::Core::Application::Initialize()
 
 	testMesh = new Rendering::Mesh(vertices, indices);
 
+	testMaterial = new Rendering::Material(testShader);
+	testMaterial->SetTexture(testTexture);
+	testMaterial->SetColor(Math::Vector4(1.0f, 1.0f, 0.0f, 1.0f));
+
 	camera = new Rendering::Camera(
 		Math::Vector3(0.0f, 0.0f, 10.0f),  
 		45.0f,                              
@@ -57,6 +64,14 @@ bool RTBEngine::Core::Application::Initialize()
 	);
 
 	camera->SetRotation(0.0f, 180.0f);
+
+	testGameObject = new ECS::GameObject("TestObject");
+	ECS::MeshRenderer* meshRenderer = new ECS::MeshRenderer();
+	meshRenderer->SetMesh(testMesh);
+	meshRenderer->SetMaterial(testMaterial);
+	testGameObject->AddComponent(meshRenderer);
+
+	testGameObject->GetTransform().SetPosition(Math::Vector3(0.0f, 0.0f, 0.0f));
 
 	return true;
 }
@@ -85,15 +100,24 @@ void RTBEngine::Core::Application::Shutdown()
 {
 	isRunning = false;
 
+	if (testGameObject) {
+		delete testGameObject;
+		testGameObject = nullptr;
+	}
+
+	if (testMaterial) {
+		delete testMaterial;
+		testMaterial = nullptr;
+	}
+
+	if (testTexture) {
+		delete testTexture;
+		testTexture = nullptr;
+	}
+
 	if (camera) {
 		delete camera;
 		camera = nullptr;
-	}
-
-	if (testMesh)
-	{
-		delete testMesh;
-		testMesh = nullptr;
 	}
 
 	if (testShader) {
@@ -127,8 +151,9 @@ void RTBEngine::Core::Application::ProcessInput()
 
 void RTBEngine::Core::Application::Update(float deltaTime)
 {
-
-
+	if (testGameObject) {
+		testGameObject->Update(deltaTime);
+	}
 }
 
 void RTBEngine::Core::Application::Render()
@@ -136,18 +161,12 @@ void RTBEngine::Core::Application::Render()
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	testShader->Bind();
-	testTexture->Bind(0);
-	testShader->SetInt("uTexture", 0);
-
-	Math::Matrix4 model = Math::Matrix4::Identity();
-	testShader->SetMatrix4("uModel", model);
-	testShader->SetMatrix4("uView", camera->GetViewMatrix());
-	testShader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
-
-	testMesh->Draw();
-
-	testShader->Unbind();
+	if (testGameObject) {
+		ECS::MeshRenderer* renderer = testGameObject->GetComponent<ECS::MeshRenderer>();
+		if (renderer) {
+			renderer->Render(camera);
+		}
+	}
 
 	window->SwapBuffers();
 }
