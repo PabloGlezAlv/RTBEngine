@@ -4,7 +4,7 @@
 #include "Vertex.h"
 
 
-// https://learnopengl.com/Model-Loading/Mesh
+// Guide from: https://learnopengl.com/Model-Loading/Mesh
 namespace RTBEngine {
     namespace Rendering {
 
