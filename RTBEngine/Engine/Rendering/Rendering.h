@@ -4,3 +4,4 @@
 #include "Mesh.h"
 #include "Texture.h"
 #include "Material.h"
+#include "ModelLoader.h"

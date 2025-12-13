@@ -1,5 +1,4 @@
 #include "Application.h"
-#include <GL/glew.h> 
 #include "../Input/Input.h"
 #include "../Rendering/Rendering.h"
 #include "../ECS/Scene.h"
@@ -41,40 +40,50 @@ bool RTBEngine::Core::Application::Initialize()
 		return false;
 	}
 
-	std::vector<Rendering::Vertex> vertices = {
-		{ { -0.5f, -0.5f, 0.0f }, { 0,0,1 }, { 0,0 } },
-		{ {  0.5f, -0.5f, 0.0f }, { 0,0,1 }, { 1,0 } },
-		{ {  0.0f,  0.5f, 0.0f }, { 0,0,1 }, { 0.5f,1 } }
-	};
+	// Load 3D model using Assimp
+	std::vector<Rendering::Mesh*> loadedMeshes = Rendering::ModelLoader::LoadModel("Assets/Models/cube.obj");
 
-	std::vector<unsigned int> indices = { 0, 1, 2 };
+	if (loadedMeshes.empty()) {
+		std::cerr << "Failed to load model! Using fallback triangle." << std::endl;
 
-	testMesh = new Rendering::Mesh(vertices, indices);
+		// Fallback: create a simple triangle
+		std::vector<Rendering::Vertex> vertices = {
+			{ { -0.5f, -0.5f, 0.0f }, { 0,0,1 }, { 0,0 } },
+			{ {  0.5f, -0.5f, 0.0f }, { 0,0,1 }, { 1,0 } },
+			{ {  0.0f,  0.5f, 0.0f }, { 0,0,1 }, { 0.5f,1 } }
+		};
+		std::vector<unsigned int> indices = { 0, 1, 2 };
+		testMesh = new Rendering::Mesh(vertices, indices);
+	}
+	else {
+		std::cout << "Successfully loaded model with " << loadedMeshes.size() << " mesh(es)" << std::endl;
+		testMesh = loadedMeshes[0]; // Use the first mesh for now
+	}
 
 	testMaterial = new Rendering::Material(testShader);
 	testMaterial->SetTexture(testTexture);
 	testMaterial->SetColor(Math::Vector4(1.0f, 1.0f, 0.0f, 1.0f));
 
 	camera = new Rendering::Camera(
-		Math::Vector3(0.0f, 0.0f, 10.0f),
+		Math::Vector3(0.0f, 2.0f, 5.0f),
 		45.0f,
 		800.0f / 600.0f,
 		0.1f,
 		100.0f
 	);
 
-	camera->SetRotation(0.0f, 180.0f);
+	camera->SetRotation(-20.0f, 180.0f);
 
 	testScene = new ECS::Scene("Test Scene");
 
-	ECS::GameObject* triangleObj = new ECS::GameObject("Triangle");
+	ECS::GameObject* modelObj = new ECS::GameObject("LoadedModel");
 	ECS::MeshRenderer* meshRenderer = new ECS::MeshRenderer();
 	meshRenderer->SetMesh(testMesh);
 	meshRenderer->SetMaterial(testMaterial);
-	triangleObj->AddComponent(meshRenderer);
-	triangleObj->GetTransform().SetPosition(Math::Vector3(0.0f, 0.0f, 0.0f));
+	modelObj->AddComponent(meshRenderer);
+	modelObj->GetTransform().SetPosition(Math::Vector3(0.0f, 0.0f, 0.0f));
 
-	testScene->AddGameObject(triangleObj);
+	testScene->AddGameObject(modelObj);
 
 	return true;
 }

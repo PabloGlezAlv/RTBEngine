@@ -3,9 +3,9 @@
 #include <string>
 #include <vector>
 
-class aiNode;
-class aiScene;
-class aiMesh;
+struct aiNode;
+struct aiScene;
+struct aiMesh;
 
 namespace RTBEngine {
     namespace Rendering {

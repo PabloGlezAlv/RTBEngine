@@ -59,6 +59,13 @@ bool RTBEngine::Core::Window::Initialize()
 		return false;
 	}
 
+	// Enable OpenGL features
+	glEnable(GL_DEPTH_TEST);        // Enable depth testing
+	glDepthFunc(GL_LESS);            // Depth test passes if fragment is closer
+	glEnable(GL_CULL_FACE);          // Enable face culling
+	glCullFace(GL_BACK);             // Cull back faces
+	glFrontFace(GL_CCW);             // Front faces are counter-clockwise
+
 	SDL_GL_SetSwapInterval(1); // ENABLE V-SYNC
 
 	return true;

@@ -1,5 +1,5 @@
 #include "ModelLoader.h"
-#include <assimp/Importer.hpp>
+#include <assimp/cimport.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <iostream>
@@ -11,9 +11,7 @@ namespace RTBEngine {
         {
             std::vector<Mesh*> meshes;
 
-            Assimp::Importer importer;
-
-            const aiScene* scene = importer.ReadFile(path.c_str(),
+            const aiScene* scene = aiImportFile(path.c_str(),
                 aiProcess_Triangulate |
 				aiProcess_FlipUVs | // Flip UVs for OpenGL coordinate system
                 aiProcess_CalcTangentSpace |
@@ -21,11 +19,13 @@ namespace RTBEngine {
             );
 
             if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-                std::cerr << "Assimp Error: " << importer.GetErrorString() << std::endl;
+                std::cerr << "Assimp Error: " << aiGetErrorString() << std::endl;
                 return meshes;
             }
 
             ProcessNode(scene->mRootNode, scene, meshes);
+
+            aiReleaseImport(scene);
 
             return meshes;
         }
