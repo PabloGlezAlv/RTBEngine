@@ -53,11 +53,27 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 {
 	if (!camera) return;
 
+	CollectLights();
+
 	for (auto& gameObject : gameObjects) {
 		if (gameObject->IsActive()) {
 			MeshRenderer* renderer = gameObject->GetComponent<MeshRenderer>();
 			if (renderer && renderer->IsEnabled()) {
-				renderer->Render(camera);
+				renderer->Render(camera, lights);
+			}
+		}
+	}
+}
+
+void RTBEngine::ECS::Scene::CollectLights()
+{
+	lights.clear();
+
+	for (auto& gameObject : gameObjects) {
+		if (gameObject->IsActive()) {
+			LightComponent* lightComp = gameObject->GetComponent<LightComponent>();
+			if (lightComp && lightComp->IsEnabled()) {
+				lights.push_back(lightComp->GetLight());
 			}
 		}
 	}

@@ -153,6 +153,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutD
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Rendering\Lighting\DirectionalLight.cpp" />
     <ClCompile Include="Engine\ECS\Component.cpp" />
     <ClCompile Include="Engine\Rendering\Camera.cpp" />
     <ClCompile Include="Engine\Core\Application.cpp" />
@@ -172,10 +173,13 @@ xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutD
     <ClCompile Include="Engine\ECS\GameObject.cpp" />
     <ClCompile Include="Engine\ECS\MeshRenderer.cpp" />
     <ClCompile Include="Engine\ECS\Scene.cpp" />
+    <ClCompile Include="Engine\Rendering\Lighting\Light.cpp" />
+    <ClCompile Include="Engine\ECS\LightComponent.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
     <ClCompile Include="Engine\ECS\Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Rendering\Lighting\DirectionalLight.h" />
     <ClInclude Include="Engine\ECS\Component.h" />
     <ClInclude Include="Engine\Rendering\Camera.h" />
     <ClInclude Include="Engine\Core\Application.h" />
@@ -200,6 +204,8 @@ xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutD
     <ClInclude Include="Engine\ECS\GameObject.h" />
     <ClInclude Include="Engine\ECS\MeshRenderer.h" />
     <ClInclude Include="Engine\ECS\Scene.h" />
+    <ClInclude Include="Engine\Rendering\Lighting\Light.h" />
+    <ClInclude Include="Engine\ECS\LightComponent.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
     <ClInclude Include="Engine\ECS\Transform.h" />
   </ItemGroup>

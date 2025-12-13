@@ -4,6 +4,8 @@
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
 #include "../ECS/MeshRenderer.h"
+#include "../Rendering/Lighting/DirectionalLight.h"
+#include "../ECS/LightComponent.h"
 
 #include <iostream>
 
@@ -62,7 +64,7 @@ bool RTBEngine::Core::Application::Initialize()
 
 	testMaterial = new Rendering::Material(testShader);
 	testMaterial->SetTexture(testTexture);
-	testMaterial->SetColor(Math::Vector4(1.0f, 1.0f, 0.0f, 1.0f));
+	testMaterial->SetColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));  // Cambiado a blanco para ver mejor la luz
 
 	camera = new Rendering::Camera(
 		Math::Vector3(0.0f, 2.0f, 5.0f),
@@ -84,6 +86,18 @@ bool RTBEngine::Core::Application::Initialize()
 	modelObj->GetTransform().SetPosition(Math::Vector3(0.0f, 0.0f, 0.0f));
 
 	testScene->AddGameObject(modelObj);
+
+	// Create a directional light (like the sun)
+	ECS::GameObject* lightObj = new ECS::GameObject("MainLight");
+	Rendering::DirectionalLight* dirLight = new Rendering::DirectionalLight(
+		Math::Vector3(0.0f, -1.0f, -0.3f),  // Direction (from above, slightly angled)
+		Math::Vector3(1.0f, 1.0f, 1.0f)     // White light
+	);
+	dirLight->SetIntensity(1.0f);
+
+	ECS::LightComponent* lightComponent = new ECS::LightComponent(dirLight);
+	lightObj->AddComponent(lightComponent);
+	testScene->AddGameObject(lightObj);
 
 	return true;
 }

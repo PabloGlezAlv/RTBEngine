@@ -3,6 +3,13 @@
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Material.h"
 #include "../Rendering/Camera.h"
+#include <vector>
+
+namespace RTBEngine {
+	namespace Rendering {
+		class Light;
+	}
+}
 
 namespace RTBEngine {
     namespace ECS {
@@ -18,7 +25,7 @@ namespace RTBEngine {
             Rendering::Mesh* GetMesh() const { return mesh; }
             Rendering::Material* GetMaterial() const { return material; }
 
-            void Render(Rendering::Camera* camera);
+            void Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights);
 
             const char* GetTypeName() const override { return "MeshRenderer"; }
 
