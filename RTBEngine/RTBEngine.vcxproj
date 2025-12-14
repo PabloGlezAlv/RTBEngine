@@ -175,6 +175,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutD
     <ClCompile Include="Engine\ECS\Scene.cpp" />
     <ClCompile Include="Engine\Rendering\Lighting\Light.cpp" />
     <ClCompile Include="Engine\ECS\LightComponent.cpp" />
+    <ClCompile Include="Engine\Core\ResourceManager.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
     <ClCompile Include="Engine\ECS\Transform.cpp" />
   </ItemGroup>
@@ -206,6 +207,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutD
     <ClInclude Include="Engine\ECS\Scene.h" />
     <ClInclude Include="Engine\Rendering\Lighting\Light.h" />
     <ClInclude Include="Engine\ECS\LightComponent.h" />
+    <ClInclude Include="Engine\Core\ResourceManager.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
     <ClInclude Include="Engine\ECS\Transform.h" />
   </ItemGroup>

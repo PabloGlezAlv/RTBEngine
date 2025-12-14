@@ -6,13 +6,13 @@
 #include "../ECS/MeshRenderer.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
 #include "../ECS/LightComponent.h"
+#include "ResourceManager.h"
 
 #include <iostream>
 
 RTBEngine::Core::Application::Application()
 	: window(nullptr), lastTime(0), isRunning(false),
-	testShader(nullptr), testMesh(nullptr), testTexture(nullptr),
-	testMaterial(nullptr), testScene(nullptr), camera(nullptr)
+	 testScene(nullptr), camera(nullptr)
 {
 }
 
@@ -30,42 +30,39 @@ bool RTBEngine::Core::Application::Initialize()
 
 	lastTime = SDL_GetTicks();
 
-	testShader = new Rendering::Shader();
-	if (!testShader->LoadFromFiles("Assets/Shaders/basic.vert", "Assets/Shaders/basic.frag")) {
-		std::cerr << "Failed to load shader!" << std::endl;
+	ResourceManager& resources = ResourceManager::GetInstance();
+	
+	// Shader
+	Rendering::Shader* shader = resources.LoadShader(
+		"basic",
+		"Assets/Shaders/basic.vert",
+		"Assets/Shaders/basic.frag"
+	);
+	if (!shader) {
+		std::cerr << "Failed to load shader" << std::endl;
 		return false;
 	}
 
-	testTexture = new Rendering::Texture();
-	if (!testTexture->LoadFromFile("Assets/Textures/testTexture.png")) {
-		std::cerr << "Failed to load texture!" << std::endl;
+	// Texture
+	Rendering::Texture* texture = resources.LoadTexture("Assets/Textures/testTexture.png");
+	if (!texture) {
+		std::cerr << "Failed to load texture" << std::endl;
 		return false;
 	}
 
-	// Load 3D model using Assimp
-	std::vector<Rendering::Mesh*> loadedMeshes = Rendering::ModelLoader::LoadModel("Assets/Models/cube.obj");
-
-	if (loadedMeshes.empty()) {
-		std::cerr << "Failed to load model! Using fallback triangle." << std::endl;
-
-		// Fallback: create a simple triangle
-		std::vector<Rendering::Vertex> vertices = {
-			{ { -0.5f, -0.5f, 0.0f }, { 0,0,1 }, { 0,0 } },
-			{ {  0.5f, -0.5f, 0.0f }, { 0,0,1 }, { 1,0 } },
-			{ {  0.0f,  0.5f, 0.0f }, { 0,0,1 }, { 0.5f,1 } }
-		};
-		std::vector<unsigned int> indices = { 0, 1, 2 };
-		testMesh = new Rendering::Mesh(vertices, indices);
-	}
-	else {
-		std::cout << "Successfully loaded model with " << loadedMeshes.size() << " mesh(es)" << std::endl;
-		testMesh = loadedMeshes[0]; // Use the first mesh for now
+	// Load 3D model
+	testMesh = resources.LoadModel("Assets/Models/cube.obj");
+	if (!testMesh) {
+		std::cerr << "Failed to load model" << std::endl;
+		return false;
 	}
 
-	testMaterial = new Rendering::Material(testShader);
-	testMaterial->SetTexture(testTexture);
-	testMaterial->SetColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));  // Cambiado a blanco para ver mejor la luz
+	// Create material using loaded shader and texture
+	Rendering::Material* material = new Rendering::Material(shader);
+	material->SetTexture(texture);
+	material->SetColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
+	// Create camera
 	camera = new Rendering::Camera(
 		Math::Vector3(0.0f, 2.0f, 5.0f),
 		45.0f,
@@ -73,25 +70,25 @@ bool RTBEngine::Core::Application::Initialize()
 		0.1f,
 		100.0f
 	);
-
 	camera->SetRotation(-20.0f, 180.0f);
 
+	// Create scene
 	testScene = new ECS::Scene("Test Scene");
 
+	// Create model GameObject
 	ECS::GameObject* modelObj = new ECS::GameObject("LoadedModel");
 	ECS::MeshRenderer* meshRenderer = new ECS::MeshRenderer();
 	meshRenderer->SetMesh(testMesh);
-	meshRenderer->SetMaterial(testMaterial);
+	meshRenderer->SetMaterial(material);
 	modelObj->AddComponent(meshRenderer);
 	modelObj->GetTransform().SetPosition(Math::Vector3(0.0f, 0.0f, 0.0f));
-
 	testScene->AddGameObject(modelObj);
 
-	// Create a directional light (like the sun)
+	// Create directional light
 	ECS::GameObject* lightObj = new ECS::GameObject("MainLight");
 	Rendering::DirectionalLight* dirLight = new Rendering::DirectionalLight(
-		Math::Vector3(0.0f, -1.0f, -0.3f),  // Direction (from above, slightly angled)
-		Math::Vector3(1.0f, 1.0f, 1.0f)     // White light
+		Math::Vector3(0.0f, -1.0f, -0.3f),
+		Math::Vector3(1.0f, 1.0f, 1.0f)
 	);
 	dirLight->SetIntensity(1.0f);
 
@@ -131,36 +128,18 @@ void RTBEngine::Core::Application::Shutdown()
 		testScene = nullptr;
 	}
 
-	if (testMaterial) {
-		delete testMaterial;
-		testMaterial = nullptr;
-	}
-
-	if (testTexture) {
-		delete testTexture;
-		testTexture = nullptr;
-	}
-
-	if (testMesh) {
-		delete testMesh;
-		testMesh = nullptr;
-	}
-
 	if (camera) {
 		delete camera;
 		camera = nullptr;
 	}
 
-	if (testShader) {
-		delete testShader;
-		testShader = nullptr;
-	}
-
-	if (window)
-	{
+	if (window) {
 		delete window;
 		window = nullptr;
 	}
+
+	// Clear all cached resources
+	ResourceManager::GetInstance().Clear();
 }
 
 void RTBEngine::Core::Application::ProcessInput()

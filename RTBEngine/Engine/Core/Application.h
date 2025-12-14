@@ -4,11 +4,8 @@
 
 namespace RTBEngine {
 	namespace Rendering {
-		class Shader;
 		class Camera;
 		class Mesh;
-		class Texture;
-		class Material;
 	}
 
 	namespace ECS
@@ -42,10 +39,7 @@ namespace RTBEngine {
 			Window* window;
 			Rendering::Camera* camera;
 
-			Rendering::Shader* testShader;
 			Rendering::Mesh* testMesh;
-			Rendering::Texture* testTexture;
-			Rendering::Material* testMaterial;
 			ECS::Scene* testScene;
 
 			Application(const Application&) = delete;
