@@ -4,6 +4,7 @@
 #include "../Rendering/Camera.h"
 #include <string>
 #include <vector>
+#include <memory>
 #include <typeinfo>
 
 namespace RTBEngine {
@@ -39,7 +40,7 @@ namespace RTBEngine {
         private:
             std::string name;
             Transform transform;
-            std::vector<Component*> components;
+            std::vector<std::unique_ptr<Component>> components;
             bool isActive;
             bool started;
         };
@@ -47,8 +48,8 @@ namespace RTBEngine {
         template<typename T>
         T* GameObject::GetComponent()
         {
-            for (Component* comp : components) {
-                T* castedComp = dynamic_cast<T*>(comp);
+            for (auto& comp : components) {
+                T* castedComp = dynamic_cast<T*>(comp.get());
                 if (castedComp != nullptr) {
                     return castedComp;
                 }

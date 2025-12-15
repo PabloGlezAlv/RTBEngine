@@ -13,9 +13,8 @@ namespace RTBEngine {
 
         GameObject::~GameObject()
         {
-            for (Component* comp : components) {
+            for (auto& comp : components) {
                 comp->OnDestroy();
-                delete comp;
             }
             components.clear();
         }
@@ -24,17 +23,20 @@ namespace RTBEngine {
         {
             if (component) {
                 component->SetOwner(this);
-                components.push_back(component);
+                components.push_back(std::unique_ptr<Component>(component));
                 component->OnAwake();
             }
         }
 
         void GameObject::RemoveComponent(Component* component)
         {
-            auto it = std::find(components.begin(), components.end(), component);
+            auto it = std::find_if(components.begin(), components.end(),
+                [component](const std::unique_ptr<Component>& comp) {
+                    return comp.get() == component;
+                });
+
             if (it != components.end()) {
                 (*it)->OnDestroy();
-                delete* it;
                 components.erase(it);
             }
         }
@@ -49,7 +51,7 @@ namespace RTBEngine {
             if (!isActive) return;
 
             if (!started) {
-                for (Component* comp : components) {
+                for (auto& comp : components) {
                     if (comp->IsEnabled()) {
                         comp->OnStart();
                     }
@@ -57,7 +59,7 @@ namespace RTBEngine {
                 started = true;
             }
 
-            for (Component* comp : components) {
+            for (auto& comp : components) {
                 if (comp->IsEnabled()) {
                     comp->OnUpdate(deltaTime);
                 }

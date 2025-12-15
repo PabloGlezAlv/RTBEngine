@@ -6,25 +6,25 @@
 
 RTBEngine::ECS::Scene::Scene(const std::string& name) : name(name)
 {
-	gameObjects = std::vector<GameObject*>();
 }
 
 RTBEngine::ECS::Scene::~Scene()
 {
-	for (GameObject* obj : gameObjects) {
-		delete obj;
-	}
 	gameObjects.clear();
 }
 
 void RTBEngine::ECS::Scene::AddGameObject(GameObject* gameObject)
 {
-	gameObjects.push_back(gameObject);
+	gameObjects.push_back(std::unique_ptr<GameObject>(gameObject));
 }
 
 void RTBEngine::ECS::Scene::RemoveGameObject(GameObject* gameObject)
 {
-	auto it = std::find(gameObjects.begin(), gameObjects.end(), gameObject);
+	auto it = std::find_if(gameObjects.begin(), gameObjects.end(),
+		[gameObject](const std::unique_ptr<GameObject>& obj) {
+			return obj.get() == gameObject;
+		});
+
 	if (it != gameObjects.end()) {
 		gameObjects.erase(it);
 	}
@@ -33,10 +33,12 @@ void RTBEngine::ECS::Scene::RemoveGameObject(GameObject* gameObject)
 RTBEngine::ECS::GameObject* RTBEngine::ECS::Scene::FindGameObject(const std::string& name)
 {
 	auto it = std::find_if(gameObjects.begin(), gameObjects.end(),
-		[&name](GameObject* obj) { return obj->GetName() == name; });
+		[&name](const std::unique_ptr<GameObject>& obj) {
+			return obj->GetName() == name;
+		});
 
 	if (it != gameObjects.end()) {
-        return *it; 
+        return it->get();
     }
 
 	return nullptr;

@@ -4,6 +4,7 @@
 #include "../Rendering/Lighting/Light.h"
 #include "LightComponent.h"
 #include <vector>
+#include <memory>
 #include <string>
 
 namespace RTBEngine {
@@ -27,11 +28,11 @@ namespace RTBEngine {
             const std::string& GetName() const { return name; }
             void CollectLights();
             const std::vector<Rendering::Light*>& GetLights() const { return lights; }
-            const std::vector<GameObject*>& GetGameObjects() const { return gameObjects; }
+            const std::vector<std::unique_ptr<GameObject>>& GetGameObjects() const { return gameObjects; }
 
         private:
             std::string name;
-            std::vector<GameObject*> gameObjects;
+            std::vector<std::unique_ptr<GameObject>> gameObjects;
             std::vector<Rendering::Light*> lights;
         };
 

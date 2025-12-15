@@ -1,5 +1,6 @@
 #pragma once
 #include <SDL.h>
+#include <memory>
 #include "Window.h"
 
 namespace RTBEngine {
@@ -36,11 +37,11 @@ namespace RTBEngine {
 			Uint32 lastTime = 0;
 			float deltaTime = 0.0f;
 
-			Window* window;
-			Rendering::Camera* camera;
+			std::unique_ptr<Window> window;
+			std::unique_ptr<Rendering::Camera> camera;
 
 			Rendering::Mesh* testMesh;
-			ECS::Scene* testScene;
+			std::unique_ptr<ECS::Scene> testScene;
 
 			Application(const Application&) = delete;
 			Application& operator=(const Application&) = delete;

@@ -11,8 +11,7 @@
 #include <iostream>
 
 RTBEngine::Core::Application::Application()
-	: window(nullptr), lastTime(0), isRunning(false),
-	 testScene(nullptr), camera(nullptr)
+	: lastTime(0), isRunning(false), testMesh(nullptr)
 {
 }
 
@@ -23,7 +22,7 @@ RTBEngine::Core::Application::~Application()
 
 bool RTBEngine::Core::Application::Initialize()
 {
-	window = new Window("RTBEngine - Application", 800, 600);
+	window = std::make_unique<Window>("RTBEngine - Application", 800, 600);
 	if (!window->Initialize()) {
 		return false;
 	}
@@ -63,7 +62,7 @@ bool RTBEngine::Core::Application::Initialize()
 	material->SetColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
 	// Create camera
-	camera = new Rendering::Camera(
+	camera = std::make_unique<Rendering::Camera>(
 		Math::Vector3(0.0f, 2.0f, 5.0f),
 		45.0f,
 		800.0f / 600.0f,
@@ -73,7 +72,7 @@ bool RTBEngine::Core::Application::Initialize()
 	camera->SetRotation(-20.0f, 180.0f);
 
 	// Create scene
-	testScene = new ECS::Scene("Test Scene");
+	testScene = std::make_unique<ECS::Scene>("Test Scene");
 
 	// Create model GameObject
 	ECS::GameObject* modelObj = new ECS::GameObject("LoadedModel");
@@ -123,22 +122,10 @@ void RTBEngine::Core::Application::Shutdown()
 {
 	isRunning = false;
 
-	if (testScene) {
-		delete testScene;
-		testScene = nullptr;
-	}
+	testScene.reset();
+	camera.reset();
+	window.reset();
 
-	if (camera) {
-		delete camera;
-		camera = nullptr;
-	}
-
-	if (window) {
-		delete window;
-		window = nullptr;
-	}
-
-	// Clear all cached resources
 	ResourceManager::GetInstance().Clear();
 }
 
@@ -172,7 +159,7 @@ void RTBEngine::Core::Application::Render()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	if (testScene) {
-		testScene->Render(camera);
+		testScene->Render(camera.get());
 	}
 
 	window->SwapBuffers();
