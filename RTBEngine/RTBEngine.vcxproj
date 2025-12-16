@@ -178,7 +178,10 @@ xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutD
     <ClCompile Include="Engine\Rendering\Lighting\Light.cpp" />
     <ClCompile Include="Engine\ECS\LightComponent.cpp" />
     <ClCompile Include="Engine\Core\ResourceManager.cpp" />
-    <ClCompile Include="Engine\Physics\PhysicsWorld.cpp" />
+    <ClCompile Include="Engine\Physics\RigidBody.cpp" />
+    <ClCompile Include="Engine\Physics\Collider.cpp" />
+    <ClCompile Include="Engine\Physics\BoxCollider.cpp" />
+    <ClCompile Include="Engine\Physics\SphereCollider.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
     <ClCompile Include="Engine\ECS\Transform.cpp" />
   </ItemGroup>
@@ -211,7 +214,10 @@ xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutD
     <ClInclude Include="Engine\Rendering\Lighting\Light.h" />
     <ClInclude Include="Engine\ECS\LightComponent.h" />
     <ClInclude Include="Engine\Core\ResourceManager.h" />
-    <ClInclude Include="Engine\Physics\PhysicsWorld.h" />
+    <ClInclude Include="Engine\Physics\RigidBody.h" />
+    <ClInclude Include="Engine\Physics\Collider.h" />
+    <ClInclude Include="Engine\Physics\BoxCollider.h" />
+    <ClInclude Include="Engine\Physics\SphereCollider.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
     <ClInclude Include="Engine\ECS\Transform.h" />
   </ItemGroup>
