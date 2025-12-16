@@ -3,17 +3,14 @@
 namespace RTBEngine {
     namespace ECS {
 
-        LightComponent::LightComponent(Rendering::Light* light)
-            : Component(), light(light)
+        LightComponent::LightComponent(std::unique_ptr<Rendering::Light> light)
+            : Component(), light(std::move(light))
         {
         }
 
         LightComponent::~LightComponent()
         {
-            if (light) {
-                delete light;
-                light = nullptr;
-            }
+            
         }
 
         void LightComponent::OnAwake()
@@ -29,12 +26,9 @@ namespace RTBEngine {
 
         }
 
-        void LightComponent::SetLight(Rendering::Light* light)
+        void LightComponent::SetLight(std::unique_ptr<Rendering::Light> light)
         {
-            if (this->light) {
-                delete this->light;
-            }
-            this->light = light;
+            this->light = std::move(light);
         }
 
     }

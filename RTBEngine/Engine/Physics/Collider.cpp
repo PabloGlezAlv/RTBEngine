@@ -18,8 +18,8 @@ namespace RTBEngine {
             centerOffset = center;
         }
 
-        void Collider::SetIsTrigger(bool isTrigger) {
-            isTrigger = isTrigger;
+        void Collider::SetIsTrigger(bool trigger) {
+            isTrigger = trigger;
         }
 
         void Collider::SetCollisionShape(btCollisionShape* shape) {
