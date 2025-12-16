@@ -74,13 +74,13 @@
     <VcpkgEnabled>true</VcpkgEnabled>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(ProjectDir)ThirdParty\assimp\lib\Debug\x64;$(ProjectDir)ThirdParty\glew-2.1.0\lib\Release\x64;$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)ThirdParty\bullet3-3.25\src;$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)ThirdParty\bullet3-3.25\build_msvc\lib\Debug;$(ProjectDir)ThirdParty\assimp\lib\Debug\x64;$(ProjectDir)ThirdParty\glew-2.1.0\lib\Release\x64;$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64;$(LibraryPath)</LibraryPath>
     <CustomBuildAfterTargets />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(ProjectDir)ThirdParty\assimp\lib\Release\x64;$(ProjectDir)ThirdParty\glew-2.1.0\lib\Release\x64;$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)ThirdParty\bullet3-3.25\src;$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)ThirdParty\bullet3-3.25\build_msvc\lib\Release;$(ProjectDir)ThirdParty\assimp\lib\Release\x64;$(ProjectDir)ThirdParty\glew-2.1.0\lib\Release\x64;$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64;$(LibraryPath)</LibraryPath>
     <CustomBuildAfterTargets />
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -117,11 +117,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>assimp-vc143-mtd.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>LinearMath_Debug.lib;BulletCollision_Debug.lib;BulletDynamics_Debug.lib;assimp-vc143-mtd.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y /d "$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64\SDL2.dll" "$(OutDir)"
@@ -137,6 +138,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutD
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -144,7 +146,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutD
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)ThirdParty\assimp\lib\Release\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>assimp-vc143-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>LinearMath.lib;BulletCollision.lib;BulletDynamics.lib;assimp-vc143-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y /d "$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64\SDL2.dll" "$(OutDir)"
@@ -176,6 +178,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutD
     <ClCompile Include="Engine\Rendering\Lighting\Light.cpp" />
     <ClCompile Include="Engine\ECS\LightComponent.cpp" />
     <ClCompile Include="Engine\Core\ResourceManager.cpp" />
+    <ClCompile Include="Engine\Physics\PhysicsWorld.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
     <ClCompile Include="Engine\ECS\Transform.cpp" />
   </ItemGroup>
@@ -208,6 +211,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutD
     <ClInclude Include="Engine\Rendering\Lighting\Light.h" />
     <ClInclude Include="Engine\ECS\LightComponent.h" />
     <ClInclude Include="Engine\Core\ResourceManager.h" />
+    <ClInclude Include="Engine\Physics\PhysicsWorld.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
     <ClInclude Include="Engine\ECS\Transform.h" />
   </ItemGroup>

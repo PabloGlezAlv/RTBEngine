@@ -2,6 +2,7 @@
 #include <SDL.h>
 #include <memory>
 #include "Window.h"
+#include "btBulletCollisionCommon.h"
 
 namespace RTBEngine {
 	namespace Rendering {
