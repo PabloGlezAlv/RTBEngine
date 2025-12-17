@@ -4,11 +4,14 @@
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
 #include "../ECS/MeshRenderer.h"
+#include "../ECS/RigidBodyComponent.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
 #include "../ECS/LightComponent.h"
 #include "ResourceManager.h"
 #include "../Physics/PhysicsWorld.h"
 #include "../Physics/PhysicsSystem.h"
+#include "../Physics/RigidBody.h"
+#include "../Physics/BoxCollider.h"
 
 #include <iostream>
 
@@ -65,25 +68,16 @@ bool RTBEngine::Core::Application::Initialize()
 
 	// Create camera
 	camera = std::make_unique<Rendering::Camera>(
-		Math::Vector3(0.0f, 2.0f, 5.0f),
+		Math::Vector3(0.0f, 3.0f, 10.0f),
 		45.0f,
 		800.0f / 600.0f,
 		0.1f,
 		100.0f
 	);
-	camera->SetRotation(-20.0f, 180.0f);
+	camera->SetRotation(-15.0f, 180.0f);
 
 	// Create scene
 	testScene = std::make_unique<ECS::Scene>("Test Scene");
-
-	// Create model GameObject
-	ECS::GameObject* modelObj = new ECS::GameObject("LoadedModel");
-	ECS::MeshRenderer* meshRenderer = new ECS::MeshRenderer();
-	meshRenderer->SetMesh(testMesh);
-	meshRenderer->SetMaterial(material);
-	modelObj->AddComponent(meshRenderer);
-	modelObj->GetTransform().SetPosition(Math::Vector3(0.0f, 0.0f, 0.0f));
-	testScene->AddGameObject(modelObj);
 
 	// Create directional light
 	ECS::GameObject* lightObj = new ECS::GameObject("MainLight");
@@ -97,10 +91,13 @@ bool RTBEngine::Core::Application::Initialize()
 	lightObj->AddComponent(lightComponent);
 	testScene->AddGameObject(lightObj);
 
+	// Initialize physics
 	physicsWorld = new Physics::PhysicsWorld();
 	physicsWorld->Initialize();
-
 	physicsSystem = new Physics::PhysicsSystem(physicsWorld);
+
+	// Create test scene
+	CreatePhysicsTestScene();
 
 	return true;
 }
@@ -189,4 +186,69 @@ void RTBEngine::Core::Application::Render()
 	}
 
 	window->SwapBuffers();
+}
+
+void RTBEngine::Core::Application::CreatePhysicsTestScene()
+{
+	ResourceManager& resources = ResourceManager::GetInstance();
+	Rendering::Shader* shader = resources.GetShader("basic");
+	Rendering::Texture* texture = resources.GetTexture("Assets/Textures/testTexture.png");
+
+	Rendering::Material* material = new Rendering::Material(shader);
+	material->SetTexture(texture);
+	material->SetColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+
+	ECS::GameObject* ground = new ECS::GameObject("Ground");
+
+	ECS::MeshRenderer* groundMeshRenderer = new ECS::MeshRenderer();
+	groundMeshRenderer->SetMesh(testMesh);
+	groundMeshRenderer->SetMaterial(material);
+	ground->AddComponent(groundMeshRenderer);
+
+	ground->GetTransform().SetPosition(Math::Vector3(0.0f, -2.0f, 0.0f));
+	ground->GetTransform().SetScale(Math::Vector3(10.0f, 0.5f, 10.0f));
+
+	auto groundRigidBody = std::make_unique<Physics::RigidBody>();
+	groundRigidBody->SetType(Physics::RigidBodyType::Static);
+	groundRigidBody->SetMass(0.0f);
+	groundRigidBody->SetFriction(0.7f);
+
+	auto groundCollider = std::make_unique<Physics::BoxCollider>(Math::Vector3(10.0f, 10.0f, 10.0f));
+
+	// Create RigidBodyComponent
+	ECS::RigidBodyComponent* groundRBComponent = new ECS::RigidBodyComponent();
+	groundRBComponent->SetRigidBody(std::move(groundRigidBody));
+	groundRBComponent->SetCollider(std::move(groundCollider));
+	ground->AddComponent(groundRBComponent);
+
+	testScene->AddGameObject(ground);
+
+	physicsSystem->InitializeRigidBody(ground, groundRBComponent);
+
+	ECS::GameObject* cube = new ECS::GameObject("FallingCube");
+
+	ECS::MeshRenderer* cubeMeshRenderer = new ECS::MeshRenderer();
+	cubeMeshRenderer->SetMesh(testMesh);
+	cubeMeshRenderer->SetMaterial(material);
+	cube->AddComponent(cubeMeshRenderer);
+
+	cube->GetTransform().SetPosition(Math::Vector3(0.0f, 5.0f, 0.0f));
+	cube->GetTransform().SetScale(Math::Vector3(1.0f, 1.0f, 1.0f));
+
+	auto cubeRigidBody = std::make_unique<Physics::RigidBody>();
+	cubeRigidBody->SetType(Physics::RigidBodyType::Dynamic);
+	cubeRigidBody->SetMass(1.0f);
+	cubeRigidBody->SetFriction(0.5f);
+	cubeRigidBody->SetRestitution(1.0f);
+
+	auto cubeCollider = std::make_unique<Physics::BoxCollider>(Math::Vector3(1.0f, 1.0f, 1.0f));
+
+	ECS::RigidBodyComponent* cubeRBComponent = new ECS::RigidBodyComponent();
+	cubeRBComponent->SetRigidBody(std::move(cubeRigidBody));
+	cubeRBComponent->SetCollider(std::move(cubeCollider));
+	cube->AddComponent(cubeRBComponent);
+
+	testScene->AddGameObject(cube);
+
+	physicsSystem->InitializeRigidBody(cube, cubeRBComponent);
 }

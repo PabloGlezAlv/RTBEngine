@@ -35,28 +35,61 @@ namespace RTBEngine {
                 return;
 
             Physics::RigidBody* rigidBody = component->GetRigidBody();
-            if (!rigidBody)
+            Physics::Collider* collider = component->GetCollider();
+
+            if (!rigidBody || !collider)
                 return;
 
-            // Get the btRigidBody from our RigidBody wrapper
-            btRigidBody* btBody = rigidBody->GetBulletRigidBody();
-            if (!btBody)
+            // Get collision shape from collider
+            btCollisionShape* shape = collider->GetCollisionShape();
+            if (!shape)
                 return;
 
-            // Set initial transform from GameObject to physics body
+            // Get initial transform from GameObject
             ECS::Transform& transform = gameObject->GetTransform();
             btVector3 position = PhysicsUtils::ToBullet(transform.GetPosition());
             btQuaternion rotation = PhysicsUtils::ToBullet(transform.GetRotation());
+            btVector3 scale = PhysicsUtils::ToBullet(transform.GetScale());
+
+            // Apply scale to collision shape
+            shape->setLocalScaling(scale);
 
             btTransform btTrans;
             btTrans.setIdentity();
             btTrans.setOrigin(position);
             btTrans.setRotation(rotation);
 
-            btBody->setWorldTransform(btTrans);
+            // Create motion state
+            btDefaultMotionState* motionState = new btDefaultMotionState(btTrans);
 
-            // Add the rigid body to the physics world
-            physicsWorld->AddRigidBody(btBody);
+            // Calculate inertia
+            float mass = rigidBody->GetMass();
+            btVector3 inertia(0, 0, 0);
+            if (mass > 0.0f) {
+                shape->calculateLocalInertia(mass, inertia);
+            }
+
+            // Create btRigidBody
+            btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, motionState, shape, inertia);
+            rbInfo.m_friction = rigidBody->GetFriction();
+            rbInfo.m_restitution = rigidBody->GetRestitution();
+
+            std::unique_ptr<btRigidBody> btBody = std::make_unique<btRigidBody>(rbInfo);
+
+            // Set collision flags based on type
+            if (rigidBody->GetType() == RigidBodyType::Static) {
+                btBody->setCollisionFlags(btBody->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
+            }
+            else if (rigidBody->GetType() == RigidBodyType::Kinematic) {
+                btBody->setCollisionFlags(btBody->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
+                btBody->setActivationState(DISABLE_DEACTIVATION);
+            }
+
+            // Add to physics world
+            physicsWorld->AddRigidBody(btBody.get());
+
+            // Store btRigidBody in RigidBody wrapper
+            rigidBody->SetBulletRigidBody(std::move(btBody));
         }
 
         void PhysicsSystem::DestroyRigidBody(ECS::RigidBodyComponent* component)

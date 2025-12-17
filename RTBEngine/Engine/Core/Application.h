@@ -38,6 +38,9 @@ namespace RTBEngine {
 			void ProcessInput();
 			void Update(float deltaTime);
 			void Render();
+
+			// Test scenes
+			void CreatePhysicsTestScene();
 		private:
 			bool isRunning = false;
 			Uint32 lastTime = 0;
@@ -52,7 +55,7 @@ namespace RTBEngine {
 			Physics::PhysicsWorld* physicsWorld;
 			Physics::PhysicsSystem* physicsSystem;
 
-			const float PHYSICS_TIMESTEP = 1.0f / 60.0f;  
+			const float PHYSICS_TIMESTEP = 1.0f / 60.0f;
 			float physicsAccumulator = 0.0f;
 
 			Application(const Application&) = delete;
