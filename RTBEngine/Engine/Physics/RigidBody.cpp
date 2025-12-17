@@ -147,7 +147,7 @@ namespace RTBEngine {
             if (bulletRigidBody) {
                 SetFriction(bodyFriction);
                 SetRestitution(bodyRestitution);
-                SetType(m_type);
+                SetType(bodyType);
             }
         }
 
