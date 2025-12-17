@@ -40,5 +40,5 @@ namespace RTBEngine {
             std::unique_ptr<btCollisionShape> collisionShape;
         };
 
-    } // namespace Physics
-} // namespace RTBEngine
+    }
+} 

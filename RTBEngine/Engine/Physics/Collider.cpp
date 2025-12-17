@@ -11,7 +11,7 @@ namespace RTBEngine {
         }
 
         Collider::~Collider() {
-            // Unique_ptr will automatically clean up
+
         }
 
         void Collider::SetCenter(const Math::Vector3& center) {
@@ -26,5 +26,5 @@ namespace RTBEngine {
             collisionShape.reset(shape);
         }
 
-    } // namespace Physics
-} // namespace RTBEngine
+    }
+} 

@@ -21,5 +21,5 @@ namespace RTBEngine {
             Math::Vector3 boxSize;
         };
 
-    } // namespace Physics
-} // namespace RTBEngine
+    } 
+} 

@@ -13,6 +13,12 @@ namespace RTBEngine {
 	{
 		class Scene;
 	}
+
+	namespace Physics
+	{
+		class PhysicsSystem;
+		class PhysicsWorld;
+	}
 }
 
 namespace RTBEngine {
@@ -42,6 +48,12 @@ namespace RTBEngine {
 
 			Rendering::Mesh* testMesh;
 			std::unique_ptr<ECS::Scene> testScene;
+
+			Physics::PhysicsWorld* physicsWorld;
+			Physics::PhysicsSystem* physicsSystem;
+
+			const float PHYSICS_TIMESTEP = 1.0f / 60.0f;  
+			float physicsAccumulator = 0.0f;
 
 			Application(const Application&) = delete;
 			Application& operator=(const Application&) = delete;

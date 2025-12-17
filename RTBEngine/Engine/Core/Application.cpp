@@ -7,11 +7,13 @@
 #include "../Rendering/Lighting/DirectionalLight.h"
 #include "../ECS/LightComponent.h"
 #include "ResourceManager.h"
+#include "../Physics/PhysicsWorld.h"
+#include "../Physics/PhysicsSystem.h"
 
 #include <iostream>
 
 RTBEngine::Core::Application::Application()
-	: lastTime(0), isRunning(false), testMesh(nullptr)
+	: lastTime(0), isRunning(false), testMesh(nullptr), physicsSystem(nullptr), physicsAccumulator(0.0f), physicsWorld(nullptr)
 {
 }
 
@@ -85,15 +87,20 @@ bool RTBEngine::Core::Application::Initialize()
 
 	// Create directional light
 	ECS::GameObject* lightObj = new ECS::GameObject("MainLight");
-	Rendering::DirectionalLight* dirLight = new Rendering::DirectionalLight(
+	auto dirLight = std::make_unique<Rendering::DirectionalLight>(
 		Math::Vector3(0.0f, -1.0f, -0.3f),
 		Math::Vector3(1.0f, 1.0f, 1.0f)
 	);
 	dirLight->SetIntensity(1.0f);
 
-	ECS::LightComponent* lightComponent = new ECS::LightComponent(dirLight);
+	ECS::LightComponent* lightComponent = new ECS::LightComponent(std::move(dirLight));
 	lightObj->AddComponent(lightComponent);
 	testScene->AddGameObject(lightObj);
+
+	physicsWorld = new Physics::PhysicsWorld();
+	physicsWorld->Initialize();
+
+	physicsSystem = new Physics::PhysicsSystem(physicsWorld);
 
 	return true;
 }
@@ -114,6 +121,13 @@ void RTBEngine::Core::Application::Run()
 
 		Update(deltaTime);
 
+		// Fixed timestep physics update
+		physicsAccumulator += deltaTime;
+		while (physicsAccumulator >= PHYSICS_TIMESTEP) {
+			physicsSystem->Update(testScene.get(), PHYSICS_TIMESTEP);
+			physicsAccumulator -= PHYSICS_TIMESTEP;
+		}
+
 		Render();
 	}
 }
@@ -121,6 +135,18 @@ void RTBEngine::Core::Application::Run()
 void RTBEngine::Core::Application::Shutdown()
 {
 	isRunning = false;
+
+	// Cleanup Physics
+	if (physicsWorld) {
+		physicsWorld->Cleanup();
+		delete physicsWorld;
+		physicsWorld = nullptr;
+	}
+
+	if (physicsSystem) {
+		delete physicsSystem;
+		physicsSystem = nullptr;
+	}
 
 	testScene.reset();
 	camera.reset();
