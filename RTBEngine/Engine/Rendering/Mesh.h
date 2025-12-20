@@ -2,6 +2,7 @@
 #include <GL/glew.h>
 #include <vector>
 #include "Vertex.h"
+#include "../Math/Vectors/Vector3.h"
 
 
 // Guide from: https://learnopengl.com/Model-Loading/Mesh
@@ -21,8 +22,15 @@ namespace RTBEngine {
             unsigned int GetVertexCount() const { return vertexCount; }
             unsigned int GetIndexCount() const { return indexCount; }
 
+            // AABB (Axis-Aligned Bounding Box)
+            Math::Vector3 GetAABBMin() const { return aabbMin; }
+            Math::Vector3 GetAABBMax() const { return aabbMax; }
+            Math::Vector3 GetAABBSize() const { return aabbMax - aabbMin; }
+            Math::Vector3 GetAABBCenter() const { return (aabbMin + aabbMax) * 0.5f; }
+
         private:
             void SetupMesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices);
+            void CalculateAABB(const std::vector<Vertex>& vertices);
 
             GLuint VAO;
             GLuint VBO;
@@ -30,6 +38,10 @@ namespace RTBEngine {
 
             unsigned int vertexCount;
             unsigned int indexCount;
+
+            // Bounding box
+            Math::Vector3 aabbMin;
+            Math::Vector3 aabbMax;
         };
 
     }

@@ -68,7 +68,7 @@ bool RTBEngine::Core::Application::Initialize()
 
 	// Create camera
 	camera = std::make_unique<Rendering::Camera>(
-		Math::Vector3(0.0f, 3.0f, 10.0f),
+		Math::Vector3(0.0f, 0.0f, 10.0f),
 		45.0f,
 		800.0f / 600.0f,
 		0.1f,
@@ -205,15 +205,16 @@ void RTBEngine::Core::Application::CreatePhysicsTestScene()
 	groundMeshRenderer->SetMaterial(material);
 	ground->AddComponent(groundMeshRenderer);
 
-	ground->GetTransform().SetPosition(Math::Vector3(0.0f, -2.0f, 0.0f));
-	ground->GetTransform().SetScale(Math::Vector3(10.0f, 0.5f, 10.0f));
+	ground->GetTransform().SetPosition(Math::Vector3(0.0f, -5.0f, 0.0f));
+	ground->GetTransform().SetScale(Math::Vector3(10.0f, 1.0f, 10.0f));
 
 	auto groundRigidBody = std::make_unique<Physics::RigidBody>();
 	groundRigidBody->SetType(Physics::RigidBodyType::Static);
 	groundRigidBody->SetMass(0.0f);
 	groundRigidBody->SetFriction(0.7f);
 
-	auto groundCollider = std::make_unique<Physics::BoxCollider>(Math::Vector3(10.0f, 10.0f, 10.0f));
+	auto groundCollider = std::make_unique<Physics::BoxCollider>(testMesh);
+	groundCollider->SetSize(groundCollider->GetSize() * ground->GetTransform().GetScale());
 
 	// Create RigidBodyComponent
 	ECS::RigidBodyComponent* groundRBComponent = new ECS::RigidBodyComponent();
@@ -232,7 +233,7 @@ void RTBEngine::Core::Application::CreatePhysicsTestScene()
 	cubeMeshRenderer->SetMaterial(material);
 	cube->AddComponent(cubeMeshRenderer);
 
-	cube->GetTransform().SetPosition(Math::Vector3(0.0f, 5.0f, 0.0f));
+	cube->GetTransform().SetPosition(Math::Vector3(0.0f, 3.0f, 0.0f));
 	cube->GetTransform().SetScale(Math::Vector3(1.0f, 1.0f, 1.0f));
 
 	auto cubeRigidBody = std::make_unique<Physics::RigidBody>();
@@ -241,7 +242,7 @@ void RTBEngine::Core::Application::CreatePhysicsTestScene()
 	cubeRigidBody->SetFriction(0.5f);
 	cubeRigidBody->SetRestitution(1.0f);
 
-	auto cubeCollider = std::make_unique<Physics::BoxCollider>(Math::Vector3(1.0f, 1.0f, 1.0f));
+	auto cubeCollider = std::make_unique<Physics::BoxCollider>(testMesh);
 
 	ECS::RigidBodyComponent* cubeRBComponent = new ECS::RigidBodyComponent();
 	cubeRBComponent->SetRigidBody(std::move(cubeRigidBody));
