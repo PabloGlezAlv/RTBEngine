@@ -49,10 +49,6 @@ namespace RTBEngine {
             ECS::Transform& transform = gameObject->GetTransform();
             btVector3 position = PhysicsUtils::ToBullet(transform.GetPosition());
             btQuaternion rotation = PhysicsUtils::ToBullet(transform.GetRotation());
-            btVector3 scale = PhysicsUtils::ToBullet(transform.GetScale());
-
-            // Apply scale to collision shape
-            shape->setLocalScaling(scale);
 
             btTransform btTrans;
             btTrans.setIdentity();
