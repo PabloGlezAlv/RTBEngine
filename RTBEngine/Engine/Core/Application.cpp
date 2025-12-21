@@ -11,7 +11,7 @@
 #include "../Physics/PhysicsWorld.h"
 #include "../Physics/PhysicsSystem.h"
 #include "../Physics/RigidBody.h"
-#include "../Physics/BoxCollider.h"
+#include "../Physics/BoxCollider.h"s
 
 #include <iostream>
 
