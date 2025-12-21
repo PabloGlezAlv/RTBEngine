@@ -1,4 +1,5 @@
 #include "Collider.h"
+#include "RigidBody.h"
 
 namespace RTBEngine {
     namespace Physics {
@@ -7,7 +8,8 @@ namespace RTBEngine {
             : colliderType(type)
             , centerOffset(0.0f, 0.0f, 0.0f)
             , isTrigger(false)
-            , collisionShape(nullptr) {
+            , collisionShape(nullptr)
+            , associatedRigidBody(nullptr) {
         }
 
         Collider::~Collider() {
@@ -20,6 +22,16 @@ namespace RTBEngine {
 
         void Collider::SetIsTrigger(bool trigger) {
             isTrigger = trigger;
+
+            // Update btRigidBody flags if already initialized
+            if (associatedRigidBody && associatedRigidBody->GetBulletRigidBody()) {
+                btRigidBody* btBody = associatedRigidBody->GetBulletRigidBody();
+                if (trigger) {
+                    btBody->setCollisionFlags(btBody->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
+                } else {
+                    btBody->setCollisionFlags(btBody->getCollisionFlags() & ~btCollisionObject::CF_NO_CONTACT_RESPONSE);
+                }
+            }
         }
 
         void Collider::SetCollisionShape(btCollisionShape* shape) {

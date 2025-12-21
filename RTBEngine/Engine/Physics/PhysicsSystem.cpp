@@ -96,6 +96,9 @@ namespace RTBEngine {
             rigidBody->SetOwner(gameObject);
             btBody->setUserPointer(gameObject);
 
+            // Associate collider with rigidbody for runtime trigger changes
+            collider->SetAssociatedRigidBody(rigidBody);
+
             // Add to physics world
             physicsWorld->AddRigidBody(btBody.get());
 
