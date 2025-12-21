@@ -23,6 +23,7 @@ namespace RTBEngine {
             Math::Vector3 GetGravity() const;
 
             btDynamicsWorld* GetDynamicsWorld() const { return dynamicsWorld.get(); }
+            btDispatcher* GetDispatcher() const { return dispatcher.get(); }
 
         private:
             std::unique_ptr<btDefaultCollisionConfiguration> collisionConfiguration;

@@ -1,15 +1,19 @@
 #pragma once
-
 #include <btBulletDynamicsCommon.h>
 #include <memory>
 
 namespace RTBEngine {
+
+    namespace ECS {
+        class GameObject;
+    }
+
     namespace Physics {
 
         enum class RigidBodyType {
-            Static,      // Mass = 0, no movement (walls, floor)
-            Dynamic,     // Mass > 0, affected by forces
-            Kinematic    // Controlled by user, not by physics
+            Static,      
+            Dynamic,     
+            Kinematic    
         };
 
         class RigidBody {
@@ -53,6 +57,8 @@ namespace RTBEngine {
 
             bool IsInitialized() const { return bulletRigidBody != nullptr; }
 
+            void SetOwner(ECS::GameObject* gameObject) { owner = gameObject; }
+            ECS::GameObject* GetOwner() const { return owner; }
         private:
             RigidBodyType bodyType;
             float bodyMass;
@@ -60,6 +66,8 @@ namespace RTBEngine {
             float bodyRestitution;
 
             std::unique_ptr<btRigidBody> bulletRigidBody;
+
+            ECS::GameObject* owner = nullptr;
         };
 
     } 

@@ -1,4 +1,5 @@
 #include "Component.h"
+#include "../Physics/CollisionInfo.h"
 
 namespace RTBEngine {
     namespace ECS {

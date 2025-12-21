@@ -190,6 +190,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutD
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\ECS\RigidBodyComponent.h" />
+    <ClInclude Include="Engine\Physics\CollisionInfo.h" />
     <ClInclude Include="Engine\Rendering\Lighting\DirectionalLight.h" />
     <ClInclude Include="Engine\ECS\Component.h" />
     <ClInclude Include="Engine\Rendering\Camera.h" />

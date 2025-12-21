@@ -27,6 +27,8 @@ namespace RTBEngine {
             template<typename T>
             bool HasComponent();
 
+            const std::vector<std::unique_ptr<Component>>& GetComponents() const { return components; }
+
             Transform& GetTransform() { return transform; }
             const Transform& GetTransform() const { return transform; }
             const std::string& GetName() const { return name; }

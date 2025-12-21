@@ -1,6 +1,10 @@
 #include "PhysicsSystem.h"
 #include "PhysicsUtils.h"
 #include "../ECS/Transform.h"
+#include "../ECS/GameObject.h"
+#include "../ECS/RigidBodyComponent.h"
+#include "CollisionInfo.h"
+#include <BulletCollision/NarrowPhaseCollision/btPersistentManifold.h>
 
 namespace RTBEngine {
     namespace Physics {
@@ -24,6 +28,8 @@ namespace RTBEngine {
 
             // Step the physics simulation
             physicsWorld->Step(deltaTime);
+            //Update collision state
+            ProcessCollisions();
 
             // Sync transforms from physics back to GameObjects (for dynamic bodies)
             SyncPhysicsToTransforms(scene);
@@ -80,6 +86,10 @@ namespace RTBEngine {
                 btBody->setCollisionFlags(btBody->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
                 btBody->setActivationState(DISABLE_DEACTIVATION);
             }
+
+            // Set owner and user pointer for collision callbacks
+            rigidBody->SetOwner(gameObject);
+            btBody->setUserPointer(gameObject);
 
             // Add to physics world
             physicsWorld->AddRigidBody(btBody.get());
@@ -170,6 +180,127 @@ namespace RTBEngine {
                     ECS::Transform& transform = gameObject->GetTransform();
                     transform.SetPosition(position);
                     transform.SetRotation(rotation);
+                }
+            }
+        }
+
+        void PhysicsSystem::ProcessCollisions()
+        {
+            currentCollisions.clear();
+
+            btDispatcher* dispatcher = physicsWorld->GetDispatcher();
+            int numManifolds = dispatcher->getNumManifolds();
+
+            for (int i = 0; i < numManifolds; i++)
+            {
+                btPersistentManifold* manifold = dispatcher->getManifoldByIndexInternal(i);
+                if (manifold->getNumContacts() <= 0)
+                    continue;
+
+                const btCollisionObject* objA = manifold->getBody0();
+                const btCollisionObject* objB = manifold->getBody1();
+
+                ECS::GameObject* goA = static_cast<ECS::GameObject*>(objA->getUserPointer());
+                ECS::GameObject* goB = static_cast<ECS::GameObject*>(objB->getUserPointer());
+
+                if (!goA || !goB)
+                    continue;
+
+                // Check if either collider is a trigger
+                ECS::RigidBodyComponent* rbCompA = goA->GetComponent<ECS::RigidBodyComponent>();
+                ECS::RigidBodyComponent* rbCompB = goB->GetComponent<ECS::RigidBodyComponent>();
+
+                bool isTriggerA = rbCompA && rbCompA->GetCollider() && rbCompA->GetCollider()->IsTrigger();
+                bool isTriggerB = rbCompB && rbCompB->GetCollider() && rbCompB->GetCollider()->IsTrigger();
+                bool isTrigger = isTriggerA || isTriggerB;
+
+                // Get contact info from first contact point
+                btManifoldPoint& pt = manifold->getContactPoint(0);
+                btVector3 contactPoint = pt.getPositionWorldOnB();
+                btVector3 contactNormal = pt.m_normalWorldOnB;
+
+                // Create collision pair (always store in consistent order)
+                CollisionPair pair;
+                if (goA < goB) {
+                    pair = { goA, goB, isTrigger };
+                }
+                else {
+                    pair = { goB, goA, isTrigger };
+                }
+                currentCollisions.insert(pair);
+
+                // Create collision info for each object
+                CollisionInfo infoForA;
+                infoForA.otherObject = goB;
+                infoForA.contactPoint = PhysicsUtils::FromBullet(contactPoint);
+                infoForA.contactNormal = PhysicsUtils::FromBullet(contactNormal);
+                infoForA.penetrationDepth = pt.getDistance();
+
+                CollisionInfo infoForB;
+                infoForB.otherObject = goA;
+                infoForB.contactPoint = PhysicsUtils::FromBullet(contactPoint);
+                infoForB.contactNormal = PhysicsUtils::FromBullet(contactNormal) * -1.0f;
+                infoForB.penetrationDepth = pt.getDistance();
+
+                // Determine collision state
+                bool wasColliding = previousCollisions.find(pair) != previousCollisions.end();
+
+                if (!wasColliding) {
+                    // Enter
+                    NotifyCallbacks(goA, infoForA, isTrigger, CollisionState::Enter);
+                    NotifyCallbacks(goB, infoForB, isTrigger, CollisionState::Enter);
+                }
+                else {
+                    // Stay
+                    NotifyCallbacks(goA, infoForA, isTrigger, CollisionState::Stay);
+                    NotifyCallbacks(goB, infoForB, isTrigger, CollisionState::Stay);
+                }
+            }
+
+            // Check for Exit (was colliding but not anymore)
+            for (const auto& pair : previousCollisions)
+            {
+                if (currentCollisions.find(pair) == currentCollisions.end())
+                {
+                    CollisionInfo infoForA;
+                    infoForA.otherObject = pair.objectB;
+
+                    CollisionInfo infoForB;
+                    infoForB.otherObject = pair.objectA;
+
+                    NotifyCallbacks(pair.objectA, infoForA, pair.isTrigger, CollisionState::Exit);
+                    NotifyCallbacks(pair.objectB, infoForB, pair.isTrigger, CollisionState::Exit);
+                }
+            }
+
+            previousCollisions = currentCollisions;
+        }
+
+        void PhysicsSystem::NotifyCallbacks(ECS::GameObject* object, const CollisionInfo& info, bool isTrigger, CollisionState state)
+        {
+            if (!object)
+                return;
+
+            const auto& components = object->GetComponents();
+            for (const auto& component : components)
+            {
+                if (isTrigger)
+                {
+                    switch (state)
+                    {
+                    case CollisionState::Enter: component->OnTriggerEnter(info); break;
+                    case CollisionState::Stay:  component->OnTriggerStay(info);  break;
+                    case CollisionState::Exit:  component->OnTriggerExit(info);  break;
+                    }
+                }
+                else
+                {
+                    switch (state)
+                    {
+                    case CollisionState::Enter: component->OnCollisionEnter(info); break;
+                    case CollisionState::Stay:  component->OnCollisionStay(info);  break;
+                    case CollisionState::Exit:  component->OnCollisionExit(info);  break;
+                    }
                 }
             }
         }
