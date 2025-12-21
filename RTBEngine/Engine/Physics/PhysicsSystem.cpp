@@ -87,6 +87,11 @@ namespace RTBEngine {
                 btBody->setActivationState(DISABLE_DEACTIVATION);
             }
 
+            // Configure trigger
+            if (collider->IsTrigger()) {
+                btBody->setCollisionFlags(btBody->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
+            }
+
             // Set owner and user pointer for collision callbacks
             rigidBody->SetOwner(gameObject);
             btBody->setUserPointer(gameObject);
