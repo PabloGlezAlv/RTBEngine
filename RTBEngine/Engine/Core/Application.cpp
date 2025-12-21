@@ -11,9 +11,10 @@
 #include "../Physics/PhysicsWorld.h"
 #include "../Physics/PhysicsSystem.h"
 #include "../Physics/RigidBody.h"
-#include "../Physics/BoxCollider.h"s
+#include "../Physics/BoxCollider.h"
 
 #include <iostream>
+#include "fmod.h"
 
 RTBEngine::Core::Application::Application()
 	: lastTime(0), isRunning(false), testMesh(nullptr), physicsSystem(nullptr), physicsAccumulator(0.0f), physicsWorld(nullptr)
