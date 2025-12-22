@@ -15,6 +15,7 @@
 #include "../Audio/AudioSystem.h"
 #include "../Audio/AudioClip.h"
 #include "../ECS/AudioSourceComponent.h"
+#include "../Rendering/Lighting/PointLight.h"
 #include <iostream>
 
 RTBEngine::Core::Application::Application()
@@ -192,6 +193,13 @@ void RTBEngine::Core::Application::Render()
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	Rendering::Shader* shader = ResourceManager::GetInstance().GetShader("basic");
+	if (shader) {
+		shader->Bind();
+		shader->SetInt("numPointLights", 1);
+		testPointLight.ApplyToShader(shader, 0);
+	}
+
 	if (testScene) {
 		testScene->Render(camera.get());
 	}
@@ -271,4 +279,10 @@ void RTBEngine::Core::Application::CreatePhysicsTestScene()
 	audioSource->SetLoop(true);
 	audioSource->SetPlayOnStart(true);
 	cube->AddComponent(audioSource);
+
+	testPointLight.SetPosition(Math::Vector3(0.0f, 3.0f, 0.0f));  
+	testPointLight.SetColor(Math::Vector3(0.0f, 0.5f, 1.0f));     
+	testPointLight.SetIntensity(5.0f);                             
+	testPointLight.SetRange(50.0f);                                
+
 }

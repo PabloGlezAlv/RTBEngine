@@ -17,8 +17,9 @@ namespace RTBEngine {
         void DirectionalLight::ApplyToShader(Shader* shader)
         {
             if (shader) {
-                shader->SetVector3("uLightDir", direction);
-                shader->SetVector3("uLightColor", color * intensity);
+                shader->SetVector3("dirLight.direction", direction);
+                shader->SetVector3("dirLight.color", color);
+                shader->SetFloat("dirLight.intensity", intensity);
             }
         }
 
