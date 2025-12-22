@@ -74,12 +74,12 @@
     <VcpkgEnabled>true</VcpkgEnabled>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(ProjectDir)ThirdParty\bullet3-3.25\src;$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(ProjectDir)ThirdParty\fmod\api\core\inc;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)ThirdParty\imgui-1.92.5;$(ProjectDir)ThirdParty\imgui-1.92.5\backends;$(ProjectDir)ThirdParty\bullet3-3.25\src;$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(ProjectDir)ThirdParty\fmod\api\core\inc;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)ThirdParty\bullet3-3.25\build_msvc\lib\Debug;$(ProjectDir)ThirdParty\assimp\lib\Debug\x64;$(ProjectDir)ThirdParty\glew-2.1.0\lib\Release\x64;$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64;$(ProjectDir)ThirdParty\fmod\api\core\lib\x64;$(LibraryPath)</LibraryPath>
     <CustomBuildAfterTargets />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(ProjectDir)ThirdParty\bullet3-3.25\src;$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(ProjectDir)ThirdParty\fmod\api\core\inc;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)ThirdParty\imgui-1.92.5;$(ProjectDir)ThirdParty\imgui-1.92.5\backends;$(ProjectDir)ThirdParty\bullet3-3.25\src;$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(ProjectDir)ThirdParty\fmod\api\core\inc;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)ThirdParty\bullet3-3.25\build_msvc\lib\Release;$(ProjectDir)ThirdParty\assimp\lib\Release\x64;$(ProjectDir)ThirdParty\glew-2.1.0\lib\Release\x64;$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64;$(ProjectDir)ThirdParty\fmod\api\core\lib\x64;$(LibraryPath)</LibraryPath>
     <CustomBuildAfterTargets />
   </PropertyGroup>
@@ -193,6 +193,12 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\Rendering\Lighting\PointLight.cpp" />
     <ClCompile Include="Engine\Rendering\Lighting\SpotLight.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
+    <ClCompile Include="ThirdParty\imgui-1.92.5\imgui.cpp" />
+    <ClCompile Include="ThirdParty\imgui-1.92.5\imgui_draw.cpp" />
+    <ClCompile Include="ThirdParty\imgui-1.92.5\imgui_tables.cpp" />
+    <ClCompile Include="ThirdParty\imgui-1.92.5\imgui_widgets.cpp" />
+    <ClCompile Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_sdl2.cpp" />
+    <ClCompile Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_opengl3.cpp" />
     <ClCompile Include="Engine\ECS\Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -239,6 +245,11 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="Engine\Rendering\Lighting\PointLight.h" />
     <ClInclude Include="Engine\Rendering\Lighting\SpotLight.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
+    <ClInclude Include="ThirdParty\imgui-1.92.5\imgui.h" />
+    <ClInclude Include="ThirdParty\imgui-1.92.5\imconfig.h" />
+    <ClInclude Include="ThirdParty\imgui-1.92.5\imgui_internal.h" />
+    <ClInclude Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_sdl2.h" />
+    <ClInclude Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_opengl3.h" />
     <ClInclude Include="Engine\ECS\Transform.h" />
   </ItemGroup>
   <ItemGroup>
