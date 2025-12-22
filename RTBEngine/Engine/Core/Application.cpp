@@ -12,6 +12,7 @@
 #include "../Physics/PhysicsSystem.h"
 #include "../Physics/RigidBody.h"
 #include "../Physics/BoxCollider.h"
+#include "../Audio/AudioSystem.h"
 #include <iostream>
 
 RTBEngine::Core::Application::Application()
@@ -95,6 +96,11 @@ bool RTBEngine::Core::Application::Initialize()
 	physicsWorld->Initialize();
 	physicsSystem = new Physics::PhysicsSystem(physicsWorld);
 
+	if (!Audio::AudioSystem::GetInstance().Initialize()) {
+		std::cerr << "Failed to initialize audio system" << std::endl;
+		return false;
+	}
+
 	// Create test scene
 	CreatePhysicsTestScene();
 
@@ -117,6 +123,8 @@ void RTBEngine::Core::Application::Run()
 
 		Update(deltaTime);
 
+		Audio::AudioSystem::GetInstance().Update();
+
 		// Fixed timestep physics update
 		physicsAccumulator += deltaTime;
 		while (physicsAccumulator >= PHYSICS_TIMESTEP) {
@@ -131,6 +139,8 @@ void RTBEngine::Core::Application::Run()
 void RTBEngine::Core::Application::Shutdown()
 {
 	isRunning = false;
+
+	Audio::AudioSystem::GetInstance().Shutdown();
 
 	// Cleanup Physics
 	if (physicsWorld) {
