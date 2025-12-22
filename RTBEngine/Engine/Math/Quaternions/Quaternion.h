@@ -19,6 +19,7 @@ namespace RTBEngine {
             Quaternion operator+(const Quaternion& other) const;
             Quaternion operator-(const Quaternion& other) const;
             Quaternion operator*(const Quaternion& other) const;
+            Vector3 operator*(const Vector3& v) const;
             Quaternion operator*(float scalar) const;
 
             Quaternion& operator+=(const Quaternion& other);

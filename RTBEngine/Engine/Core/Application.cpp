@@ -15,7 +15,7 @@
 #include "../Audio/AudioSystem.h"
 #include "../Audio/AudioClip.h"
 #include "../ECS/AudioSourceComponent.h"
-#include "../Rendering/Lighting/PointLight.h"
+
 #include <iostream>
 
 RTBEngine::Core::Application::Application()
@@ -193,11 +193,35 @@ void RTBEngine::Core::Application::Render()
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	// Apply lights from scene to shader
 	Rendering::Shader* shader = ResourceManager::GetInstance().GetShader("basic");
-	if (shader) {
+	if (shader && testScene) {
 		shader->Bind();
-		shader->SetInt("numPointLights", 1);
-		testPointLight.ApplyToShader(shader, 0);
+
+		int pointLightIndex = 0;
+		int spotLightIndex = 0;
+
+		for (auto& go : testScene->GetGameObjects()) {
+			ECS::LightComponent* lightComp = go->GetComponent<ECS::LightComponent>();
+			if (lightComp && lightComp->GetLight()) {
+				Rendering::Light* light = lightComp->GetLight();
+
+				if (light->GetType() == Rendering::LightType::Directional) {
+					light->ApplyToShader(shader);
+				}
+				else if (light->GetType() == Rendering::LightType::Point) {
+					auto* pointLight = static_cast<Rendering::PointLight*>(light);
+					pointLight->ApplyToShader(shader, pointLightIndex++);
+				}
+				else if (light->GetType() == Rendering::LightType::Spot) {
+					auto* spotLight = static_cast<Rendering::SpotLight*>(light);
+					spotLight->ApplyToShader(shader, spotLightIndex++);
+				}
+			}
+		}
+
+		shader->SetInt("numPointLights", pointLightIndex);
+		shader->SetInt("numSpotLights", spotLightIndex);
 	}
 
 	if (testScene) {
@@ -206,6 +230,7 @@ void RTBEngine::Core::Application::Render()
 
 	window->SwapBuffers();
 }
+
 
 void RTBEngine::Core::Application::CreatePhysicsTestScene()
 {
@@ -280,9 +305,33 @@ void RTBEngine::Core::Application::CreatePhysicsTestScene()
 	audioSource->SetPlayOnStart(true);
 	cube->AddComponent(audioSource);
 
-	testPointLight.SetPosition(Math::Vector3(0.0f, 3.0f, 0.0f));  
-	testPointLight.SetColor(Math::Vector3(0.0f, 0.5f, 1.0f));     
-	testPointLight.SetIntensity(5.0f);                             
-	testPointLight.SetRange(50.0f);                                
+	//PointLight
+	ECS::GameObject* pointLightObj = new ECS::GameObject("PointLight");
+	pointLightObj->GetTransform().SetPosition(Math::Vector3(3.0f, 4.0f, 0.0f));
+
+	auto pointLight = std::make_unique<Rendering::PointLight>();
+	pointLight->SetColor(Math::Vector3(0.2f, 0.5f, 1.0f)); 
+	pointLight->SetIntensity(15.0f);
+	pointLight->SetRange(30.0f);
+
+	ECS::LightComponent* pointLightComp = new ECS::LightComponent(std::move(pointLight));
+	pointLightObj->AddComponent(pointLightComp);
+	testScene->AddGameObject(pointLightObj);
+
+	// SpotLight
+	ECS::GameObject* spotLightObj = new ECS::GameObject("SpotLight");
+	spotLightObj->GetTransform().SetPosition(Math::Vector3(-3.0f, 6.0f, 0.0f));
+	spotLightObj->GetTransform().SetRotation(Math::Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f));  // Apunta hacia abajo
+
+	auto spotLight = std::make_unique<Rendering::SpotLight>();
+	spotLight->SetColor(Math::Vector3(1.0f, 0.0f, 0.0f));
+	spotLight->SetIntensity(50.0f);
+	spotLight->SetRange(50.0f);
+	spotLight->SetCutOff(5.0f, 15.0f);
+
+	ECS::LightComponent* spotLightComp = new ECS::LightComponent(std::move(spotLight));
+	spotLightObj->AddComponent(spotLightComp);
+	testScene->AddGameObject(spotLightObj);
+
 
 }

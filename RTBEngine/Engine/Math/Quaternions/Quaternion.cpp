@@ -38,6 +38,22 @@ namespace RTBEngine {
                 w * other.w - x * other.x - y * other.y - z * other.z
             );
         }
+        Vector3 Quaternion::operator*(const Vector3& v) const {
+            
+            Vector3 qv(x, y, z);
+            Vector3 uv = Vector3(
+                qv.y * v.z - qv.z * v.y,
+                qv.z * v.x - qv.x * v.z,
+                qv.x * v.y - qv.y * v.x
+            );
+            Vector3 uuv = Vector3(
+                qv.y * uv.z - qv.z * uv.y,
+                qv.z * uv.x - qv.x * uv.z,
+                qv.x * uv.y - qv.y * uv.x
+            );
+            return v + (uv * w + uuv) * 2.0f;
+        }
+
 
         Quaternion Quaternion::operator*(float scalar) const {
             return Quaternion(x * scalar, y * scalar, z * scalar, w * scalar);

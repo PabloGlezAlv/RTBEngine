@@ -2,7 +2,6 @@
 #include <SDL.h>
 #include <memory>
 #include "Window.h"
-#include "../Rendering/Lighting/PointLight.h"
 
 namespace RTBEngine {
 	namespace Rendering {
@@ -46,8 +45,6 @@ namespace RTBEngine {
 			bool isRunning = false;
 			Uint32 lastTime = 0;
 			float deltaTime = 0.0f;
-
-			Rendering::PointLight testPointLight;
 
 			std::unique_ptr<Window> window;
 			std::unique_ptr<Rendering::Camera> camera;

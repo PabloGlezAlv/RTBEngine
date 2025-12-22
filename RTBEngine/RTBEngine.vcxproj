@@ -191,6 +191,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\Physics\PhysicsWorld.cpp" />
     <ClCompile Include="Engine\Physics\PhysicsSystem.cpp" />
     <ClCompile Include="Engine\Rendering\Lighting\PointLight.cpp" />
+    <ClCompile Include="Engine\Rendering\Lighting\SpotLight.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
     <ClCompile Include="Engine\ECS\Transform.cpp" />
   </ItemGroup>
@@ -236,6 +237,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="Engine\Physics\PhysicsSystem.h" />
     <ClInclude Include="Engine\Physics\PhysicsUtils.h" />
     <ClInclude Include="Engine\Rendering\Lighting\PointLight.h" />
+    <ClInclude Include="Engine\Rendering\Lighting\SpotLight.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
     <ClInclude Include="Engine\ECS\Transform.h" />
   </ItemGroup>
