@@ -13,6 +13,8 @@
 #include "../Physics/RigidBody.h"
 #include "../Physics/BoxCollider.h"
 #include "../Audio/AudioSystem.h"
+#include "../Audio/AudioClip.h"
+#include "../ECS/AudioSourceComponent.h"
 #include <iostream>
 
 RTBEngine::Core::Application::Application()
@@ -261,4 +263,12 @@ void RTBEngine::Core::Application::CreatePhysicsTestScene()
 	testScene->AddGameObject(cube);
 
 	physicsSystem->InitializeRigidBody(cube, cubeRBComponent);
+
+	Audio::AudioClip* testClip = ResourceManager::GetInstance().LoadAudioClip("Assets/Audio/test.mp3");
+	auto* audioSource = new ECS::AudioSourceComponent();
+	audioSource->SetClip(testClip);
+	audioSource->SetVolume(0.5f);
+	audioSource->SetLoop(true);
+	audioSource->SetPlayOnStart(true);
+	cube->AddComponent(audioSource);
 }

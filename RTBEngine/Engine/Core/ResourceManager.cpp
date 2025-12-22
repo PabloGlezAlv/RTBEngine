@@ -109,11 +109,39 @@ namespace RTBEngine {
             return models[path].get();
         }
 
+        Audio::AudioClip* ResourceManager::GetAudioClip(const std::string& path)
+        {
+            auto it = audioClips.find(path);
+            if (it != audioClips.end()) {
+                return it->second.get();
+            }
+            return nullptr;
+        }
+
+        Audio::AudioClip* ResourceManager::LoadAudioClip(const std::string& path, bool stream)
+        {
+            auto it = audioClips.find(path);
+            if (it != audioClips.end()) {
+                return it->second.get();
+            }
+
+            auto clip = std::make_unique<Audio::AudioClip>();
+            if (!clip->LoadFromFile(path, stream)) {
+                std::cerr << "ResourceManager: Failed to load audio clip: " << path << std::endl;
+                return nullptr;
+            }
+
+            Audio::AudioClip* clipPtr = clip.get();
+            audioClips[path] = std::move(clip);
+            return clipPtr;
+        }
+
         void ResourceManager::Clear()
         {
             shaders.clear();
             textures.clear();
-			models.clear();
+            models.clear();
+            audioClips.clear();
         }
     }
 }

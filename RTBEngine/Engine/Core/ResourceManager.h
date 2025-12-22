@@ -3,6 +3,7 @@
 #include "../Rendering/Texture.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/ModelLoader.h"
+#include "../Audio/AudioClip.h"
 #include <unordered_map>
 #include <string>
 #include <memory>
@@ -29,6 +30,10 @@ namespace RTBEngine {
             Rendering::Mesh* GetModel(const std::string& path);
             Rendering::Mesh* LoadModel(const std::string& path);
 
+            // Audio management
+            Audio::AudioClip* GetAudioClip(const std::string& path);
+            Audio::AudioClip* LoadAudioClip(const std::string& path, bool stream = false);
+
             void Clear();
 
         private:
@@ -38,6 +43,7 @@ namespace RTBEngine {
             std::unordered_map<std::string, std::unique_ptr<Rendering::Shader>> shaders;
             std::unordered_map<std::string, std::unique_ptr<Rendering::Texture>> textures;
             std::unordered_map<std::string, std::unique_ptr<Rendering::Mesh>> models;
+            std::unordered_map<std::string, std::unique_ptr<Audio::AudioClip>> audioClips;
 
         };
 
