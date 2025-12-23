@@ -192,7 +192,11 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\Physics\PhysicsSystem.cpp" />
     <ClCompile Include="Engine\Rendering\Lighting\PointLight.cpp" />
     <ClCompile Include="Engine\Rendering\Lighting\SpotLight.cpp" />
+    <ClCompile Include="Engine\UI\Canvas.cpp" />
+    <ClCompile Include="Engine\UI\CanvasSystem.cpp" />
+    <ClCompile Include="Engine\UI\Elements\UIPanel.cpp" />
     <ClCompile Include="Engine\UI\RectTransform.cpp" />
+    <ClCompile Include="Engine\UI\UIElement.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui_draw.cpp" />
@@ -245,7 +249,11 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="Engine\Physics\PhysicsUtils.h" />
     <ClInclude Include="Engine\Rendering\Lighting\PointLight.h" />
     <ClInclude Include="Engine\Rendering\Lighting\SpotLight.h" />
+    <ClInclude Include="Engine\UI\Canvas.h" />
+    <ClInclude Include="Engine\UI\CanvasSystem.h" />
+    <ClInclude Include="Engine\UI\Elements\UIPanel.h" />
     <ClInclude Include="Engine\UI\RectTransform.h" />
+    <ClInclude Include="Engine\UI\UIElement.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imgui.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imconfig.h" />

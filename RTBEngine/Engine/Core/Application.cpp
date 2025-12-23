@@ -15,7 +15,11 @@
 #include "../Audio/AudioSystem.h"
 #include "../Audio/AudioClip.h"
 #include "../ECS/AudioSourceComponent.h"
+#include "../UI/CanvasSystem.h"
+#include "../UI/Canvas.h"
+#include "../UI/Elements/UIPanel.h"
 
+#include <backends/imgui_impl_sdl2.h>
 #include <iostream>
 
 RTBEngine::Core::Application::Application()
@@ -104,7 +108,11 @@ bool RTBEngine::Core::Application::Initialize()
 		return false;
 	}
 
-	// Create test scene
+	if (!UI::CanvasSystem::GetInstance().Initialize(window->GetSDLWindow())) {
+		std::cerr << "Failed to initialize CanvasSystem" << std::endl;
+		return false;
+	}
+
 	CreatePhysicsTestScene();
 
 	return true;
@@ -143,6 +151,7 @@ void RTBEngine::Core::Application::Shutdown()
 {
 	isRunning = false;
 
+	UI::CanvasSystem::GetInstance().Shutdown();
 	Audio::AudioSystem::GetInstance().Shutdown();
 
 	// Cleanup Physics
@@ -171,6 +180,7 @@ void RTBEngine::Core::Application::ProcessInput()
 	SDL_Event event;
 	while (SDL_PollEvent(&event))
 	{
+		ImGui_ImplSDL2_ProcessEvent(&event);
 		input.ProcessEvent(event);
 
 		if (event.type == SDL_QUIT)
@@ -227,6 +237,9 @@ void RTBEngine::Core::Application::Render()
 	if (testScene) {
 		testScene->Render(camera.get());
 	}
+
+	UI::CanvasSystem::GetInstance().Update(testScene.get());
+	UI::CanvasSystem::GetInstance().RenderAll();
 
 	window->SwapBuffers();
 }
@@ -333,5 +346,21 @@ void RTBEngine::Core::Application::CreatePhysicsTestScene()
 	spotLightObj->AddComponent(spotLightComp);
 	testScene->AddGameObject(spotLightObj);
 
+	ECS::GameObject* canvasObj = new ECS::GameObject("UICanvas");
+	UI::Canvas* canvas = new UI::Canvas();
+	canvasObj->AddComponent(canvas);
+	canvas->SetSortOrder(0);
+	testScene->AddGameObject(canvasObj);
 
+	ECS::GameObject* panelObj = new ECS::GameObject("TestPanel");
+	UI::UIPanel* panel = new UI::UIPanel();
+	panelObj->AddComponent(panel);
+	testScene->AddGameObject(panelObj);
+	panelObj->SetParent(canvasObj);
+	panel->GetRectTransform()->SetAnchoredPosition(Math::Vector2(0.0f, 0.0f));
+	panel->GetRectTransform()->SetSize(Math::Vector2(400.0f, 300.0f));
+	panel->SetBackgroundColor(Math::Vector4(0.2f, 0.4f, 0.8f, 0.8f));
+	panel->SetBorderColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+	panel->SetBorderThickness(2.0f);
+	panel->SetHasBorder(true);
 }

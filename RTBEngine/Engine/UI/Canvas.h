@@ -24,7 +24,7 @@ namespace RTBEngine {
 			void Cleanup();
 
 			void BeginFrame();
-			void RenderCanvas();
+			void RenderCanvas(const Math::Vector2& screenSize);
 			void EndFrame();
 
 			RenderMode GetRenderMode() const { return renderMode; }
@@ -45,7 +45,7 @@ namespace RTBEngine {
 
 		private:
 			void CollectUIElements();
-			void UpdateRectTransforms();
+			void UpdateRectTransforms(const Math::Vector2& screenSize);
 
 			SDL_Window* window = nullptr;
 			RenderMode renderMode = RenderMode::ScreenSpaceOverlay;

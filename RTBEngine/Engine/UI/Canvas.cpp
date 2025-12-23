@@ -54,7 +54,7 @@ namespace RTBEngine {
 		}
 
 		void Canvas::OnAwake() {
-			// Canvas will be initialized by Application
+			isInitialized = true;
 		}
 
 		void Canvas::OnStart() {
@@ -85,12 +85,11 @@ namespace RTBEngine {
 			ImGui::NewFrame();
 		}
 
-		void Canvas::RenderCanvas() {
+		void Canvas::RenderCanvas(const Math::Vector2& screenSize) {
 			if (!isInitialized) return;
 
-			UpdateRectTransforms();
+			UpdateRectTransforms(screenSize);
 
-			// Render all UI elements that are children of this Canvas
 			for (UIElement* element : cachedUIElements) {
 				if (element && element->IsVisible() && element->IsEnabled()) {
 					element->Render();
@@ -130,18 +129,16 @@ namespace RTBEngine {
 			}
 		}
 
-		void Canvas::UpdateRectTransforms() {
-			// Update all RectTransforms with parent hierarchy
+		void Canvas::UpdateRectTransforms(const Math::Vector2& screenSize) {
 			for (UIElement* element : cachedUIElements) {
 				if (!element) continue;
 
 				RectTransform* rt = element->GetRectTransform();
 				if (!rt) continue;
 
-				// Get parent RectTransform if exists
 				ECS::GameObject* parentObj = element->GetOwner()->GetParent();
 				Math::Vector2 parentPos(0.0f, 0.0f);
-				Math::Vector2 parentSize = canvasSize;
+				Math::Vector2 parentSize = screenSize;
 
 				if (parentObj && parentObj != owner) {
 					UIElement* parentUI = parentObj->GetComponent<UIElement>();

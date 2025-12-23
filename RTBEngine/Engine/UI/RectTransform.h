@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Math/Vectors/Vector2.h"
+#include "../Math/Vectors/Vector4.h"
 
 namespace RTBEngine {
     namespace UI {
@@ -53,6 +54,7 @@ namespace RTBEngine {
 
             RTBEngine::Math::Vector2 GetScreenPosition() const { return screenPosition; }
             RTBEngine::Math::Vector2 GetScreenSize() const { return screenSize; }
+            RTBEngine::Math::Vector4 GetScreenRect() const { return RTBEngine::Math::Vector4(screenPosition.x, screenPosition.y, screenSize.x, screenSize.y); }
 
         private:
             RTBEngine::Math::Vector2 anchorMin{ 0.0f, 0.0f };
