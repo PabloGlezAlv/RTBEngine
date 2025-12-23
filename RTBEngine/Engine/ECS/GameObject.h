@@ -33,6 +33,13 @@ namespace RTBEngine {
             const Transform& GetTransform() const { return transform; }
             const std::string& GetName() const { return name; }
 
+            void SetParent(GameObject* newParent);
+            GameObject* GetParent() const { return parent; }
+            void AddChild(GameObject* child);
+            void RemoveChild(GameObject* child);
+            const std::vector<GameObject*>& GetChildren() const { return children; }
+
+
             void SetActive(bool active);
             bool IsActive() const { return isActive; }
 
@@ -45,6 +52,9 @@ namespace RTBEngine {
             std::vector<std::unique_ptr<Component>> components;
             bool isActive;
             bool started;
+
+            GameObject* parent = nullptr;
+            std::vector<GameObject*> children;
         };
 
         template<typename T>

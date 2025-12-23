@@ -71,5 +71,38 @@ namespace RTBEngine {
             
         }
 
+        void GameObject::SetParent(GameObject* newParent)
+        {
+            if (parent) {
+                parent->RemoveChild(this);
+            }
+
+            parent = newParent;
+
+            if (parent) {
+                parent->AddChild(this);
+            }
+        }
+
+        void GameObject::AddChild(GameObject* child)
+        {
+            if (!child) return;
+
+            auto it = std::find(children.begin(), children.end(), child);
+            if (it == children.end()) {
+                children.push_back(child);
+            }
+        }
+
+        void GameObject::RemoveChild(GameObject* child)
+        {
+            if (!child) return;
+
+            auto it = std::find(children.begin(), children.end(), child);
+            if (it != children.end()) {
+                children.erase(it);
+            }
+        }
+
     }
 }
