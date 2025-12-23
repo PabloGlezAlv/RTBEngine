@@ -195,6 +195,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\Rendering\Lighting\SpotLight.cpp" />
     <ClCompile Include="Engine\UI\Canvas.cpp" />
     <ClCompile Include="Engine\UI\CanvasSystem.cpp" />
+    <ClCompile Include="Engine\UI\Elements\UIButton.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIImage.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIPanel.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIText.cpp" />
@@ -255,6 +256,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="Engine\Rendering\Lighting\SpotLight.h" />
     <ClInclude Include="Engine\UI\Canvas.h" />
     <ClInclude Include="Engine\UI\CanvasSystem.h" />
+    <ClInclude Include="Engine\UI\Elements\UIButton.h" />
     <ClInclude Include="Engine\UI\Elements\UIImage.h" />
     <ClInclude Include="Engine\UI\Elements\UIPanel.h" />
     <ClInclude Include="Engine\UI\Elements\UIText.h" />

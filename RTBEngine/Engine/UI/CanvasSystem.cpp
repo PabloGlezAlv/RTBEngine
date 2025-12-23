@@ -1,8 +1,12 @@
 #include "CanvasSystem.h"
 #include "Canvas.h"
+#include "UIElement.h"
+#include "Elements/UIButton.h"
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
 #include "../Core/ResourceManager.h"
+#include "../Input/InputManager.h"
+#include "../Input/MouseButton.h"
 #include <imgui.h>
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_opengl3.h>
@@ -107,6 +111,79 @@ namespace RTBEngine {
 
 		void CanvasSystem::InitializeFonts() {
 			Core::ResourceManager::GetInstance().GetDefaultFont();
+		}
+
+		Math::Vector2 CanvasSystem::GetMousePosition() const {
+			int x, y;
+			SDL_GetMouseState(&x, &y);
+			return Math::Vector2(static_cast<float>(x), static_cast<float>(y));
+		}
+
+		bool CanvasSystem::IsPointInRect(const Math::Vector2& point, const Math::Vector4& rect) {
+			return point.x >= rect.x && point.x <= rect.x + rect.z &&
+				   point.y >= rect.y && point.y <= rect.y + rect.w;
+		}
+
+		UIElement* CanvasSystem::GetElementUnderMouse(const Math::Vector2& mousePos) {
+			for (auto it = activeCanvases.rbegin(); it != activeCanvases.rend(); ++it) {
+				Canvas* canvas = *it;
+				const auto& elements = canvas->GetUIElements();
+
+				for (auto elemIt = elements.rbegin(); elemIt != elements.rend(); ++elemIt) {
+					UIElement* element = *elemIt;
+					if (!element->IsVisible()) continue;
+
+					Math::Vector4 screenRect = element->GetRectTransform()->GetScreenRect();
+					if (IsPointInRect(mousePos, screenRect)) {
+						return element;
+					}
+				}
+			}
+			return nullptr;
+		}
+
+		void CanvasSystem::ProcessInput() {
+			if (!isInitialized) return;
+
+			Input::InputManager& input = Input::InputManager::GetInstance();
+			Math::Vector2 mousePos = GetMousePosition();
+
+			UIElement* elementUnderMouse = GetElementUnderMouse(mousePos);
+			
+			// Buscar UIButton en el mismo GameObject que el elemento visual encontrado
+			UIButton* buttonUnderMouse = nullptr;
+			if (elementUnderMouse && elementUnderMouse->GetOwner()) {
+				buttonUnderMouse = elementUnderMouse->GetOwner()->GetComponent<UIButton>();
+			}
+
+			if (hoveredButton != buttonUnderMouse) {
+				if (hoveredButton) {
+					hoveredButton->OnPointerExit();
+				}
+				hoveredButton = buttonUnderMouse;
+				if (hoveredButton) {
+					hoveredButton->OnPointerEnter();
+				}
+			}
+
+			if (input.IsMouseButtonJustPressed(Input::MouseButton::Left)) {
+				if (buttonUnderMouse) {
+					pressedButton = buttonUnderMouse;
+					pressedButton->OnPointerDown();
+				}
+			}
+
+			if (input.IsMouseButtonJustReleased(Input::MouseButton::Left)) {
+				if (pressedButton) {
+					if (pressedButton == buttonUnderMouse) {
+						pressedButton->OnPointerUp();
+					}
+					else {
+						pressedButton->OnPointerExit();
+					}
+					pressedButton = nullptr;
+				}
+			}
 		}
 
 	}

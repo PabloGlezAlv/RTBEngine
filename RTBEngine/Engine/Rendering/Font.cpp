@@ -37,7 +37,6 @@ namespace RTBEngine {
 			filePath = path;
 			isLoaded = true;
 
-			std::cout << "Font loaded: " << path << " (" << numSizes << " sizes)" << std::endl;
 			return true;
 		}
 

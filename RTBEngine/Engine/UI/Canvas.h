@@ -36,6 +36,8 @@ namespace RTBEngine {
 			int GetSortOrder() const { return sortOrder; }
 			void SetSortOrder(int order) { sortOrder = order; }
 
+			const std::vector<UIElement*>& GetUIElements() const { return cachedUIElements; }
+
 			virtual const char* GetTypeName() const override { return "Canvas"; }
 
 			virtual void OnAwake() override;

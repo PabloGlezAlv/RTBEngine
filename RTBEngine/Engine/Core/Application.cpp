@@ -20,6 +20,7 @@
 #include "../UI/Elements/UIPanel.h"
 #include "../UI/Elements/UIText.h"
 #include "../UI/Elements/UIImage.h"
+#include "../UI/Elements/UIButton.h"
 
 #include <backends/imgui_impl_sdl2.h>
 #include <iostream>
@@ -242,6 +243,7 @@ void RTBEngine::Core::Application::Render()
 	}
 
 	UI::CanvasSystem::GetInstance().Update(testScene.get());
+	UI::CanvasSystem::GetInstance().ProcessInput();
 	UI::CanvasSystem::GetInstance().RenderAll();
 
 	window->SwapBuffers();
@@ -355,18 +357,6 @@ void RTBEngine::Core::Application::CreatePhysicsTestScene()
 	canvas->SetSortOrder(0);
 	testScene->AddGameObject(canvasObj);
 
-	ECS::GameObject* panelObj = new ECS::GameObject("TestPanel");
-	UI::UIPanel* panel = new UI::UIPanel();
-	panelObj->AddComponent(panel);
-	testScene->AddGameObject(panelObj);
-	panelObj->SetParent(canvasObj);
-	panel->GetRectTransform()->SetAnchoredPosition(Math::Vector2(0.0f, 0.0f));
-	panel->GetRectTransform()->SetSize(Math::Vector2(400.0f, 300.0f));
-	panel->SetBackgroundColor(Math::Vector4(0.2f, 0.4f, 0.8f, 0.8f));
-	panel->SetBorderColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-	panel->SetBorderThickness(2.0f);
-	panel->SetHasBorder(true);
-
 	ECS::GameObject* textObj = new ECS::GameObject("TitleText");
 	UI::UIText* titleText = new UI::UIText();
 	textObj->AddComponent(titleText);
@@ -401,5 +391,28 @@ void RTBEngine::Core::Application::CreatePhysicsTestScene()
 	logoImage->GetRectTransform()->SetAnchoredPosition(Math::Vector2(-10.0f, -10.0f));
 	logoImage->GetRectTransform()->SetSize(Math::Vector2(64.0f, 64.0f));
 
-	std::cout << "UI elements created - Canvas, Panel, Text, Image" << std::endl;
+	ECS::GameObject* panelButtonObj = new ECS::GameObject("PanelButton");
+	UI::UIPanel* buttonPanel = new UI::UIPanel();
+	UI::UIButton* panelBtn = new UI::UIButton();
+	panelButtonObj->AddComponent(buttonPanel);
+	panelButtonObj->AddComponent(panelBtn);
+	testScene->AddGameObject(panelButtonObj);
+	panelButtonObj->SetParent(canvasObj);
+
+	buttonPanel->GetRectTransform()->SetAnchorMin(Math::Vector2(0.0f, 0.5f));
+	buttonPanel->GetRectTransform()->SetAnchorMax(Math::Vector2(0.0f, 0.5f));
+	buttonPanel->GetRectTransform()->SetPivot(Math::Vector2(0.0f, 0.5f));
+	buttonPanel->GetRectTransform()->SetAnchoredPosition(Math::Vector2(20.0f, 0.0f));
+	buttonPanel->GetRectTransform()->SetSize(Math::Vector2(150.0f, 50.0f));
+	buttonPanel->SetBackgroundColor(Math::Vector4(0.2f, 0.6f, 0.3f, 1.0f));
+	buttonPanel->SetBorderColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+	buttonPanel->SetBorderThickness(2.0f);
+	buttonPanel->SetHasBorder(true);
+
+	panelBtn->SetNormalColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+	panelBtn->SetHoveredColor(Math::Vector4(1.3f, 1.3f, 1.3f, 1.0f));
+	panelBtn->SetPressedColor(Math::Vector4(0.7f, 0.7f, 0.7f, 1.0f));
+	panelBtn->SetOnClick([]() {
+		std::cout << "[UIButton] OnClick triggered!" << std::endl;
+	});
 }

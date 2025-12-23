@@ -1,5 +1,6 @@
 #pragma once
 #include "../Math/Vectors/Vector2.h"
+#include "../Math/Vectors/Vector4.h"
 #include <vector>
 
 struct SDL_Window;
@@ -11,6 +12,8 @@ namespace RTBEngine {
 
 	namespace UI {
 		class Canvas;
+		class UIElement;
+		class UIButton;
 
 		class CanvasSystem {
 		public:
@@ -28,17 +31,25 @@ namespace RTBEngine {
 			void Update(ECS::Scene* scene);
 			void RenderAll();
 			void InitializeFonts();
+			void ProcessInput();
 
 			Math::Vector2 GetScreenSize() const { return screenSize; }
+			Math::Vector2 GetMousePosition() const;
 
 		private:
 			CanvasSystem() = default;
 			~CanvasSystem() = default;
 
+			UIElement* GetElementUnderMouse(const Math::Vector2& mousePos);
+			bool IsPointInRect(const Math::Vector2& point, const Math::Vector4& rect);
+
 			SDL_Window* window = nullptr;
 			Math::Vector2 screenSize;
 			std::vector<Canvas*> activeCanvases;
 			bool isInitialized = false;
+
+			UIButton* hoveredButton = nullptr;
+			UIButton* pressedButton = nullptr;
 		};
 
 	}
