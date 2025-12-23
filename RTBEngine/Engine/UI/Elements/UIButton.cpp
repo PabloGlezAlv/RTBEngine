@@ -2,7 +2,6 @@
 #include "UIImage.h"
 #include "UIPanel.h"
 #include "../../ECS/GameObject.h"
-#include <iostream>
 
 namespace RTBEngine {
 	namespace UI {
@@ -85,7 +84,6 @@ namespace RTBEngine {
 		}
 
 		void UIButton::OnPointerEnter() {
-			std::cout << "[UIButton] OnPointerEnter" << std::endl;
 			if (!interactable) return;
 			if (state == ButtonState::Normal) {
 				state = ButtonState::Hovered;
@@ -94,21 +92,18 @@ namespace RTBEngine {
 		}
 
 		void UIButton::OnPointerExit() {
-			std::cout << "[UIButton] OnPointerExit" << std::endl;
 			if (!interactable) return;
 			state = ButtonState::Normal;
 			UpdateVisuals();
 		}
 
 		void UIButton::OnPointerDown() {
-			std::cout << "[UIButton] OnPointerDown" << std::endl;
 			if (!interactable) return;
 			state = ButtonState::Pressed;
 			UpdateVisuals();
 		}
 
 		void UIButton::OnPointerUp() {
-			std::cout << "[UIButton] OnPointerUp" << std::endl;
 			if (!interactable) return;
 
 			if (state == ButtonState::Pressed) {

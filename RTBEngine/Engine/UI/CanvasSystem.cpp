@@ -1,7 +1,6 @@
 #include "CanvasSystem.h"
 #include "Canvas.h"
 #include "UIElement.h"
-#include "Elements/UIButton.h"
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
 #include "../Core/ResourceManager.h"
@@ -149,39 +148,36 @@ namespace RTBEngine {
 			Math::Vector2 mousePos = GetMousePosition();
 
 			UIElement* elementUnderMouse = GetElementUnderMouse(mousePos);
-			
-			// Buscar UIButton en el mismo GameObject que el elemento visual encontrado
-			UIButton* buttonUnderMouse = nullptr;
-			if (elementUnderMouse && elementUnderMouse->GetOwner()) {
-				buttonUnderMouse = elementUnderMouse->GetOwner()->GetComponent<UIButton>();
-			}
 
-			if (hoveredButton != buttonUnderMouse) {
-				if (hoveredButton) {
-					hoveredButton->OnPointerExit();
+			// Handle hover state changes
+			if (hoveredElement != elementUnderMouse) {
+				if (hoveredElement && hoveredElement->IsInteractable()) {
+					hoveredElement->OnPointerExit();
 				}
-				hoveredButton = buttonUnderMouse;
-				if (hoveredButton) {
-					hoveredButton->OnPointerEnter();
+				hoveredElement = elementUnderMouse;
+				if (hoveredElement && hoveredElement->IsInteractable()) {
+					hoveredElement->OnPointerEnter();
 				}
 			}
 
+			// Handle mouse button press
 			if (input.IsMouseButtonJustPressed(Input::MouseButton::Left)) {
-				if (buttonUnderMouse) {
-					pressedButton = buttonUnderMouse;
-					pressedButton->OnPointerDown();
+				if (elementUnderMouse && elementUnderMouse->IsInteractable()) {
+					pressedElement = elementUnderMouse;
+					pressedElement->OnPointerDown();
 				}
 			}
 
+			// Handle mouse button release
 			if (input.IsMouseButtonJustReleased(Input::MouseButton::Left)) {
-				if (pressedButton) {
-					if (pressedButton == buttonUnderMouse) {
-						pressedButton->OnPointerUp();
+				if (pressedElement) {
+					if (pressedElement == elementUnderMouse && pressedElement->IsInteractable()) {
+						pressedElement->OnPointerUp();
 					}
-					else {
-						pressedButton->OnPointerExit();
+					else if (pressedElement->IsInteractable()) {
+						pressedElement->OnPointerExit();
 					}
-					pressedButton = nullptr;
+					pressedElement = nullptr;
 				}
 			}
 		}

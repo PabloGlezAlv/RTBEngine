@@ -23,10 +23,11 @@ namespace RTBEngine {
 			void SetInteractable(bool interactable) { isInteractable = interactable; }
 			bool IsInteractable() const { return isInteractable; }
 
-			// UI Event callbacks 
+			// UI Event callbacks (override in derived classes)
 			virtual void OnPointerEnter() {}
 			virtual void OnPointerExit() {}
-			virtual void OnPointerClick() {}
+			virtual void OnPointerDown() {}
+			virtual void OnPointerUp() {}
 
 			// Lifecycle override
 			virtual void OnAwake() override;

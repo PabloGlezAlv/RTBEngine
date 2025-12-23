@@ -4,8 +4,6 @@
 #include "UIElement.h"
 #include <vector>
 
-struct SDL_Window;
-
 namespace RTBEngine {
 	namespace UI {
 
@@ -20,12 +18,7 @@ namespace RTBEngine {
 			Canvas();
 			virtual ~Canvas();
 
-			void Initialize(SDL_Window* window);
-			void Cleanup();
-
-			void BeginFrame();
 			void RenderCanvas(const Math::Vector2& screenSize);
-			void EndFrame();
 
 			RenderMode GetRenderMode() const { return renderMode; }
 			void SetRenderMode(RenderMode mode) { renderMode = mode; }
@@ -49,7 +42,6 @@ namespace RTBEngine {
 			void CollectUIElements();
 			void UpdateRectTransforms(const Math::Vector2& screenSize);
 
-			SDL_Window* window = nullptr;
 			RenderMode renderMode = RenderMode::ScreenSpaceOverlay;
 			Math::Vector2 canvasSize;
 			int sortOrder = 0;

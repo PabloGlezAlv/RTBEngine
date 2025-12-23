@@ -13,7 +13,6 @@ namespace RTBEngine {
 	namespace UI {
 		class Canvas;
 		class UIElement;
-		class UIButton;
 
 		class CanvasSystem {
 		public:
@@ -48,8 +47,8 @@ namespace RTBEngine {
 			std::vector<Canvas*> activeCanvases;
 			bool isInitialized = false;
 
-			UIButton* hoveredButton = nullptr;
-			UIButton* pressedButton = nullptr;
+			UIElement* hoveredElement = nullptr;
+			UIElement* pressedElement = nullptr;
 		};
 
 	}
