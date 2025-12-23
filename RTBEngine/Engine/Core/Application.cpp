@@ -154,9 +154,7 @@ void RTBEngine::Core::Application::Shutdown()
 	isRunning = false;
 
 	UI::CanvasSystem::GetInstance().Shutdown();
-	Audio::AudioSystem::GetInstance().Shutdown();
 
-	// Cleanup Physics
 	if (physicsWorld) {
 		physicsWorld->Cleanup();
 		delete physicsWorld;
@@ -170,9 +168,12 @@ void RTBEngine::Core::Application::Shutdown()
 
 	testScene.reset();
 	camera.reset();
-	window.reset();
 
 	ResourceManager::GetInstance().Clear();
+
+	Audio::AudioSystem::GetInstance().Shutdown();
+
+	window.reset();
 }
 
 void RTBEngine::Core::Application::ProcessInput()
