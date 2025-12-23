@@ -27,9 +27,11 @@ namespace RTBEngine {
 		}
 
 		void UIImage::Render() {
-			if (!isVisible || !texture) return;
+			if (!isVisible) return;
+			if (!texture) return;
 
 			Math::Vector4 screenRect = rectTransform->GetScreenRect();
+
 			ImDrawList* drawList = ImGui::GetBackgroundDrawList();
 
 			ImVec2 min(screenRect.x, screenRect.y);
@@ -45,7 +47,8 @@ namespace RTBEngine {
 				static_cast<int>(tintColor.w * 255)
 			);
 
-			drawList->AddImage((ImTextureID)(intptr_t)texture->GetID(), min, max, uv0, uv1, tint);
+			GLuint texID = texture->GetID();
+			drawList->AddImage((ImTextureID)(intptr_t)texID, min, max, uv0, uv1, tint);
 		}
 
 	}

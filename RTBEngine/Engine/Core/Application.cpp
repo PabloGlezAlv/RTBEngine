@@ -18,6 +18,8 @@
 #include "../UI/CanvasSystem.h"
 #include "../UI/Canvas.h"
 #include "../UI/Elements/UIPanel.h"
+#include "../UI/Elements/UIText.h"
+#include "../UI/Elements/UIImage.h"
 
 #include <backends/imgui_impl_sdl2.h>
 #include <iostream>
@@ -363,4 +365,40 @@ void RTBEngine::Core::Application::CreatePhysicsTestScene()
 	panel->SetBorderColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 	panel->SetBorderThickness(2.0f);
 	panel->SetHasBorder(true);
+
+	ECS::GameObject* textObj = new ECS::GameObject("TitleText");
+	UI::UIText* titleText = new UI::UIText();
+	textObj->AddComponent(titleText);
+	testScene->AddGameObject(textObj);
+	textObj->SetParent(canvasObj);
+
+	titleText->SetText("RTBEngine");
+	titleText->SetColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+	titleText->SetFontSize(24.0f);
+	titleText->SetAlignment(UI::TextAlignment::Center);
+
+	titleText->GetRectTransform()->SetAnchorMin(Math::Vector2(0.0f, 1.0f));
+	titleText->GetRectTransform()->SetAnchorMax(Math::Vector2(0.0f, 1.0f));
+	titleText->GetRectTransform()->SetPivot(Math::Vector2(0.0f, 1.0f));
+	titleText->GetRectTransform()->SetAnchoredPosition(Math::Vector2(10.0f, -10.0f));
+	titleText->GetRectTransform()->SetSize(Math::Vector2(200.0f, 50.0f));
+
+	ECS::GameObject* imageObj = new ECS::GameObject("LogoImage");
+	UI::UIImage* logoImage = new UI::UIImage();
+	imageObj->AddComponent(logoImage);
+	testScene->AddGameObject(imageObj);
+	imageObj->SetParent(canvasObj);
+
+	Rendering::Texture* logoTexture = ResourceManager::GetInstance().LoadTexture("Assets/Textures/logo.png");
+	logoImage->SetTexture(logoTexture);
+	logoImage->SetTint(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+	logoImage->SetPreserveAspect(true);
+
+	logoImage->GetRectTransform()->SetAnchorMin(Math::Vector2(1.0f, 1.0f));
+	logoImage->GetRectTransform()->SetAnchorMax(Math::Vector2(1.0f, 1.0f));
+	logoImage->GetRectTransform()->SetPivot(Math::Vector2(1.0f, 1.0f));
+	logoImage->GetRectTransform()->SetAnchoredPosition(Math::Vector2(-10.0f, -10.0f));
+	logoImage->GetRectTransform()->SetSize(Math::Vector2(64.0f, 64.0f));
+
+	std::cout << "UI elements created - Canvas, Panel, Text, Image" << std::endl;
 }

@@ -3,6 +3,7 @@
 #include "../Rendering/Texture.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/ModelLoader.h"
+#include "../Rendering/Font.h"
 #include "../Audio/AudioClip.h"
 #include <unordered_map>
 #include <string>
@@ -34,6 +35,11 @@ namespace RTBEngine {
             Audio::AudioClip* GetAudioClip(const std::string& path);
             Audio::AudioClip* LoadAudioClip(const std::string& path, bool stream = false);
 
+			// Font management
+			Rendering::Font* GetFont(const std::string& path);
+			Rendering::Font* LoadFont(const std::string& path, const float* sizes, int numSizes);
+			Rendering::Font* GetDefaultFont();
+
             void Clear();
 
         private:
@@ -44,6 +50,8 @@ namespace RTBEngine {
             std::unordered_map<std::string, std::unique_ptr<Rendering::Texture>> textures;
             std::unordered_map<std::string, std::unique_ptr<Rendering::Mesh>> models;
             std::unordered_map<std::string, std::unique_ptr<Audio::AudioClip>> audioClips;
+			std::unordered_map<std::string, std::unique_ptr<Rendering::Font>> fonts;
+			Rendering::Font* defaultFont = nullptr;
 
         };
 

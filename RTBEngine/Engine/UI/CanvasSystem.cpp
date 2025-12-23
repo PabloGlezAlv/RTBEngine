@@ -2,6 +2,7 @@
 #include "Canvas.h"
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
+#include "../Core/ResourceManager.h"
 #include <imgui.h>
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_opengl3.h>
@@ -48,6 +49,8 @@ namespace RTBEngine {
 				ImGui_ImplSDL2_Shutdown();
 				return false;
 			}
+
+			InitializeFonts();
 
 			isInitialized = true;
 			return true;
@@ -100,6 +103,10 @@ namespace RTBEngine {
 
 			ImGui::Render();
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		}
+
+		void CanvasSystem::InitializeFonts() {
+			Core::ResourceManager::GetInstance().GetDefaultFont();
 		}
 
 	}

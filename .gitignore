@@ -94,3 +94,6 @@ _deps/
 # Build directories
 build/
 out/
+
+# ImGui configuration
+imgui.ini

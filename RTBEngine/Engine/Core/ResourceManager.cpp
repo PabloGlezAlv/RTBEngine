@@ -136,12 +136,50 @@ namespace RTBEngine {
             return clipPtr;
         }
 
+		Rendering::Font* ResourceManager::GetFont(const std::string& path)
+		{
+			auto it = fonts.find(path);
+			if (it != fonts.end()) {
+				return it->second.get();
+			}
+			return nullptr;
+		}
+
+		Rendering::Font* ResourceManager::LoadFont(const std::string& path, const float* sizes, int numSizes)
+		{
+			auto existing = GetFont(path);
+			if (existing) {
+				return existing;
+			}
+
+			auto font = std::make_unique<Rendering::Font>();
+			if (!font->LoadFromFile(path, sizes, numSizes)) {
+				std::cerr << "ResourceManager: Failed to load font: " << path << std::endl;
+				return nullptr;
+			}
+
+			Rendering::Font* fontPtr = font.get();
+			fonts[path] = std::move(font);
+			return fontPtr;
+		}
+
+		Rendering::Font* ResourceManager::GetDefaultFont()
+		{
+			if (!defaultFont) {
+				const float defaultSizes[] = { 16.0f, 18.0f, 20.0f, 24.0f, 28.0f, 32.0f };
+				defaultFont = LoadFont("Assets/Fonts/SourceSans3-Black.ttf", defaultSizes, 6);
+			}
+			return defaultFont;
+		}
+
         void ResourceManager::Clear()
         {
             shaders.clear();
             textures.clear();
             models.clear();
             audioClips.clear();
+			fonts.clear();
+			defaultFont = nullptr;
         }
     }
 }

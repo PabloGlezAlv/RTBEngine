@@ -27,6 +27,7 @@ namespace RTBEngine {
 
 			void Update(ECS::Scene* scene);
 			void RenderAll();
+			void InitializeFonts();
 
 			Math::Vector2 GetScreenSize() const { return screenSize; }
 
