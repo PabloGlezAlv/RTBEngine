@@ -21,7 +21,9 @@
 #include "../UI/Elements/UIText.h"
 #include "../UI/Elements/UIImage.h"
 #include "../UI/Elements/UIButton.h"
+#include "../UI/Elements/UIButton.h"
 #include "../Scripting/ComponentRegistry.h"
+#include "../Scripting/SceneLoader.h"
 
 #include <backends/imgui_impl_sdl2.h>
 #include <iostream>
@@ -89,21 +91,6 @@ bool RTBEngine::Core::Application::Initialize()
 	);
 	camera->SetRotation(-15.0f, 180.0f);
 
-	// Create scene
-	testScene = std::make_unique<ECS::Scene>("Test Scene");
-
-	// Create directional light
-	ECS::GameObject* lightObj = new ECS::GameObject("MainLight");
-	auto dirLight = std::make_unique<Rendering::DirectionalLight>(
-		Math::Vector3(0.0f, -1.0f, -0.3f),
-		Math::Vector3(1.0f, 1.0f, 1.0f)
-	);
-	dirLight->SetIntensity(1.0f);
-
-	ECS::LightComponent* lightComponent = new ECS::LightComponent(std::move(dirLight));
-	lightObj->AddComponent(lightComponent);
-	testScene->AddGameObject(lightObj);
-
 	// Initialize physics
 	physicsWorld = new Physics::PhysicsWorld();
 	physicsWorld->Initialize();
@@ -119,7 +106,20 @@ bool RTBEngine::Core::Application::Initialize()
 		return false;
 	}
 
-	CreatePhysicsTestScene();
+	// Create scene from Lua
+	testScene.reset(Scripting::SceneLoader::LoadScene("Assets/Scenes/TestScene.lua"));
+    if (!testScene) {
+        std::cerr << "Failed to load scene from Lua" << std::endl;
+        return false;
+    }
+
+	// Register loaded objects with PhysicsSystem
+	for (const auto& go : testScene->GetGameObjects()) {
+		ECS::RigidBodyComponent* rbComp = go->GetComponent<ECS::RigidBodyComponent>();
+		if (rbComp) {
+			physicsSystem->InitializeRigidBody(go.get(), rbComp);
+		}
+	}
 
 	return true;
 }
@@ -295,175 +295,4 @@ void RTBEngine::Core::Application::RegisterBuiltInComponents() {
 	registry.RegisterComponent("UIButton", []() {
 		return new UI::UIButton();
 		});
-}
-
-void RTBEngine::Core::Application::CreatePhysicsTestScene()
-{
-	ResourceManager& resources = ResourceManager::GetInstance();
-	Rendering::Shader* shader = resources.GetShader("basic");
-	Rendering::Texture* texture = resources.GetTexture("Assets/Textures/testTexture.png");
-
-	Rendering::Material* material = new Rendering::Material(shader);
-	material->SetTexture(texture);
-	material->SetColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-
-	ECS::GameObject* ground = new ECS::GameObject("Ground");
-
-	ECS::MeshRenderer* groundMeshRenderer = new ECS::MeshRenderer();
-	groundMeshRenderer->SetMesh(testMesh);
-	groundMeshRenderer->SetShader(shader);
-	groundMeshRenderer->SetTexture(texture);
-
-	ground->AddComponent(groundMeshRenderer);
-
-	ground->GetTransform().SetPosition(Math::Vector3(0.0f, -5.0f, 0.0f));
-	ground->GetTransform().SetScale(Math::Vector3(10.0f, 1.0f, 10.0f));
-
-	auto groundRigidBody = std::make_unique<Physics::RigidBody>();
-	groundRigidBody->SetType(Physics::RigidBodyType::Static);
-	groundRigidBody->SetMass(0.0f);
-	groundRigidBody->SetFriction(0.7f);
-
-	auto groundCollider = std::make_unique<Physics::BoxCollider>(testMesh);
-	groundCollider->SetSize(groundCollider->GetSize() * ground->GetTransform().GetScale());
-
-	// Create RigidBodyComponent
-	ECS::RigidBodyComponent* groundRBComponent = new ECS::RigidBodyComponent();
-	groundRBComponent->SetRigidBody(std::move(groundRigidBody));
-	groundRBComponent->SetCollider(std::move(groundCollider));
-	ground->AddComponent(groundRBComponent);
-
-	testScene->AddGameObject(ground);
-
-	physicsSystem->InitializeRigidBody(ground, groundRBComponent);
-
-	ECS::GameObject* cube = new ECS::GameObject("FallingCube");
-
-	ECS::MeshRenderer* cubeMeshRenderer = new ECS::MeshRenderer();
-	cubeMeshRenderer->SetMesh(testMesh); 
-	cubeMeshRenderer->SetShader(shader);
-	cubeMeshRenderer->SetTexture(texture);
-
-	cube->AddComponent(cubeMeshRenderer);
-
-	cube->GetTransform().SetPosition(Math::Vector3(0.0f, 3.0f, 0.0f));
-	cube->GetTransform().SetScale(Math::Vector3(1.0f, 1.0f, 1.0f));
-
-	auto cubeRigidBody = std::make_unique<Physics::RigidBody>();
-	cubeRigidBody->SetType(Physics::RigidBodyType::Dynamic);
-	cubeRigidBody->SetMass(1.0f);
-	cubeRigidBody->SetFriction(0.5f);
-	cubeRigidBody->SetRestitution(1.0f);
-
-	auto cubeCollider = std::make_unique<Physics::BoxCollider>(testMesh);
-
-	ECS::RigidBodyComponent* cubeRBComponent = new ECS::RigidBodyComponent();
-	cubeRBComponent->SetRigidBody(std::move(cubeRigidBody));
-	cubeRBComponent->SetCollider(std::move(cubeCollider));
-	cube->AddComponent(cubeRBComponent);
-
-	testScene->AddGameObject(cube);
-
-	physicsSystem->InitializeRigidBody(cube, cubeRBComponent);
-
-	Audio::AudioClip* testClip = ResourceManager::GetInstance().LoadAudioClip("Assets/Audio/test.mp3");
-	auto* audioSource = new ECS::AudioSourceComponent();
-	audioSource->SetClip(testClip);
-	audioSource->SetVolume(0.5f);
-	audioSource->SetLoop(true);
-	audioSource->SetPlayOnStart(true);
-	cube->AddComponent(audioSource);
-
-	//PointLight
-	ECS::GameObject* pointLightObj = new ECS::GameObject("PointLight");
-	pointLightObj->GetTransform().SetPosition(Math::Vector3(3.0f, 4.0f, 0.0f));
-
-	auto pointLight = std::make_unique<Rendering::PointLight>();
-	pointLight->SetColor(Math::Vector3(0.2f, 0.5f, 1.0f)); 
-	pointLight->SetIntensity(15.0f);
-	pointLight->SetRange(30.0f);
-
-	ECS::LightComponent* pointLightComp = new ECS::LightComponent(std::move(pointLight));
-	pointLightObj->AddComponent(pointLightComp);
-	testScene->AddGameObject(pointLightObj);
-
-	// SpotLight
-	ECS::GameObject* spotLightObj = new ECS::GameObject("SpotLight");
-	spotLightObj->GetTransform().SetPosition(Math::Vector3(-3.0f, 6.0f, 0.0f));
-	spotLightObj->GetTransform().SetRotation(Math::Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f));  // Apunta hacia abajo
-
-	auto spotLight = std::make_unique<Rendering::SpotLight>();
-	spotLight->SetColor(Math::Vector3(1.0f, 0.0f, 0.0f));
-	spotLight->SetIntensity(50.0f);
-	spotLight->SetRange(50.0f);
-	spotLight->SetCutOff(5.0f, 15.0f);
-
-	ECS::LightComponent* spotLightComp = new ECS::LightComponent(std::move(spotLight));
-	spotLightObj->AddComponent(spotLightComp);
-	testScene->AddGameObject(spotLightObj);
-
-	ECS::GameObject* canvasObj = new ECS::GameObject("UICanvas");
-	UI::Canvas* canvas = new UI::Canvas();
-	canvasObj->AddComponent(canvas);
-	canvas->SetSortOrder(0);
-	testScene->AddGameObject(canvasObj);
-
-	ECS::GameObject* textObj = new ECS::GameObject("TitleText");
-	UI::UIText* titleText = new UI::UIText();
-	textObj->AddComponent(titleText);
-	testScene->AddGameObject(textObj);
-	textObj->SetParent(canvasObj);
-
-	titleText->SetText("RTBEngine");
-	titleText->SetColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-	titleText->SetFontSize(24.0f);
-	titleText->SetAlignment(UI::TextAlignment::Center);
-
-	titleText->GetRectTransform()->SetAnchorMin(Math::Vector2(0.0f, 1.0f));
-	titleText->GetRectTransform()->SetAnchorMax(Math::Vector2(0.0f, 1.0f));
-	titleText->GetRectTransform()->SetPivot(Math::Vector2(0.0f, 1.0f));
-	titleText->GetRectTransform()->SetAnchoredPosition(Math::Vector2(10.0f, -10.0f));
-	titleText->GetRectTransform()->SetSize(Math::Vector2(200.0f, 50.0f));
-
-	ECS::GameObject* imageObj = new ECS::GameObject("LogoImage");
-	UI::UIImage* logoImage = new UI::UIImage();
-	imageObj->AddComponent(logoImage);
-	testScene->AddGameObject(imageObj);
-	imageObj->SetParent(canvasObj);
-
-	Rendering::Texture* logoTexture = ResourceManager::GetInstance().LoadTexture("Assets/Textures/logo.png");
-	logoImage->SetTexture(logoTexture);
-	logoImage->SetTint(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-	logoImage->SetPreserveAspect(true);
-
-	logoImage->GetRectTransform()->SetAnchorMin(Math::Vector2(1.0f, 1.0f));
-	logoImage->GetRectTransform()->SetAnchorMax(Math::Vector2(1.0f, 1.0f));
-	logoImage->GetRectTransform()->SetPivot(Math::Vector2(1.0f, 1.0f));
-	logoImage->GetRectTransform()->SetAnchoredPosition(Math::Vector2(-10.0f, -10.0f));
-	logoImage->GetRectTransform()->SetSize(Math::Vector2(64.0f, 64.0f));
-
-	ECS::GameObject* panelButtonObj = new ECS::GameObject("PanelButton");
-	UI::UIPanel* buttonPanel = new UI::UIPanel();
-	UI::UIButton* panelBtn = new UI::UIButton();
-	panelButtonObj->AddComponent(buttonPanel);
-	panelButtonObj->AddComponent(panelBtn);
-	testScene->AddGameObject(panelButtonObj);
-	panelButtonObj->SetParent(canvasObj);
-
-	buttonPanel->GetRectTransform()->SetAnchorMin(Math::Vector2(0.0f, 0.5f));
-	buttonPanel->GetRectTransform()->SetAnchorMax(Math::Vector2(0.0f, 0.5f));
-	buttonPanel->GetRectTransform()->SetPivot(Math::Vector2(0.0f, 0.5f));
-	buttonPanel->GetRectTransform()->SetAnchoredPosition(Math::Vector2(20.0f, 0.0f));
-	buttonPanel->GetRectTransform()->SetSize(Math::Vector2(150.0f, 50.0f));
-	buttonPanel->SetBackgroundColor(Math::Vector4(0.2f, 0.6f, 0.3f, 1.0f));
-	buttonPanel->SetBorderColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-	buttonPanel->SetBorderThickness(2.0f);
-	buttonPanel->SetHasBorder(true);
-
-	panelBtn->SetNormalColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-	panelBtn->SetHoveredColor(Math::Vector4(1.3f, 1.3f, 1.3f, 1.0f));
-	panelBtn->SetPressedColor(Math::Vector4(0.7f, 0.7f, 0.7f, 1.0f));
-	panelBtn->SetOnClick([]() {
-		std::cout << "[UIButton] OnClick triggered!" << std::endl;
-	});
 }

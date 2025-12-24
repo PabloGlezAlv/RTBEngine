@@ -41,7 +41,6 @@ namespace RTBEngine {
 
 			void RegisterBuiltInComponents();
 			// Test scenes
-			void CreatePhysicsTestScene();
 		private:
 			bool isRunning = false;
 			Uint32 lastTime = 0;

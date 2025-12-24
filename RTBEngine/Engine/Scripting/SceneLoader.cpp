@@ -14,6 +14,11 @@
 #include "../Physics/RigidBody.h"
 #include "../Physics/BoxCollider.h"
 #include "../Math/Math.h"
+#include "../UI/Canvas.h"
+#include "../UI/Elements/UIText.h"
+#include "../UI/Elements/UIImage.h"
+#include "../UI/Elements/UIPanel.h"
+#include "../UI/Elements/UIButton.h"
 
 #include <lua.hpp>
 #include <LuaBridge/LuaBridge.h>
@@ -71,12 +76,105 @@ namespace RTBEngine {
             return result;
         }
 
+        static Math::Vector2 ReadOptionalVector2(lua_State* L, int tableIndex, const char* fieldName, const Math::Vector2& defaultValue) {
+            lua_getfield(L, tableIndex, fieldName);
+            Math::Vector2 result = defaultValue;
+            if (lua_isuserdata(L, -1)) {
+                auto vecResult = luabridge::Stack<Math::Vector2>::get(L, -1);
+                if (vecResult) {
+                    result = vecResult.value();
+                }
+            }
+            lua_pop(L, 1);
+            return result;
+        }
+
+        static Math::Vector4 ReadOptionalVector4(lua_State* L, int tableIndex, const char* fieldName, const Math::Vector4& defaultValue) {
+            lua_getfield(L, tableIndex, fieldName);
+            Math::Vector4 result = defaultValue;
+            if (lua_isuserdata(L, -1)) {
+                auto vecResult = luabridge::Stack<Math::Vector4>::get(L, -1);
+                if (vecResult) {
+                    result = vecResult.value();
+                }
+            }
+            lua_pop(L, 1);
+            return result;
+        }
+
         #pragma endregion
 
         #pragma region Component Configurators
         // ============================================================
         // Component configurators
         // ============================================================
+
+        static void ConfigureRectTransform(lua_State* L, int tableIndex, UI::RectTransform* rect) {
+            if (!rect) return;
+
+            // AnchorMin (Vector2)
+            rect->SetAnchorMin(ReadOptionalVector2(L, tableIndex, "anchorMin", rect->GetAnchorMin()));
+
+            // AnchorMax (Vector2)
+            rect->SetAnchorMax(ReadOptionalVector2(L, tableIndex, "anchorMax", rect->GetAnchorMax()));
+
+            // Pivot (Vector2)
+            rect->SetPivot(ReadOptionalVector2(L, tableIndex, "pivot", rect->GetPivot()));
+
+            // AnchoredPosition (Vector2)
+            rect->SetAnchoredPosition(ReadOptionalVector2(L, tableIndex, "anchoredPosition", rect->GetAnchoredPosition()));
+
+            // Size (Vector2)
+            rect->SetSize(ReadOptionalVector2(L, tableIndex, "sizeDelta", rect->GetSize()));
+        }
+
+        static void ConfigureCanvas(lua_State* L, int tableIndex, UI::Canvas* comp) {
+            comp->SetSortOrder(static_cast<int>(ReadOptionalFloat(L, tableIndex, "sortOrder", 0.0f)));
+        }
+
+        static void ConfigureUIText(lua_State* L, int tableIndex, UI::UIText* comp) {
+            comp->SetText(ReadOptionalString(L, tableIndex, "text", "New Text"));
+            comp->SetColor(ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(0, 0, 0, 1)));
+            comp->SetFontSize(ReadOptionalFloat(L, tableIndex, "fontSize", 14.0f));
+            
+            // Alignment mapping 0: Left, 1: Center, 2: Right
+            int align = static_cast<int>(ReadOptionalFloat(L, tableIndex, "alignment", 0.0f));
+            comp->SetAlignment(static_cast<UI::TextAlignment>(align));
+
+            ConfigureRectTransform(L, tableIndex, comp->GetRectTransform());
+        }
+
+        static void ConfigureUIImage(lua_State* L, int tableIndex, UI::UIImage* comp) {
+            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
+            std::string texturePath = ReadOptionalString(L, tableIndex, "texture", "");
+            if (!texturePath.empty()) {
+                Rendering::Texture* tex = resources.LoadTexture(texturePath);
+                if (tex) comp->SetTexture(tex);
+            }
+
+            comp->SetTint(ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(1, 1, 1, 1)));
+            comp->SetPreserveAspect(ReadOptionalBool(L, tableIndex, "preserveAspect", false));
+
+            ConfigureRectTransform(L, tableIndex, comp->GetRectTransform());
+        }
+
+        static void ConfigureUIPanel(lua_State* L, int tableIndex, UI::UIPanel* comp) {
+            comp->SetBackgroundColor(ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(1, 1, 1, 1)));
+            comp->SetBorderColor(ReadOptionalVector4(L, tableIndex, "borderColor", Math::Vector4(1, 1, 1, 1)));
+            comp->SetBorderThickness(ReadOptionalFloat(L, tableIndex, "borderThickness", 0.0f));
+            comp->SetHasBorder(ReadOptionalBool(L, tableIndex, "hasBorder", false));
+
+            ConfigureRectTransform(L, tableIndex, comp->GetRectTransform());
+        }
+
+        static void ConfigureUIButton(lua_State* L, int tableIndex, UI::UIButton* comp) {
+            comp->SetNormalColor(ReadOptionalVector4(L, tableIndex, "normalColor", Math::Vector4(1, 1, 1, 1)));
+            comp->SetHoveredColor(ReadOptionalVector4(L, tableIndex, "hoveredColor", Math::Vector4(0.9f, 0.9f, 0.9f, 1)));
+            comp->SetPressedColor(ReadOptionalVector4(L, tableIndex, "pressedColor", Math::Vector4(0.7f, 0.7f, 0.7f, 1)));
+            comp->SetDisabledColor(ReadOptionalVector4(L, tableIndex, "disabledColor", Math::Vector4(0.5f, 0.5f, 0.5f, 1)));
+
+            ConfigureRectTransform(L, tableIndex, comp->GetRectTransform());
+        }
 
         static void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp) {
             Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
@@ -209,6 +307,14 @@ namespace RTBEngine {
                 .addProperty("z", &Math::Vector3::z)
                 .endClass();
 
+            // Bind Math::Vector2
+            luabridge::getGlobalNamespace(L)
+                .beginClass<Math::Vector2>("Vector2")
+                .addConstructor<void(*)(float, float)>()
+                .addProperty("x", &Math::Vector2::x)
+                .addProperty("y", &Math::Vector2::y)
+                .endClass();
+
             // Bind Math::Quaternion (only FromEulerAngles for now)
             luabridge::getGlobalNamespace(L)
                 .beginClass<Math::Quaternion>("Quaternion")
@@ -278,18 +384,32 @@ namespace RTBEngine {
             lua_getfield(L, -1, "gameObjects");
             if (lua_istable(L, -1)) {
                 int gameObjectsCount = luaL_len(L, -1);
+                std::vector<std::pair<ECS::GameObject*, std::string>> parentingRequests;
 
                 for (int i = 1; i <= gameObjectsCount; i++) {
                     lua_geti(L, -1, i);  // Push gameObjects[i]
 
                     if (lua_istable(L, -1)) {
-                        ECS::GameObject* go = ProcessGameObject(L, lua_gettop(L), scene);
+                        ECS::GameObject* go = ProcessGameObject(L, lua_gettop(L), scene, parentingRequests);
                         if (go) {
                             scene->AddGameObject(go);
                         }
                     }
 
                     lua_pop(L, 1);  // Pop gameObjects[i]
+                }
+
+                // Process parenting requests
+                for (const auto& req : parentingRequests) {
+                    ECS::GameObject* child = req.first;
+                    const std::string& parentName = req.second;
+                    ECS::GameObject* parent = scene->FindGameObject(parentName);
+                    
+                    if (parent) {
+                        child->SetParent(parent);
+                    } else {
+                        printf("SceneLoader: Warning - Parent '%s' not found for object '%s'\n", parentName.c_str(), child->GetName().c_str());
+                    }
                 }
             }
             lua_pop(L, 1);  // Pop gameObjects array
@@ -298,7 +418,7 @@ namespace RTBEngine {
             return scene;
         }
 
-        ECS::GameObject* SceneLoader::ProcessGameObject(lua_State* L, int tableIndex, ECS::Scene* scene) {
+        ECS::GameObject* SceneLoader::ProcessGameObject(lua_State* L, int tableIndex, ECS::Scene* scene, std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests) {
             // Read name
             lua_getfield(L, tableIndex, "name");
             std::string name = "Unnamed";
@@ -339,6 +459,12 @@ namespace RTBEngine {
                 }
             }
             lua_pop(L, 1);
+
+            // Read parent name
+            std::string parentName = ReadOptionalString(L, tableIndex, "parent", "");
+            if (!parentName.empty()) {
+                parentingRequests.push_back({ go, parentName });
+            }
 
             // Process components
             lua_getfield(L, tableIndex, "components");
@@ -381,6 +507,21 @@ namespace RTBEngine {
                             }
                             else if (componentType == "RigidBodyComponent") {
                                 ConfigureRigidBody(L, componentTableIndex, static_cast<ECS::RigidBodyComponent*>(comp), gameObject);
+                            }
+                            else if (componentType == "Canvas") {
+                                ConfigureCanvas(L, componentTableIndex, static_cast<UI::Canvas*>(comp));
+                            }
+                            else if (componentType == "UIText") {
+                                ConfigureUIText(L, componentTableIndex, static_cast<UI::UIText*>(comp));
+                            }
+                            else if (componentType == "UIImage") {
+                                ConfigureUIImage(L, componentTableIndex, static_cast<UI::UIImage*>(comp));
+                            }
+                            else if (componentType == "UIPanel") {
+                                ConfigureUIPanel(L, componentTableIndex, static_cast<UI::UIPanel*>(comp));
+                            }
+                            else if (componentType == "UIButton") {
+                                ConfigureUIButton(L, componentTableIndex, static_cast<UI::UIButton*>(comp));
                             }
                             // Other component types use default values
                         }
