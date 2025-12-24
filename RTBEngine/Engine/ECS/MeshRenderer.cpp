@@ -9,13 +9,13 @@ namespace RTBEngine {
         MeshRenderer::MeshRenderer()
             : Component()
             , mesh(nullptr)
-            , material(nullptr)
         {
+            material = std::make_unique<Rendering::Material>(nullptr);
         }
 
         MeshRenderer::~MeshRenderer()
         {
-            // No posee los recursos, solo referencias
+           
         }
 
         void MeshRenderer::SetMesh(Rendering::Mesh* mesh)
@@ -23,10 +23,18 @@ namespace RTBEngine {
             this->mesh = mesh;
         }
 
-        void MeshRenderer::SetMaterial(Rendering::Material* material)
-        {
-            this->material = material;
+        void MeshRenderer::SetTexture(Rendering::Texture* tex) {
+            if (material) {
+                material->SetTexture(tex);
+            }
         }
+
+        void MeshRenderer::SetShader(Rendering::Shader* shader) {
+            if (material) {
+                material->SetShader(shader);
+            }
+        }
+
 
         void MeshRenderer::Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights)
         {

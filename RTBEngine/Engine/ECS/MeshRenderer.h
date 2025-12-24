@@ -4,6 +4,7 @@
 #include "../Rendering/Material.h"
 #include "../Rendering/Camera.h"
 #include <vector>
+#include <memory>
 
 namespace RTBEngine {
 	namespace Rendering {
@@ -20,10 +21,12 @@ namespace RTBEngine {
             ~MeshRenderer() override;
 
             void SetMesh(Rendering::Mesh* mesh);
-            void SetMaterial(Rendering::Material* material);
 
             Rendering::Mesh* GetMesh() const { return mesh; }
-            Rendering::Material* GetMaterial() const { return material; }
+            Rendering::Material* GetMaterial() const { return material.get(); }
+
+            void SetTexture(Rendering::Texture* tex);
+            void SetShader(Rendering::Shader* shader);
 
             void Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights);
 
@@ -31,7 +34,7 @@ namespace RTBEngine {
 
         private:
             Rendering::Mesh* mesh;
-            Rendering::Material* material;
+            std::unique_ptr<Rendering::Material> material;
         };
 
     }

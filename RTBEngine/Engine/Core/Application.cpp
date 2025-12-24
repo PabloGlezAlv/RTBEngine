@@ -264,7 +264,9 @@ void RTBEngine::Core::Application::CreatePhysicsTestScene()
 
 	ECS::MeshRenderer* groundMeshRenderer = new ECS::MeshRenderer();
 	groundMeshRenderer->SetMesh(testMesh);
-	groundMeshRenderer->SetMaterial(material);
+	groundMeshRenderer->SetShader(shader);
+	groundMeshRenderer->SetTexture(texture);
+
 	ground->AddComponent(groundMeshRenderer);
 
 	ground->GetTransform().SetPosition(Math::Vector3(0.0f, -5.0f, 0.0f));
@@ -291,8 +293,10 @@ void RTBEngine::Core::Application::CreatePhysicsTestScene()
 	ECS::GameObject* cube = new ECS::GameObject("FallingCube");
 
 	ECS::MeshRenderer* cubeMeshRenderer = new ECS::MeshRenderer();
-	cubeMeshRenderer->SetMesh(testMesh);
-	cubeMeshRenderer->SetMaterial(material);
+	cubeMeshRenderer->SetMesh(testMesh); 
+	cubeMeshRenderer->SetShader(shader);
+	cubeMeshRenderer->SetTexture(texture);
+
 	cube->AddComponent(cubeMeshRenderer);
 
 	cube->GetTransform().SetPosition(Math::Vector3(0.0f, 3.0f, 0.0f));
