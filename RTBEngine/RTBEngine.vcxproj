@@ -279,6 +279,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="Engine\ECS\Transform.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Assets\Scenes\TestScene.lua" />
     <None Include="Assets\Shaders\basic.frag" />
     <None Include="Assets\Shaders\basic.vert" />
   </ItemGroup>
