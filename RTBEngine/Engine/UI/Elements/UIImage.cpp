@@ -37,8 +37,8 @@ namespace RTBEngine {
 			ImVec2 min(screenRect.x, screenRect.y);
 			ImVec2 max(screenRect.x + screenRect.z, screenRect.y + screenRect.w);
 
-			ImVec2 uv0(0.0f, 0.0f);
-			ImVec2 uv1(1.0f, 1.0f);
+			ImVec2 uv0(0.0f, 1.0f);
+			ImVec2 uv1(1.0f, 0.0f);
 
 			ImU32 tint = IM_COL32(
 				static_cast<int>(tintColor.x * 255),
