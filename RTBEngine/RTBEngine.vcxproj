@@ -74,13 +74,13 @@
     <VcpkgEnabled>true</VcpkgEnabled>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(ProjectDir)ThirdParty\imgui-1.92.5;$(ProjectDir)ThirdParty\imgui-1.92.5\backends;$(ProjectDir)ThirdParty\bullet3-3.25\src;$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(ProjectDir)ThirdParty\fmod\api\core\inc;$(IncludePath)</IncludePath>
-    <LibraryPath>$(ProjectDir)ThirdParty\bullet3-3.25\build_msvc\lib\Debug;$(ProjectDir)ThirdParty\assimp\lib\Debug\x64;$(ProjectDir)ThirdParty\glew-2.1.0\lib\Release\x64;$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64;$(ProjectDir)ThirdParty\fmod\api\core\lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)ThirdParty\lua\include;$(ProjectDir)ThirdParty\luaBridge\Source;$(ProjectDir)ThirdParty\imgui-1.92.5;$(ProjectDir)ThirdParty\imgui-1.92.5\backends;$(ProjectDir)ThirdParty\bullet3-3.25\src;$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(ProjectDir)ThirdParty\fmod\api\core\inc;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)ThirdParty\lua;$(ProjectDir)ThirdParty\bullet3-3.25\build_msvc\lib\Debug;$(ProjectDir)ThirdParty\assimp\lib\Debug\x64;$(ProjectDir)ThirdParty\glew-2.1.0\lib\Release\x64;$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64;$(ProjectDir)ThirdParty\fmod\api\core\lib\x64;$(LibraryPath)</LibraryPath>
     <CustomBuildAfterTargets />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(ProjectDir)ThirdParty\imgui-1.92.5;$(ProjectDir)ThirdParty\imgui-1.92.5\backends;$(ProjectDir)ThirdParty\bullet3-3.25\src;$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(ProjectDir)ThirdParty\fmod\api\core\inc;$(IncludePath)</IncludePath>
-    <LibraryPath>$(ProjectDir)ThirdParty\bullet3-3.25\build_msvc\lib\Release;$(ProjectDir)ThirdParty\assimp\lib\Release\x64;$(ProjectDir)ThirdParty\glew-2.1.0\lib\Release\x64;$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64;$(ProjectDir)ThirdParty\fmod\api\core\lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)ThirdParty\lua\include;$(ProjectDir)ThirdParty\luaBridge\Source;$(ProjectDir)ThirdParty\imgui-1.92.5;$(ProjectDir)ThirdParty\imgui-1.92.5\backends;$(ProjectDir)ThirdParty\bullet3-3.25\src;$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(ProjectDir)ThirdParty\fmod\api\core\inc;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)ThirdParty\lua;$(ProjectDir)ThirdParty\bullet3-3.25\build_msvc\lib\Release;$(ProjectDir)ThirdParty\assimp\lib\Release\x64;$(ProjectDir)ThirdParty\glew-2.1.0\lib\Release\x64;$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64;$(ProjectDir)ThirdParty\fmod\api\core\lib\x64;$(LibraryPath)</LibraryPath>
     <CustomBuildAfterTargets />
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -122,10 +122,11 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>LinearMath_Debug.lib;BulletCollision_Debug.lib;BulletDynamics_Debug.lib;assimp-vc143-mtd.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;fmod_vc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lua54.lib;LinearMath_Debug.lib;BulletCollision_Debug.lib;BulletDynamics_Debug.lib;assimp-vc143-mtd.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;fmod_vc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y /d "$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64\SDL2.dll" "$(OutDir)"
+      <Command>xcopy /y /d "$(ProjectDir)ThirdParty\lua\lua54.dll" "$(OutDir)"
+xcopy /y /d "$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64\SDL2.dll" "$(OutDir)"
 xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(OutDir)"
 xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutDir)"
 xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"</Command>
@@ -147,10 +148,11 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)ThirdParty\assimp\lib\Release\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>LinearMath.lib;BulletCollision.lib;BulletDynamics.lib;assimp-vc143-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;fmod_vc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lua54.lib;LinearMath.lib;BulletCollision.lib;BulletDynamics.lib;assimp-vc143-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;fmod_vc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y /d "$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64\SDL2.dll" "$(OutDir)"
+      <Command>xcopy /y /d "$(ProjectDir)ThirdParty\lua\lua54.dll" "$(OutDir)"
+xcopy /y /d "$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64\SDL2.dll" "$(OutDir)"
 xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(OutDir)"
 xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutDir)"
 xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"</Command>
