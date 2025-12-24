@@ -10,6 +10,12 @@
 #include <memory>
 
 namespace RTBEngine {
+    namespace ECS {
+        class Scene;
+    }
+}
+
+namespace RTBEngine {
     namespace Core {
 
         class ResourceManager {
@@ -40,6 +46,10 @@ namespace RTBEngine {
 			Rendering::Font* LoadFont(const std::string& path, const float* sizes, int numSizes);
 			Rendering::Font* GetDefaultFont();
 
+            // Scene management
+            ECS::Scene* LoadScene(const std::string& path);
+            ECS::Scene* GetScene(const std::string& path);
+
             void Clear();
 
         private:
@@ -51,6 +61,7 @@ namespace RTBEngine {
             std::unordered_map<std::string, std::unique_ptr<Rendering::Mesh>> models;
             std::unordered_map<std::string, std::unique_ptr<Audio::AudioClip>> audioClips;
 			std::unordered_map<std::string, std::unique_ptr<Rendering::Font>> fonts;
+            std::unordered_map<std::string, std::unique_ptr<ECS::Scene>> scenes;
 			Rendering::Font* defaultFont = nullptr;
 
         };

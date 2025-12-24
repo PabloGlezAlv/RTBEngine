@@ -1,4 +1,6 @@
 #include "ResourceManager.h"
+#include "../Scripting/SceneLoader.h"
+#include "../ECS/Scene.h"
 #include <iostream>
 
 namespace RTBEngine {
@@ -172,6 +174,28 @@ namespace RTBEngine {
 			return defaultFont;
 		}
 
+        ECS::Scene* ResourceManager::LoadScene(const std::string& path) {
+            auto it = scenes.find(path);
+            if (it != scenes.end()) {
+                return it->second.get();
+            }
+
+            ECS::Scene* scene = Scripting::SceneLoader::LoadScene(path);
+            if (scene) {
+                scenes[path] = std::unique_ptr<ECS::Scene>(scene);
+            }
+            return scene;
+        }
+
+        ECS::Scene* ResourceManager::GetScene(const std::string& path)
+        {
+            auto it = scenes.find(path);
+            if (it != scenes.end()) {
+                return it->second.get();
+            }
+            return nullptr;
+        }
+
         void ResourceManager::Clear()
         {
             shaders.clear();
@@ -179,6 +203,7 @@ namespace RTBEngine {
             models.clear();
             audioClips.clear();
 			fonts.clear();
+            scenes.clear();
 			defaultFont = nullptr;
         }
     }
