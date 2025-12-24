@@ -4,6 +4,13 @@
 
 namespace RTBEngine {
     namespace ECS {
+        LightComponent::LightComponent()
+            : Component()
+            , light(nullptr)
+            , syncPosition(true)
+            , syncDirection(true)
+        {
+        }
 
         LightComponent::LightComponent(std::unique_ptr<Rendering::Light> light)
             : Component()

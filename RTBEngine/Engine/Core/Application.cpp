@@ -21,6 +21,7 @@
 #include "../UI/Elements/UIText.h"
 #include "../UI/Elements/UIImage.h"
 #include "../UI/Elements/UIButton.h"
+#include "../Scripting/ComponentRegistry.h"
 
 #include <backends/imgui_impl_sdl2.h>
 #include <iostream>
@@ -43,6 +44,8 @@ bool RTBEngine::Core::Application::Initialize()
 	}
 
 	lastTime = SDL_GetTicks();
+
+	RegisterBuiltInComponents();
 
 	ResourceManager& resources = ResourceManager::GetInstance();
 	
@@ -249,6 +252,50 @@ void RTBEngine::Core::Application::Render()
 	window->SwapBuffers();
 }
 
+void RTBEngine::Core::Application::RegisterBuiltInComponents() {
+	Scripting::ComponentRegistry& registry = Scripting::ComponentRegistry::GetInstance();
+
+	// ECS Components
+	registry.RegisterComponent("MeshRenderer", []() {
+		return new ECS::MeshRenderer();
+		});
+
+	// Physics Components
+	registry.RegisterComponent("RigidBodyComponent", []() {
+		return new ECS::RigidBodyComponent();
+		});
+
+	// Rendering Components
+	registry.RegisterComponent("LightComponent", []() {
+		return new ECS::LightComponent();
+		});
+
+	// Audio Components
+	registry.RegisterComponent("AudioSourceComponent", []() {
+		return new ECS::AudioSourceComponent();
+		});
+
+	// UI Components
+	registry.RegisterComponent("Canvas", []() {
+		return new UI::Canvas();
+		});
+
+	registry.RegisterComponent("UIImage", []() {
+		return new UI::UIImage();
+		});
+
+	registry.RegisterComponent("UIPanel", []() {
+		return new UI::UIPanel();
+		});
+
+	registry.RegisterComponent("UIText", []() {
+		return new UI::UIText();
+		});
+
+	registry.RegisterComponent("UIButton", []() {
+		return new UI::UIButton();
+		});
+}
 
 void RTBEngine::Core::Application::CreatePhysicsTestScene()
 {

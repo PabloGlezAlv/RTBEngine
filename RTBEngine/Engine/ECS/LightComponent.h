@@ -10,6 +10,7 @@ namespace RTBEngine {
 
         class LightComponent : public Component {
         public:
+            LightComponent();
             LightComponent(std::unique_ptr<Rendering::Light> light);
             ~LightComponent();
 

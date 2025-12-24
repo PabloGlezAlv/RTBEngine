@@ -39,6 +39,7 @@ namespace RTBEngine {
 			void Update(float deltaTime);
 			void Render();
 
+			void RegisterBuiltInComponents();
 			// Test scenes
 			void CreatePhysicsTestScene();
 		private:
