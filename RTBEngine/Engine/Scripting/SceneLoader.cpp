@@ -22,6 +22,7 @@
 namespace RTBEngine {
     namespace Scripting {
 
+        #pragma region Lua Helpers
         // Helper wrapper for Quaternion::FromEulerAngles (needed for LuaBridge)
         static Math::Quaternion QuaternionFromEulerAngles(float pitch, float yaw, float roll) {
             return Math::Quaternion::FromEulerAngles(pitch, yaw, roll);
@@ -70,6 +71,9 @@ namespace RTBEngine {
             return result;
         }
 
+        #pragma endregion
+
+        #pragma region Component Configurators
         // ============================================================
         // Component configurators
         // ============================================================
@@ -192,6 +196,9 @@ namespace RTBEngine {
             }
         }
 
+        #pragma endregion
+
+        #pragma region SceneLoader Implementation
         void SceneLoader::SetupLuaBindings(lua_State* L) {
             // Bind Math::Vector3
             luabridge::getGlobalNamespace(L)
@@ -389,6 +396,7 @@ namespace RTBEngine {
                 lua_pop(L, 1);  // Pop components[i]
             }
         }
+        #pragma endregion
 
     }
 }
