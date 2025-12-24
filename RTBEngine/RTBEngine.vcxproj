@@ -159,6 +159,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Scripting\ComponentRegistry.cpp" />
     <ClCompile Include="Engine\ECS\AudioSourceComponent.cpp" />
     <ClCompile Include="Engine\Audio\AudioClip.cpp" />
     <ClCompile Include="Engine\Audio\AudioSystem.cpp" />
@@ -213,6 +214,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\ECS\Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Scripting\ComponentRegistry.h" />
     <ClInclude Include="Engine\ECS\AudioSourceComponent.h" />
     <ClInclude Include="Engine\Audio\AudioClip.h" />
     <ClInclude Include="Engine\Audio\AudioSystem.h" />
