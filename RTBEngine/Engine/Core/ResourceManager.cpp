@@ -169,10 +169,35 @@ namespace RTBEngine {
 		{
 			if (!defaultFont) {
 				const float defaultSizes[] = { 16.0f, 18.0f, 20.0f, 24.0f, 28.0f, 32.0f };
-				defaultFont = LoadFont("Assets/Fonts/SourceSans3-Black.ttf", defaultSizes, 6);
+				defaultFont = LoadFont(DEFAULT_FONT_PATH, defaultSizes, 6);
 			}
 			return defaultFont;
 		}
+
+        Rendering::Texture* ResourceManager::GetDefaultTexture()
+        {
+            return LoadTexture(DEFAULT_TEXTURE_PATH);
+        }
+
+        Rendering::Texture* ResourceManager::GetLogoTexture()
+        {
+            return LoadTexture(DEFAULT_LOGO_PATH);
+        }
+
+        Rendering::Mesh* ResourceManager::GetDefaultCube()
+        {
+            return LoadModel(DEFAULT_CUBE_PATH);
+        }
+
+        Rendering::Mesh* ResourceManager::GetDefaultSphere()
+        {
+            return LoadModel(DEFAULT_SPHERE_PATH);
+        }
+
+        Rendering::Mesh* ResourceManager::GetDefaultPlane()
+        {
+            return LoadModel(DEFAULT_PLANE_PATH);
+        }
 
         ECS::Scene* ResourceManager::LoadScene(const std::string& path) {
             auto it = scenes.find(path);

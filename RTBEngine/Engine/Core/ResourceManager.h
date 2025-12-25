@@ -20,6 +20,14 @@ namespace RTBEngine {
 
         class ResourceManager {
         public:
+            // Default asset paths
+            static constexpr const char* DEFAULT_TEXTURE_PATH = "Default/Textures/white.png";
+            static constexpr const char* DEFAULT_LOGO_PATH = "Default/Textures/logo.png";
+            static constexpr const char* DEFAULT_FONT_PATH = "Default/Fonts/SourceSans3-Black.ttf";
+            static constexpr const char* DEFAULT_CUBE_PATH = "Default/Models/cube.obj";
+            static constexpr const char* DEFAULT_SPHERE_PATH = "Default/Models/sphere.obj";
+            static constexpr const char* DEFAULT_PLANE_PATH = "Default/Models/plane.obj";
+
             static ResourceManager& GetInstance();
 
             ResourceManager(const ResourceManager&) = delete;
@@ -45,6 +53,13 @@ namespace RTBEngine {
 			Rendering::Font* GetFont(const std::string& path);
 			Rendering::Font* LoadFont(const std::string& path, const float* sizes, int numSizes);
 			Rendering::Font* GetDefaultFont();
+
+            // Default resources
+            Rendering::Texture* GetDefaultTexture();
+            Rendering::Texture* GetLogoTexture();
+            Rendering::Mesh* GetDefaultCube();
+            Rendering::Mesh* GetDefaultSphere();
+            Rendering::Mesh* GetDefaultPlane();
 
             // Scene management
             ECS::Scene* LoadScene(const std::string& path);

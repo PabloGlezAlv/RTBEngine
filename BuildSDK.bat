@@ -133,6 +133,10 @@ copy "%THIRD_PARTY_DIR%\assimp\bin\x64\assimp-vc143-mt.dll" "%OUTPUT_DIR%\Bin\" 
 copy "%THIRD_PARTY_DIR%\fmod\api\core\lib\x64\fmod.dll" "%OUTPUT_DIR%\Bin\" >nul
 copy "%THIRD_PARTY_DIR%\lua\lua54.dll" "%OUTPUT_DIR%\Bin\" >nul
 
+:: 7. Copy Default Assets
+echo Copying default assets...
+xcopy "RTBEngine\Default\*.*" "%OUTPUT_DIR%\Default\" /s /y /i >nul
+
 echo.
 echo ===========================================
 echo SDK Generated at: %OUTPUT_DIR%

@@ -37,30 +37,30 @@ function CreateScene()
                 components = {
                     {
                         type = "MeshRenderer",
-                        mesh = "Assets/Models/cube.obj",
+                        mesh = "Default/Models/cube.obj",
                         shader = "basic",
                         texture = "Assets/Textures/testTexture.png"
                     },
                     {
                         type = "BoxColliderComponent",
-                        mesh = "Assets/Models/cube.obj",
+                        mesh = "Default/Models/cube.obj",
                         isTrigger = false
                     }
                 }
             },
             {
-                name = "FallingCube",
+                name = "FallingSphere",
                 position = Vector3(0.0, 10.0, 0.0),
                 components = {
                     {
                         type = "MeshRenderer",
-                        mesh = "Assets/Models/cube.obj",
+                        mesh = "Default/Models/sphere.obj",
                         shader = "basic",
-                        texture = "Assets/Textures/testTexture.png"
+                        texture = "Default/Textures/white.png"
                     },
                     {
                         type = "BoxColliderComponent",
-                        mesh = "Assets/Models/cube.obj",
+                        mesh = "Default/Models/cube.obj",
                         isTrigger = false
                     },
                     {
@@ -147,7 +147,7 @@ function CreateScene()
                 components = {
                     {
                         type = "UIImage",
-                        texture = "Assets/Textures/logo.png",
+                        texture = "Default/Textures/logo.png",
                         color = Vector4(1.0, 1.0, 1.0, 1.0),
                         preserveAspect = true,
                         -- RectTransform
