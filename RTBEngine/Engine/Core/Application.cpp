@@ -3,29 +3,19 @@
 #include "../Rendering/Rendering.h"
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
-#include "../ECS/MeshRenderer.h"
+#include "../ECS/LightComponent.h"
 #include "../ECS/RigidBodyComponent.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
-#include "../ECS/LightComponent.h"
 #include "ResourceManager.h"
 #include "../Physics/PhysicsWorld.h"
 #include "../Physics/PhysicsSystem.h"
-#include "../Physics/RigidBody.h"
-#include "../Physics/BoxCollider.h"
 #include "../Audio/AudioSystem.h"
-#include "../Audio/AudioClip.h"
-#include "../ECS/AudioSourceComponent.h"
 #include "../UI/CanvasSystem.h"
-#include "../UI/Canvas.h"
-#include "../UI/Elements/UIPanel.h"
-#include "../UI/Elements/UIText.h"
-#include "../UI/Elements/UIImage.h"
-#include "../UI/Elements/UIButton.h"
 #include "../Scripting/ComponentRegistry.h"
-#include "../Scripting/SceneLoader.h"
-#include "../ECS/CameraComponent.h"
+#include "../ECS/SceneManager.h"
 #include <backends/imgui_impl_sdl2.h>
 #include <iostream>
+
 
 RTBEngine::Core::Application::Application()
 	: lastTime(0), isRunning(false), physicsSystem(nullptr), physicsAccumulator(0.0f), physicsWorld(nullptr)
@@ -46,7 +36,7 @@ bool RTBEngine::Core::Application::Initialize()
 
 	lastTime = SDL_GetTicks();
 
-	RegisterBuiltInComponents();
+	Scripting::ComponentRegistry::GetInstance().RegisterBuiltInComponents();
 
 	ResourceManager& resources = ResourceManager::GetInstance();
 	
@@ -76,25 +66,26 @@ bool RTBEngine::Core::Application::Initialize()
 		return false;
 	}
 
-	// Create scene from Lua
-	testScene.reset(Scripting::SceneLoader::LoadScene("Assets/Scenes/TestScene.lua"));
-    if (!testScene) {
-        std::cerr << "Failed to load scene from Lua" << std::endl;
-        return false;
-    }
+	ECS::SceneManager& sceneMgr = ECS::SceneManager::GetInstance();
+	sceneMgr.Initialize();
 
-	// Register loaded objects with PhysicsSystem
-	for (const auto& go : testScene->GetGameObjects()) {
-		ECS::RigidBodyComponent* rbComp = go->GetComponent<ECS::RigidBodyComponent>();
-		if (rbComp) {
-			physicsSystem->InitializeRigidBody(go.get(), rbComp);
+	sceneMgr.SetOnSceneLoaded([this](ECS::Scene* scene) {
+		// Inicializar physics para cada RigidBody
+		for (const auto& go : scene->GetGameObjects()) {
+			ECS::RigidBodyComponent* rb = go->GetComponent<ECS::RigidBodyComponent>();
+			if (rb) {
+				physicsSystem->InitializeRigidBody(go.get(), rb);
+			}
 		}
-	}
 
-	// Set aspect ratio on scene camera
-	Rendering::Camera* activeCamera = testScene->GetActiveCamera();
-	if (activeCamera) {
-		activeCamera->SetAspectRatio(800.0f / 600.0f);
+		if (scene->GetActiveCamera()) {
+			scene->GetActiveCamera()->SetAspectRatio(800.0f / 600.0f);
+		}
+		});
+
+	if (!sceneMgr.LoadScene("Assets/Scenes/TestScene.lua")) {
+		std::cerr << "Failed to load scene" << std::endl;
+		return false;
 	}
 
 	return true;
@@ -120,10 +111,14 @@ void RTBEngine::Core::Application::Run()
 
 		// Fixed timestep physics update
 		physicsAccumulator += deltaTime;
-		while (physicsAccumulator >= PHYSICS_TIMESTEP) {
-			physicsSystem->Update(testScene.get(), PHYSICS_TIMESTEP);
-			physicsAccumulator -= PHYSICS_TIMESTEP;
+		ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
+		if (scene) {
+			while (physicsAccumulator >= PHYSICS_TIMESTEP) {
+				physicsSystem->Update(scene, PHYSICS_TIMESTEP);
+				physicsAccumulator -= PHYSICS_TIMESTEP;
+			}
 		}
+
 
 		Render();
 	}
@@ -146,7 +141,7 @@ void RTBEngine::Core::Application::Shutdown()
 		physicsSystem = nullptr;
 	}
 
-	testScene.reset();
+	ECS::SceneManager::GetInstance().Shutdown();
 
 	ResourceManager::GetInstance().Clear();
 
@@ -175,9 +170,12 @@ void RTBEngine::Core::Application::ProcessInput()
 
 void RTBEngine::Core::Application::Update(float deltaTime)
 {
-	if (testScene) {
-		testScene->Update(deltaTime);
+	ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
+	if (scene) {
+		scene->Update(deltaTime);
+		physicsSystem->Update(scene, PHYSICS_TIMESTEP);
 	}
+
 }
 
 void RTBEngine::Core::Application::Render()
@@ -185,15 +183,17 @@ void RTBEngine::Core::Application::Render()
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
+
 	// Apply lights from scene to shader
 	Rendering::Shader* shader = ResourceManager::GetInstance().GetShader("basic");
-	if (shader && testScene) {
+	if (shader && scene) {
 		shader->Bind();
 
 		int pointLightIndex = 0;
 		int spotLightIndex = 0;
 
-		for (auto& go : testScene->GetGameObjects()) {
+		for (auto& go : scene->GetGameObjects()) {
 			ECS::LightComponent* lightComp = go->GetComponent<ECS::LightComponent>();
 			if (lightComp && lightComp->GetLight()) {
 				Rendering::Light* light = lightComp->GetLight();
@@ -216,62 +216,14 @@ void RTBEngine::Core::Application::Render()
 		shader->SetInt("numSpotLights", spotLightIndex);
 	}
 
-	Rendering::Camera* activeCamera = testScene->GetActiveCamera();
+	Rendering::Camera* activeCamera = scene->GetActiveCamera();
 	if (activeCamera) {
-		testScene->Render(activeCamera);
+		scene->Render(activeCamera);
 	}
 
-	UI::CanvasSystem::GetInstance().Update(testScene.get());
+	UI::CanvasSystem::GetInstance().Update(scene);
 	UI::CanvasSystem::GetInstance().ProcessInput();
 	UI::CanvasSystem::GetInstance().RenderAll();
 
 	window->SwapBuffers();
-}
-
-void RTBEngine::Core::Application::RegisterBuiltInComponents() {
-	Scripting::ComponentRegistry& registry = Scripting::ComponentRegistry::GetInstance();
-
-	// ECS Components
-	registry.RegisterComponent("MeshRenderer", []() {
-		return new ECS::MeshRenderer();
-		});
-
-	// Physics Components
-	registry.RegisterComponent("RigidBodyComponent", []() {
-		return new ECS::RigidBodyComponent();
-		});
-
-	// Rendering Components
-	registry.RegisterComponent("LightComponent", []() {
-		return new ECS::LightComponent();
-		});
-
-	// Audio Components
-	registry.RegisterComponent("AudioSourceComponent", []() {
-		return new ECS::AudioSourceComponent();
-		});
-
-	// UI Components
-	registry.RegisterComponent("Canvas", []() {
-		return new UI::Canvas();
-		});
-
-	registry.RegisterComponent("UIImage", []() {
-		return new UI::UIImage();
-		});
-
-	registry.RegisterComponent("UIPanel", []() {
-		return new UI::UIPanel();
-		});
-
-	registry.RegisterComponent("UIText", []() {
-		return new UI::UIText();
-		});
-
-	registry.RegisterComponent("UIButton", []() {
-		return new UI::UIButton();
-		});
-	registry.RegisterComponent("CameraComponent", []() {
-		return new ECS::CameraComponent();
-		});
 }

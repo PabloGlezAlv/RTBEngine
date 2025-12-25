@@ -208,6 +208,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\UI\RectTransform.cpp" />
     <ClCompile Include="Engine\UI\UIElement.cpp" />
     <ClCompile Include="Engine\Scripting\SceneLoader.cpp" />
+    <ClCompile Include="Engine\ECS\SceneManager.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui_draw.cpp" />
@@ -272,6 +273,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="Engine\UI\RectTransform.h" />
     <ClInclude Include="Engine\UI\UIElement.h" />
     <ClInclude Include="Engine\Scripting\SceneLoader.h" />
+    <ClInclude Include="Engine\ECS\SceneManager.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imgui.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imconfig.h" />

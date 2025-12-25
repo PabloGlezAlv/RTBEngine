@@ -6,7 +6,7 @@
 namespace RTBEngine {
 	namespace ECS
 	{
-		class Scene;
+		class SceneManager;
 	}
 
 	namespace Physics
@@ -33,17 +33,12 @@ namespace RTBEngine {
 			void ProcessInput();
 			void Update(float deltaTime);
 			void Render();
-
-			void RegisterBuiltInComponents();
-			// Test scenes
 		private:
 			bool isRunning = false;
 			Uint32 lastTime = 0;
 			float deltaTime = 0.0f;
 
 			std::unique_ptr<Window> window;
-
-			std::unique_ptr<ECS::Scene> testScene;
 
 			Physics::PhysicsWorld* physicsWorld;
 			Physics::PhysicsSystem* physicsSystem;

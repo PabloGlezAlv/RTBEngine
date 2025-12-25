@@ -1,0 +1,67 @@
+#include "SceneManager.h"
+#include "../Scripting/SceneLoader.h"
+#include <cstdio>
+
+namespace RTBEngine {
+    namespace ECS {
+
+        SceneManager& SceneManager::GetInstance() {
+            static SceneManager instance;
+            return instance;
+        }
+
+        bool SceneManager::Initialize() {
+            return true;
+        }
+
+        void SceneManager::Shutdown() {
+            UnloadCurrentScene();
+        }
+
+        bool SceneManager::LoadScene(const std::string& path) {
+            // Unload current scene first
+            if (activeScene) {
+                if (onSceneUnloading) {
+                    onSceneUnloading(activeScene.get());
+                }
+                activeScene.reset();
+            }
+
+            // Load new scene
+            Scene* newScene = Scripting::SceneLoader::LoadScene(path);
+            if (!newScene) {
+                printf("SceneManager: Failed to load scene '%s'\n", path.c_str());
+                return false;
+            }
+
+            activeScene.reset(newScene);
+            activeScenePath = path;
+
+            // Notify listeners
+            if (onSceneLoaded) {
+                onSceneLoaded(activeScene.get());
+            }
+
+            return true;
+        }
+
+        void SceneManager::UnloadCurrentScene() {
+            if (activeScene) {
+                if (onSceneUnloading) {
+                    onSceneUnloading(activeScene.get());
+                }
+                activeScene.reset();
+                activeScenePath.clear();
+            }
+        }
+
+        void SceneManager::SetOnSceneLoaded(std::function<void(Scene*)> callback) {
+            onSceneLoaded = callback;
+        }
+
+        void SceneManager::SetOnSceneUnloading(std::function<void(Scene*)> callback) {
+            onSceneUnloading = callback;
+        }
+
+    }
+}

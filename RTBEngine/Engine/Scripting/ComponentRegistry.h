@@ -26,6 +26,8 @@ namespace RTBEngine {
             // Check if a component type is registered
             bool HasComponent(const std::string& typeName) const;
 
+            void RegisterBuiltInComponents();
+
         private:
             ComponentRegistry() = default;
             ~ComponentRegistry() = default;

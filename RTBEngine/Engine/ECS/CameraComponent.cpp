@@ -33,8 +33,6 @@ namespace RTBEngine {
             camera->SetRotation(euler.y * toDegrees, euler.z * toDegrees);
         }
 
-
-
         void CameraComponent::SetFOV(float fov) {
             if (camera) camera->SetFOV(fov);
         }
