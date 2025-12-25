@@ -30,6 +30,7 @@
 #include "ECS/LightComponent.h"
 #include "ECS/AudioSourceComponent.h"
 #include "ECS/RigidBodyComponent.h"
+#include "ECS/BoxColliderComponent.h"
 #include "ECS/CameraComponent.h"
 
 // UI

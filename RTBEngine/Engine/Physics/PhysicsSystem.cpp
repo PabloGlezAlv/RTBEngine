@@ -1,8 +1,10 @@
 #include "PhysicsSystem.h"
 #include "PhysicsUtils.h"
+#include "BoxCollider.h"
 #include "../ECS/Transform.h"
 #include "../ECS/GameObject.h"
 #include "../ECS/RigidBodyComponent.h"
+#include "../ECS/BoxColliderComponent.h"
 #include "CollisionInfo.h"
 #include <BulletCollision/NarrowPhaseCollision/btPersistentManifold.h>
 
@@ -23,35 +25,37 @@ namespace RTBEngine {
             if (!scene || !physicsWorld)
                 return;
 
-            // Sync transforms from GameObjects to physics (for kinematic bodies)
             SyncTransformsToPhysics(scene);
-
-            // Step the physics simulation
             physicsWorld->Step(deltaTime);
-            //Update collision state
             ProcessCollisions();
-
-            // Sync transforms from physics back to GameObjects (for dynamic bodies)
             SyncPhysicsToTransforms(scene);
         }
 
-        void PhysicsSystem::InitializeRigidBody(ECS::GameObject* gameObject, ECS::RigidBodyComponent* component)
+        void PhysicsSystem::InitializeCollider(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider)
         {
-            if (!gameObject || !component || !physicsWorld)
+            if (!gameObject || !boxCollider || !physicsWorld)
                 return;
 
-            Physics::RigidBody* rigidBody = component->GetRigidBody();
-            Physics::Collider* collider = component->GetCollider();
+            ECS::RigidBodyComponent* rbComp = gameObject->GetComponent<ECS::RigidBodyComponent>();
 
-            if (!rigidBody || !collider)
+            if (rbComp && rbComp->HasRigidBody()) {
+                InitializeDynamicBody(gameObject, boxCollider, rbComp);
+            }
+            else {
+                InitializeStaticCollider(gameObject, boxCollider);
+            }
+        }
+
+        void PhysicsSystem::InitializeStaticCollider(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider)
+        {
+            Physics::BoxCollider* collider = boxCollider->GetBoxCollider();
+            if (!collider)
                 return;
 
-            // Get collision shape from collider
             btCollisionShape* shape = collider->GetCollisionShape();
             if (!shape)
                 return;
 
-            // Get initial transform from GameObject
             ECS::Transform& transform = gameObject->GetTransform();
             btVector3 position = PhysicsUtils::ToBullet(transform.GetPosition());
             btQuaternion rotation = PhysicsUtils::ToBullet(transform.GetRotation());
@@ -61,24 +65,55 @@ namespace RTBEngine {
             btTrans.setOrigin(position);
             btTrans.setRotation(rotation);
 
-            // Create motion state
+            btCollisionObject* collisionObj = new btCollisionObject();
+            collisionObj->setCollisionShape(shape);
+            collisionObj->setWorldTransform(btTrans);
+            collisionObj->setUserPointer(gameObject);
+            collisionObj->setCollisionFlags(collisionObj->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
+
+            if (boxCollider->IsTrigger()) {
+                collisionObj->setCollisionFlags(collisionObj->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
+            }
+
+            physicsWorld->AddCollisionObject(collisionObj);
+            boxCollider->SetBulletCollisionObject(collisionObj);
+        }
+
+        void PhysicsSystem::InitializeDynamicBody(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider, ECS::RigidBodyComponent* rbComp)
+        {
+            Physics::BoxCollider* collider = boxCollider->GetBoxCollider();
+            Physics::RigidBody* rigidBody = rbComp->GetRigidBody();
+
+            if (!collider || !rigidBody)
+                return;
+
+            btCollisionShape* shape = collider->GetCollisionShape();
+            if (!shape)
+                return;
+
+            ECS::Transform& transform = gameObject->GetTransform();
+            btVector3 position = PhysicsUtils::ToBullet(transform.GetPosition());
+            btQuaternion rotation = PhysicsUtils::ToBullet(transform.GetRotation());
+
+            btTransform btTrans;
+            btTrans.setIdentity();
+            btTrans.setOrigin(position);
+            btTrans.setRotation(rotation);
+
             btDefaultMotionState* motionState = new btDefaultMotionState(btTrans);
 
-            // Calculate inertia
             float mass = rigidBody->GetMass();
             btVector3 inertia(0, 0, 0);
             if (mass > 0.0f) {
                 shape->calculateLocalInertia(mass, inertia);
             }
 
-            // Create btRigidBody
             btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, motionState, shape, inertia);
             rbInfo.m_friction = rigidBody->GetFriction();
             rbInfo.m_restitution = rigidBody->GetRestitution();
 
             std::unique_ptr<btRigidBody> btBody = std::make_unique<btRigidBody>(rbInfo);
 
-            // Set collision flags based on type
             if (rigidBody->GetType() == RigidBodyType::Static) {
                 btBody->setCollisionFlags(btBody->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
             }
@@ -87,39 +122,16 @@ namespace RTBEngine {
                 btBody->setActivationState(DISABLE_DEACTIVATION);
             }
 
-            // Configure trigger
-            if (collider->IsTrigger()) {
+            if (boxCollider->IsTrigger()) {
                 btBody->setCollisionFlags(btBody->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
             }
 
-            // Set owner and user pointer for collision callbacks
             rigidBody->SetOwner(gameObject);
             btBody->setUserPointer(gameObject);
 
-            // Associate collider with rigidbody for runtime trigger changes
-            collider->SetAssociatedRigidBody(rigidBody);
-
-            // Add to physics world
             physicsWorld->AddRigidBody(btBody.get());
-
-            // Store btRigidBody in RigidBody wrapper
             rigidBody->SetBulletRigidBody(std::move(btBody));
-        }
-
-        void PhysicsSystem::DestroyRigidBody(ECS::RigidBodyComponent* component)
-        {
-            if (!component || !physicsWorld)
-                return;
-
-            Physics::RigidBody* rigidBody = component->GetRigidBody();
-            if (!rigidBody)
-                return;
-
-            btRigidBody* btBody = rigidBody->GetBulletRigidBody();
-            if (btBody)
-            {
-                physicsWorld->RemoveRigidBody(btBody);
-            }
+            boxCollider->SetBulletCollisionObject(rigidBody->GetBulletRigidBody());
         }
 
         void PhysicsSystem::SyncTransformsToPhysics(ECS::Scene* scene)
@@ -140,7 +152,6 @@ namespace RTBEngine {
                 if (!btBody)
                     continue;
 
-                // Only sync for kinematic bodies (static and kinematic don't move by physics)
                 if (rigidBody->GetType() == RigidBodyType::Kinematic)
                 {
                     ECS::Transform& transform = gameObject->GetTransform();
@@ -175,7 +186,6 @@ namespace RTBEngine {
                 if (!btBody)
                     continue;
 
-                // Only sync for dynamic bodies (they are moved by physics)
                 if (rigidBody->GetType() == RigidBodyType::Dynamic)
                 {
                     const btTransform& btTrans = btBody->getWorldTransform();
@@ -214,20 +224,17 @@ namespace RTBEngine {
                 if (!goA || !goB)
                     continue;
 
-                // Check if either collider is a trigger
-                ECS::RigidBodyComponent* rbCompA = goA->GetComponent<ECS::RigidBodyComponent>();
-                ECS::RigidBodyComponent* rbCompB = goB->GetComponent<ECS::RigidBodyComponent>();
+                ECS::BoxColliderComponent* boxColliderA = goA->GetComponent<ECS::BoxColliderComponent>();
+                ECS::BoxColliderComponent* boxColliderB = goB->GetComponent<ECS::BoxColliderComponent>();
 
-                bool isTriggerA = rbCompA && rbCompA->GetCollider() && rbCompA->GetCollider()->IsTrigger();
-                bool isTriggerB = rbCompB && rbCompB->GetCollider() && rbCompB->GetCollider()->IsTrigger();
+                bool isTriggerA = boxColliderA && boxColliderA->IsTrigger();
+                bool isTriggerB = boxColliderB && boxColliderB->IsTrigger();
                 bool isTrigger = isTriggerA || isTriggerB;
 
-                // Get contact info from first contact point
                 btManifoldPoint& pt = manifold->getContactPoint(0);
                 btVector3 contactPoint = pt.getPositionWorldOnB();
                 btVector3 contactNormal = pt.m_normalWorldOnB;
 
-                // Create collision pair (always store in consistent order)
                 CollisionPair pair;
                 if (goA < goB) {
                     pair = { goA, goB, isTrigger };
@@ -237,7 +244,6 @@ namespace RTBEngine {
                 }
                 currentCollisions.insert(pair);
 
-                // Create collision info for each object
                 CollisionInfo infoForA;
                 infoForA.otherObject = goB;
                 infoForA.contactPoint = PhysicsUtils::FromBullet(contactPoint);
@@ -250,22 +256,18 @@ namespace RTBEngine {
                 infoForB.contactNormal = PhysicsUtils::FromBullet(contactNormal) * -1.0f;
                 infoForB.penetrationDepth = pt.getDistance();
 
-                // Determine collision state
                 bool wasColliding = previousCollisions.find(pair) != previousCollisions.end();
 
                 if (!wasColliding) {
-                    // Enter
                     NotifyCallbacks(goA, infoForA, isTrigger, CollisionState::Enter);
                     NotifyCallbacks(goB, infoForB, isTrigger, CollisionState::Enter);
                 }
                 else {
-                    // Stay
                     NotifyCallbacks(goA, infoForA, isTrigger, CollisionState::Stay);
                     NotifyCallbacks(goB, infoForB, isTrigger, CollisionState::Stay);
                 }
             }
 
-            // Check for Exit (was colliding but not anymore)
             for (const auto& pair : previousCollisions)
             {
                 if (currentCollisions.find(pair) == currentCollisions.end())

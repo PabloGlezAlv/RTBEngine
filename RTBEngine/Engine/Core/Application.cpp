@@ -5,6 +5,7 @@
 #include "../ECS/GameObject.h"
 #include "../ECS/LightComponent.h"
 #include "../ECS/RigidBodyComponent.h"
+#include "../ECS/BoxColliderComponent.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
 #include "ResourceManager.h"
 #include "../Physics/PhysicsWorld.h"
@@ -71,11 +72,11 @@ bool RTBEngine::Core::Application::Initialize()
 	sceneMgr.Initialize();
 
 	sceneMgr.SetOnSceneLoaded([this](ECS::Scene* scene) {
-		// Inicializar physics para cada RigidBody
+		// Initialize physics for each BoxColliderComponent
 		for (const auto& go : scene->GetGameObjects()) {
-			ECS::RigidBodyComponent* rb = go->GetComponent<ECS::RigidBodyComponent>();
-			if (rb) {
-				physicsSystem->InitializeRigidBody(go.get(), rb);
+			ECS::BoxColliderComponent* boxCollider = go->GetComponent<ECS::BoxColliderComponent>();
+			if (boxCollider) {
+				physicsSystem->InitializeCollider(go.get(), boxCollider);
 			}
 		}
 

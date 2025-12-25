@@ -30,7 +30,6 @@ function CreateScene()
                     }
                 }
             },
-            -- Ground
             {
                 name = "Ground",
                 position = Vector3(0.0, -5.0, 0.0),
@@ -43,18 +42,15 @@ function CreateScene()
                         texture = "Assets/Textures/testTexture.png"
                     },
                     {
-                        type = "RigidBodyComponent",
-                        bodyType = "Static",
-                        mass = 0.0,
-                        friction = 0.7,
-                        colliderMesh = "Assets/Models/cube.obj"
+                        type = "BoxColliderComponent",
+                        mesh = "Assets/Models/cube.obj",
+                        isTrigger = false
                     }
                 }
             },
-            -- Falling Cube
             {
                 name = "FallingCube",
-                position = Vector3(0.0, 3.0, 0.0),
+                position = Vector3(0.0, 10.0, 0.0),
                 components = {
                     {
                         type = "MeshRenderer",
@@ -63,12 +59,16 @@ function CreateScene()
                         texture = "Assets/Textures/testTexture.png"
                     },
                     {
+                        type = "BoxColliderComponent",
+                        mesh = "Assets/Models/cube.obj",
+                        isTrigger = false
+                    },
+                    {
                         type = "RigidBodyComponent",
                         bodyType = "Dynamic",
                         mass = 1.0,
                         friction = 0.5,
-                        restitution = 1.0,
-                        colliderMesh = "Assets/Models/cube.obj"
+                        restitution = 0.3
                     },
                     {
                         type = "AudioSourceComponent",

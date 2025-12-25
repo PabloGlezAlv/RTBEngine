@@ -7,6 +7,7 @@
 #include "../ECS/LightComponent.h"
 #include "../ECS/AudioSourceComponent.h"
 #include "../ECS/RigidBodyComponent.h"
+#include "../ECS/BoxColliderComponent.h"
 #include "../Core/ResourceManager.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
 #include "../Rendering/Lighting/PointLight.h"
@@ -262,8 +263,6 @@ namespace RTBEngine {
         }
 
         static void ConfigureRigidBody(lua_State* L, int tableIndex, ECS::RigidBodyComponent* comp, ECS::GameObject* gameObject) {
-            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
-
             // Create RigidBody
             auto rigidBody = std::make_unique<Physics::RigidBody>();
 
@@ -284,18 +283,30 @@ namespace RTBEngine {
             rigidBody->SetRestitution(ReadOptionalFloat(L, tableIndex, "restitution", 0.0f));
 
             comp->SetRigidBody(std::move(rigidBody));
+        }
 
-            // Collider - for now only Box, uses mesh if specified
-            std::string colliderMesh = ReadOptionalString(L, tableIndex, "colliderMesh", "");
+        static void ConfigureBoxCollider(lua_State* L, int tableIndex, ECS::BoxColliderComponent* comp, ECS::GameObject* gameObject) {
+            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
+
+            // Size - either from mesh or explicit
+            std::string colliderMesh = ReadOptionalString(L, tableIndex, "mesh", "");
             if (!colliderMesh.empty()) {
                 Rendering::Mesh* mesh = resources.LoadModel(colliderMesh);
                 if (mesh) {
-                    auto boxCollider = std::make_unique<Physics::BoxCollider>(mesh);
-                    // Scale collider by GameObject scale
-                    boxCollider->SetSize(boxCollider->GetSize() * gameObject->GetTransform().GetScale());
-                    comp->SetCollider(std::move(boxCollider));
+                    // Create temporary BoxCollider to calculate size from mesh
+                    Physics::BoxCollider tempCollider(mesh);
+                    Math::Vector3 size = tempCollider.GetSize() * gameObject->GetTransform().GetScale();
+                    comp->SetSize(size);
                 }
             }
+            else {
+                // Use explicit size or default
+                Math::Vector3 size = ReadOptionalVector3(L, tableIndex, "size", Math::Vector3(1.0f, 1.0f, 1.0f));
+                comp->SetSize(size * gameObject->GetTransform().GetScale());
+            }
+
+            // Trigger
+            comp->SetIsTrigger(ReadOptionalBool(L, tableIndex, "isTrigger", false));
         }
 
         static void ConfigureCameraComponent(lua_State* L, int tableIndex, ECS::CameraComponent* comp) {
@@ -525,6 +536,9 @@ namespace RTBEngine {
                             }
                             else if (componentType == "RigidBodyComponent") {
                                 ConfigureRigidBody(L, componentTableIndex, static_cast<ECS::RigidBodyComponent*>(comp), gameObject);
+                            }
+                            else if (componentType == "BoxColliderComponent") {
+                                ConfigureBoxCollider(L, componentTableIndex, static_cast<ECS::BoxColliderComponent*>(comp), gameObject);
                             }
                             else if (componentType == "Canvas") {
                                 ConfigureCanvas(L, componentTableIndex, static_cast<UI::Canvas*>(comp));

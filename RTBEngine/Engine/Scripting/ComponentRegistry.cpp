@@ -5,6 +5,7 @@
 #include "../ECS/LightComponent.h"
 #include "../ECS/AudioSourceComponent.h"
 #include "../ECS/RigidBodyComponent.h"
+#include "../ECS/BoxColliderComponent.h"
 #include "../ECS/CameraComponent.h"
 #include "../UI/Canvas.h"
 #include "../UI/Elements/UIText.h"
@@ -44,6 +45,7 @@ namespace RTBEngine {
             RegisterComponent("LightComponent", []() { return new ECS::LightComponent(); });
             RegisterComponent("AudioSourceComponent", []() { return new ECS::AudioSourceComponent(); });
             RegisterComponent("RigidBodyComponent", []() { return new ECS::RigidBodyComponent(); });
+            RegisterComponent("BoxColliderComponent", []() { return new ECS::BoxColliderComponent(); });
             RegisterComponent("CameraComponent", []() { return new ECS::CameraComponent(); });
             RegisterComponent("Canvas", []() { return new UI::Canvas(); });
             RegisterComponent("UIText", []() { return new UI::UIText(); });

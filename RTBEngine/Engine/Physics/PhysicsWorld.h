@@ -19,6 +19,10 @@ namespace RTBEngine {
             void AddRigidBody(btRigidBody* body);
             void RemoveRigidBody(btRigidBody* body);
 
+            // For static colliders without RigidBody
+            void AddCollisionObject(btCollisionObject* obj);
+            void RemoveCollisionObject(btCollisionObject* obj);
+
             void SetGravity(const Math::Vector3& gravity);
             Math::Vector3 GetGravity() const;
 

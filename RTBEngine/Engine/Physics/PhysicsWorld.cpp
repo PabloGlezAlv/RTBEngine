@@ -93,6 +93,22 @@ namespace RTBEngine {
             }
         }
 
+        void PhysicsWorld::AddCollisionObject(btCollisionObject* obj)
+        {
+            if (dynamicsWorld && obj)
+            {
+                dynamicsWorld->addCollisionObject(obj);
+            }
+        }
+
+        void PhysicsWorld::RemoveCollisionObject(btCollisionObject* obj)
+        {
+            if (dynamicsWorld && obj)
+            {
+                dynamicsWorld->removeCollisionObject(obj);
+            }
+        }
+
         void PhysicsWorld::SetGravity(const Math::Vector3& gravity)
         {
             if (dynamicsWorld)
