@@ -97,3 +97,6 @@ out/
 
 # ImGui configuration
 imgui.ini
+
+# SDK Output
+RTBEngine_SDK/
