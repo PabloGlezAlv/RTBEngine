@@ -17,10 +17,11 @@
 #include <iostream>
 
 
-RTBEngine::Core::Application::Application()
-	: lastTime(0), isRunning(false), physicsSystem(nullptr), physicsAccumulator(0.0f), physicsWorld(nullptr)
+RTBEngine::Core::Application::Application(const ApplicationConfig& cfg)
+	: config(cfg), lastTime(0), isRunning(false), physicsSystem(nullptr), physicsAccumulator(0.0f), physicsWorld(nullptr)
 {
 }
+
 
 RTBEngine::Core::Application::~Application()
 {
@@ -29,7 +30,7 @@ RTBEngine::Core::Application::~Application()
 
 bool RTBEngine::Core::Application::Initialize()
 {
-	window = std::make_unique<Window>("RTBEngine - Application", 800, 600);
+	window = std::make_unique<Window>(config.window.title, config.window.width, config.window.height);
 	if (!window->Initialize()) {
 		return false;
 	}
@@ -79,14 +80,20 @@ bool RTBEngine::Core::Application::Initialize()
 		}
 
 		if (scene->GetActiveCamera()) {
-			scene->GetActiveCamera()->SetAspectRatio(800.0f / 600.0f);
+			scene->GetActiveCamera()->SetAspectRatio(
+				static_cast<float>(config.window.width) / static_cast<float>(config.window.height)
+			);
 		}
+
 		});
 
-	if (!sceneMgr.LoadScene("Assets/Scenes/TestScene.lua")) {
-		std::cerr << "Failed to load scene" << std::endl;
-		return false;
+	if (!config.initialScenePath.empty()) {
+		if (!sceneMgr.LoadScene(config.initialScenePath)) {
+			std::cerr << "Failed to load scene: " << config.initialScenePath << std::endl;
+			return false;
+		}
 	}
+
 
 	return true;
 }
@@ -113,10 +120,11 @@ void RTBEngine::Core::Application::Run()
 		physicsAccumulator += deltaTime;
 		ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
 		if (scene) {
-			while (physicsAccumulator >= PHYSICS_TIMESTEP) {
-				physicsSystem->Update(scene, PHYSICS_TIMESTEP);
-				physicsAccumulator -= PHYSICS_TIMESTEP;
+			while (physicsAccumulator >= config.physics.timeStep) {
+				physicsSystem->Update(scene, config.physics.timeStep);
+				physicsAccumulator -= config.physics.timeStep;
 			}
+
 		}
 
 
@@ -173,14 +181,14 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 	ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
 	if (scene) {
 		scene->Update(deltaTime);
-		physicsSystem->Update(scene, PHYSICS_TIMESTEP);
+		physicsSystem->Update(scene, config.physics.timeStep);
 	}
 
 }
 
 void RTBEngine::Core::Application::Render()
 {
-	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+	glClearColor(config.rendering.clearColorR, config.rendering.clearColorG, config.rendering.clearColorB, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();

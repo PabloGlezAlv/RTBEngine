@@ -1,16 +1,14 @@
-#include "Core/Application.h"
-#include <iostream>
+#include "RTBEngine.h"
 
 int main(int argc, char* argv[])
 {
-    RTBEngine::Core::Application app;
+    using namespace RTBEngine;
 
-    if (!app.Initialize()) {
-        std::cerr << "Failed to initialize application!" << std::endl;
-        return -1;
-    }
+    Core::ApplicationConfig config;
+    config.window.title = "RTBEngine Demo";
+    config.window.width = 600;
+    config.window.height = 400;
+    config.initialScenePath = "Assets/Scenes/TestScene.lua";
 
-    app.Run();
-    
-    return 0;
+    return RTBEngine::Run(config);
 }

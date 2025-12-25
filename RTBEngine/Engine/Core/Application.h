@@ -2,15 +2,14 @@
 #include <SDL.h>
 #include <memory>
 #include "Window.h"
+#include "ApplicationConfig.h"
 
 namespace RTBEngine {
-	namespace ECS
-	{
+	namespace ECS {
 		class SceneManager;
 	}
 
-	namespace Physics
-	{
+	namespace Physics {
 		class PhysicsSystem;
 		class PhysicsWorld;
 	}
@@ -18,22 +17,28 @@ namespace RTBEngine {
 
 namespace RTBEngine {
 	namespace Core {
-		class Application
-		{
+		class Application {
 		public:
-			Application();
+			explicit Application(const ApplicationConfig& config);
 			~Application();
 
 			bool Initialize();
-
 			void Run();
-
 			void Shutdown();
+
+			bool IsRunning() const { return isRunning; }
+			void RequestExit() { isRunning = false; }
+			Window* GetWindow() { return window.get(); }
+			const ApplicationConfig& GetConfig() const { return config; }
+
 		private:
 			void ProcessInput();
 			void Update(float deltaTime);
 			void Render();
+
 		private:
+			ApplicationConfig config;
+
 			bool isRunning = false;
 			Uint32 lastTime = 0;
 			float deltaTime = 0.0f;
@@ -43,11 +48,18 @@ namespace RTBEngine {
 			Physics::PhysicsWorld* physicsWorld;
 			Physics::PhysicsSystem* physicsSystem;
 
-			const float PHYSICS_TIMESTEP = 1.0f / 60.0f;
 			float physicsAccumulator = 0.0f;
 
 			Application(const Application&) = delete;
 			Application& operator=(const Application&) = delete;
 		};
+	}
+
+	// Helper function para uso simple
+	inline int Run(const Core::ApplicationConfig& config) {
+		Core::Application app(config);
+		if (!app.Initialize()) return -1;
+		app.Run();
+		return 0;
 	}
 }

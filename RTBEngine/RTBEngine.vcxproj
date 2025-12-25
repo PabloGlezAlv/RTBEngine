@@ -219,7 +219,9 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\ECS\Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Core\ApplicationConfig.h" />
     <ClInclude Include="Engine\ECS\CameraComponent.h" />
+    <ClInclude Include="Engine\RTBEngine.h" />
     <ClInclude Include="Engine\Scripting\ComponentRegistry.h" />
     <ClInclude Include="Engine\ECS\AudioSourceComponent.h" />
     <ClInclude Include="Engine\Audio\AudioClip.h" />
