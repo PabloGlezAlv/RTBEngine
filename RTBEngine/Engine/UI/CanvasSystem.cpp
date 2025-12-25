@@ -1,6 +1,11 @@
 #include "CanvasSystem.h"
 #include "Canvas.h"
 #include "UIElement.h"
+#include "EventSystem/IPointerEnterHandler.h"
+#include "EventSystem/IPointerExitHandler.h"
+#include "EventSystem/IPointerDownHandler.h"
+#include "EventSystem/IPointerUpHandler.h"
+#include "EventSystem/IPointerClickHandler.h"
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
 #include "../Core/ResourceManager.h"
@@ -141,6 +146,18 @@ namespace RTBEngine {
 			return nullptr;
 		}
 
+		template<typename THandler, typename TCallback>
+		void CanvasSystem::ExecuteEvents(ECS::GameObject* target, const PointerEventData& eventData, TCallback callback) {
+			if (!target) return;
+
+			for (const auto& comp : target->GetComponents()) {
+				THandler* handler = dynamic_cast<THandler*>(comp.get());
+				if (handler) {
+					callback(handler, eventData);
+				}
+			}
+		}
+
 		void CanvasSystem::ProcessInput() {
 			if (!isInitialized) return;
 
@@ -148,37 +165,46 @@ namespace RTBEngine {
 			Math::Vector2 mousePos = GetMousePosition();
 
 			UIElement* elementUnderMouse = GetElementUnderMouse(mousePos);
+			ECS::GameObject* currentGO = elementUnderMouse ? elementUnderMouse->GetOwner() : nullptr;
 
-			// Handle hover state changes
-			if (hoveredElement != elementUnderMouse) {
-				if (hoveredElement && hoveredElement->IsInteractable()) {
-					hoveredElement->OnPointerExit();
+			PointerEventData eventData;
+			eventData.position = mousePos;
+			eventData.pointerEnter = currentGO;
+
+			if (hoveredGameObject != currentGO) {
+				if (hoveredGameObject) {
+					ExecuteEvents<IPointerExitHandler>(hoveredGameObject, eventData,
+						[](IPointerExitHandler* h, const PointerEventData& e) { h->OnPointerExit(e); });
 				}
-				hoveredElement = elementUnderMouse;
-				if (hoveredElement && hoveredElement->IsInteractable()) {
-					hoveredElement->OnPointerEnter();
+
+				if (currentGO) {
+					ExecuteEvents<IPointerEnterHandler>(currentGO, eventData,
+						[](IPointerEnterHandler* h, const PointerEventData& e) { h->OnPointerEnter(e); });
 				}
+
+				hoveredGameObject = currentGO;
 			}
 
-			// Handle mouse button press
 			if (input.IsMouseButtonJustPressed(Input::MouseButton::Left)) {
-				if (elementUnderMouse && elementUnderMouse->IsInteractable()) {
-					pressedElement = elementUnderMouse;
-					pressedElement->OnPointerDown();
+				if (currentGO) {
+					pressedGameObject = currentGO;
+					eventData.pointerPress = currentGO;
+					ExecuteEvents<IPointerDownHandler>(currentGO, eventData,
+						[](IPointerDownHandler* h, const PointerEventData& e) { h->OnPointerDown(e); });
 				}
 			}
 
-			// Handle mouse button release
 			if (input.IsMouseButtonJustReleased(Input::MouseButton::Left)) {
-				if (pressedElement) {
-					if (pressedElement == elementUnderMouse && pressedElement->IsInteractable()) {
-						pressedElement->OnPointerUp();
+				if (currentGO) {
+					ExecuteEvents<IPointerUpHandler>(currentGO, eventData,
+						[](IPointerUpHandler* h, const PointerEventData& e) { h->OnPointerUp(e); });
+
+					if (pressedGameObject == currentGO) {
+						ExecuteEvents<IPointerClickHandler>(currentGO, eventData,
+							[](IPointerClickHandler* h, const PointerEventData& e) { h->OnPointerClick(e); });
 					}
-					else if (pressedElement->IsInteractable()) {
-						pressedElement->OnPointerExit();
-					}
-					pressedElement = nullptr;
 				}
+				pressedGameObject = nullptr;
 			}
 		}
 

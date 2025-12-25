@@ -177,8 +177,6 @@ namespace RTBEngine {
             comp->SetHoveredColor(ReadOptionalVector4(L, tableIndex, "hoveredColor", Math::Vector4(0.9f, 0.9f, 0.9f, 1)));
             comp->SetPressedColor(ReadOptionalVector4(L, tableIndex, "pressedColor", Math::Vector4(0.7f, 0.7f, 0.7f, 1)));
             comp->SetDisabledColor(ReadOptionalVector4(L, tableIndex, "disabledColor", Math::Vector4(0.5f, 0.5f, 0.5f, 1)));
-
-            ConfigureRectTransform(L, tableIndex, comp->GetRectTransform());
         }
 
         static void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp) {

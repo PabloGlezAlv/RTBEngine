@@ -27,7 +27,7 @@ namespace RTBEngine {
 			if (owner) {
 				targetImage = owner->GetComponent<UIImage>();
 				targetPanel = owner->GetComponent<UIPanel>();
-				
+
 				if (targetImage) {
 					originalColor = targetImage->GetTint();
 				} else if (targetPanel) {
@@ -83,7 +83,7 @@ namespace RTBEngine {
 			UpdateVisuals();
 		}
 
-		void UIButton::OnPointerEnter() {
+		void UIButton::OnPointerEnter(const PointerEventData& eventData) {
 			if (!interactable) return;
 			if (state == ButtonState::Normal) {
 				state = ButtonState::Hovered;
@@ -91,29 +91,29 @@ namespace RTBEngine {
 			}
 		}
 
-		void UIButton::OnPointerExit() {
+		void UIButton::OnPointerExit(const PointerEventData& eventData) {
 			if (!interactable) return;
 			state = ButtonState::Normal;
 			UpdateVisuals();
 		}
 
-		void UIButton::OnPointerDown() {
+		void UIButton::OnPointerDown(const PointerEventData& eventData) {
 			if (!interactable) return;
 			state = ButtonState::Pressed;
 			UpdateVisuals();
 		}
 
-		void UIButton::OnPointerUp() {
+		void UIButton::OnPointerUp(const PointerEventData& eventData) {
 			if (!interactable) return;
-
-			if (state == ButtonState::Pressed) {
-				if (onClick) {
-					onClick();
-				}
-			}
-
 			state = ButtonState::Hovered;
 			UpdateVisuals();
+		}
+
+		void UIButton::OnPointerClick(const PointerEventData& eventData) {
+			if (!interactable) return;
+			if (onClick) {
+				onClick();
+			}
 		}
 
 		Math::Vector4 UIButton::GetCurrentColor() const {
@@ -128,9 +128,6 @@ namespace RTBEngine {
 			default:
 				return normalColor;
 			}
-		}
-
-		void UIButton::Render() {
 		}
 
 	}

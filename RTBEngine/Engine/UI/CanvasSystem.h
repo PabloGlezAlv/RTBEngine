@@ -1,6 +1,7 @@
 #pragma once
 #include "../Math/Vectors/Vector2.h"
 #include "../Math/Vectors/Vector4.h"
+#include "EventSystem/PointerEventData.h"
 #include <vector>
 
 struct SDL_Window;
@@ -8,6 +9,7 @@ struct SDL_Window;
 namespace RTBEngine {
 	namespace ECS {
 		class Scene;
+		class GameObject;
 	}
 
 	namespace UI {
@@ -42,13 +44,16 @@ namespace RTBEngine {
 			UIElement* GetElementUnderMouse(const Math::Vector2& mousePos);
 			bool IsPointInRect(const Math::Vector2& point, const Math::Vector4& rect);
 
+			template<typename THandler, typename TCallback>
+			void ExecuteEvents(ECS::GameObject* target, const PointerEventData& eventData, TCallback callback);
+
 			SDL_Window* window = nullptr;
 			Math::Vector2 screenSize;
 			std::vector<Canvas*> activeCanvases;
 			bool isInitialized = false;
 
-			UIElement* hoveredElement = nullptr;
-			UIElement* pressedElement = nullptr;
+			ECS::GameObject* hoveredGameObject = nullptr;
+			ECS::GameObject* pressedGameObject = nullptr;
 		};
 
 	}

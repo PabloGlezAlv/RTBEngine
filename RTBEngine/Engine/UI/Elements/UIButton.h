@@ -1,6 +1,11 @@
 #pragma once
-#include "../UIElement.h"
+#include "../../ECS/Component.h"
 #include "../../Math/Vectors/Vector4.h"
+#include "../EventSystem/IPointerEnterHandler.h"
+#include "../EventSystem/IPointerExitHandler.h"
+#include "../EventSystem/IPointerDownHandler.h"
+#include "../EventSystem/IPointerUpHandler.h"
+#include "../EventSystem/IPointerClickHandler.h"
 #include <functional>
 
 namespace RTBEngine {
@@ -15,7 +20,13 @@ namespace RTBEngine {
 			Disabled
 		};
 
-		class UIButton : public UIElement {
+		class UIButton : public ECS::Component,
+						 public IPointerEnterHandler,
+						 public IPointerExitHandler,
+						 public IPointerDownHandler,
+						 public IPointerUpHandler,
+						 public IPointerClickHandler
+		{
 		public:
 			UIButton();
 			virtual ~UIButton();
@@ -33,12 +44,12 @@ namespace RTBEngine {
 
 			virtual const char* GetTypeName() const override { return "UIButton"; }
 			virtual void OnAwake() override;
-			virtual void Render() override;
 
-			void OnPointerEnter();
-			void OnPointerExit();
-			void OnPointerDown();
-			void OnPointerUp();
+			void OnPointerEnter(const PointerEventData& eventData) override;
+			void OnPointerExit(const PointerEventData& eventData) override;
+			void OnPointerDown(const PointerEventData& eventData) override;
+			void OnPointerUp(const PointerEventData& eventData) override;
+			void OnPointerClick(const PointerEventData& eventData) override;
 
 		private:
 			Math::Vector4 normalColor;

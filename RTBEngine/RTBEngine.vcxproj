@@ -40,13 +40,13 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -171,8 +171,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\ECS\Component.cpp" />
     <ClCompile Include="Engine\Rendering\Camera.cpp" />
     <ClCompile Include="Engine\Core\Application.cpp" />
-    <!-- Excluded from lib build -->
-    <!-- <ClCompile Include="Engine\main.cpp" /> -->
+    <ClCompile Include="Engine\main.cpp" />
     <ClCompile Include="Engine\Core\Window.cpp" />
     <ClCompile Include="Engine\Math\Vectors\Vector3.cpp" />
     <ClCompile Include="Engine\Math\Vectors\Vector2.cpp" />
@@ -276,6 +275,13 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="Engine\UI\Elements\UIText.h" />
     <ClInclude Include="Engine\UI\RectTransform.h" />
     <ClInclude Include="Engine\UI\UIElement.h" />
+    <ClInclude Include="Engine\UI\EventSystem\IEventSystemHandler.h" />
+    <ClInclude Include="Engine\UI\EventSystem\IPointerEnterHandler.h" />
+    <ClInclude Include="Engine\UI\EventSystem\IPointerExitHandler.h" />
+    <ClInclude Include="Engine\UI\EventSystem\IPointerDownHandler.h" />
+    <ClInclude Include="Engine\UI\EventSystem\IPointerUpHandler.h" />
+    <ClInclude Include="Engine\UI\EventSystem\IPointerClickHandler.h" />
+    <ClInclude Include="Engine\UI\EventSystem\PointerEventData.h" />
     <ClInclude Include="Engine\Scripting\SceneLoader.h" />
     <ClInclude Include="Engine\ECS\SceneManager.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
