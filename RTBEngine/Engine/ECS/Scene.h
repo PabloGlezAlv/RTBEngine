@@ -25,6 +25,7 @@ namespace RTBEngine {
             GameObject* FindGameObject(const std::string& name);
 
             void Update(float deltaTime);
+            void FixedUpdate(float fixedDeltaTime);
             void Render(Rendering::Camera* camera);
 
             const std::string& GetName() const { return name; }

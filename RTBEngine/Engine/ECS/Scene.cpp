@@ -52,6 +52,13 @@ void RTBEngine::ECS::Scene::Update(float deltaTime)
 	}
 }
 
+void RTBEngine::ECS::Scene::FixedUpdate(float fixedDeltaTime)
+{
+    for (auto& gameObject : gameObjects) {
+        gameObject->FixedUpdate(fixedDeltaTime);
+    }
+}
+
 void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 {
 	if (!camera) return;

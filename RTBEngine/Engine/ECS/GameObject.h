@@ -44,6 +44,7 @@ namespace RTBEngine {
             bool IsActive() const { return isActive; }
 
             void Update(float deltaTime);
+            void FixedUpdate(float fixedDeltaTime);
             void Render(Rendering::Camera* camera);
 
         private:

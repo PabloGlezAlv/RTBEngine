@@ -22,6 +22,7 @@ namespace RTBEngine {
             virtual void OnAwake() {}
             virtual void OnStart() {}
             virtual void OnUpdate(float deltaTime) {}
+            virtual void OnFixedUpdate(float fixedDeltaTime) {}
             virtual void OnDestroy() {}
 
             //Collision methods

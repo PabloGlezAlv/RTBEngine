@@ -66,6 +66,17 @@ namespace RTBEngine {
             }
         }
 
+        void GameObject::FixedUpdate(float fixedDeltaTime)
+        {
+            if (!isActive) return;
+
+            for (auto& comp : components) {
+                if (comp->IsEnabled()) {
+                    comp->OnFixedUpdate(fixedDeltaTime);
+                }
+            }
+        }
+
         void GameObject::Render(Rendering::Camera* camera)
         {
             

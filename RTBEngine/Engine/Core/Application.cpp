@@ -122,6 +122,7 @@ void RTBEngine::Core::Application::Run()
 		ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
 		if (scene) {
 			while (physicsAccumulator >= config.physics.timeStep) {
+                scene->FixedUpdate(config.physics.timeStep);
 				physicsSystem->Update(scene, config.physics.timeStep);
 				physicsAccumulator -= config.physics.timeStep;
 			}
