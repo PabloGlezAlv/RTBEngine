@@ -4,11 +4,6 @@
 #include "Window.h"
 
 namespace RTBEngine {
-	namespace Rendering {
-		class Camera;
-		class Mesh;
-	}
-
 	namespace ECS
 	{
 		class Scene;
@@ -47,9 +42,7 @@ namespace RTBEngine {
 			float deltaTime = 0.0f;
 
 			std::unique_ptr<Window> window;
-			std::unique_ptr<Rendering::Camera> camera;
 
-			Rendering::Mesh* testMesh;
 			std::unique_ptr<ECS::Scene> testScene;
 
 			Physics::PhysicsWorld* physicsWorld;

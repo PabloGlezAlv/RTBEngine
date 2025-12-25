@@ -2,6 +2,22 @@ function CreateScene()
     return {
         name = "Test Scene",
         gameObjects = {
+            -- Main Camera
+            {
+                name = "MainCamera",
+                position = Vector3(0.0, 0.0, 10.0),
+                rotation = Quaternion.FromEulerAngles(-15.0, 180.0, 0.0),
+                components = {
+                    {
+                        type = "CameraComponent",
+                        fov = 45.0,
+                        nearPlane = 0.1,
+                        farPlane = 100.0,
+                        projection = "Perspective",
+                        isMain = true
+                    }
+                }
+            },
             -- Directional Light
             {
                 name = "MainLight",

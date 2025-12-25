@@ -19,6 +19,7 @@
 #include "../UI/Elements/UIImage.h"
 #include "../UI/Elements/UIPanel.h"
 #include "../UI/Elements/UIButton.h"
+#include "../ECS/CameraComponent.h"
 
 #include <lua.hpp>
 #include <LuaBridge/LuaBridge.h>
@@ -28,10 +29,16 @@ namespace RTBEngine {
     namespace Scripting {
 
         #pragma region Lua Helpers
-        // Helper wrapper for Quaternion::FromEulerAngles (needed for LuaBridge)
+        // Helper wrapper for Quaternion::FromEulerAngles (converts degrees to radians)
         static Math::Quaternion QuaternionFromEulerAngles(float pitch, float yaw, float roll) {
-            return Math::Quaternion::FromEulerAngles(pitch, yaw, roll);
+            const float toRadians = 3.14159265f / 180.0f;
+            return Math::Quaternion::FromEulerAngles(
+                pitch * toRadians,
+                yaw * toRadians,
+                roll * toRadians
+            );
         }
+
 
         static std::string ReadOptionalString(lua_State* L, int tableIndex, const char* fieldName, const std::string& defaultValue = "") {
             lua_getfield(L, tableIndex, fieldName);
@@ -105,9 +112,6 @@ namespace RTBEngine {
         #pragma endregion
 
         #pragma region Component Configurators
-        // ============================================================
-        // Component configurators
-        // ============================================================
 
         static void ConfigureRectTransform(lua_State* L, int tableIndex, UI::RectTransform* rect) {
             if (!rect) return;
@@ -293,6 +297,20 @@ namespace RTBEngine {
                 }
             }
         }
+
+        static void ConfigureCameraComponent(lua_State* L, int tableIndex, ECS::CameraComponent* comp) {
+            comp->SetFOV(ReadOptionalFloat(L, tableIndex, "fov", 45.0f));
+            comp->SetNearPlane(ReadOptionalFloat(L, tableIndex, "nearPlane", 0.1f));
+            comp->SetFarPlane(ReadOptionalFloat(L, tableIndex, "farPlane", 100.0f));
+            comp->SetAsMain(ReadOptionalBool(L, tableIndex, "isMain", false));
+
+            std::string projType = ReadOptionalString(L, tableIndex, "projection", "Perspective");
+            if (projType == "Orthographic") {
+                comp->SetProjectionType(Rendering::ProjectionType::Orthographic);
+                comp->SetOrthographicSize(ReadOptionalFloat(L, tableIndex, "orthoSize", 5.0f));
+            }
+        }
+
 
         #pragma endregion
 
@@ -522,6 +540,9 @@ namespace RTBEngine {
                             }
                             else if (componentType == "UIButton") {
                                 ConfigureUIButton(L, componentTableIndex, static_cast<UI::UIButton*>(comp));
+                            }
+                            else if (componentType == "CameraComponent") {
+                                ConfigureCameraComponent(L, componentTableIndex, static_cast<ECS::CameraComponent*>(comp));
                             }
                             // Other component types use default values
                         }

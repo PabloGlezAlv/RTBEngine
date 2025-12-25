@@ -30,6 +30,8 @@ namespace RTBEngine {
             float GetAspectRatio() const { return aspectRatio; }
             float GetNearPlane() const { return nearPlane; }
             float GetFarPlane() const { return farPlane; }
+            ProjectionType GetProjectionType() const { return projectionType; }
+            float GetOrthographicSize() const { return orthographicSize; }
 
             Math::Vector3 GetForward() const;
             Math::Vector3 GetRight() const;

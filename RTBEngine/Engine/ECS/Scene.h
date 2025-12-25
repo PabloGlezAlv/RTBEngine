@@ -10,6 +10,8 @@
 namespace RTBEngine {
     namespace ECS {
 
+        class CameraComponent;
+
         class Scene {
         public:
             Scene(const std::string& name = "Untitled Scene");
@@ -30,10 +32,16 @@ namespace RTBEngine {
             const std::vector<Rendering::Light*>& GetLights() const { return lights; }
             const std::vector<std::unique_ptr<GameObject>>& GetGameObjects() const { return gameObjects; }
 
+            // Camera management
+            void SetMainCamera(CameraComponent* camera);
+            CameraComponent* GetMainCamera() const;
+            Rendering::Camera* GetActiveCamera();
         private:
             std::string name;
             std::vector<std::unique_ptr<GameObject>> gameObjects;
             std::vector<Rendering::Light*> lights;
+            
+            CameraComponent* mainCamera = nullptr;
         };
 
     }

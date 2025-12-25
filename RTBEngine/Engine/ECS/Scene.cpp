@@ -3,6 +3,7 @@
 
 #include "GameObject.h"
 #include "MeshRenderer.h"
+#include "CameraComponent.h"
 
 RTBEngine::ECS::Scene::Scene(const std::string& name) : name(name)
 {
@@ -80,3 +81,43 @@ void RTBEngine::ECS::Scene::CollectLights()
 		}
 	}
 }
+
+void RTBEngine::ECS::Scene::SetMainCamera(CameraComponent* camera) {
+	mainCamera = camera;
+}
+
+RTBEngine::ECS::CameraComponent* RTBEngine::ECS::Scene::GetMainCamera() const {
+	return mainCamera;
+}
+
+RTBEngine::Rendering::Camera* RTBEngine::ECS::Scene::GetActiveCamera() {
+	// If main camera is set, use it
+	if (mainCamera && mainCamera->GetCamera()) {
+		return mainCamera->GetCamera();
+	}
+
+	// Otherwise, find first CameraComponent marked as main 
+	for (auto& go : gameObjects) {
+		if (go->IsActive()) {
+			CameraComponent* camComp = go->GetComponent<CameraComponent>();
+			if (camComp && camComp->IsMain() && camComp->GetCamera()) {
+				mainCamera = camComp;
+				return camComp->GetCamera();
+			}
+		}
+	}
+
+	// If no main camera, find any CameraComponent
+	for (auto& go : gameObjects) {
+		if (go->IsActive()) {
+			CameraComponent* camComp = go->GetComponent<CameraComponent>();
+			if (camComp && camComp->GetCamera()) {
+				mainCamera = camComp;
+				return camComp->GetCamera();
+			}
+		}
+	}
+
+	return nullptr;
+}
+

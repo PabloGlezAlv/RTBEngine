@@ -21,15 +21,14 @@
 #include "../UI/Elements/UIText.h"
 #include "../UI/Elements/UIImage.h"
 #include "../UI/Elements/UIButton.h"
-#include "../UI/Elements/UIButton.h"
 #include "../Scripting/ComponentRegistry.h"
 #include "../Scripting/SceneLoader.h"
-
+#include "../ECS/CameraComponent.h"
 #include <backends/imgui_impl_sdl2.h>
 #include <iostream>
 
 RTBEngine::Core::Application::Application()
-	: lastTime(0), isRunning(false), testMesh(nullptr), physicsSystem(nullptr), physicsAccumulator(0.0f), physicsWorld(nullptr)
+	: lastTime(0), isRunning(false), physicsSystem(nullptr), physicsAccumulator(0.0f), physicsWorld(nullptr)
 {
 }
 
@@ -62,35 +61,6 @@ bool RTBEngine::Core::Application::Initialize()
 		return false;
 	}
 
-	// Texture
-	Rendering::Texture* texture = resources.LoadTexture("Assets/Textures/testTexture.png");
-	if (!texture) {
-		std::cerr << "Failed to load texture" << std::endl;
-		return false;
-	}
-
-	// Load 3D model
-	testMesh = resources.LoadModel("Assets/Models/cube.obj");
-	if (!testMesh) {
-		std::cerr << "Failed to load model" << std::endl;
-		return false;
-	}
-
-	// Create material using loaded shader and texture
-	Rendering::Material* material = new Rendering::Material(shader);
-	material->SetTexture(texture);
-	material->SetColor(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-
-	// Create camera
-	camera = std::make_unique<Rendering::Camera>(
-		Math::Vector3(0.0f, 0.0f, 10.0f),
-		45.0f,
-		800.0f / 600.0f,
-		0.1f,
-		100.0f
-	);
-	camera->SetRotation(-15.0f, 180.0f);
-
 	// Initialize physics
 	physicsWorld = new Physics::PhysicsWorld();
 	physicsWorld->Initialize();
@@ -119,6 +89,12 @@ bool RTBEngine::Core::Application::Initialize()
 		if (rbComp) {
 			physicsSystem->InitializeRigidBody(go.get(), rbComp);
 		}
+	}
+
+	// Set aspect ratio on scene camera
+	Rendering::Camera* activeCamera = testScene->GetActiveCamera();
+	if (activeCamera) {
+		activeCamera->SetAspectRatio(800.0f / 600.0f);
 	}
 
 	return true;
@@ -171,7 +147,6 @@ void RTBEngine::Core::Application::Shutdown()
 	}
 
 	testScene.reset();
-	camera.reset();
 
 	ResourceManager::GetInstance().Clear();
 
@@ -241,8 +216,9 @@ void RTBEngine::Core::Application::Render()
 		shader->SetInt("numSpotLights", spotLightIndex);
 	}
 
-	if (testScene) {
-		testScene->Render(camera.get());
+	Rendering::Camera* activeCamera = testScene->GetActiveCamera();
+	if (activeCamera) {
+		testScene->Render(activeCamera);
 	}
 
 	UI::CanvasSystem::GetInstance().Update(testScene.get());
@@ -294,5 +270,8 @@ void RTBEngine::Core::Application::RegisterBuiltInComponents() {
 
 	registry.RegisterComponent("UIButton", []() {
 		return new UI::UIButton();
+		});
+	registry.RegisterComponent("CameraComponent", []() {
+		return new ECS::CameraComponent();
 		});
 }
