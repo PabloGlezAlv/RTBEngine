@@ -6,6 +6,8 @@
 namespace RTBEngine {
     namespace Core {
 
+        std::vector<Rendering::Mesh*> ResourceManager::emptyMeshVector;
+
         ResourceManager& ResourceManager::GetInstance()
         {
             static ResourceManager instance;
@@ -79,36 +81,55 @@ namespace RTBEngine {
 
         Rendering::Mesh* ResourceManager::GetModel(const std::string& path)
         {
-            auto it = models.find(path);
-            if (it != models.end()) {
-                return it->second.get();
+            auto it = modelMeshPtrs.find(path);
+            if (it != modelMeshPtrs.end() && !it->second.empty()) {
+                return it->second[0];
             }
             return nullptr;
         }
 
         Rendering::Mesh* ResourceManager::LoadModel(const std::string& path)
         {
-            auto it = models.find(path);
-            if (it != models.end()) {
-                return it->second.get();
+            const auto& meshes = LoadModelMeshes(path);
+            return meshes.empty() ? nullptr : meshes[0];
+        }
+
+        const std::vector<Rendering::Mesh*>& ResourceManager::GetModelMeshes(const std::string& path)
+        {
+            auto it = modelMeshPtrs.find(path);
+            if (it != modelMeshPtrs.end()) {
+                return it->second;
+            }
+            return emptyMeshVector;
+        }
+
+        const std::vector<Rendering::Mesh*>& ResourceManager::LoadModelMeshes(const std::string& path)
+        {
+            auto it = modelMeshPtrs.find(path);
+            if (it != modelMeshPtrs.end()) {
+                return it->second;
             }
 
             std::vector<Rendering::Mesh*> loadedMeshes = Rendering::ModelLoader::LoadModel(path);
 
             if (loadedMeshes.empty()) {
                 std::cerr << "ResourceManager: Failed to load model: " << path << std::endl;
-                return nullptr;
+                return emptyMeshVector;
             }
 
-            // Store only the first mesh (for now)
-            models[path] = std::unique_ptr<Rendering::Mesh>(loadedMeshes[0]);
+            // Store all meshes
+            std::vector<std::unique_ptr<Rendering::Mesh>> ownedMeshes;
+            std::vector<Rendering::Mesh*> meshPtrs;
 
-            // Delete other meshes if any (temporal solution)
-            for (size_t i = 1; i < loadedMeshes.size(); ++i) {
-                delete loadedMeshes[i];
+            for (Rendering::Mesh* mesh : loadedMeshes) {
+                meshPtrs.push_back(mesh);
+                ownedMeshes.push_back(std::unique_ptr<Rendering::Mesh>(mesh));
             }
 
-            return models[path].get();
+            modelMeshes[path] = std::move(ownedMeshes);
+            modelMeshPtrs[path] = meshPtrs;
+
+            return modelMeshPtrs[path];
         }
 
         Audio::AudioClip* ResourceManager::GetAudioClip(const std::string& path)
@@ -225,7 +246,8 @@ namespace RTBEngine {
         {
             shaders.clear();
             textures.clear();
-            models.clear();
+            modelMeshPtrs.clear();
+            modelMeshes.clear();
             audioClips.clear();
 			fonts.clear();
             scenes.clear();

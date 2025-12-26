@@ -2,25 +2,33 @@
 #include "GameObject.h"
 #include "../Rendering/Lighting/Light.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
+#include "../Animation/Animator.h"
 
 namespace RTBEngine {
     namespace ECS {
 
         MeshRenderer::MeshRenderer()
             : Component()
-            , mesh(nullptr)
         {
             material = std::make_unique<Rendering::Material>(nullptr);
         }
 
         MeshRenderer::~MeshRenderer()
         {
-           
+
         }
 
         void MeshRenderer::SetMesh(Rendering::Mesh* mesh)
         {
-            this->mesh = mesh;
+            meshes.clear();
+            if (mesh) {
+                meshes.push_back(mesh);
+            }
+        }
+
+        void MeshRenderer::SetMeshes(const std::vector<Rendering::Mesh*>& newMeshes)
+        {
+            meshes = newMeshes;
         }
 
         void MeshRenderer::SetTexture(Rendering::Texture* tex) {
@@ -38,7 +46,7 @@ namespace RTBEngine {
 
         void MeshRenderer::Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights)
         {
-            if (!isEnabled || !mesh || !material || !owner) {
+            if (!isEnabled || meshes.empty() || !material || !owner) {
                 return;
             }
 
@@ -52,7 +60,20 @@ namespace RTBEngine {
 
                 material->GetShader()->SetVector3("uViewPos", camera->GetPosition());
 
-				//Lighting
+                // Skeletal animation
+                Animation::Animator* animator = owner->GetComponent<Animation::Animator>();
+                if (animator && animator->HasBones()) {
+                    material->GetShader()->SetBool("uHasAnimation", true);
+                    const std::vector<Math::Matrix4>& boneTransforms = animator->GetBoneTransforms();
+                    for (size_t i = 0; i < boneTransforms.size() && i < 100; i++) {
+                        material->GetShader()->SetMatrix4("uBoneTransforms[" + std::to_string(i) + "]", boneTransforms[i]);
+                    }
+                }
+                else {
+                    material->GetShader()->SetBool("uHasAnimation", false);
+                }
+
+                // Lighting
                 if (!lights.empty()) {
                     lights[0]->ApplyToShader(material->GetShader());
                 }
@@ -62,7 +83,13 @@ namespace RTBEngine {
                 }
             }
 
-            mesh->Draw();
+            // Draw all meshes
+            for (Rendering::Mesh* mesh : meshes) {
+                if (mesh) {
+                    mesh->Draw();
+                }
+            }
+
             material->Unbind();
         }
 

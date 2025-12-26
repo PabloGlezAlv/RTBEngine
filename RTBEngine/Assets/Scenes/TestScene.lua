@@ -5,16 +5,21 @@ function CreateScene()
             -- Main Camera
             {
                 name = "MainCamera",
-                position = Vector3(0.0, 0.0, 10.0),
-                rotation = Quaternion.FromEulerAngles(-15.0, 180.0, 0.0),
+                position = Vector3(0.0, 1.0, 5.0),
+                rotation = Quaternion.FromEulerAngles(0.0, 0.0, 0.0),
                 components = {
                     {
                         type = "CameraComponent",
                         fov = 45.0,
                         nearPlane = 0.1,
-                        farPlane = 100.0,
+                        farPlane = 1000.0,
                         projection = "Perspective",
                         isMain = true
+                    },
+                    {
+                        type = "FreeLookCamera",
+                        moveSpeed = 10.0,
+                        lookSpeed = 0.2
                     }
                 }
             },
@@ -27,55 +32,6 @@ function CreateScene()
                         lightType = "Directional",
                         color = Vector3(1.0, 1.0, 1.0),
                         intensity = 1.0
-                    }
-                }
-            },
-            {
-                name = "Ground",
-                position = Vector3(0.0, -5.0, 0.0),
-                scale = Vector3(10.0, 1.0, 10.0),
-                components = {
-                    {
-                        type = "MeshRenderer",
-                        mesh = "Default/Models/cube.obj",
-                        shader = "basic",
-                        texture = "Assets/Textures/testTexture.png"
-                    },
-                    {
-                        type = "BoxColliderComponent",
-                        mesh = "Default/Models/cube.obj",
-                        isTrigger = false
-                    }
-                }
-            },
-            {
-                name = "FallingSphere",
-                position = Vector3(0.0, 10.0, 0.0),
-                components = {
-                    {
-                        type = "MeshRenderer",
-                        mesh = "Default/Models/sphere.obj",
-                        shader = "basic",
-                        texture = "Default/Textures/white.png"
-                    },
-                    {
-                        type = "BoxColliderComponent",
-                        mesh = "Default/Models/cube.obj",
-                        isTrigger = false
-                    },
-                    {
-                        type = "RigidBodyComponent",
-                        bodyType = "Dynamic",
-                        mass = 1.0,
-                        friction = 0.5,
-                        restitution = 0.3
-                    },
-                    {
-                        type = "AudioSourceComponent",
-                        clip = "Assets/Audio/test.mp3",
-                        volume = 0.5,
-                        loop = true,
-                        playOnStart = true
                     }
                 }
             },
@@ -182,6 +138,21 @@ function CreateScene()
                         normalColor = Vector4(1.0, 1.0, 1.0, 1.0),
                         hoveredColor = Vector4(1.3, 1.3, 1.3, 1.0),
                         pressedColor = Vector4(0.7, 0.7, 0.7, 1.0)
+                    }
+                }
+            },
+            -- Animated Character (model is ~200 units tall, scale to ~2 units)
+            {
+                name = "AnimatedCharacter",
+                position = Vector3(0.0, -3.0, 6.0),
+                scale = Vector3(0.01, 0.01, 0.01),
+                rotation = Quaternion.FromEulerAngles(90.0, 0.0, 0.0),
+                components = {
+                    {
+                        type = "MeshRenderer",
+                        mesh = "Assets/Models/walking.fbx",
+                        shader = "basic",
+                        texture = "Default/Textures/white.png"
                     }
                 }
             }

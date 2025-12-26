@@ -7,6 +7,8 @@
 #include "../ECS/RigidBodyComponent.h"
 #include "../ECS/BoxColliderComponent.h"
 #include "../ECS/CameraComponent.h"
+#include "../ECS/FreeLookCamera.h"
+#include "../Animation/Animator.h"
 #include "../UI/Canvas.h"
 #include "../UI/Elements/UIText.h"
 #include "../UI/Elements/UIImage.h"
@@ -47,6 +49,8 @@ namespace RTBEngine {
             RegisterComponent("RigidBodyComponent", []() { return new ECS::RigidBodyComponent(); });
             RegisterComponent("BoxColliderComponent", []() { return new ECS::BoxColliderComponent(); });
             RegisterComponent("CameraComponent", []() { return new ECS::CameraComponent(); });
+            RegisterComponent("FreeLookCamera", []() { return new ECS::FreeLookCamera(); });
+            RegisterComponent("Animator", []() { return new Animation::Animator(); });
             RegisterComponent("Canvas", []() { return new UI::Canvas(); });
             RegisterComponent("UIText", []() { return new UI::UIText(); });
             RegisterComponent("UIImage", []() { return new UI::UIImage(); });

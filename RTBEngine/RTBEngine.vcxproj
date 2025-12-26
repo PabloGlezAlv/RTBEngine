@@ -161,7 +161,10 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Animation\Animator.cpp" />
+    <ClCompile Include="Engine\Animation\AnimationClip.cpp" />
     <ClCompile Include="Engine\ECS\CameraComponent.cpp" />
+    <ClCompile Include="Engine\ECS\FreeLookCamera.cpp" />
     <ClCompile Include="Engine\Scripting\ComponentRegistry.cpp" />
     <ClCompile Include="Engine\ECS\AudioSourceComponent.cpp" />
     <ClCompile Include="Engine\Audio\AudioClip.cpp" />
@@ -209,6 +212,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\UI\UIElement.cpp" />
     <ClCompile Include="Engine\Scripting\SceneLoader.cpp" />
     <ClCompile Include="Engine\ECS\SceneManager.cpp" />
+    <ClCompile Include="Engine\Animation\Skeleton.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui_draw.cpp" />
@@ -220,8 +224,12 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\ECS\BoxColliderComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Animation\Animator.h" />
+    <ClInclude Include="Engine\Animation\AnimationClip.h" />
+    <ClInclude Include="Engine\Animation\Bone.h" />
     <ClInclude Include="Engine\Core\ApplicationConfig.h" />
     <ClInclude Include="Engine\ECS\CameraComponent.h" />
+    <ClInclude Include="Engine\ECS\FreeLookCamera.h" />
     <ClInclude Include="Engine\RTBEngine.h" />
     <ClInclude Include="Engine\Scripting\ComponentRegistry.h" />
     <ClInclude Include="Engine\ECS\AudioSourceComponent.h" />
@@ -284,6 +292,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="Engine\UI\EventSystem\PointerEventData.h" />
     <ClInclude Include="Engine\Scripting\SceneLoader.h" />
     <ClInclude Include="Engine\ECS\SceneManager.h" />
+    <ClInclude Include="Engine\Animation\Skeleton.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imgui.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imconfig.h" />

@@ -41,9 +41,13 @@ namespace RTBEngine {
             Rendering::Texture* GetTexture(const std::string& path);
             Rendering::Texture* LoadTexture(const std::string& path);
 
-			// Model management
+			// Model management (single mesh - backwards compatible)
             Rendering::Mesh* GetModel(const std::string& path);
             Rendering::Mesh* LoadModel(const std::string& path);
+
+            // Model management (all meshes)
+            const std::vector<Rendering::Mesh*>& GetModelMeshes(const std::string& path);
+            const std::vector<Rendering::Mesh*>& LoadModelMeshes(const std::string& path);
 
             // Audio management
             Audio::AudioClip* GetAudioClip(const std::string& path);
@@ -73,8 +77,12 @@ namespace RTBEngine {
 
             std::unordered_map<std::string, std::unique_ptr<Rendering::Shader>> shaders;
             std::unordered_map<std::string, std::unique_ptr<Rendering::Texture>> textures;
-            std::unordered_map<std::string, std::unique_ptr<Rendering::Mesh>> models;
+            std::unordered_map<std::string, std::vector<std::unique_ptr<Rendering::Mesh>>> modelMeshes;
             std::unordered_map<std::string, std::unique_ptr<Audio::AudioClip>> audioClips;
+
+            // Cache for raw pointers (for GetModelMeshes return)
+            std::unordered_map<std::string, std::vector<Rendering::Mesh*>> modelMeshPtrs;
+            static std::vector<Rendering::Mesh*> emptyMeshVector;
 			std::unordered_map<std::string, std::unique_ptr<Rendering::Font>> fonts;
             std::unordered_map<std::string, std::unique_ptr<ECS::Scene>> scenes;
 			Rendering::Font* defaultFont = nullptr;

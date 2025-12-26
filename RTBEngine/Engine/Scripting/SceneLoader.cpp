@@ -12,6 +12,7 @@
 #include "../Rendering/Lighting/DirectionalLight.h"
 #include "../Rendering/Lighting/PointLight.h"
 #include "../Rendering/Lighting/SpotLight.h"
+#include "../Rendering/ModelLoader.h"
 #include "../Physics/RigidBody.h"
 #include "../Physics/BoxCollider.h"
 #include "../Math/Math.h"
@@ -21,6 +22,8 @@
 #include "../UI/Elements/UIPanel.h"
 #include "../UI/Elements/UIButton.h"
 #include "../ECS/CameraComponent.h"
+#include "../ECS/FreeLookCamera.h"
+#include "../Animation/Animator.h"
 
 #include <lua.hpp>
 #include <LuaBridge/LuaBridge.h>
@@ -182,12 +185,12 @@ namespace RTBEngine {
         static void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp) {
             Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
 
-            // mesh (string path)
+            // mesh (string path) - loads all meshes from model
             std::string meshPath = ReadOptionalString(L, tableIndex, "mesh", "");
             if (!meshPath.empty()) {
-                Rendering::Mesh* mesh = resources.LoadModel(meshPath);
-                if (mesh) {
-                    comp->SetMesh(mesh);
+                const std::vector<Rendering::Mesh*>& meshes = resources.LoadModelMeshes(meshPath);
+                if (!meshes.empty()) {
+                    comp->SetMeshes(meshes);
                 }
             }
 
@@ -318,6 +321,69 @@ namespace RTBEngine {
                 comp->SetProjectionType(Rendering::ProjectionType::Orthographic);
                 comp->SetOrthographicSize(ReadOptionalFloat(L, tableIndex, "orthoSize", 5.0f));
             }
+        }
+
+        static void ConfigureFreeLookCamera(lua_State* L, int tableIndex, ECS::FreeLookCamera* comp) {
+            comp->SetMoveSpeed(ReadOptionalFloat(L, tableIndex, "moveSpeed", 5.0f));
+            comp->SetLookSpeed(ReadOptionalFloat(L, tableIndex, "lookSpeed", 0.1f));
+        }
+
+        static void ConfigureAnimator(lua_State* L, int tableIndex, Animation::Animator* comp) {
+            // model (string path) - Load model with animations
+            std::string modelPath = ReadOptionalString(L, tableIndex, "model", "");
+            if (!modelPath.empty()) {
+                printf("[ConfigureAnimator] Loading model: %s\n", modelPath.c_str());
+                Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelPath);
+
+                if (modelData.skeleton) {
+                    printf("[ConfigureAnimator] Skeleton loaded with %zu bones\n", modelData.skeleton->GetBoneCount());
+                    comp->SetSkeleton(modelData.skeleton);
+                } else {
+                    printf("[ConfigureAnimator] WARNING: No skeleton found in model!\n");
+                }
+
+                // Store meshes with bone data
+                if (!modelData.meshes.empty()) {
+                    printf("[ConfigureAnimator] Storing %zu meshes with bone data\n", modelData.meshes.size());
+                    comp->SetMeshes(modelData.meshes);
+
+                    // Update MeshRenderer with all meshes from the model
+                    ECS::GameObject* owner = comp->GetOwner();
+                    printf("[ConfigureAnimator] Owner: %p\n", (void*)owner);
+                    if (owner) {
+                        ECS::MeshRenderer* meshRenderer = owner->GetComponent<ECS::MeshRenderer>();
+                        printf("[ConfigureAnimator] MeshRenderer: %p\n", (void*)meshRenderer);
+                        if (meshRenderer) {
+                            printf("[ConfigureAnimator] Updating MeshRenderer with %zu meshes\n", modelData.meshes.size());
+                            meshRenderer->SetMeshes(modelData.meshes);
+                        } else {
+                            printf("[ConfigureAnimator] WARNING: No MeshRenderer found on owner!\n");
+                        }
+                    } else {
+                        printf("[ConfigureAnimator] WARNING: Animator has no owner!\n");
+                    }
+                }
+
+                // Add all animations from the model
+                printf("[ConfigureAnimator] Found %zu animation clips\n", modelData.animations.size());
+                for (const auto& clip : modelData.animations) {
+                    printf("[ConfigureAnimator] Adding clip: '%s'\n", clip->GetName().c_str());
+                    comp->AddClip(clip->GetName(), clip);
+                }
+            }
+
+            // defaultClip (string) - Name of animation to play by default
+            std::string defaultClip = ReadOptionalString(L, tableIndex, "defaultClip", "");
+            if (!defaultClip.empty()) {
+                printf("[ConfigureAnimator] Playing default clip: '%s'\n", defaultClip.c_str());
+                bool loop = ReadOptionalBool(L, tableIndex, "loop", true);
+                comp->Play(defaultClip, loop);
+            } else {
+                printf("[ConfigureAnimator] No default clip specified\n");
+            }
+
+            // speed (float) - Playback speed
+            comp->SetSpeed(ReadOptionalFloat(L, tableIndex, "speed", 1.0f));
         }
 
 
@@ -555,6 +621,12 @@ namespace RTBEngine {
                             }
                             else if (componentType == "CameraComponent") {
                                 ConfigureCameraComponent(L, componentTableIndex, static_cast<ECS::CameraComponent*>(comp));
+                            }
+                            else if (componentType == "FreeLookCamera") {
+                                ConfigureFreeLookCamera(L, componentTableIndex, static_cast<ECS::FreeLookCamera*>(comp));
+                            }
+                            else if (componentType == "Animator") {
+                                ConfigureAnimator(L, componentTableIndex, static_cast<Animation::Animator*>(comp));
                             }
                             // Other component types use default values
                         }

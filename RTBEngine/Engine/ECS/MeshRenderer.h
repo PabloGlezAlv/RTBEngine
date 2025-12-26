@@ -21,8 +21,10 @@ namespace RTBEngine {
             ~MeshRenderer() override;
 
             void SetMesh(Rendering::Mesh* mesh);
+            void SetMeshes(const std::vector<Rendering::Mesh*>& meshes);
 
-            Rendering::Mesh* GetMesh() const { return mesh; }
+            Rendering::Mesh* GetMesh() const { return meshes.empty() ? nullptr : meshes[0]; }
+            const std::vector<Rendering::Mesh*>& GetMeshes() const { return meshes; }
             Rendering::Material* GetMaterial() const { return material.get(); }
 
             void SetTexture(Rendering::Texture* tex);
@@ -33,7 +35,7 @@ namespace RTBEngine {
             const char* GetTypeName() const override { return "MeshRenderer"; }
 
         private:
-            Rendering::Mesh* mesh;
+            std::vector<Rendering::Mesh*> meshes;
             std::unique_ptr<Rendering::Material> material;
         };
 
