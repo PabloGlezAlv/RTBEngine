@@ -6,7 +6,7 @@ function CreateScene()
             {
                 name = "MainCamera",
                 position = Vector3(0.0, 1.0, 5.0),
-                rotation = Quaternion.FromEulerAngles(0.0, 0.0, 0.0),
+                rotation = Quaternion.FromEulerAngles(0.0, 180.0, 0.0),
                 components = {
                     {
                         type = "CameraComponent",
@@ -141,18 +141,30 @@ function CreateScene()
                     }
                 }
             },
-            -- Animated Character (model is ~200 units tall, scale to ~2 units)
+            -- Floor
             {
-                name = "AnimatedCharacter",
-                position = Vector3(0.0, -3.0, 6.0),
-                scale = Vector3(0.01, 0.01, 0.01),
-                rotation = Quaternion.FromEulerAngles(90.0, 0.0, 0.0),
+                name = "Floor",
+                position = Vector3(0.0, -0.05, 0.0),
+                scale = Vector3(10.0, 0.1, 10.0),
                 components = {
                     {
                         type = "MeshRenderer",
-                        mesh = "Assets/Models/walking.fbx",
+                        mesh = "Default/Models/cube.obj",
                         shader = "basic",
-                        texture = "Default/Textures/white.png"
+                        texture = "Assets/Textures/testTexture.png"
+                    }
+                }
+            },
+            -- Character 
+            {
+                name = "Character",
+                position = Vector3(0.0, 0.0, 0.0),
+                scale = Vector3(0.01, 0.01, 0.01),
+                components = {
+                    {
+                        type = "MeshRenderer",
+                        shader = "basic",
+                        model = "Assets/Models/walking.fbx"
                     }
                 }
             }

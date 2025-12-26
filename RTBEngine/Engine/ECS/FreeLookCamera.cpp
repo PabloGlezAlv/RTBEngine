@@ -37,7 +37,7 @@ namespace RTBEngine {
                 float deltaX = static_cast<float>(input.GetMouseDeltaX());
                 float deltaY = static_cast<float>(input.GetMouseDeltaY());
 
-                yaw += deltaX * lookSpeed;
+                yaw -= deltaX * lookSpeed;
                 pitch -= deltaY * lookSpeed;
 
                 // Clamp pitch
@@ -63,8 +63,8 @@ namespace RTBEngine {
             forward.z = cos(pitchRad) * cos(yawRad);
             forward = forward.Normalized();
 
-            Math::Vector3 right = Math::Vector3(0, 1, 0).Cross(forward).Normalized();
-            Math::Vector3 up(0, 1, 0);
+            Math::Vector3 worldUp(0, 1, 0);
+            Math::Vector3 right = forward.Cross(worldUp).Normalized();
 
             // Movement
             Math::Vector3 movement(0, 0, 0);
@@ -82,16 +82,16 @@ namespace RTBEngine {
                 movement = movement - forward;
             }
             if (input.IsKeyPressed(Input::KeyCode::A)) {
-                movement = movement + right;
-            }
-            if (input.IsKeyPressed(Input::KeyCode::D)) {
                 movement = movement - right;
             }
+            if (input.IsKeyPressed(Input::KeyCode::D)) {
+                movement = movement + right;
+            }
             if (input.IsKeyPressed(Input::KeyCode::E) || input.IsKeyPressed(Input::KeyCode::Space)) {
-                movement = movement + up;
+                movement = movement + worldUp;
             }
             if (input.IsKeyPressed(Input::KeyCode::Q) || input.IsKeyPressed(Input::KeyCode::LeftControl)) {
-                movement = movement - up;
+                movement = movement - worldUp;
             }
 
             // Apply movement

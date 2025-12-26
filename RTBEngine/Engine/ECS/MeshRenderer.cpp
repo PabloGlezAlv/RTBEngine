@@ -31,6 +31,19 @@ namespace RTBEngine {
             meshes = newMeshes;
         }
 
+        void MeshRenderer::SetMeshMaterials(const std::vector<Rendering::Material*>& mats)
+        {
+            meshMaterials = mats;
+        }
+
+        Rendering::Material* MeshRenderer::GetMeshMaterial(size_t meshIndex) const
+        {
+            if (meshIndex < meshMaterials.size() && meshMaterials[meshIndex]) {
+                return meshMaterials[meshIndex];
+            }
+            return material.get();
+        }
+
         void MeshRenderer::SetTexture(Rendering::Texture* tex) {
             if (material) {
                 material->SetTexture(tex);
@@ -46,51 +59,68 @@ namespace RTBEngine {
 
         void MeshRenderer::Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights)
         {
-            if (!isEnabled || meshes.empty() || !material || !owner) {
+            if (!isEnabled || meshes.empty() || !owner) {
                 return;
             }
 
-            material->Bind();
+            // Debug: print once when rendering animated character
+            static bool debugPrinted = false;
+            if (!debugPrinted && meshes.size() > 1) {
+                printf("[MeshRenderer] Rendering %zu meshes for '%s'\n", meshes.size(), owner->GetName().c_str());
+                for (size_t i = 0; i < meshes.size(); i++) {
+                    Rendering::Material* mat = GetMeshMaterial(i);
+                    printf("  Mesh[%zu]: material=%p, hasTexture=%d\n", i, (void*)mat, mat && mat->GetTexture() ? 1 : 0);
+                }
+                debugPrinted = true;
+            }
 
-            if (material->GetShader()) {
-                Math::Matrix4 model = owner->GetTransform().GetModelMatrix();
-                material->GetShader()->SetMatrix4("uModel", model);
-                material->GetShader()->SetMatrix4("uView", camera->GetViewMatrix());
-                material->GetShader()->SetMatrix4("uProjection", camera->GetProjectionMatrix());
+            // Get common data
+            Math::Matrix4 modelMatrix = owner->GetTransform().GetModelMatrix();
+            Animation::Animator* animator = owner->GetComponent<Animation::Animator>();
 
-                material->GetShader()->SetVector3("uViewPos", camera->GetPosition());
+            // Draw each mesh with its material
+            for (size_t i = 0; i < meshes.size(); i++) {
+                Rendering::Mesh* mesh = meshes[i];
+                if (!mesh) continue;
 
-                // Skeletal animation
-                Animation::Animator* animator = owner->GetComponent<Animation::Animator>();
-                if (animator && animator->HasBones()) {
-                    material->GetShader()->SetBool("uHasAnimation", true);
-                    const std::vector<Math::Matrix4>& boneTransforms = animator->GetBoneTransforms();
-                    for (size_t i = 0; i < boneTransforms.size() && i < 100; i++) {
-                        material->GetShader()->SetMatrix4("uBoneTransforms[" + std::to_string(i) + "]", boneTransforms[i]);
+                // Get material for this mesh
+                Rendering::Material* mat = GetMeshMaterial(i);
+                if (!mat) continue;
+
+                mat->Bind();
+
+                Rendering::Shader* shader = mat->GetShader();
+                if (shader) {
+                    shader->SetMatrix4("uModel", modelMatrix);
+                    shader->SetMatrix4("uView", camera->GetViewMatrix());
+                    shader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
+                    shader->SetVector3("uViewPos", camera->GetPosition());
+
+                    // Skeletal animation
+                    if (animator && animator->HasBones()) {
+                        shader->SetBool("uHasAnimation", true);
+                        const std::vector<Math::Matrix4>& boneTransforms = animator->GetBoneTransforms();
+                        for (size_t j = 0; j < boneTransforms.size() && j < 100; j++) {
+                            shader->SetMatrix4("uBoneTransforms[" + std::to_string(j) + "]", boneTransforms[j]);
+                        }
+                    }
+                    else {
+                        shader->SetBool("uHasAnimation", false);
+                    }
+
+                    // Lighting
+                    if (!lights.empty()) {
+                        lights[0]->ApplyToShader(shader);
+                    }
+                    else {
+                        shader->SetVector3("uLightDir", Math::Vector3(0.0f, -1.0f, 0.0f));
+                        shader->SetVector3("uLightColor", Math::Vector3(1.0f, 1.0f, 1.0f));
                     }
                 }
-                else {
-                    material->GetShader()->SetBool("uHasAnimation", false);
-                }
 
-                // Lighting
-                if (!lights.empty()) {
-                    lights[0]->ApplyToShader(material->GetShader());
-                }
-                else {
-                    material->GetShader()->SetVector3("uLightDir", Math::Vector3(0.0f, -1.0f, 0.0f));
-                    material->GetShader()->SetVector3("uLightColor", Math::Vector3(1.0f, 1.0f, 1.0f));
-                }
+                mesh->Draw();
+                mat->Unbind();
             }
-
-            // Draw all meshes
-            for (Rendering::Mesh* mesh : meshes) {
-                if (mesh) {
-                    mesh->Draw();
-                }
-            }
-
-            material->Unbind();
         }
 
     }

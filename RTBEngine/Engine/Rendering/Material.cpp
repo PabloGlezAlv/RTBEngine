@@ -2,10 +2,13 @@
 namespace RTBEngine {
     namespace Rendering {
 
-		Material::Material(Shader* shader) : 
-            shader(shader), texture(nullptr), color(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f)), shininess(32.0f)
+		Material::Material(Shader* shader) :
+            shader(shader), texture(nullptr),
+            color(Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f)),
+            diffuseColor(Math::Vector3(1.0f, 1.0f, 1.0f)),
+            shininess(32.0f)
         {
-            
+
         }
 
         Material::~Material()
@@ -18,7 +21,9 @@ namespace RTBEngine {
             if (shader) {
                 shader->Bind();
                 shader->SetVector4("uColor", color);
+                shader->SetVector3("uDiffuseColor", diffuseColor);
                 shader->SetFloat("uShininess", shininess);
+                shader->SetBool("uHasTexture", texture != nullptr);
                 if (texture) {
                     shader->SetInt("uTexture", 0);
                 }
@@ -56,6 +61,11 @@ namespace RTBEngine {
         void Material::SetShininess(float shininess)
         {
 			this->shininess = shininess;
+        }
+
+        void Material::SetDiffuseColor(const Math::Vector3& color)
+        {
+            this->diffuseColor = color;
         }
 
     }

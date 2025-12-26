@@ -6,8 +6,8 @@ int main(int argc, char* argv[])
 
     Core::ApplicationConfig config;
     config.window.title = "RTBEngine Demo";
-    config.window.width = 600;
-    config.window.height = 400;
+    config.window.width = 800;
+    config.window.height = 600;
     config.initialScenePath = "Assets/Scenes/TestScene.lua";
 
     return RTBEngine::Run(config);

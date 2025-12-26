@@ -185,23 +185,88 @@ namespace RTBEngine {
         static void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp) {
             Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
 
-            // mesh (string path) - loads all meshes from model
-            std::string meshPath = ReadOptionalString(L, tableIndex, "mesh", "");
-            if (!meshPath.empty()) {
-                const std::vector<Rendering::Mesh*>& meshes = resources.LoadModelMeshes(meshPath);
-                if (!meshes.empty()) {
-                    comp->SetMeshes(meshes);
-                }
-            }
-
-            // shader (string name, default "basic")
+            // shader (string name, default "basic") - load first so materials can use it
             std::string shaderName = ReadOptionalString(L, tableIndex, "shader", "basic");
             Rendering::Shader* shader = resources.GetShader(shaderName);
             if (shader) {
                 comp->SetShader(shader);
             }
 
-            // texture (string path)
+            // model (string path) - loads model with embedded materials/textures
+            std::string modelPath = ReadOptionalString(L, tableIndex, "model", "");
+            if (!modelPath.empty()) {
+                Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelPath);
+
+                if (!modelData.meshes.empty()) {
+                    comp->SetMeshes(modelData.meshes);
+
+                    // Apply embedded materials if available
+                    if (!modelData.materials.empty() && shader) {
+                        // Create textures from embedded data
+                        std::vector<Rendering::Texture*> embeddedTextures;
+                        for (size_t i = 0; i < modelData.embeddedTextures.size(); i++) {
+                            const Rendering::EmbeddedTexture& embTex = modelData.embeddedTextures[i];
+                            Rendering::Texture* tex = new Rendering::Texture();
+                            bool loaded = false;
+
+                            if (embTex.isCompressed) {
+                                loaded = tex->LoadFromCompressedMemory(embTex.data.data(), static_cast<int>(embTex.data.size()));
+                            } else {
+                                loaded = tex->LoadFromMemory(embTex.data.data(), embTex.width, embTex.height, embTex.channels);
+                            }
+
+                            if (loaded) {
+                                embeddedTextures.push_back(tex);
+                            } else {
+                                embeddedTextures.push_back(nullptr);
+                                delete tex;
+                            }
+                        }
+
+                        // Create materials for each mesh
+                        std::vector<Rendering::Material*> meshMats;
+                        for (Rendering::Mesh* mesh : modelData.meshes) {
+                            int matIdx = mesh->GetMaterialIndex();
+                            if (matIdx >= 0 && matIdx < static_cast<int>(modelData.materials.size())) {
+                                const Rendering::LoadedMaterial& loadedMat = modelData.materials[matIdx];
+
+                                Rendering::Material* mat = new Rendering::Material(shader);
+                                mat->SetDiffuseColor(loadedMat.diffuseColor);
+
+                                // Apply embedded texture if available
+                                if (loadedMat.embeddedTextureIndex >= 0 &&
+                                    loadedMat.embeddedTextureIndex < static_cast<int>(embeddedTextures.size()) &&
+                                    embeddedTextures[loadedMat.embeddedTextureIndex]) {
+                                    mat->SetTexture(embeddedTextures[loadedMat.embeddedTextureIndex]);
+                                }
+                                else if (!loadedMat.diffuseTexturePath.empty()) {
+                                    Rendering::Texture* tex = resources.LoadTexture(loadedMat.diffuseTexturePath);
+                                    if (tex) {
+                                        mat->SetTexture(tex);
+                                    }
+                                }
+
+                                meshMats.push_back(mat);
+                            } else {
+                                meshMats.push_back(nullptr);
+                            }
+                        }
+                        comp->SetMeshMaterials(meshMats);
+                    }
+                }
+            }
+            else {
+                // mesh (string path) - simple mesh loading without materials
+                std::string meshPath = ReadOptionalString(L, tableIndex, "mesh", "");
+                if (!meshPath.empty()) {
+                    const std::vector<Rendering::Mesh*>& meshes = resources.LoadModelMeshes(meshPath);
+                    if (!meshes.empty()) {
+                        comp->SetMeshes(meshes);
+                    }
+                }
+            }
+
+            // texture (string path) - override texture for all meshes
             std::string texturePath = ReadOptionalString(L, tableIndex, "texture", "");
             if (!texturePath.empty()) {
                 Rendering::Texture* texture = resources.LoadTexture(texturePath);
@@ -332,42 +397,86 @@ namespace RTBEngine {
             // model (string path) - Load model with animations
             std::string modelPath = ReadOptionalString(L, tableIndex, "model", "");
             if (!modelPath.empty()) {
-                printf("[ConfigureAnimator] Loading model: %s\n", modelPath.c_str());
                 Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelPath);
 
                 if (modelData.skeleton) {
-                    printf("[ConfigureAnimator] Skeleton loaded with %zu bones\n", modelData.skeleton->GetBoneCount());
                     comp->SetSkeleton(modelData.skeleton);
-                } else {
-                    printf("[ConfigureAnimator] WARNING: No skeleton found in model!\n");
                 }
 
                 // Store meshes with bone data
                 if (!modelData.meshes.empty()) {
-                    printf("[ConfigureAnimator] Storing %zu meshes with bone data\n", modelData.meshes.size());
                     comp->SetMeshes(modelData.meshes);
 
                     // Update MeshRenderer with all meshes from the model
                     ECS::GameObject* owner = comp->GetOwner();
-                    printf("[ConfigureAnimator] Owner: %p\n", (void*)owner);
                     if (owner) {
                         ECS::MeshRenderer* meshRenderer = owner->GetComponent<ECS::MeshRenderer>();
-                        printf("[ConfigureAnimator] MeshRenderer: %p\n", (void*)meshRenderer);
                         if (meshRenderer) {
-                            printf("[ConfigureAnimator] Updating MeshRenderer with %zu meshes\n", modelData.meshes.size());
                             meshRenderer->SetMeshes(modelData.meshes);
-                        } else {
-                            printf("[ConfigureAnimator] WARNING: No MeshRenderer found on owner!\n");
+
+                            // Apply materials from model if available
+                            if (!modelData.materials.empty()) {
+                                Rendering::Shader* shader = meshRenderer->GetMaterial()->GetShader();
+
+                                // Create textures from embedded data if available
+                                std::vector<Rendering::Texture*> embeddedTextures;
+                                for (size_t i = 0; i < modelData.embeddedTextures.size(); i++) {
+                                    const Rendering::EmbeddedTexture& embTex = modelData.embeddedTextures[i];
+                                    Rendering::Texture* tex = new Rendering::Texture();
+                                    bool loaded = false;
+
+                                    if (embTex.isCompressed) {
+                                        loaded = tex->LoadFromCompressedMemory(embTex.data.data(), static_cast<int>(embTex.data.size()));
+                                    } else {
+                                        loaded = tex->LoadFromMemory(embTex.data.data(), embTex.width, embTex.height, embTex.channels);
+                                    }
+
+                                    if (loaded) {
+                                        embeddedTextures.push_back(tex);
+                                    } else {
+                                        embeddedTextures.push_back(nullptr);
+                                        delete tex;
+                                    }
+                                }
+
+                                // Create materials for each mesh based on materialIndex
+                                std::vector<Rendering::Material*> meshMats;
+                                for (Rendering::Mesh* mesh : modelData.meshes) {
+                                    int matIdx = mesh->GetMaterialIndex();
+                                    if (matIdx >= 0 && matIdx < static_cast<int>(modelData.materials.size())) {
+                                        const Rendering::LoadedMaterial& loadedMat = modelData.materials[matIdx];
+
+                                        // Create new material
+                                        Rendering::Material* mat = new Rendering::Material(shader);
+                                        mat->SetDiffuseColor(loadedMat.diffuseColor);
+
+                                        // Try embedded texture first, then external file
+                                        if (loadedMat.embeddedTextureIndex >= 0 &&
+                                            loadedMat.embeddedTextureIndex < static_cast<int>(embeddedTextures.size()) &&
+                                            embeddedTextures[loadedMat.embeddedTextureIndex]) {
+                                            mat->SetTexture(embeddedTextures[loadedMat.embeddedTextureIndex]);
+                                        }
+                                        else if (!loadedMat.diffuseTexturePath.empty()) {
+                                            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
+                                            Rendering::Texture* tex = resources.LoadTexture(loadedMat.diffuseTexturePath);
+                                            if (tex) {
+                                                mat->SetTexture(tex);
+                                            }
+                                        }
+
+                                        meshMats.push_back(mat);
+                                    } else {
+                                        meshMats.push_back(nullptr);  // Use default material
+                                    }
+                                }
+                                meshRenderer->SetMeshMaterials(meshMats);
+                            }
                         }
-                    } else {
-                        printf("[ConfigureAnimator] WARNING: Animator has no owner!\n");
                     }
                 }
 
                 // Add all animations from the model
-                printf("[ConfigureAnimator] Found %zu animation clips\n", modelData.animations.size());
                 for (const auto& clip : modelData.animations) {
-                    printf("[ConfigureAnimator] Adding clip: '%s'\n", clip->GetName().c_str());
                     comp->AddClip(clip->GetName(), clip);
                 }
             }
@@ -375,11 +484,8 @@ namespace RTBEngine {
             // defaultClip (string) - Name of animation to play by default
             std::string defaultClip = ReadOptionalString(L, tableIndex, "defaultClip", "");
             if (!defaultClip.empty()) {
-                printf("[ConfigureAnimator] Playing default clip: '%s'\n", defaultClip.c_str());
                 bool loop = ReadOptionalBool(L, tableIndex, "loop", true);
                 comp->Play(defaultClip, loop);
-            } else {
-                printf("[ConfigureAnimator] No default clip specified\n");
             }
 
             // speed (float) - Playback speed

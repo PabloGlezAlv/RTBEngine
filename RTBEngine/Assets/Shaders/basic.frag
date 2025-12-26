@@ -9,7 +9,9 @@ out vec4 FragColor;
 
 // Texture and color
 uniform sampler2D uTexture;
+uniform bool uHasTexture;
 uniform vec4 uColor;
+uniform vec3 uDiffuseColor;
 uniform vec3 uViewPos;
 
 // Directional Light
@@ -76,9 +78,9 @@ void main() {
     }
     
     result += ambient;
-    
-    vec4 texColor = texture(uTexture, vTexCoords);
-    FragColor = vec4(result, 1.0) * texColor * uColor;
+
+    vec4 texColor = uHasTexture ? texture(uTexture, vTexCoords) : vec4(1.0);
+    FragColor = vec4(result * uDiffuseColor, 1.0) * texColor * uColor;
 }
 
 vec3 CalcDirectionalLight(DirectionalLight light, vec3 normal, vec3 viewDir) {

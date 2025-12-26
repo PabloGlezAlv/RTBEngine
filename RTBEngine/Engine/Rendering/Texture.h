@@ -26,6 +26,12 @@ namespace RTBEngine {
 
             bool LoadFromFile(const std::string& path);
 
+            // Load from raw RGBA data (width * height * channels bytes)
+            bool LoadFromMemory(const unsigned char* data, int width, int height, int channels);
+
+            // Load from compressed image data (PNG/JPG in memory)
+            bool LoadFromCompressedMemory(const unsigned char* data, int dataSize);
+
             void Bind(unsigned int slot = 0) const;
             void Unbind() const;
 

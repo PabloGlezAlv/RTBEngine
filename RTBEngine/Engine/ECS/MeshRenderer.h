@@ -27,6 +27,11 @@ namespace RTBEngine {
             const std::vector<Rendering::Mesh*>& GetMeshes() const { return meshes; }
             Rendering::Material* GetMaterial() const { return material.get(); }
 
+            // Per-mesh materials (from model file)
+            void SetMeshMaterials(const std::vector<Rendering::Material*>& mats);
+            Rendering::Material* GetMeshMaterial(size_t meshIndex) const;
+            bool HasMeshMaterials() const { return !meshMaterials.empty(); }
+
             void SetTexture(Rendering::Texture* tex);
             void SetShader(Rendering::Shader* shader);
 
@@ -37,6 +42,7 @@ namespace RTBEngine {
         private:
             std::vector<Rendering::Mesh*> meshes;
             std::unique_ptr<Rendering::Material> material;
+            std::vector<Rendering::Material*> meshMaterials;  // Per-mesh materials (not owned)
         };
 
     }

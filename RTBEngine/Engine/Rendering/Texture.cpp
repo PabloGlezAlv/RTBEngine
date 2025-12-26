@@ -49,6 +49,77 @@ namespace RTBEngine {
             return true;
         }
 
+        bool Texture::LoadFromMemory(const unsigned char* data, int w, int h, int ch)
+        {
+            if (!data || w <= 0 || h <= 0 || ch <= 0) {
+                std::cerr << "Invalid texture data for LoadFromMemory" << std::endl;
+                return false;
+            }
+
+            width = w;
+            height = h;
+            channels = ch;
+
+            glGenTextures(1, &textureID);
+            glBindTexture(GL_TEXTURE_2D, textureID);
+
+            GLenum format = GL_RGB;
+            if (channels == 1)
+                format = GL_RED;
+            else if (channels == 3)
+                format = GL_RGB;
+            else if (channels == 4)
+                format = GL_RGBA;
+
+            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+            glGenerateMipmap(GL_TEXTURE_2D);
+
+            SetFilter(TextureFilter::Linear, TextureFilter::Linear);
+            SetWrap(TextureWrap::Repeat, TextureWrap::Repeat);
+
+            return true;
+        }
+
+        bool Texture::LoadFromCompressedMemory(const unsigned char* data, int dataSize)
+        {
+            if (!data || dataSize <= 0) {
+                std::cerr << "Invalid compressed texture data" << std::endl;
+                return false;
+            }
+
+            // Don't flip - embedded textures from FBX are already correctly oriented
+            // (Assimp already flips UVs via aiProcess_FlipUVs)
+            stbi_set_flip_vertically_on_load(false);
+
+            // stbi_load_from_memory decodes PNG/JPG/etc from memory buffer
+            unsigned char* pixels = stbi_load_from_memory(data, dataSize, &width, &height, &channels, 0);
+            if (!pixels) {
+                std::cerr << "Failed to decode compressed texture from memory" << std::endl;
+                return false;
+            }
+
+            glGenTextures(1, &textureID);
+            glBindTexture(GL_TEXTURE_2D, textureID);
+
+            GLenum format = GL_RGB;
+            if (channels == 1)
+                format = GL_RED;
+            else if (channels == 3)
+                format = GL_RGB;
+            else if (channels == 4)
+                format = GL_RGBA;
+
+            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, pixels);
+            glGenerateMipmap(GL_TEXTURE_2D);
+
+            SetFilter(TextureFilter::Linear, TextureFilter::Linear);
+            SetWrap(TextureWrap::Repeat, TextureWrap::Repeat);
+
+            stbi_image_free(pixels);
+
+            return true;
+        }
+
         void Texture::Bind(unsigned int slot) const
         {
             glActiveTexture(GL_TEXTURE0 + slot);

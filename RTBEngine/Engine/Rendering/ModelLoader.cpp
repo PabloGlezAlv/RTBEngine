@@ -2,6 +2,7 @@
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <assimp/material.h>
 #include <iostream>
 #include <cfloat>
 #include <algorithm>
@@ -42,7 +43,13 @@ namespace RTBEngine {
             ModelData result;
             result.skeleton = std::make_shared<Animation::Skeleton>();
 
-            std::cout << "[ModelLoader] Loading model with animations: " << path << std::endl;
+            // Extract model directory for texture path resolution
+            size_t lastSlash = path.find_last_of("/\\");
+            if (lastSlash != std::string::npos) {
+                result.modelDirectory = path.substr(0, lastSlash);
+            }
+
+            std::cout << "[ModelLoader] Loading: " << path << std::endl;
 
             const aiScene* scene = aiImportFile(path.c_str(),
                 aiProcess_Triangulate |
@@ -57,13 +64,17 @@ namespace RTBEngine {
                 return result;
             }
 
-            std::cout << "[ModelLoader] Scene loaded - Meshes: " << scene->mNumMeshes
-                      << ", Animations: " << scene->mNumAnimations << std::endl;
+            std::cout << "[ModelLoader] Meshes: " << scene->mNumMeshes
+                      << ", Materials: " << scene->mNumMaterials
+                      << ", Embedded textures: " << scene->mNumTextures << std::endl;
 
             // Store global inverse transform
             result.skeleton->SetGlobalInverseTransform(
                 ConvertMatrix(scene->mRootNode->mTransformation).Inverse()
             );
+
+            // Extract materials
+            ExtractMaterials(scene, result);
 
             // Process meshes and extract bones
             ProcessNode(scene->mRootNode, scene, result.meshes, result.skeleton);
@@ -73,19 +84,13 @@ namespace RTBEngine {
                 auto clip = ProcessAnimation(scene->mAnimations[i]);
                 if (clip) {
                     result.animations.push_back(clip);
-                    std::cout << "[ModelLoader] Animation clip: '" << clip->GetName()
-                              << "' Duration: " << clip->GetDuration() << std::endl;
                 }
             }
 
             aiReleaseImport(scene);
 
-            std::cout << "[ModelLoader] Bones found: " << result.skeleton->GetBoneCount()
-                      << ", Meshes loaded: " << result.meshes.size() << std::endl;
-
             // If no bones were found, clear the skeleton
             if (result.skeleton->GetBoneCount() == 0) {
-                std::cout << "[ModelLoader] No bones found, clearing skeleton" << std::endl;
                 result.skeleton.reset();
             }
 
@@ -117,11 +122,7 @@ namespace RTBEngine {
             std::vector<Vertex> vertices;
             std::vector<unsigned int> indices;
 
-            std::cout << "[ModelLoader] Processing mesh: '" << mesh->mName.C_Str()
-                      << "' Vertices: " << mesh->mNumVertices
-                      << ", Bones: " << mesh->mNumBones << std::endl;
-
-            // Calculate bounding box for debugging
+            // Calculate bounding box
             float minX = FLT_MAX, minY = FLT_MAX, minZ = FLT_MAX;
             float maxX = -FLT_MAX, maxY = -FLT_MAX, maxZ = -FLT_MAX;
 
@@ -166,20 +167,10 @@ namespace RTBEngine {
                 ExtractBoneInfo(mesh, vertices, skeleton);
             }
 
-            // Print bounding box
-            std::cout << "[ModelLoader] Bounding box: (" << minX << ", " << minY << ", " << minZ << ") to ("
-                      << maxX << ", " << maxY << ", " << maxZ << ")" << std::endl;
-
-            // Normalize bone weights and count vertices with weights
-            int verticesWithWeights = 0;
+            // Normalize bone weights
             for (auto& vertex : vertices) {
                 vertex.NormalizeBoneWeights();
-                if (vertex.boneWeights[0] > 0.0f) {
-                    verticesWithWeights++;
-                }
             }
-            std::cout << "[ModelLoader] Vertices with bone weights: " << verticesWithWeights
-                      << "/" << vertices.size() << std::endl;
 
             // Extract indices
             for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
@@ -189,7 +180,9 @@ namespace RTBEngine {
                 }
             }
 
-            return new Mesh(vertices, indices);
+            Mesh* resultMesh = new Mesh(vertices, indices);
+            resultMesh->SetMaterialIndex(static_cast<int>(mesh->mMaterialIndex));
+            return resultMesh;
         }
 
         void ModelLoader::ExtractBoneInfo(aiMesh* mesh, std::vector<Vertex>& vertices,
@@ -279,6 +272,128 @@ namespace RTBEngine {
             }
 
             return clip;
+        }
+
+        std::string ModelLoader::ResolvePath(const std::string& modelDir, const std::string& texPath)
+        {
+            if (texPath.empty()) {
+                return "";
+            }
+
+            // Handle absolute paths
+            if (texPath.find(':') != std::string::npos || texPath[0] == '/' || texPath[0] == '\\') {
+                return texPath;
+            }
+
+            // Combine with model directory
+            std::string fullPath = modelDir;
+            if (!fullPath.empty() && fullPath.back() != '/' && fullPath.back() != '\\') {
+                fullPath += '/';
+            }
+            fullPath += texPath;
+
+            // Normalize path separators to forward slashes
+            std::replace(fullPath.begin(), fullPath.end(), '\\', '/');
+
+            return fullPath;
+        }
+
+        void ModelLoader::ExtractMaterials(const aiScene* scene, ModelData& outData)
+        {
+            // First, extract all embedded textures
+            for (unsigned int i = 0; i < scene->mNumTextures; i++) {
+                aiTexture* tex = scene->mTextures[i];
+                EmbeddedTexture embeddedTex;
+
+                if (tex->mHeight == 0) {
+                    // Compressed format (PNG, JPG, etc.) - stored as raw bytes
+                    embeddedTex.isCompressed = true;
+                    embeddedTex.width = tex->mWidth;  // mWidth is the data size in bytes for compressed textures
+                    embeddedTex.height = 0;
+                    embeddedTex.data.resize(tex->mWidth);
+                    memcpy(embeddedTex.data.data(), tex->pcData, tex->mWidth);
+                }
+                else {
+                    // Uncompressed ARGB8888 format
+                    embeddedTex.isCompressed = false;
+                    embeddedTex.width = tex->mWidth;
+                    embeddedTex.height = tex->mHeight;
+                    embeddedTex.channels = 4;  // ARGB
+                    size_t dataSize = tex->mWidth * tex->mHeight * 4;
+                    embeddedTex.data.resize(dataSize);
+                    // Convert ARGB to RGBA
+                    for (unsigned int p = 0; p < tex->mWidth * tex->mHeight; p++) {
+                        aiTexel& texel = tex->pcData[p];
+                        embeddedTex.data[p * 4 + 0] = texel.r;
+                        embeddedTex.data[p * 4 + 1] = texel.g;
+                        embeddedTex.data[p * 4 + 2] = texel.b;
+                        embeddedTex.data[p * 4 + 3] = texel.a;
+                    }
+                }
+
+                outData.embeddedTextures.push_back(std::move(embeddedTex));
+            }
+
+            outData.materials.reserve(scene->mNumMaterials);
+
+            for (unsigned int i = 0; i < scene->mNumMaterials; i++) {
+                aiMaterial* mat = scene->mMaterials[i];
+                LoadedMaterial loadedMat;
+
+                // Get material name
+                aiString matName;
+                if (mat->Get(AI_MATKEY_NAME, matName) == AI_SUCCESS) {
+                    loadedMat.name = matName.C_Str();
+                }
+
+                // Diffuse color
+                aiColor3D diffuse(1.0f, 1.0f, 1.0f);
+                if (mat->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse) == AI_SUCCESS) {
+                    loadedMat.diffuseColor = Math::Vector3(diffuse.r, diffuse.g, diffuse.b);
+                }
+
+                // Opacity
+                float opacity = 1.0f;
+                if (mat->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS) {
+                    loadedMat.opacity = opacity;
+                }
+
+                // Diffuse texture
+                if (mat->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
+                    aiString texPath;
+                    if (mat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS) {
+                        std::string texPathStr = texPath.C_Str();
+
+                        // Check if it's an embedded texture reference (starts with *)
+                        if (!texPathStr.empty() && texPathStr[0] == '*') {
+                            // Embedded texture - parse index
+                            int embeddedIndex = std::atoi(texPathStr.c_str() + 1);
+                            if (embeddedIndex >= 0 && embeddedIndex < static_cast<int>(outData.embeddedTextures.size())) {
+                                loadedMat.embeddedTextureIndex = embeddedIndex;
+                            }
+                        }
+                        else {
+                            // Try to find embedded texture by path using Assimp's GetEmbeddedTexture
+                            const aiTexture* embeddedTex = scene->GetEmbeddedTexture(texPath.C_Str());
+                            if (embeddedTex) {
+                                // Find the index of this embedded texture
+                                for (unsigned int t = 0; t < scene->mNumTextures; t++) {
+                                    if (scene->mTextures[t] == embeddedTex) {
+                                        loadedMat.embeddedTextureIndex = static_cast<int>(t);
+                                        break;
+                                    }
+                                }
+                            }
+                            else {
+                                // External texture file
+                                loadedMat.diffuseTexturePath = ResolvePath(outData.modelDirectory, texPathStr);
+                            }
+                        }
+                    }
+                }
+
+                outData.materials.push_back(loadedMat);
+            }
         }
 
     }
