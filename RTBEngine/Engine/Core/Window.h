@@ -8,7 +8,7 @@ namespace RTBEngine {
 
         class Window {
         public:
-			Window(const std::string& title, int width, int height);
+			Window(const std::string& title, int width, int height, bool fullscreen = false);
 
 			~Window();
 
@@ -25,12 +25,29 @@ namespace RTBEngine {
 
 			bool GetShouldClose() const { return shouldClose; }
 			void SetShouldClose(bool value) { shouldClose = value; }
+
+			// Fullscreen control
+			void SetFullscreen(bool enabled);
+			bool IsFullscreen() const { return isFullscreen; }
+
+			// Mouse capture control
+			void SetMouseCaptured(bool captured);
+			bool IsMouseCaptured() const { return isMouseCaptured; }
+
+			// Cursor visibility control
+			void SetCursorVisible(bool visible);
+			bool IsCursorVisible() const { return isCursorVisible; }
         private:
 			std::string title = "";
 			int width = 0;
 			int height = 0;
+			bool fullscreen = false;
 
 			bool shouldClose = false;
+
+			bool isFullscreen = false;
+			bool isMouseCaptured = false;
+			bool isCursorVisible = true;
 
 			SDL_Window* sdlWindow;
 			SDL_GLContext glContext;

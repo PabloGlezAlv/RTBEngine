@@ -1,14 +1,15 @@
 #include "Window.h"
 #include <iostream>
 
-RTBEngine::Core::Window::Window(const std::string& title, int width, int height) : title(title),
+RTBEngine::Core::Window::Window(const std::string& title, int width, int height, bool fullscreen) : title(title),
 width(width),
 height(height),
+fullscreen(fullscreen),
 sdlWindow(nullptr),
 glContext(nullptr),
 shouldClose(false)
 {
-	
+
 }
 
 RTBEngine::Core::Window::~Window()
@@ -68,6 +69,12 @@ bool RTBEngine::Core::Window::Initialize()
 
 	SDL_GL_SetSwapInterval(1); // ENABLE V-SYNC
 
+	// Apply fullscreen if configured
+	if (fullscreen) {
+		SDL_SetWindowFullscreen(sdlWindow, SDL_WINDOW_FULLSCREEN_DESKTOP);
+		isFullscreen = true;
+	}
+
 	return true;
 }
 
@@ -91,4 +98,48 @@ void RTBEngine::Core::Window::Shutdown()
 	}
 
 	SDL_Quit();
+}
+
+void RTBEngine::Core::Window::SetFullscreen(bool enabled)
+{
+	if (!sdlWindow || isFullscreen == enabled) {
+		return;
+	}
+
+	if (enabled) {
+		// Fullscreen borderless mode (keeps desktop resolution)
+		SDL_SetWindowFullscreen(sdlWindow, SDL_WINDOW_FULLSCREEN_DESKTOP);
+	}
+	else {
+		// Return to windowed mode
+		SDL_SetWindowFullscreen(sdlWindow, 0);
+	}
+
+	isFullscreen = enabled;
+}
+
+void RTBEngine::Core::Window::SetMouseCaptured(bool captured)
+{
+	if (!sdlWindow || isMouseCaptured == captured) {
+		return;
+	}
+
+	// Relative mode: hides cursor and captures mouse movement
+	SDL_SetRelativeMouseMode(captured ? SDL_TRUE : SDL_FALSE);
+
+	// Also control cursor visibility
+	SDL_ShowCursor(captured ? SDL_DISABLE : SDL_ENABLE);
+
+	isMouseCaptured = captured;
+	isCursorVisible = !captured;
+}
+
+void RTBEngine::Core::Window::SetCursorVisible(bool visible)
+{
+	if (isCursorVisible == visible) {
+		return;
+	}
+
+	SDL_ShowCursor(visible ? SDL_ENABLE : SDL_DISABLE);
+	isCursorVisible = visible;
 }

@@ -31,7 +31,7 @@ RTBEngine::Core::Application::~Application()
 
 bool RTBEngine::Core::Application::Initialize()
 {
-	window = std::make_unique<Window>(config.window.title, config.window.width, config.window.height);
+	window = std::make_unique<Window>(config.window.title, config.window.width, config.window.height, config.window.fullscreen);
 	if (!window->Initialize()) {
 		return false;
 	}
