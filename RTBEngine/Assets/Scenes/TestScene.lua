@@ -155,7 +155,7 @@ function CreateScene()
                     }
                 }
             },
-            -- Character 
+            -- Animated Character
             {
                 name = "Character",
                 position = Vector3(0.0, 0.0, 0.0),
@@ -164,7 +164,13 @@ function CreateScene()
                     {
                         type = "MeshRenderer",
                         shader = "basic",
-                        model = "Assets/Models/walking.fbx"
+                    },
+                    {
+                        type = "Animator",
+                        model = "Assets/Models/walking.fbx",
+                        defaultClip = "mixamo.com",
+                        loop = true,
+                        speed = 1.0
                     }
                 }
             }

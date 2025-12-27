@@ -11,11 +11,13 @@ namespace RTBEngine {
         }
 
         void AnimationClip::AddBoneAnimation(const BoneAnimation& boneAnim) {
+
             boneNameToAnimIndex[boneAnim.boneName] = boneAnimations.size();
             boneAnimations.push_back(boneAnim);
         }
 
-        bool AnimationClip::GetBoneTransform(const std::string& boneName, float time, Math::Matrix4& outTransform) const {
+        bool AnimationClip::GetBoneTransform(const std::string& boneName, float time, Math::Matrix4& outTransform,
+                                              const Math::Matrix4* localBindPose) const {
             auto it = boneNameToAnimIndex.find(boneName);
             if (it == boneNameToAnimIndex.end()) {
                 return false;
@@ -23,11 +25,25 @@ namespace RTBEngine {
 
             const BoneAnimation& anim = boneAnimations[it->second];
 
+            // Get animated values
             Math::Vector3 position = InterpolatePosition(anim, time);
             Math::Quaternion rotation = InterpolateRotation(anim, time);
             Math::Vector3 scale = InterpolateScale(anim, time);
 
+            // If position is static (1 key at zero) and we have bind pose, use bind pose position
+            // This handles Mixamo FBX where only root has actual position animation
+            if (localBindPose && anim.positionKeys.size() <= 1) {
+                // Check if position is essentially zero (static)
+                if (std::abs(position.x) < 0.001f && std::abs(position.y) < 0.001f && std::abs(position.z) < 0.001f) {
+                    // Use position from bind pose
+                    position.x = localBindPose->m[12];
+                    position.y = localBindPose->m[13];
+                    position.z = localBindPose->m[14];
+                }
+            }
+
             // Build transform matrix: T * R * S
+            // The rotation from animation is ABSOLUTE in local bone space (not relative to bind pose)
             Math::Matrix4 translationMat = Math::Matrix4::Translate(position);
             Math::Matrix4 rotationMat = rotation.ToMatrix();
             Math::Matrix4 scaleMat = Math::Matrix4::Scale(scale);

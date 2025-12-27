@@ -1,4 +1,6 @@
 #include "Skeleton.h"
+#include <cstdio>
+#include <algorithm>
 
 namespace RTBEngine {
     namespace Animation {
@@ -44,20 +46,43 @@ namespace RTBEngine {
 
             // Temporary storage for global transforms
             std::vector<Math::Matrix4> globalTransforms(boneCount);
+            std::vector<bool> processed(boneCount, false);
 
-            for (size_t i = 0; i < boneCount; i++) {
-                const Bone& bone = bones[i];
+            // Process bones in dependency order (parents before children)
+            size_t processedCount = 0;
+            while (processedCount < boneCount) {
+                bool madeProgress = false;
 
-                // Calculate global transform
-                if (bone.parentIndex >= 0) {
-                    globalTransforms[i] = globalTransforms[bone.parentIndex] * localTransforms[i];
+                for (size_t i = 0; i < boneCount; i++) {
+                    if (processed[i]) continue;
+
+                    const Bone& bone = bones[i];
+
+                    // Can only process if parent is already processed (or no parent)
+                    if (bone.parentIndex >= 0 && !processed[bone.parentIndex]) {
+                        continue;
+                    }
+
+                    // Calculate global transform
+                    if (bone.parentIndex >= 0) {
+                        globalTransforms[i] = globalTransforms[bone.parentIndex] * localTransforms[i];
+                    }
+                    else {
+                        globalTransforms[i] = localTransforms[i];
+                    }
+
+                    // Final transform = GlobalInverse * GlobalTransform * OffsetMatrix
+                    outFinalTransforms[i] = globalInverseTransform * globalTransforms[i] * bone.offsetMatrix;
+
+                    processed[i] = true;
+                    processedCount++;
+                    madeProgress = true;
                 }
-                else {
-                    globalTransforms[i] = localTransforms[i];
-                }
 
-                // Final transform = GlobalInverse * GlobalTransform * OffsetMatrix
-                outFinalTransforms[i] = globalInverseTransform * globalTransforms[i] * bone.offsetMatrix;
+                // Safety: break if no progress (circular dependency or error)
+                if (!madeProgress) {
+                    break;
+                }
             }
         }
 

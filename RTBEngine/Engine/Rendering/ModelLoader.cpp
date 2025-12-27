@@ -1,11 +1,13 @@
 #include "ModelLoader.h"
-#include <assimp/cimport.h>
+#include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <assimp/material.h>
+#include <assimp/config.h>
 #include <iostream>
 #include <cfloat>
 #include <algorithm>
+#include <unordered_map>
 
 namespace RTBEngine {
     namespace Rendering {
@@ -49,9 +51,15 @@ namespace RTBEngine {
                 result.modelDirectory = path.substr(0, lastSlash);
             }
 
-            std::cout << "[ModelLoader] Loading: " << path << std::endl;
+            // Use Assimp C++ API to set import properties
+            Assimp::Importer importer;
 
-            const aiScene* scene = aiImportFile(path.c_str(),
+            // CRITICAL: Disable preserve pivots for Mixamo FBX files
+            // This prevents Assimp from creating extra _$AssimpFbx$_PreRotation nodes
+            // which cause animation/skeleton mismatch issues
+            importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
+
+            const aiScene* scene = importer.ReadFile(path,
                 aiProcess_Triangulate |
                 aiProcess_FlipUVs |
                 aiProcess_CalcTangentSpace |
@@ -60,13 +68,12 @@ namespace RTBEngine {
             );
 
             if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-                std::cerr << "[ModelLoader] Assimp Error: " << aiGetErrorString() << std::endl;
+                std::cerr << "[ModelLoader] Assimp Error: " << importer.GetErrorString() << std::endl;
                 return result;
             }
 
-            std::cout << "[ModelLoader] Meshes: " << scene->mNumMeshes
-                      << ", Materials: " << scene->mNumMaterials
-                      << ", Embedded textures: " << scene->mNumTextures << std::endl;
+            std::cout << "[ModelLoader] " << path << " - Meshes: " << scene->mNumMeshes
+                      << ", Animations: " << scene->mNumAnimations << std::endl;
 
             // Store global inverse transform
             result.skeleton->SetGlobalInverseTransform(
@@ -79,6 +86,13 @@ namespace RTBEngine {
             // Process meshes and extract bones
             ProcessNode(scene->mRootNode, scene, result.meshes, result.skeleton);
 
+            // Build bone hierarchy from node tree
+            BuildBoneHierarchy(scene->mRootNode, result.skeleton, -1);
+
+            // Compute local bind transforms from offset matrices
+            // (needed because FBX from Mixamo has identity transforms in node tree)
+            ComputeLocalBindTransforms(result.skeleton);
+
             // Process animations
             for (unsigned int i = 0; i < scene->mNumAnimations; i++) {
                 auto clip = ProcessAnimation(scene->mAnimations[i]);
@@ -87,11 +101,29 @@ namespace RTBEngine {
                 }
             }
 
-            aiReleaseImport(scene);
+            // Note: Assimp::Importer automatically releases the scene when it goes out of scope
 
             // If no bones were found, clear the skeleton
             if (result.skeleton->GetBoneCount() == 0) {
                 result.skeleton.reset();
+            }
+            else {
+                // Count bones with valid parents
+                int rootBones = 0;
+                int linkedBones = 0;
+                for (size_t i = 0; i < result.skeleton->GetBoneCount(); i++) {
+                    const Animation::Bone* bone = result.skeleton->GetBone(static_cast<int>(i));
+                    if (bone->parentIndex == -1) rootBones++;
+                    else linkedBones++;
+                }
+                std::cout << "[ModelLoader] Skeleton: " << result.skeleton->GetBoneCount()
+                          << " bones (" << rootBones << " roots, " << linkedBones << " linked)" << std::endl;
+            }
+
+            // Log animations
+            for (const auto& clip : result.animations) {
+                std::cout << "[ModelLoader] Animation: '" << clip->GetName()
+                          << "' duration=" << clip->GetDuration() / clip->GetTicksPerSecond() << "s" << std::endl;
             }
 
             return result;
@@ -188,6 +220,8 @@ namespace RTBEngine {
         void ModelLoader::ExtractBoneInfo(aiMesh* mesh, std::vector<Vertex>& vertices,
             std::shared_ptr<Animation::Skeleton>& skeleton)
         {
+            static bool debugBones = true;
+
             for (unsigned int boneIdx = 0; boneIdx < mesh->mNumBones; boneIdx++) {
                 aiBone* assimpBone = mesh->mBones[boneIdx];
                 std::string boneName = assimpBone->mName.C_Str();
@@ -201,6 +235,12 @@ namespace RTBEngine {
                     bone.offsetMatrix = ConvertMatrix(assimpBone->mOffsetMatrix);
                     skeleton->AddBone(bone);
                     boneId = static_cast<int>(skeleton->GetBoneCount()) - 1;
+
+                    // Debug: print first 5 bone names
+                    if (debugBones && boneId < 5) {
+                        std::cout << "[ModelLoader]   Bone[" << boneId << "]: '" << boneName << "'" << std::endl;
+                    }
+                    if (boneId == 4) debugBones = false;
                 }
 
                 // Assign bone weights to vertices
@@ -211,6 +251,61 @@ namespace RTBEngine {
                     if (vertexId < vertices.size()) {
                         vertices[vertexId].AddBoneInfluence(boneId, weight);
                     }
+                }
+            }
+        }
+
+        void ModelLoader::BuildBoneHierarchy(const aiNode* node,
+            std::shared_ptr<Animation::Skeleton>& skeleton, int parentIndex)
+        {
+            std::string nodeName = node->mName.C_Str();
+
+            // Check if this node corresponds to a bone
+            int boneIndex = skeleton->GetBoneIndex(nodeName);
+            if (boneIndex != -1) {
+                // Set the parent of this bone
+                Animation::Bone* bone = skeleton->GetBone(boneIndex);
+                if (bone) {
+                    if (bone->parentIndex == -1) {
+                        bone->parentIndex = parentIndex;
+                    }
+                }
+                // This bone becomes the parent for children
+                parentIndex = boneIndex;
+            }
+
+            // Process children
+            for (unsigned int i = 0; i < node->mNumChildren; i++) {
+                BuildBoneHierarchy(node->mChildren[i], skeleton, parentIndex);
+            }
+        }
+
+        void ModelLoader::ComputeLocalBindTransforms(std::shared_ptr<Animation::Skeleton>& skeleton)
+        {
+            // Compute local bind transforms from offset matrices
+            // OffsetMatrix transforms from mesh space to bone space (inverse of global bind pose)
+            // So OffsetMatrix^-1 gives us the global bind pose of each bone
+
+            size_t boneCount = skeleton->GetBoneCount();
+
+            for (size_t i = 0; i < boneCount; i++) {
+                Animation::Bone* bone = skeleton->GetBone(static_cast<int>(i));
+                if (!bone) continue;
+
+                // Get global bind pose from inverse of offset matrix
+                Math::Matrix4 globalBindPose = bone->offsetMatrix.Inverse();
+
+                if (bone->parentIndex >= 0) {
+                    // Get parent's global bind pose
+                    const Animation::Bone* parent = skeleton->GetBone(bone->parentIndex);
+                    if (parent) {
+                        Math::Matrix4 parentGlobalBindPose = parent->offsetMatrix.Inverse();
+                        // Local = ParentGlobalInverse * ChildGlobal
+                        bone->localBindTransform = parentGlobalBindPose.Inverse() * globalBindPose;
+                    }
+                } else {
+                    // Root bone: local = global
+                    bone->localBindTransform = globalBindPose;
                 }
             }
         }
@@ -230,46 +325,88 @@ namespace RTBEngine {
 
             auto clip = std::make_shared<Animation::AnimationClip>(name, duration, ticksPerSecond);
 
-            // Process each bone's animation channel
+            // Use a map to combine multiple channels for the same bone
+            // (FBX via Assimp splits Translation/Rotation/Scale into separate channels)
+            std::unordered_map<std::string, Animation::BoneAnimation> boneAnimMap;
+
+            // Debug: print all channel names to see what Assimp gives us
+            static bool debugChannels = true;
+            if (debugChannels) {
+                printf("[ModelLoader] Animation channels:\n");
+                for (unsigned int i = 0; i < std::min(anim->mNumChannels, 15u); i++) {
+                    printf("  [%d] '%s'\n", i, anim->mChannels[i]->mNodeName.C_Str());
+                }
+                if (anim->mNumChannels > 15) printf("  ... and %d more\n", anim->mNumChannels - 15);
+                debugChannels = false;
+            }
+
             for (unsigned int i = 0; i < anim->mNumChannels; i++) {
                 aiNodeAnim* channel = anim->mChannels[i];
 
-                Animation::BoneAnimation boneAnim;
-                boneAnim.boneName = channel->mNodeName.C_Str();
+                std::string channelName = channel->mNodeName.C_Str();
+                std::string originalChannelName = channelName;
 
-                // Position keys
-                for (unsigned int j = 0; j < channel->mNumPositionKeys; j++) {
-                    Animation::VectorKey key;
-                    key.time = static_cast<float>(channel->mPositionKeys[j].mTime);
-                    key.value.x = channel->mPositionKeys[j].mValue.x;
-                    key.value.y = channel->mPositionKeys[j].mValue.y;
-                    key.value.z = channel->mPositionKeys[j].mValue.z;
-                    boneAnim.positionKeys.push_back(key);
+                // Clean up Assimp FBX suffixes like "_$AssimpFbx$_Translation" or "_$AssimpFbx$_Rotation"
+                size_t assimpSuffix = channelName.find("_$AssimpFbx$_");
+                std::string suffixType;
+                if (assimpSuffix != std::string::npos) {
+                    suffixType = channelName.substr(assimpSuffix + 13); // Get suffix type (Translation, Rotation, PreRotation, etc.)
+                    channelName = channelName.substr(0, assimpSuffix);
                 }
 
-                // Rotation keys
-                for (unsigned int j = 0; j < channel->mNumRotationKeys; j++) {
-                    Animation::QuatKey key;
-                    key.time = static_cast<float>(channel->mRotationKeys[j].mTime);
-                    key.value.w = channel->mRotationKeys[j].mValue.w;
-                    key.value.x = channel->mRotationKeys[j].mValue.x;
-                    key.value.y = channel->mRotationKeys[j].mValue.y;
-                    key.value.z = channel->mRotationKeys[j].mValue.z;
-                    boneAnim.rotationKeys.push_back(key);
+                // Get or create BoneAnimation for this bone
+                Animation::BoneAnimation& boneAnim = boneAnimMap[channelName];
+                boneAnim.boneName = channelName;
+
+                // Add position keys (if this channel has meaningful position data)
+                if (channel->mNumPositionKeys > 1 ||
+                    (channel->mNumPositionKeys == 1 && boneAnim.positionKeys.empty())) {
+                    for (unsigned int j = 0; j < channel->mNumPositionKeys; j++) {
+                        Animation::VectorKey key;
+                        key.time = static_cast<float>(channel->mPositionKeys[j].mTime);
+                        key.value.x = channel->mPositionKeys[j].mValue.x;
+                        key.value.y = channel->mPositionKeys[j].mValue.y;
+                        key.value.z = channel->mPositionKeys[j].mValue.z;
+                        boneAnim.positionKeys.push_back(key);
+                    }
                 }
 
-                // Scale keys
-                for (unsigned int j = 0; j < channel->mNumScalingKeys; j++) {
-                    Animation::VectorKey key;
-                    key.time = static_cast<float>(channel->mScalingKeys[j].mTime);
-                    key.value.x = channel->mScalingKeys[j].mValue.x;
-                    key.value.y = channel->mScalingKeys[j].mValue.y;
-                    key.value.z = channel->mScalingKeys[j].mValue.z;
-                    boneAnim.scaleKeys.push_back(key);
+                // Add rotation keys
+                if (channel->mNumRotationKeys > 1 ||
+                    (channel->mNumRotationKeys == 1 && boneAnim.rotationKeys.empty())) {
+                    for (unsigned int j = 0; j < channel->mNumRotationKeys; j++) {
+                        Animation::QuatKey key;
+                        key.time = static_cast<float>(channel->mRotationKeys[j].mTime);
+                        key.value.w = channel->mRotationKeys[j].mValue.w;
+                        key.value.x = channel->mRotationKeys[j].mValue.x;
+                        key.value.y = channel->mRotationKeys[j].mValue.y;
+                        key.value.z = channel->mRotationKeys[j].mValue.z;
+                        key.value.Normalize();  // Ensure quaternion is normalized
+                        boneAnim.rotationKeys.push_back(key);
+                    }
                 }
 
-                clip->AddBoneAnimation(boneAnim);
+                // Add scale keys
+                if (channel->mNumScalingKeys > 1 ||
+                    (channel->mNumScalingKeys == 1 && boneAnim.scaleKeys.empty())) {
+                    for (unsigned int j = 0; j < channel->mNumScalingKeys; j++) {
+                        Animation::VectorKey key;
+                        key.time = static_cast<float>(channel->mScalingKeys[j].mTime);
+                        key.value.x = channel->mScalingKeys[j].mValue.x;
+                        key.value.y = channel->mScalingKeys[j].mValue.y;
+                        key.value.z = channel->mScalingKeys[j].mValue.z;
+                        boneAnim.scaleKeys.push_back(key);
+                    }
+                }
             }
+
+            // Add all combined bone animations to the clip
+            for (auto& pair : boneAnimMap) {
+                clip->AddBoneAnimation(pair.second);
+            }
+
+            std::cout << "[ModelLoader] Animation '" << name << "': " << anim->mNumChannels
+                      << " channels -> " << boneAnimMap.size() << " bones" << std::endl;
 
             return clip;
         }

@@ -63,17 +63,6 @@ namespace RTBEngine {
                 return;
             }
 
-            // Debug: print once when rendering animated character
-            static bool debugPrinted = false;
-            if (!debugPrinted && meshes.size() > 1) {
-                printf("[MeshRenderer] Rendering %zu meshes for '%s'\n", meshes.size(), owner->GetName().c_str());
-                for (size_t i = 0; i < meshes.size(); i++) {
-                    Rendering::Material* mat = GetMeshMaterial(i);
-                    printf("  Mesh[%zu]: material=%p, hasTexture=%d\n", i, (void*)mat, mat && mat->GetTexture() ? 1 : 0);
-                }
-                debugPrinted = true;
-            }
-
             // Get common data
             Math::Matrix4 modelMatrix = owner->GetTransform().GetModelMatrix();
             Animation::Animator* animator = owner->GetComponent<Animation::Animator>();

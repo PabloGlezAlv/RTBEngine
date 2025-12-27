@@ -62,6 +62,9 @@ namespace RTBEngine {
                 std::shared_ptr<Animation::Skeleton>& skeleton);
             static std::shared_ptr<Animation::AnimationClip> ProcessAnimation(
                 const aiAnimation* anim);
+            static void BuildBoneHierarchy(const aiNode* node,
+                std::shared_ptr<Animation::Skeleton>& skeleton, int parentIndex);
+            static void ComputeLocalBindTransforms(std::shared_ptr<Animation::Skeleton>& skeleton);
 
             // Helper to convert Assimp matrix to engine matrix
             static Math::Matrix4 ConvertMatrix(const aiMatrix4x4& from);

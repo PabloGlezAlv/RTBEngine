@@ -1,4 +1,6 @@
 #include "Animator.h"
+#include <cstdio>
+#include <cmath>
 
 namespace RTBEngine {
     namespace Animation {
@@ -48,12 +50,14 @@ namespace RTBEngine {
             skeleton = skel;
             if (skeleton) {
                 finalBoneTransforms.resize(skeleton->GetBoneCount(), Math::Matrix4());
+                printf("[Animator] Skeleton set with %zu bones\n", skeleton->GetBoneCount());
             }
         }
 
         void Animator::AddClip(const std::string& name, std::shared_ptr<AnimationClip> clip)
         {
             clips[name] = clip;
+            printf("[Animator] Added clip '%s'\n", name.c_str());
         }
 
         AnimationClip* Animator::GetClip(const std::string& name) const
@@ -69,6 +73,11 @@ namespace RTBEngine {
         {
             AnimationClip* clip = GetClip(clipName);
             if (!clip) {
+                printf("[Animator] ERROR: Clip '%s' not found! Available clips: ", clipName.c_str());
+                for (const auto& pair : clips) {
+                    printf("'%s' ", pair.first.c_str());
+                }
+                printf("\n");
                 return;
             }
 
@@ -78,6 +87,11 @@ namespace RTBEngine {
             playing = true;
             paused = false;
             looping = loop;
+
+            printf("[Animator] Playing '%s' (duration=%.2fs, loop=%s)\n",
+                   clipName.c_str(),
+                   clip->GetDuration() / clip->GetTicksPerSecond(),
+                   loop ? "true" : "false");
 
             UpdateBoneTransforms();
         }
@@ -127,11 +141,13 @@ namespace RTBEngine {
                 const Bone* bone = skeleton->GetBone(static_cast<int>(i));
                 if (bone) {
                     Math::Matrix4 transform;
-                    if (currentClip->GetBoneTransform(bone->name, currentTime, transform)) {
+                    // Pass localBindTransform to use its position when animation has no position data
+                    if (currentClip->GetBoneTransform(bone->name, currentTime, transform, &bone->localBindTransform)) {
                         localTransforms[i] = transform;
                         matchedBones++;
                     } else {
-                        localTransforms[i] = Math::Matrix4(); // Identity if no animation for this bone
+                        // Use bind pose local transform for bones without any animation data
+                        localTransforms[i] = bone->localBindTransform;
                     }
                 }
             }
