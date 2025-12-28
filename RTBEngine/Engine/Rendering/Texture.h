@@ -32,6 +32,9 @@ namespace RTBEngine {
             // Load from compressed image data (PNG/JPG in memory)
             bool LoadFromCompressedMemory(const unsigned char* data, int dataSize);
 
+            bool CreateDepthTexture(int width, int height);
+            void SetDepthTextureParams();
+
             void Bind(unsigned int slot = 0) const;
             void Unbind() const;
 

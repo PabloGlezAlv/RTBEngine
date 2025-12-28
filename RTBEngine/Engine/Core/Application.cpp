@@ -6,6 +6,8 @@
 #include "../ECS/LightComponent.h"
 #include "../ECS/RigidBodyComponent.h"
 #include "../ECS/BoxColliderComponent.h"
+#include "../ECS/MeshRenderer.h"
+#include "../Animation/Animator.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
 #include "ResourceManager.h"
 #include "../Physics/PhysicsWorld.h"
@@ -45,11 +47,22 @@ bool RTBEngine::Core::Application::Initialize()
 	// Shader
 	Rendering::Shader* shader = resources.LoadShader(
 		"basic",
-		"Assets/Shaders/basic.vert",
-		"Assets/Shaders/basic.frag"
+		"Default/Shaders/basic.vert",
+		"Default/Shaders/basic.frag"
 	);
 	if (!shader) {
 		std::cerr << "Failed to load shader" << std::endl;
+		return false;
+	}
+
+	// Shadow shader
+	Rendering::Shader* shadowShader = resources.LoadShader(
+		"shadow",
+		"Default/Shaders/shadow.vert",
+		"Default/Shaders/shadow.frag"
+	);
+	if (!shadowShader) {
+		std::cerr << "Failed to load shadow shader" << std::endl;
 		return false;
 	}
 
@@ -190,50 +203,141 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 
 void RTBEngine::Core::Application::Render()
 {
-	glClearColor(config.rendering.clearColorR, config.rendering.clearColorG, config.rendering.clearColorB, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 	ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
-
-	// Apply lights from scene to shader
-	Rendering::Shader* shader = ResourceManager::GetInstance().GetShader("basic");
-	if (shader && scene) {
-		shader->Bind();
-
-		int pointLightIndex = 0;
-		int spotLightIndex = 0;
-
-		for (auto& go : scene->GetGameObjects()) {
-			ECS::LightComponent* lightComp = go->GetComponent<ECS::LightComponent>();
-			if (lightComp && lightComp->GetLight()) {
-				Rendering::Light* light = lightComp->GetLight();
-
-				if (light->GetType() == Rendering::LightType::Directional) {
-					light->ApplyToShader(shader);
-				}
-				else if (light->GetType() == Rendering::LightType::Point) {
-					auto* pointLight = static_cast<Rendering::PointLight*>(light);
-					pointLight->ApplyToShader(shader, pointLightIndex++);
-				}
-				else if (light->GetType() == Rendering::LightType::Spot) {
-					auto* spotLight = static_cast<Rendering::SpotLight*>(light);
-					spotLight->ApplyToShader(shader, spotLightIndex++);
-				}
-			}
-		}
-
-		shader->SetInt("numPointLights", pointLightIndex);
-		shader->SetInt("numSpotLights", spotLightIndex);
-	}
+	if (!scene) return;
 
 	Rendering::Camera* activeCamera = scene->GetActiveCamera();
-	if (activeCamera) {
-		scene->Render(activeCamera);
-	}
+	if (!activeCamera) return;
+
+	RenderShadowPass(scene);
+	RenderGeometryPass(scene, activeCamera);
 
 	UI::CanvasSystem::GetInstance().Update(scene);
 	UI::CanvasSystem::GetInstance().ProcessInput();
 	UI::CanvasSystem::GetInstance().RenderAll();
 
 	window->SwapBuffers();
+}
+
+void RTBEngine::Core::Application::RenderShadowPass(ECS::Scene* scene)
+{
+	Rendering::Shader* shadowShader = ResourceManager::GetInstance().GetShader("shadow");
+	if (!shadowShader) return;
+
+	shadowShader->Bind();
+
+	for (auto& go : scene->GetGameObjects()) {
+		auto* lightComp = go->GetComponent<ECS::LightComponent>();
+		if (!lightComp) continue;
+
+		auto* dirLight = dynamic_cast<Rendering::DirectionalLight*>(lightComp->GetLight());
+		if (!dirLight || !dirLight->GetCastShadows()) continue;
+
+		Math::Vector3 sceneCenter(0.0f, 2.0f, 0.0f);
+		float sceneRadius = 50.0f;
+		Math::Matrix4 lightSpaceMatrix = dirLight->GetLightSpaceMatrix(sceneCenter, sceneRadius);
+
+		shadowShader->SetMatrix4("uLightSpaceMatrix", lightSpaceMatrix);
+
+		Rendering::ShadowMap* shadowMap = dirLight->GetShadowMap();
+		shadowMap->BindForWriting();
+
+		glViewport(0, 0, shadowMap->GetResolution(), shadowMap->GetResolution());
+		glClear(GL_DEPTH_BUFFER_BIT);
+
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_FRONT);
+		RenderSceneDepthOnly(scene, shadowShader);
+		glCullFace(GL_BACK);
+
+		shadowMap->Unbind();
+	}
+
+	glViewport(0, 0, window->GetWidth(), window->GetHeight());
+}
+
+void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader)
+{
+	for (auto& go : scene->GetGameObjects()) {
+		auto* meshRenderer = go->GetComponent<ECS::MeshRenderer>();
+		if (!meshRenderer) continue;
+
+		Math::Matrix4 modelMatrix = go->GetTransform().GetModelMatrix();
+		shader->SetMatrix4("uModel", modelMatrix);
+
+		auto* animator = go->GetComponent<Animation::Animator>();
+		if (animator) {
+			shader->SetBool("uHasAnimation", true);
+			const auto& boneTransforms = animator->GetBoneTransforms();
+			for (size_t i = 0; i < boneTransforms.size() && i < 100; ++i) {
+				shader->SetMatrix4("uBoneTransforms[" + std::to_string(i) + "]", boneTransforms[i]);
+			}
+		}
+		else {
+			shader->SetBool("uHasAnimation", false);
+		}
+
+		for (auto* mesh : meshRenderer->GetMeshes()) {
+			mesh->Draw();
+		}
+	}
+}
+
+void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Rendering::Camera* camera)
+{
+	glClearColor(config.rendering.clearColorR, config.rendering.clearColorG,
+		config.rendering.clearColorB, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	Rendering::Shader* shader = ResourceManager::GetInstance().GetShader("basic");
+	if (!shader) return;
+
+	shader->Bind();
+
+	int pointLightIndex = 0;
+	int spotLightIndex = 0;
+	Rendering::DirectionalLight* shadowCastingLight = nullptr;
+
+	for (auto& go : scene->GetGameObjects()) {
+		auto* lightComp = go->GetComponent<ECS::LightComponent>();
+		if (!lightComp || !lightComp->GetLight()) continue;
+
+		Rendering::Light* light = lightComp->GetLight();
+
+		if (light->GetType() == Rendering::LightType::Directional) {
+			light->ApplyToShader(shader);
+
+			auto* dirLight = static_cast<Rendering::DirectionalLight*>(light);
+			if (dirLight->GetCastShadows()) {
+				shadowCastingLight = dirLight;
+			}
+		}
+		else if (light->GetType() == Rendering::LightType::Point) {
+			static_cast<Rendering::PointLight*>(light)->ApplyToShader(shader, pointLightIndex++);
+		}
+		else if (light->GetType() == Rendering::LightType::Spot) {
+			static_cast<Rendering::SpotLight*>(light)->ApplyToShader(shader, spotLightIndex++);
+		}
+	}
+
+	shader->SetInt("numPointLights", pointLightIndex);
+	shader->SetInt("numSpotLights", spotLightIndex);
+
+	if (shadowCastingLight) {
+		shader->SetBool("uHasShadows", true);
+		shader->SetFloat("uShadowBias", shadowCastingLight->GetShadowBias());
+
+		shadowCastingLight->GetShadowMap()->BindForReading(1);
+		shader->SetInt("uShadowMap", 1);
+
+		Math::Vector3 sceneCenter(0.0f, 2.0f, 0.0f);
+		float sceneRadius = 50.0f;
+		Math::Matrix4 lightSpaceMatrix = shadowCastingLight->GetLightSpaceMatrix(sceneCenter, sceneRadius);
+		shader->SetMatrix4("uLightSpaceMatrix", lightSpaceMatrix);
+	}
+	else {
+		shader->SetBool("uHasShadows", false);
+	}
+
+	scene->Render(camera);
 }

@@ -26,13 +26,18 @@ function CreateScene()
             -- Directional Light
             {
                 name = "MainLight",
+                rotation = Quaternion.FromEulerAngles(45.0, 45.0, 0.0),
                 components = {
                     {
                         type = "LightComponent",
                         lightType = "Directional",
                         color = Vector3(1.0, 1.0, 1.0),
-                        intensity = 1.0
+                        intensity = 1.0,
+                        castShadows = true,
+                        shadowMapResolution = 2048,
+                        shadowBias = 0.005
                     }
+
                 }
             },
             -- Point Light
@@ -151,7 +156,19 @@ function CreateScene()
                         type = "MeshRenderer",
                         mesh = "Default/Models/cube.obj",
                         shader = "basic",
-                        texture = "Assets/Textures/testTexture.png"
+                    }
+                }
+            },
+            -- Static Cube (shadow caster)
+            {
+                name = "Cube",
+                position = Vector3(2.0, 1.0, 0.0),
+                scale = Vector3(1.0, 1.0, 1.0),
+                components = {
+                    {
+                        type = "MeshRenderer",
+                        mesh = "Default/Models/cube.obj",
+                        shader = "basic"
                     }
                 }
             },

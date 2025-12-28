@@ -7,6 +7,12 @@
 namespace RTBEngine {
 	namespace ECS {
 		class SceneManager;
+		class Scene;
+	}
+
+	namespace Rendering {
+		class Camera;
+		class Shader;
 	}
 
 	namespace Physics {
@@ -36,6 +42,9 @@ namespace RTBEngine {
 			void Update(float deltaTime);
 			void Render();
 
+			void RenderShadowPass(ECS::Scene* scene);
+			void RenderGeometryPass(ECS::Scene* scene, Rendering::Camera* camera);
+			void RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader);
 		private:
 			ApplicationConfig config;
 

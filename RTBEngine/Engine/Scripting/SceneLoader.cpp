@@ -54,6 +54,16 @@ namespace RTBEngine {
             return result;
         }
 
+        static int ReadOptionalInt(lua_State* L, int tableIndex, const char* fieldName, int defaultValue) {
+            lua_getfield(L, tableIndex, fieldName);
+            int result = defaultValue;
+            if (lua_isnumber(L, -1)) {
+                result = static_cast<int>(lua_tonumber(L, -1));
+            }
+            lua_pop(L, 1);
+            return result;
+        }
+
         static float ReadOptionalFloat(lua_State* L, int tableIndex, const char* fieldName, float defaultValue) {
             lua_getfield(L, tableIndex, fieldName);
             float result = defaultValue;
@@ -277,10 +287,8 @@ namespace RTBEngine {
         }
 
         static void ConfigureLightComponent(lua_State* L, int tableIndex, ECS::LightComponent* comp) {
-            // lightType (string: "Directional", "Point", "Spot")
             std::string lightType = ReadOptionalString(L, tableIndex, "lightType", "Directional");
 
-            // Common properties
             Math::Vector3 color = ReadOptionalVector3(L, tableIndex, "color", Math::Vector3(1.0f, 1.0f, 1.0f));
             float intensity = ReadOptionalFloat(L, tableIndex, "intensity", 1.0f);
 
@@ -288,6 +296,20 @@ namespace RTBEngine {
                 auto dirLight = std::make_unique<Rendering::DirectionalLight>();
                 dirLight->SetColor(color);
                 dirLight->SetIntensity(intensity);
+
+                bool castShadows = ReadOptionalBool(L, tableIndex, "castShadows", false);
+                if (castShadows) {
+                    dirLight->SetCastShadows(true);
+
+                    int shadowMapResolution = ReadOptionalInt(L, tableIndex, "shadowMapResolution", 1024);
+                    if (shadowMapResolution != 1024) {
+                        dirLight->SetShadowMapResolution(shadowMapResolution);
+                    }
+
+                    float shadowBias = ReadOptionalFloat(L, tableIndex, "shadowBias", 0.005f);
+                    dirLight->SetShadowBias(shadowBias);
+                }
+
                 comp->SetLight(std::move(dirLight));
             }
             else if (lightType == "Point") {

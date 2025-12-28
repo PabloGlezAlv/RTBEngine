@@ -1,6 +1,7 @@
 #include "LightComponent.h"
 #include "GameObject.h"
 #include "Transform.h"
+#include "../Rendering/Lighting/DirectionalLight.h"
 
 namespace RTBEngine {
     namespace ECS {
@@ -54,10 +55,17 @@ namespace RTBEngine {
                 }
             }
 
-            if (syncDirection && light->GetType() == Rendering::LightType::Spot) {
-                auto* spotLight = static_cast<Rendering::SpotLight*>(light.get());
-                Math::Vector3 forward = transform.GetRotation() * Math::Vector3(0, -1, 0);
-                spotLight->SetDirection(forward);
+            if (syncDirection) {
+                if (light->GetType() == Rendering::LightType::Directional) {
+                    auto* dirLight = static_cast<Rendering::DirectionalLight*>(light.get());
+                    Math::Vector3 forward = transform.GetRotation() * Math::Vector3(0, -1, 0);
+                    dirLight->SetDirection(forward);
+                }
+                else if (light->GetType() == Rendering::LightType::Spot) {
+                    auto* spotLight = static_cast<Rendering::SpotLight*>(light.get());
+                    Math::Vector3 forward = transform.GetRotation() * Math::Vector3(0, -1, 0);
+                    spotLight->SetDirection(forward);
+                }
             }
         }
 

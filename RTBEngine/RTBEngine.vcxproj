@@ -130,6 +130,7 @@
 xcopy /y /d "$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64\SDL2.dll" "$(OutDir)"
 xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(OutDir)"
 xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutDir)"
+xcopy "$(ProjectDir)ThirdParty\assimp\bin\x64\*.dll" "$(OutDir)" /Y /D
 xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -157,6 +158,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
 xcopy /y /d "$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64\SDL2.dll" "$(OutDir)"
 xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(OutDir)"
 xcopy /y /d "$(ProjectDir)ThirdParty\assimp\bin\x64\assimp-vc143-mt.dll" "$(OutDir)"
+xcopy "$(ProjectDir)ThirdParty\assimp\bin\x64\*.dll" "$(OutDir)" /Y /D
 xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -165,6 +167,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\Animation\AnimationClip.cpp" />
     <ClCompile Include="Engine\ECS\CameraComponent.cpp" />
     <ClCompile Include="Engine\ECS\FreeLookCamera.cpp" />
+    <ClCompile Include="Engine\Rendering\FrameBuffer.cpp" />
     <ClCompile Include="Engine\Scripting\ComponentRegistry.cpp" />
     <ClCompile Include="Engine\ECS\AudioSourceComponent.cpp" />
     <ClCompile Include="Engine\Audio\AudioClip.cpp" />
@@ -213,6 +216,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\Scripting\SceneLoader.cpp" />
     <ClCompile Include="Engine\ECS\SceneManager.cpp" />
     <ClCompile Include="Engine\Animation\Skeleton.cpp" />
+    <ClCompile Include="Engine\Rendering\ShadowMap.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui_draw.cpp" />
@@ -230,6 +234,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="Engine\Core\ApplicationConfig.h" />
     <ClInclude Include="Engine\ECS\CameraComponent.h" />
     <ClInclude Include="Engine\ECS\FreeLookCamera.h" />
+    <ClInclude Include="Engine\Rendering\FrameBuffer.h" />
     <ClInclude Include="Engine\RTBEngine.h" />
     <ClInclude Include="Engine\Scripting\ComponentRegistry.h" />
     <ClInclude Include="Engine\ECS\AudioSourceComponent.h" />
@@ -293,6 +298,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="Engine\Scripting\SceneLoader.h" />
     <ClInclude Include="Engine\ECS\SceneManager.h" />
     <ClInclude Include="Engine\Animation\Skeleton.h" />
+    <ClInclude Include="Engine\Rendering\ShadowMap.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imgui.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imconfig.h" />
@@ -304,8 +310,10 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Scenes\TestScene.lua" />
-    <None Include="Assets\Shaders\basic.frag" />
-    <None Include="Assets\Shaders\basic.vert" />
+    <None Include="Default\Shaders\basic.frag" />
+    <None Include="Default\Shaders\basic.vert" />
+    <None Include="Default\Shaders\shadow.frag" />
+    <None Include="Default\Shaders\shadow.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
