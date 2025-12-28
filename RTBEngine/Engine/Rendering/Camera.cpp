@@ -60,6 +60,13 @@ namespace RTBEngine {
             viewDirty = true;
         }
 
+        void Camera::SetDirectionVectors(const Math::Vector3& forward, const Math::Vector3& right, const Math::Vector3& up) {
+            this->forward = forward;
+            this->right = right;
+            this->up = up;
+            viewDirty = true;
+        }
+
         void Camera::SetFOV(float fov) {
             this->fov = fov;
             projectionDirty = true;
@@ -159,13 +166,16 @@ namespace RTBEngine {
             float pitchRad = pitch * toRadians;
             float yawRad = yaw * toRadians;
 
-            forward.x = cos(pitchRad) * sin(yawRad);
+            // Unity convention: pitch rotates around X, yaw rotates around Y
+            // When pitch=0, yaw=0: forward = (0, 0, 1) = +Z
+            // Positive pitch looks up, positive yaw rotates left
+            forward.x = -sin(yawRad) * cos(pitchRad);
             forward.y = sin(pitchRad);
-            forward.z = cos(pitchRad) * cos(yawRad);
+            forward.z = cos(yawRad) * cos(pitchRad);
             forward.Normalize();
 
-            right = forward.Cross(worldUp).Normalized();
-            up = right.Cross(forward).Normalized();
+            right = worldUp.Cross(forward).Normalized();
+            up = forward.Cross(right).Normalized();
         }
 
         void Camera::UpdateViewMatrix() {

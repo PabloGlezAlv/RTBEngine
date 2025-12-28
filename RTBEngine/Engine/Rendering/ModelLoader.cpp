@@ -72,8 +72,6 @@ namespace RTBEngine {
                 return result;
             }
 
-            std::cout << "[ModelLoader] " << path << " - Meshes: " << scene->mNumMeshes
-                      << ", Animations: " << scene->mNumAnimations << std::endl;
 
             // Store global inverse transform
             result.skeleton->SetGlobalInverseTransform(
@@ -106,24 +104,6 @@ namespace RTBEngine {
             // If no bones were found, clear the skeleton
             if (result.skeleton->GetBoneCount() == 0) {
                 result.skeleton.reset();
-            }
-            else {
-                // Count bones with valid parents
-                int rootBones = 0;
-                int linkedBones = 0;
-                for (size_t i = 0; i < result.skeleton->GetBoneCount(); i++) {
-                    const Animation::Bone* bone = result.skeleton->GetBone(static_cast<int>(i));
-                    if (bone->parentIndex == -1) rootBones++;
-                    else linkedBones++;
-                }
-                std::cout << "[ModelLoader] Skeleton: " << result.skeleton->GetBoneCount()
-                          << " bones (" << rootBones << " roots, " << linkedBones << " linked)" << std::endl;
-            }
-
-            // Log animations
-            for (const auto& clip : result.animations) {
-                std::cout << "[ModelLoader] Animation: '" << clip->GetName()
-                          << "' duration=" << clip->GetDuration() / clip->GetTicksPerSecond() << "s" << std::endl;
             }
 
             return result;
@@ -220,8 +200,6 @@ namespace RTBEngine {
         void ModelLoader::ExtractBoneInfo(aiMesh* mesh, std::vector<Vertex>& vertices,
             std::shared_ptr<Animation::Skeleton>& skeleton)
         {
-            static bool debugBones = true;
-
             for (unsigned int boneIdx = 0; boneIdx < mesh->mNumBones; boneIdx++) {
                 aiBone* assimpBone = mesh->mBones[boneIdx];
                 std::string boneName = assimpBone->mName.C_Str();
@@ -235,12 +213,6 @@ namespace RTBEngine {
                     bone.offsetMatrix = ConvertMatrix(assimpBone->mOffsetMatrix);
                     skeleton->AddBone(bone);
                     boneId = static_cast<int>(skeleton->GetBoneCount()) - 1;
-
-                    // Debug: print first 5 bone names
-                    if (debugBones && boneId < 5) {
-                        std::cout << "[ModelLoader]   Bone[" << boneId << "]: '" << boneName << "'" << std::endl;
-                    }
-                    if (boneId == 4) debugBones = false;
                 }
 
                 // Assign bone weights to vertices
@@ -329,17 +301,6 @@ namespace RTBEngine {
             // (FBX via Assimp splits Translation/Rotation/Scale into separate channels)
             std::unordered_map<std::string, Animation::BoneAnimation> boneAnimMap;
 
-            // Debug: print all channel names to see what Assimp gives us
-            static bool debugChannels = true;
-            if (debugChannels) {
-                printf("[ModelLoader] Animation channels:\n");
-                for (unsigned int i = 0; i < std::min(anim->mNumChannels, 15u); i++) {
-                    printf("  [%d] '%s'\n", i, anim->mChannels[i]->mNodeName.C_Str());
-                }
-                if (anim->mNumChannels > 15) printf("  ... and %d more\n", anim->mNumChannels - 15);
-                debugChannels = false;
-            }
-
             for (unsigned int i = 0; i < anim->mNumChannels; i++) {
                 aiNodeAnim* channel = anim->mChannels[i];
 
@@ -404,9 +365,6 @@ namespace RTBEngine {
             for (auto& pair : boneAnimMap) {
                 clip->AddBoneAnimation(pair.second);
             }
-
-            std::cout << "[ModelLoader] Animation '" << name << "': " << anim->mNumChannels
-                      << " channels -> " << boneAnimMap.size() << " bones" << std::endl;
 
             return clip;
         }

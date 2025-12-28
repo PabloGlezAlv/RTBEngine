@@ -16,6 +16,7 @@ namespace RTBEngine {
 
             void SetPosition(const Math::Vector3& position);
             void SetRotation(float pitch, float yaw);
+            void SetDirectionVectors(const Math::Vector3& forward, const Math::Vector3& right, const Math::Vector3& up);
             void SetFOV(float fov);
             void SetAspectRatio(float aspectRatio);
             void SetNearPlane(float nearPlane);

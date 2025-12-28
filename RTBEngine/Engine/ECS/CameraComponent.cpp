@@ -25,12 +25,16 @@ namespace RTBEngine {
         void CameraComponent::SyncWithTransform() {
             if (!camera || !owner) return;
 
+            // Sync position
             camera->SetPosition(owner->GetTransform().GetPosition());
 
-            Math::Vector3 euler = owner->GetTransform().GetRotation().ToEulerAngles();
-            const float toDegrees = 180.0f / 3.14159265f;
-            
-            camera->SetRotation(euler.y * toDegrees, euler.z * toDegrees);
+            // Sync orientation vectors directly from Transform
+            // This ensures Camera uses the corrected GetForward()/GetRight()/GetUp()
+            camera->SetDirectionVectors(
+                owner->GetTransform().GetForward(),
+                owner->GetTransform().GetRight(),
+                owner->GetTransform().GetUp()
+            );
         }
 
         void CameraComponent::SetFOV(float fov) {

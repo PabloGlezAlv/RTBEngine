@@ -17,17 +17,17 @@ namespace RTBEngine {
             // Settings
             void SetMoveSpeed(float speed) { moveSpeed = speed; }
             void SetLookSpeed(float speed) { lookSpeed = speed; }
+            void SetRotationSpeed(float speed) { rotationSpeed = speed; }
             float GetMoveSpeed() const { return moveSpeed; }
             float GetLookSpeed() const { return lookSpeed; }
+            float GetRotationSpeed() const { return rotationSpeed; }
 
         private:
             float moveSpeed = 5.0f;
             float lookSpeed = 0.1f;
+            float rotationSpeed = 90.0f;  // Degrees per second for Q/E rotation
             float yaw = 0.0f;
             float pitch = 0.0f;
-            bool firstMouse = true;
-            float lastMouseX = 0.0f;
-            float lastMouseY = 0.0f;
         };
 
     }

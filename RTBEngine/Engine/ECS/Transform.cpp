@@ -44,13 +44,15 @@ namespace RTBEngine {
         Math::Vector3 Transform::GetForward() const
         {
             Math::Matrix4 rotationMatrix = rotation.ToMatrix();
+            // Extract forward vector (3rd column) - now points to +Z by default
             return Math::Vector3(rotationMatrix.m[8], rotationMatrix.m[9], rotationMatrix.m[10]).Normalized();
         }
 
         Math::Vector3 Transform::GetRight() const
         {
             Math::Matrix4 rotationMatrix = rotation.ToMatrix();
-            return Math::Vector3(rotationMatrix.m[0], rotationMatrix.m[1], rotationMatrix.m[2]).Normalized();
+            // With negated yaw convention, right also needs to be negated
+            return Math::Vector3(-rotationMatrix.m[0], -rotationMatrix.m[1], -rotationMatrix.m[2]).Normalized();
         }
 
         Math::Vector3 Transform::GetUp() const

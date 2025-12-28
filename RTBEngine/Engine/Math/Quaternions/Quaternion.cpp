@@ -170,36 +170,65 @@ namespace RTBEngine {
         Vector3 Quaternion::ToEulerAngles() const {
             Vector3 euler;
 
-            float sinr_cosp = 2.0f * (w * x + y * z);
-            float cosr_cosp = 1.0f - 2.0f * (x * x + y * y);
-            euler.x = std::atan2(sinr_cosp, cosr_cosp);
+            // YXZ rotation order - inverse of FromEulerAngles
+            // Convert rotation matrix elements from quaternion
 
-            float sinp = 2.0f * (w * y - z * x);
-            if (std::abs(sinp) >= 1.0f)
-                euler.y = std::copysign(3.14159265f / 2.0f, sinp);
-            else
-                euler.y = std::asin(sinp);
+            // From quaternion to rotation matrix elements we need:
+            // R00 = 1 - 2(y² + z²)
+            // R01 = 2(xy - wz)
+            // R02 = 2(xz + wy)
+            // R10 = 2(xy + wz)
+            // R11 = 1 - 2(x² + z²)
+            // R12 = 2(yz - wx)
+            // R20 = 2(xz - wy)
+            // R21 = 2(yz + wx)
+            // R22 = 1 - 2(x² + y²)
 
-            float siny_cosp = 2.0f * (w * z + x * y);
-            float cosy_cosp = 1.0f - 2.0f * (y * y + z * z);
-            euler.z = std::atan2(siny_cosp, cosy_cosp);
+            float r21 = 2.0f * (y * z + w * x);  // sin(pitch)
+            float r22 = 1.0f - 2.0f * (x * x + y * y);  // cos(pitch) * cos(yaw)
+            float r20 = 2.0f * (x * z - w * y);  // -cos(pitch) * sin(yaw)
+            float r01 = 2.0f * (x * y - w * z);  // cos(pitch) * sin(roll)
+            float r11 = 1.0f - 2.0f * (x * x + z * z);  // cos(pitch) * cos(roll)
+
+            // Pitch (rotation around X axis)
+            if (std::abs(r21) >= 0.9999f) {
+                // Gimbal lock case
+                euler.x = std::copysign(3.14159265358979323846f / 2.0f, r21);
+                euler.y = std::atan2(-r20, r22);
+                euler.z = 0.0f;
+            } else {
+                euler.x = std::asin(r21);
+                euler.y = std::atan2(-r20, r22);
+                euler.z = std::atan2(-r01, r11);
+            }
 
             return euler;
         }
 
         Quaternion Quaternion::FromEulerAngles(float pitch, float yaw, float roll) {
-            float cy = cos(yaw * 0.5f);
-            float sy = sin(yaw * 0.5f);
-            float cp = cos(pitch * 0.5f);
-            float sp = sin(pitch * 0.5f);
-            float cr = cos(roll * 0.5f);
-            float sr = sin(roll * 0.5f);
+            // Modified YXZ convention with forward = +Z at yaw=0, pitch=0
+            // pitch = rotation around X axis (look up/down)
+            // yaw = rotation around Y axis (turn left/right)
+            // roll = rotation around Z axis (tilt)
+            // NOTE: Yaw is negated to make default forward point toward +Z
 
+            float hp = pitch * 0.5f;   // half pitch
+            float hy = -yaw * 0.5f;    // half yaw (NEGATED for +Z forward convention)
+            float hr = roll * 0.5f;    // half roll
+
+            float cp = cos(hp);
+            float sp = sin(hp);
+            float cy = cos(hy);
+            float sy = sin(hy);
+            float cr = cos(hr);
+            float sr = sin(hr);
+
+            // YXZ order: Ry * Rx * Rz
             Quaternion q;
-            q.w = cr * cp * cy + sr * sp * sy;
-            q.x = sr * cp * cy - cr * sp * sy;
-            q.y = cr * sp * cy + sr * cp * sy;
-            q.z = cr * cp * sy - sr * sp * cy;
+            q.w = cy * cp * cr + sy * sp * sr;
+            q.x = cy * sp * cr + sy * cp * sr;
+            q.y = sy * cp * cr - cy * sp * sr;
+            q.z = cy * cp * sr - sy * sp * cr;
 
             return q;
         }
