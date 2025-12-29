@@ -49,7 +49,7 @@ function CreateScene()
                         type = "LightComponent",
                         lightType = "Point",
                         color = Vector3(0.2, 0.5, 1.0),
-                        intensity = 15.0,
+                        intensity = 1.0,
                         range = 30.0
                     }
                 }
