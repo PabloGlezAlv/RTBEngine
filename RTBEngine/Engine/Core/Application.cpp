@@ -245,10 +245,10 @@ void RTBEngine::Core::Application::RenderShadowPass(ECS::Scene* scene)
 		glViewport(0, 0, shadowMap->GetResolution(), shadowMap->GetResolution());
 		glClear(GL_DEPTH_BUFFER_BIT);
 
-		glEnable(GL_CULL_FACE);
-		glCullFace(GL_FRONT);
+		// Disable culling to render all faces (fixes shadow issues with single-sided geometry)
+		glDisable(GL_CULL_FACE);
 		RenderSceneDepthOnly(scene, shadowShader);
-		glCullFace(GL_BACK);
+		glEnable(GL_CULL_FACE);
 
 		shadowMap->Unbind();
 	}
