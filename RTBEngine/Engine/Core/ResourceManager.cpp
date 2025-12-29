@@ -195,6 +195,33 @@ namespace RTBEngine {
 			return defaultFont;
 		}
 
+        Rendering::Cubemap* ResourceManager::GetCubemap(const std::string& path) {
+            auto it = cubemaps.find(path);
+            if (it != cubemaps.end()) {
+                return it->second.get();
+            }
+            return nullptr;
+        }
+
+        Rendering::Cubemap* ResourceManager::LoadCubemap(const std::string& folderPath, const std::string& extension) {
+            // Check cache first
+            auto existing = GetCubemap(folderPath);
+            if (existing) {
+                return existing;
+            }
+
+            // Load new cubemap
+            auto cubemap = std::make_unique<Rendering::Cubemap>();
+            if (!cubemap->LoadFromFolder(folderPath, extension)) {
+                std::cerr << "Failed to load cubemap from: " << folderPath << std::endl;
+                return nullptr;
+            }
+
+            Rendering::Cubemap* ptr = cubemap.get();
+            cubemaps[folderPath] = std::move(cubemap);
+            return ptr;
+        }
+
         Rendering::Texture* ResourceManager::GetDefaultTexture()
         {
             return LoadTexture(DEFAULT_TEXTURE_PATH);
@@ -218,6 +245,39 @@ namespace RTBEngine {
         Rendering::Mesh* ResourceManager::GetDefaultPlane()
         {
             return LoadModel(DEFAULT_PLANE_PATH);
+        }
+
+        Rendering::Cubemap* ResourceManager::GetDefaultCubemap() {
+            // Check if already loaded
+            auto existing = GetCubemap(DEFAULT_SKYBOX_PATH);
+            if (existing) {
+                return existing;
+            }
+
+            // Try to load from folder
+            auto cubemap = std::make_unique<Rendering::Cubemap>();
+            if (!cubemap->LoadFromFolder(DEFAULT_SKYBOX_PATH)) {
+                // Fallback: create solid color cubemap (blue-gray sky)
+                cubemap->CreateSolidColor(0.3f, 0.4f, 0.6f);
+            }
+
+            Rendering::Cubemap* ptr = cubemap.get();
+            cubemaps[DEFAULT_SKYBOX_PATH] = std::move(cubemap);
+            return ptr;
+        }
+
+        Rendering::Skybox* ResourceManager::GetDefaultSkybox() {
+            // Lazy initialization
+            if (!defaultSkybox) {
+                Rendering::Shader* skyboxShader = GetShader("skybox");
+                Rendering::Cubemap* cubemap = GetDefaultCubemap();
+
+                if (skyboxShader && cubemap) {
+                    defaultSkybox = std::make_unique<Rendering::Skybox>();
+                    defaultSkybox->Initialize(cubemap, skyboxShader);
+                }
+            }
+            return defaultSkybox.get();
         }
 
         ECS::Scene* ResourceManager::LoadScene(const std::string& path) {
@@ -252,6 +312,8 @@ namespace RTBEngine {
 			fonts.clear();
             scenes.clear();
 			defaultFont = nullptr;
+            cubemaps.clear();
+            defaultSkybox.reset();
         }
     }
 }

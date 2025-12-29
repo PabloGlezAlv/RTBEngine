@@ -75,6 +75,10 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 	}
 }
 
+void RTBEngine::ECS::Scene::SetSkyboxCubemap(Rendering::Cubemap* cubemap) {
+    skyboxCubemap = cubemap;
+}
+
 void RTBEngine::ECS::Scene::CollectLights()
 {
 	lights.clear();

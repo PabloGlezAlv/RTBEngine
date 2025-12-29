@@ -5,6 +5,9 @@
 #include "../Rendering/ModelLoader.h"
 #include "../Rendering/Font.h"
 #include "../Audio/AudioClip.h"
+#include "../Rendering/Cubemap.h"
+#include "../Rendering/Skybox.h"
+
 #include <unordered_map>
 #include <string>
 #include <memory>
@@ -27,6 +30,8 @@ namespace RTBEngine {
             static constexpr const char* DEFAULT_CUBE_PATH = "Default/Models/cube.obj";
             static constexpr const char* DEFAULT_SPHERE_PATH = "Default/Models/sphere.obj";
             static constexpr const char* DEFAULT_PLANE_PATH = "Default/Models/plane.obj";
+            static constexpr const char* DEFAULT_SKYBOX_PATH = "Default/Textures/Skybox";
+
 
             static ResourceManager& GetInstance();
 
@@ -58,12 +63,19 @@ namespace RTBEngine {
 			Rendering::Font* LoadFont(const std::string& path, const float* sizes, int numSizes);
 			Rendering::Font* GetDefaultFont();
 
+            // Cubemap management
+            Rendering::Cubemap* GetCubemap(const std::string& path);
+            Rendering::Cubemap* LoadCubemap(const std::string& folderPath, const std::string& extension = ".png");
+
             // Default resources
             Rendering::Texture* GetDefaultTexture();
             Rendering::Texture* GetLogoTexture();
             Rendering::Mesh* GetDefaultCube();
             Rendering::Mesh* GetDefaultSphere();
             Rendering::Mesh* GetDefaultPlane();
+            Rendering::Cubemap* GetDefaultCubemap();
+            Rendering::Skybox* GetDefaultSkybox();
+
 
             // Scene management
             ECS::Scene* LoadScene(const std::string& path);
@@ -79,6 +91,7 @@ namespace RTBEngine {
             std::unordered_map<std::string, std::unique_ptr<Rendering::Texture>> textures;
             std::unordered_map<std::string, std::vector<std::unique_ptr<Rendering::Mesh>>> modelMeshes;
             std::unordered_map<std::string, std::unique_ptr<Audio::AudioClip>> audioClips;
+            std::unordered_map<std::string, std::unique_ptr<Rendering::Cubemap>> cubemaps;
 
             // Cache for raw pointers (for GetModelMeshes return)
             std::unordered_map<std::string, std::vector<Rendering::Mesh*>> modelMeshPtrs;
@@ -87,6 +100,7 @@ namespace RTBEngine {
             std::unordered_map<std::string, std::unique_ptr<ECS::Scene>> scenes;
 			Rendering::Font* defaultFont = nullptr;
 
+            std::unique_ptr<Rendering::Skybox> defaultSkybox;
         };
 
     }

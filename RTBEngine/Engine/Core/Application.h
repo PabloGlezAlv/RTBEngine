@@ -13,6 +13,7 @@ namespace RTBEngine {
 	namespace Rendering {
 		class Camera;
 		class Shader;
+		class Skybox;
 	}
 
 	namespace Physics {
@@ -59,12 +60,14 @@ namespace RTBEngine {
 
 			float physicsAccumulator = 0.0f;
 
+			Rendering::Skybox* skybox = nullptr;
+
 			Application(const Application&) = delete;
 			Application& operator=(const Application&) = delete;
 		};
 	}
 
-	// Helper function para uso simple
+	// Helper functionto simply run the program
 	inline int Run(const Core::ApplicationConfig& config) {
 		Core::Application app(config);
 		if (!app.Initialize()) return -1;

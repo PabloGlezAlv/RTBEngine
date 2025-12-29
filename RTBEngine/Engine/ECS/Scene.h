@@ -8,6 +8,13 @@
 #include <string>
 
 namespace RTBEngine {
+    namespace Rendering {
+        class Cubemap;
+    }
+}
+
+
+namespace RTBEngine {
     namespace ECS {
 
         class CameraComponent;
@@ -28,6 +35,12 @@ namespace RTBEngine {
             void FixedUpdate(float fixedDeltaTime);
             void Render(Rendering::Camera* camera);
 
+            // Skybox management (per-scene override)
+            void SetSkyboxCubemap(Rendering::Cubemap* cubemap);
+            Rendering::Cubemap* GetSkyboxCubemap() const { return skyboxCubemap; }
+            void SetSkyboxEnabled(bool enabled) { skyboxEnabled = enabled; }
+            bool IsSkyboxEnabled() const { return skyboxEnabled; }
+
             const std::string& GetName() const { return name; }
             void CollectLights();
             const std::vector<Rendering::Light*>& GetLights() const { return lights; }
@@ -43,6 +56,10 @@ namespace RTBEngine {
             std::vector<Rendering::Light*> lights;
             
             CameraComponent* mainCamera = nullptr;
+
+            // Skybox settings
+            Rendering::Cubemap* skyboxCubemap = nullptr;
+            bool skyboxEnabled = true;
         };
 
     }

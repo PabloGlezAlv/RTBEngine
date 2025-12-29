@@ -601,6 +601,19 @@ namespace RTBEngine {
             // Create scene
             ECS::Scene* scene = new ECS::Scene(sceneName);
 
+            // Read skybox settings
+            std::string skyboxPath = ReadOptionalString(L, -1, "skybox", "");
+            bool skyboxEnabled = ReadOptionalBool(L, -1, "skyboxEnabled", true);
+
+            scene->SetSkyboxEnabled(skyboxEnabled);
+            if (!skyboxPath.empty()) {
+                Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
+                Rendering::Cubemap* cubemap = resources.LoadCubemap(skyboxPath);
+                if (cubemap) {
+                    scene->SetSkyboxCubemap(cubemap);
+                }
+            }
+
             // Get gameObjects array
             lua_getfield(L, -1, "gameObjects");
             if (lua_istable(L, -1)) {

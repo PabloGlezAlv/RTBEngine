@@ -16,6 +16,9 @@
 #include "../UI/CanvasSystem.h"
 #include "../Scripting/ComponentRegistry.h"
 #include "../ECS/SceneManager.h"
+#include "../Rendering/Skybox.h"
+#include "../Rendering/Cubemap.h"
+
 #include <backends/imgui_impl_sdl2.h>
 #include <iostream>
 
@@ -65,6 +68,21 @@ bool RTBEngine::Core::Application::Initialize()
 		std::cerr << "Failed to load shadow shader" << std::endl;
 		return false;
 	}
+
+	// Skybox shader
+	Rendering::Shader* skyboxShader = resources.LoadShader(
+		"skybox",
+		"Default/Shaders/skybox.vert",
+		"Default/Shaders/skybox.frag"
+	);
+	if (!skyboxShader) {
+		std::cerr << "Failed to load skybox shader" << std::endl;
+		return false;
+	}
+
+	// Initialize default skybox
+	skybox = resources.GetDefaultSkybox();
+
 
 	// Initialize physics
 	physicsWorld = new Physics::PhysicsWorld();
@@ -340,4 +358,18 @@ void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Renderi
 	}
 
 	scene->Render(camera);
+
+	// Render skybox after geometry (uses GL_LEQUAL depth test)
+	if (skybox && skybox->IsEnabled() && scene->IsSkyboxEnabled()) {
+		// Use scene-specific cubemap if available, otherwise use default
+		Rendering::Cubemap* sceneCubemap = scene->GetSkyboxCubemap();
+		if (sceneCubemap) {
+			skybox->SetCubemap(sceneCubemap);
+		}
+		else {
+			skybox->SetCubemap(ResourceManager::GetInstance().GetDefaultCubemap());
+		}
+		skybox->Render(camera);
+	}
+
 }

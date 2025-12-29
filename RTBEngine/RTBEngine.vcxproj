@@ -167,6 +167,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\Animation\AnimationClip.cpp" />
     <ClCompile Include="Engine\ECS\CameraComponent.cpp" />
     <ClCompile Include="Engine\ECS\FreeLookCamera.cpp" />
+    <ClCompile Include="Engine\Rendering\Cubemap.cpp" />
     <ClCompile Include="Engine\Rendering\FrameBuffer.cpp" />
     <ClCompile Include="Engine\Scripting\ComponentRegistry.cpp" />
     <ClCompile Include="Engine\ECS\AudioSourceComponent.cpp" />
@@ -217,6 +218,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\ECS\SceneManager.cpp" />
     <ClCompile Include="Engine\Animation\Skeleton.cpp" />
     <ClCompile Include="Engine\Rendering\ShadowMap.cpp" />
+    <ClCompile Include="Engine\Rendering\Skybox.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui_draw.cpp" />
@@ -234,6 +236,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="Engine\Core\ApplicationConfig.h" />
     <ClInclude Include="Engine\ECS\CameraComponent.h" />
     <ClInclude Include="Engine\ECS\FreeLookCamera.h" />
+    <ClInclude Include="Engine\Rendering\Cubemap.h" />
     <ClInclude Include="Engine\Rendering\FrameBuffer.h" />
     <ClInclude Include="Engine\RTBEngine.h" />
     <ClInclude Include="Engine\Scripting\ComponentRegistry.h" />
@@ -299,6 +302,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="Engine\ECS\SceneManager.h" />
     <ClInclude Include="Engine\Animation\Skeleton.h" />
     <ClInclude Include="Engine\Rendering\ShadowMap.h" />
+    <ClInclude Include="Engine\Rendering\Skybox.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imgui.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imconfig.h" />
@@ -314,6 +318,8 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <None Include="Default\Shaders\basic.vert" />
     <None Include="Default\Shaders\shadow.frag" />
     <None Include="Default\Shaders\shadow.vert" />
+    <None Include="Default\Shaders\skybox.frag" />
+    <None Include="Default\Shaders\skybox.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
