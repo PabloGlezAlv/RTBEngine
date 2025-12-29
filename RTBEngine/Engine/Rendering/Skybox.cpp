@@ -113,12 +113,14 @@ namespace RTBEngine {
                 return;
             }
 
+            glDisable(GL_CULL_FACE);
+
             // Change depth function so skybox passes depth test at maximum depth (1.0)
             glDepthFunc(GL_LEQUAL);
 
             shader->Bind();
 
-            // Remove translation from view matrix (only keep rotation)
+            // Remove translation from view matrix
             // This makes the skybox appear infinitely far away
             Math::Matrix4 view = camera->GetViewMatrix();
             view.m[12] = 0.0f;  // Remove X translation
@@ -141,6 +143,8 @@ namespace RTBEngine {
 
             // Restore default depth function
             glDepthFunc(GL_LESS);
+
+            glEnable(GL_CULL_FACE);
         }
 
     }
