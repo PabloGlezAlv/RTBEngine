@@ -1,6 +1,7 @@
 #include "AudioClip.h"
 #include "AudioSystem.h"
 #include <iostream>
+#include "../RTBEngine.h"
 
 namespace RTBEngine {
     namespace Audio {
@@ -19,7 +20,7 @@ namespace RTBEngine {
 
             FMOD::System* fmodSystem = AudioSystem::GetInstance().GetFMODSystem();
             if (!fmodSystem) {
-                std::cerr << "AudioClip: AudioSystem not initialized" << std::endl;
+                RTB_ERROR("AudioClip: AudioSystem not initialized");
                 return false;
             }
 
@@ -35,7 +36,7 @@ namespace RTBEngine {
             FMOD_RESULT result = fmodSystem->createSound(path.c_str(), mode, nullptr, &rawSound);
 
             if (result != FMOD_OK) {
-                std::cerr << "AudioClip: Failed to load " << path << std::endl;
+                RTB_ERROR("AudioClip: Failed to load " + path);
                 return false;
             }
 

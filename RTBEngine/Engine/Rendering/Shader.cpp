@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include "../RTBEngine.h"
 
 namespace RTBEngine {
     namespace Rendering {
@@ -99,7 +100,7 @@ namespace RTBEngine {
             if (!success) {
                 GLchar infoLog[512];
                 glGetShaderInfoLog(shader, 512, nullptr, infoLog);
-                std::cerr << "Error: Shader compilation failed: " << infoLog << std::endl;
+                RTB_ERROR("Error: Shader compilation failed: " + std::string(infoLog));
                 glDeleteShader(shader);
                 return 0;
             }
@@ -119,7 +120,7 @@ namespace RTBEngine {
             if (!success) {
                 GLchar infoLog[512];
                 glGetProgramInfoLog(programID, 512, nullptr, infoLog);
-                std::cerr << "Error: Shader linking failed: " << infoLog << std::endl;
+                RTB_ERROR("Error: Shader linking failed: " + std::string(infoLog));
                 glDeleteProgram(programID);
                 programID = 0;
                 return false;
@@ -132,7 +133,7 @@ namespace RTBEngine {
             std::ifstream file(filePath);
 
             if (!file.is_open()) {
-                std::cerr << "Error: Could not open file: " << filePath << std::endl;
+                RTB_ERROR("Error: Could not open file: " + filePath);
                 return "";
             }
 

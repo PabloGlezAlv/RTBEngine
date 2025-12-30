@@ -1,5 +1,6 @@
 #include "ComponentRegistry.h"
 #include <iostream>
+#include "../RTBEngine.h"
 
 #include "../ECS/MeshRenderer.h"
 #include "../ECS/LightComponent.h"
@@ -34,7 +35,7 @@ namespace RTBEngine {
                 return it->second();
             }
 
-            std::cerr << "ComponentRegistry: Component type '" << typeName << "' not registered!" << std::endl;
+            RTB_ERROR("ComponentRegistry: Component type '" + typeName + "' not registered!");
             return nullptr;
         }
 

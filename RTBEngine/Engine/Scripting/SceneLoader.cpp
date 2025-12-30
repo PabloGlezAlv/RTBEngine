@@ -28,6 +28,7 @@
 #include <lua.hpp>
 #include <LuaBridge/LuaBridge.h>
 #include <cstdio>
+#include "../RTBEngine.h"
 
 namespace RTBEngine {
     namespace Scripting {
@@ -563,7 +564,7 @@ namespace RTBEngine {
 
             // Load and execute Lua file
             if (luaL_dofile(L, filePath.c_str()) != LUA_OK) {
-                printf("SceneLoader: Failed to load file '%s': %s\n", filePath.c_str(), lua_tostring(L, -1));
+                RTB_ERROR("SceneLoader: Failed to load file '" + filePath + "': " + std::string(lua_tostring(L, -1)));
                 lua_close(L);
                 return nullptr;
             }
@@ -571,21 +572,21 @@ namespace RTBEngine {
             // Get CreateScene function
             lua_getglobal(L, "CreateScene");
             if (!lua_isfunction(L, -1)) {
-                printf("SceneLoader: 'CreateScene' function not found in %s\n", filePath.c_str());
+                RTB_ERROR("SceneLoader: 'CreateScene' function not found in " + filePath);
                 lua_close(L);
                 return nullptr;
             }
 
             // Call CreateScene()
             if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
-                printf("SceneLoader: Error calling CreateScene(): %s\n", lua_tostring(L, -1));
+                RTB_ERROR("SceneLoader: Error calling CreateScene(): " + std::string(lua_tostring(L, -1)));
                 lua_close(L);
                 return nullptr;
             }
 
             // Get scene table
             if (!lua_istable(L, -1)) {
-                printf("SceneLoader: CreateScene() did not return a table\n");
+                RTB_ERROR("SceneLoader: CreateScene() did not return a table");
                 lua_close(L);
                 return nullptr;
             }
@@ -642,7 +643,7 @@ namespace RTBEngine {
                     if (parent) {
                         child->SetParent(parent);
                     } else {
-                        printf("SceneLoader: Warning - Parent '%s' not found for object '%s'\n", parentName.c_str(), child->GetName().c_str());
+                        RTB_WARN("SceneLoader: Warning - Parent '" + parentName + "' not found for object '" + child->GetName() + "'");
                     }
                 }
             }
@@ -772,7 +773,7 @@ namespace RTBEngine {
                             // Other component types use default values
                         }
                         else {
-                            printf("SceneLoader: Failed to create component '%s'\n", componentType.c_str());
+                            RTB_ERROR("SceneLoader: Failed to create component '" + componentType + "'");
                         }
                     }
                     else {

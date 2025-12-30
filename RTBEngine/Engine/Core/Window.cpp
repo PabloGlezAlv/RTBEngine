@@ -1,5 +1,6 @@
 #include "Window.h"
 #include <iostream>
+#include "../RTBEngine.h"
 
 RTBEngine::Core::Window::Window(const std::string& title, int width, int height, bool fullscreen, bool maximized) : title(title),
 width(width),
@@ -22,7 +23,7 @@ bool RTBEngine::Core::Window::Initialize()
 {
 	//Initialize SDL
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-		std::cerr << "Error: Failed to initialize SDL2: " << SDL_GetError() << std::endl;
+		RTB_ERROR("Error: Failed to initialize SDL2: " + std::string(SDL_GetError()));
 		return false;
 	}
 
@@ -47,7 +48,7 @@ bool RTBEngine::Core::Window::Initialize()
 	);
 
 	if (!sdlWindow) {
-		std::cerr << "Error: Failed to create window: " << SDL_GetError() << std::endl;
+		RTB_ERROR("Error: Failed to create window: " + std::string(SDL_GetError()));
 		return false;
 	}
 
@@ -55,14 +56,14 @@ bool RTBEngine::Core::Window::Initialize()
 	glContext = SDL_GL_CreateContext(sdlWindow);
 
 	if (!glContext) {
-		std::cerr << "Error: Failed to create OpenGL context: " << SDL_GetError() << std::endl;
+		RTB_ERROR("Error: Failed to create OpenGL context: " + std::string(SDL_GetError()));
 		return false;
 	}
 
 	glewExperimental = GL_TRUE;
 	GLenum glewError = glewInit();
 	if (glewError != GLEW_OK) {
-		std::cerr << "Error: Failed to initialize GLEW: " << glewGetErrorString(glewError) << std::endl;
+		RTB_ERROR("Error: Failed to initialize GLEW: " + std::string((const char*)glewGetErrorString(glewError)));
 		return false;
 	}
 

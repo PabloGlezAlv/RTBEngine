@@ -1,6 +1,7 @@
 #include "SceneManager.h"
 #include "../Scripting/SceneLoader.h"
 #include <cstdio>
+#include "../RTBEngine.h"
 
 namespace RTBEngine {
     namespace ECS {
@@ -30,7 +31,7 @@ namespace RTBEngine {
             // Load new scene
             Scene* newScene = Scripting::SceneLoader::LoadScene(path);
             if (!newScene) {
-                printf("SceneManager: Failed to load scene '%s'\n", path.c_str());
+                RTB_ERROR("SceneManager: Failed to load scene '" + path + "'");
                 return false;
             }
 

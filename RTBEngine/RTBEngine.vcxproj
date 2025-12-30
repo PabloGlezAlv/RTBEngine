@@ -227,6 +227,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_sdl2.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_opengl3.cpp" />
     <ClCompile Include="Engine\ECS\Transform.cpp" />
+    <ClCompile Include="Engine\Core\Logger.cpp" />
     <ClCompile Include="Engine\ECS\BoxColliderComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -310,6 +311,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_sdl2.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_opengl3.h" />
     <ClInclude Include="Engine\ECS\Transform.h" />
+    <ClInclude Include="Engine\Core\Logger.h" />
     <ClInclude Include="Engine\ECS\BoxColliderComponent.h" />
   </ItemGroup>
   <ItemGroup>

@@ -6,6 +6,7 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
+#include "../RTBEngine.h"
 
 namespace RTBEngine {
     namespace ECS {
@@ -63,14 +64,15 @@ namespace RTBEngine {
             // Debug: Print vectors with P key
             static bool debugPrinted = false;
             if (input.IsKeyJustPressed(Input::KeyCode::P) && !debugPrinted) {
-                std::cout << "\n=== FreeLookCamera Debug ===" << std::endl;
-                std::cout << "Yaw: " << yaw << "°, Pitch: " << pitch << "°" << std::endl;
-                std::cout << "Forward: (" << forward.x << ", " << forward.y << ", " << forward.z << ")" << std::endl;
-                std::cout << "Right:   (" << right.x << ", " << right.y << ", " << right.z << ")" << std::endl;
-                std::cout << "Up:      (" << up.x << ", " << up.y << ", " << up.z << ")" << std::endl;
+                std::string debugMsg = "\n=== FreeLookCamera Debug ===\n";
+                debugMsg += "Yaw: " + std::to_string(yaw) + "°, Pitch: " + std::to_string(pitch) + "°\n";
+                debugMsg += "Forward: (" + std::to_string(forward.x) + ", " + std::to_string(forward.y) + ", " + std::to_string(forward.z) + ")\n";
+                debugMsg += "Right:   (" + std::to_string(right.x) + ", " + std::to_string(right.y) + ", " + std::to_string(right.z) + ")\n";
+                debugMsg += "Up:      (" + std::to_string(up.x) + ", " + std::to_string(up.y) + ", " + std::to_string(up.z) + ")\n";
                 Math::Vector3 pos = transform.GetPosition();
-                std::cout << "Position: (" << pos.x << ", " << pos.y << ", " << pos.z << ")" << std::endl;
-                std::cout << "============================\n" << std::endl;
+                debugMsg += "Position: (" + std::to_string(pos.x) + ", " + std::to_string(pos.y) + ", " + std::to_string(pos.z) + ")\n";
+                debugMsg += "============================\n";
+                RTB_INFO(debugMsg);
                 debugPrinted = true;
             }
             if (!input.IsKeyPressed(Input::KeyCode::P)) {

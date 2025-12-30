@@ -1,6 +1,7 @@
 #include "Font.h"
 #include <imgui.h>
 #include <iostream>
+#include "../RTBEngine.h"
 #include <cmath>
 
 namespace RTBEngine {
@@ -16,7 +17,7 @@ namespace RTBEngine {
 
 		bool Font::LoadFromFile(const std::string& path, const float* sizes, int numSizes) {
 			if (isLoaded) {
-				std::cerr << "Font already loaded: " << filePath << std::endl;
+				RTB_WARN("Font already loaded: " + filePath);
 				return false;
 			}
 
@@ -25,7 +26,7 @@ namespace RTBEngine {
 			for (int i = 0; i < numSizes; ++i) {
 				ImFont* imFont = io.Fonts->AddFontFromFileTTF(path.c_str(), sizes[i]);
 				if (!imFont) {
-					std::cerr << "Failed to load font: " << path << " at size " << sizes[i] << std::endl;
+					RTB_ERROR("Failed to load font: " + path + " at size " + std::to_string(sizes[i]));
 					fontSizes.clear();
 					return false;
 				}

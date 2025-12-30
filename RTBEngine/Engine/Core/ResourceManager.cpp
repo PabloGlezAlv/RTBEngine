@@ -2,6 +2,7 @@
 #include "../Scripting/SceneLoader.h"
 #include "../ECS/Scene.h"
 #include <iostream>
+#include "../RTBEngine.h"
 
 namespace RTBEngine {
     namespace Core {
@@ -40,7 +41,7 @@ namespace RTBEngine {
             // Create new shader
             auto shader = std::make_unique<Rendering::Shader>();
             if (!shader->LoadFromFiles(vertexPath, fragmentPath)) {
-                std::cerr << "Failed to load shader: " << name << std::endl;
+                RTB_ERROR("Failed to load shader: " + name);
                 return nullptr;
             }
 
@@ -69,7 +70,7 @@ namespace RTBEngine {
             // Create new texture
             auto texture = std::make_unique<Rendering::Texture>();
             if (!texture->LoadFromFile(path)) {
-                std::cerr << "Failed to load texture: " << path << std::endl;
+                RTB_ERROR("Failed to load texture: " + path);
                 return nullptr;
             }
 
@@ -113,7 +114,7 @@ namespace RTBEngine {
             std::vector<Rendering::Mesh*> loadedMeshes = Rendering::ModelLoader::LoadModel(path);
 
             if (loadedMeshes.empty()) {
-                std::cerr << "ResourceManager: Failed to load model: " << path << std::endl;
+                RTB_ERROR("ResourceManager: Failed to load model: " + path);
                 return emptyMeshVector;
             }
 
@@ -150,7 +151,7 @@ namespace RTBEngine {
 
             auto clip = std::make_unique<Audio::AudioClip>();
             if (!clip->LoadFromFile(path, stream)) {
-                std::cerr << "ResourceManager: Failed to load audio clip: " << path << std::endl;
+                RTB_ERROR("ResourceManager: Failed to load audio clip: " + path);
                 return nullptr;
             }
 
@@ -177,7 +178,7 @@ namespace RTBEngine {
 
 			auto font = std::make_unique<Rendering::Font>();
 			if (!font->LoadFromFile(path, sizes, numSizes)) {
-				std::cerr << "ResourceManager: Failed to load font: " << path << std::endl;
+				RTB_ERROR("ResourceManager: Failed to load font: " + path);
 				return nullptr;
 			}
 
@@ -213,7 +214,7 @@ namespace RTBEngine {
             // Load new cubemap
             auto cubemap = std::make_unique<Rendering::Cubemap>();
             if (!cubemap->LoadFromFolder(folderPath, extension)) {
-                std::cerr << "Failed to load cubemap from: " << folderPath << std::endl;
+                RTB_ERROR("Failed to load cubemap from: " + folderPath);
                 return nullptr;
             }
 

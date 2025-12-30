@@ -1,6 +1,7 @@
 #include "Cubemap.h"
 #include <stb_image.h>
 #include <iostream>
+#include "../RTBEngine.h"
 #include <array>
 
 namespace RTBEngine {
@@ -48,7 +49,7 @@ namespace RTBEngine {
                 unsigned char* data = stbi_load(facePaths[i].c_str(), &width, &height, &channels, 0);
 
                 if (!data) {
-                    std::cerr << "Failed to load cubemap face: " << facePaths[i] << std::endl;
+                    RTB_ERROR("Failed to load cubemap face: " + facePaths[i]);
                     glDeleteTextures(1, &textureID);
                     textureID = 0;
                     return false;

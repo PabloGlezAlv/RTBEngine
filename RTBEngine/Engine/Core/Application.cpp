@@ -21,6 +21,7 @@
 
 #include <backends/imgui_impl_sdl2.h>
 #include <iostream>
+#include "Logger.h"
 
 
 RTBEngine::Core::Application::Application(const ApplicationConfig& cfg)
@@ -38,8 +39,11 @@ bool RTBEngine::Core::Application::Initialize()
 {
 	window = std::make_unique<Window>(config.window.title, config.window.width, config.window.height, config.window.fullscreen, config.window.maximized);
 	if (!window->Initialize()) {
+		RTB_ERROR("Failed to initialize Window");
 		return false;
 	}
+
+	RTB_INFO("RTBEngine Initializing...");
 
 	lastTime = SDL_GetTicks();
 
@@ -54,7 +58,7 @@ bool RTBEngine::Core::Application::Initialize()
 		"Default/Shaders/basic.frag"
 	);
 	if (!shader) {
-		std::cerr << "Failed to load shader" << std::endl;
+		RTB_ERROR("Failed to load basic shader");
 		return false;
 	}
 
@@ -65,7 +69,7 @@ bool RTBEngine::Core::Application::Initialize()
 		"Default/Shaders/shadow.frag"
 	);
 	if (!shadowShader) {
-		std::cerr << "Failed to load shadow shader" << std::endl;
+		RTB_ERROR("Failed to load shadow shader");
 		return false;
 	}
 
@@ -76,7 +80,7 @@ bool RTBEngine::Core::Application::Initialize()
 		"Default/Shaders/skybox.frag"
 	);
 	if (!skyboxShader) {
-		std::cerr << "Failed to load skybox shader" << std::endl;
+		RTB_ERROR("Failed to load skybox shader");
 		return false;
 	}
 
@@ -90,14 +94,16 @@ bool RTBEngine::Core::Application::Initialize()
 	physicsSystem = new Physics::PhysicsSystem(physicsWorld);
 
 	if (!Audio::AudioSystem::GetInstance().Initialize()) {
-		std::cerr << "Failed to initialize audio system" << std::endl;
+		RTB_ERROR("Failed to initialize audio system");
 		return false;
 	}
 
 	if (!UI::CanvasSystem::GetInstance().Initialize(window->GetSDLWindow())) {
-		std::cerr << "Failed to initialize CanvasSystem" << std::endl;
+		RTB_ERROR("Failed to initialize CanvasSystem");
 		return false;
 	}
+
+	RTB_INFO("RTBEngine Initialized Successfully");
 
 	ECS::SceneManager& sceneMgr = ECS::SceneManager::GetInstance();
 	sceneMgr.Initialize();
@@ -121,7 +127,7 @@ bool RTBEngine::Core::Application::Initialize()
 
 	if (!config.initialScenePath.empty()) {
 		if (!sceneMgr.LoadScene(config.initialScenePath)) {
-			std::cerr << "Failed to load scene: " << config.initialScenePath << std::endl;
+			RTB_ERROR("Failed to load scene: " + config.initialScenePath);
 			return false;
 		}
 	}

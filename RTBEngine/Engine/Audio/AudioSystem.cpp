@@ -1,5 +1,6 @@
 #include "AudioSystem.h"
 #include <iostream>
+#include "../RTBEngine.h"
 
 namespace RTBEngine {
     namespace Audio {
@@ -26,13 +27,13 @@ namespace RTBEngine {
             FMOD::System* rawSystem = nullptr;
             FMOD_RESULT result = FMOD::System_Create(&rawSystem);
             if (result != FMOD_OK) {
-                std::cerr << "FMOD: Failed to create system" << std::endl;
+                RTB_ERROR("FMOD: Failed to create system");
                 return false;
             }
 
             result = rawSystem->init(maxChannels, FMOD_INIT_NORMAL, nullptr);
             if (result != FMOD_OK) {
-                std::cerr << "FMOD: Failed to initialize system" << std::endl;
+                RTB_ERROR("FMOD: Failed to initialize system");
                 rawSystem->release();
                 return false;
             }

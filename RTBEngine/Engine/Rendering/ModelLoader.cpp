@@ -8,6 +8,7 @@
 #include <cfloat>
 #include <algorithm>
 #include <unordered_map>
+#include "../RTBEngine.h"
 
 namespace RTBEngine {
     namespace Rendering {
@@ -68,7 +69,7 @@ namespace RTBEngine {
             );
 
             if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-                std::cerr << "[ModelLoader] Assimp Error: " << importer.GetErrorString() << std::endl;
+                RTB_ERROR("[ModelLoader] Assimp Error: " + std::string(importer.GetErrorString()));
                 return result;
             }
 

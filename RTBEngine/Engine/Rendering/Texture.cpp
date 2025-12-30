@@ -1,6 +1,7 @@
 #include "Texture.h"
 #include "../../ThirdParty/stb/stb_image.h"
 #include <iostream>
+#include "../RTBEngine.h"
 
 namespace RTBEngine {
     namespace Rendering {
@@ -23,7 +24,7 @@ namespace RTBEngine {
 
             unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 0);
             if (!data) {
-                std::cerr << "Failed to load texture: " << path << std::endl;
+                RTB_ERROR("Failed to load texture: " + path);
                 return false;
             }
 
@@ -52,7 +53,7 @@ namespace RTBEngine {
         bool Texture::LoadFromMemory(const unsigned char* data, int w, int h, int ch)
         {
             if (!data || w <= 0 || h <= 0 || ch <= 0) {
-                std::cerr << "Invalid texture data for LoadFromMemory" << std::endl;
+                RTB_ERROR("Invalid texture data for LoadFromMemory");
                 return false;
             }
 
@@ -83,7 +84,7 @@ namespace RTBEngine {
         bool Texture::LoadFromCompressedMemory(const unsigned char* data, int dataSize)
         {
             if (!data || dataSize <= 0) {
-                std::cerr << "Invalid compressed texture data" << std::endl;
+                RTB_ERROR("Invalid compressed texture data");
                 return false;
             }
 
@@ -94,7 +95,7 @@ namespace RTBEngine {
             // stbi_load_from_memory decodes PNG/JPG/etc from memory buffer
             unsigned char* pixels = stbi_load_from_memory(data, dataSize, &width, &height, &channels, 0);
             if (!pixels) {
-                std::cerr << "Failed to decode compressed texture from memory" << std::endl;
+                RTB_ERROR("Failed to decode compressed texture from memory");
                 return false;
             }
 

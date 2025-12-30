@@ -17,6 +17,7 @@
 #include <SDL.h>
 #include <algorithm>
 #include <iostream>
+#include "../RTBEngine.h"
 
 namespace RTBEngine {
 	namespace UI {
@@ -25,7 +26,7 @@ namespace RTBEngine {
 			if (isInitialized) return true;
 
 			if (!sdlWindow) {
-				std::cerr << "CanvasSystem::Initialize - Invalid SDL_Window" << std::endl;
+				RTB_ERROR("CanvasSystem::Initialize - Invalid SDL_Window");
 				return false;
 			}
 
@@ -38,7 +39,7 @@ namespace RTBEngine {
 			IMGUI_CHECKVERSION();
 			ImGui::CreateContext();
 			if (!ImGui::GetCurrentContext()) {
-				std::cerr << "CanvasSystem::Initialize - Failed to create ImGui context" << std::endl;
+				RTB_ERROR("CanvasSystem::Initialize - Failed to create ImGui context");
 				return false;
 			}
 
@@ -48,12 +49,12 @@ namespace RTBEngine {
 			ImGui::StyleColorsDark();
 
 			if (!ImGui_ImplSDL2_InitForOpenGL(window, SDL_GL_GetCurrentContext())) {
-				std::cerr << "CanvasSystem::Initialize - Failed to initialize ImGui SDL2 backend" << std::endl;
+				RTB_ERROR("CanvasSystem::Initialize - Failed to initialize ImGui SDL2 backend");
 				return false;
 			}
 
 			if (!ImGui_ImplOpenGL3_Init("#version 330")) {
-				std::cerr << "CanvasSystem::Initialize - Failed to initialize ImGui OpenGL3 backend" << std::endl;
+				RTB_ERROR("CanvasSystem::Initialize - Failed to initialize ImGui OpenGL3 backend");
 				ImGui_ImplSDL2_Shutdown();
 				return false;
 			}
