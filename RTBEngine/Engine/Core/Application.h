@@ -38,15 +38,16 @@ namespace RTBEngine {
 			Window* GetWindow() { return window.get(); }
 			const ApplicationConfig& GetConfig() const { return config; }
 
-		private:
 			void ProcessInput();
 			void Update(float deltaTime);
 			void Render();
 
 			void RenderShadowPass(ECS::Scene* scene);
 			void RenderGeometryPass(ECS::Scene* scene, Rendering::Camera* camera);
-			void RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader);
+			void SetIsRunning(bool value) { isRunning = value; }
+
 		private:
+			void RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader);
 			ApplicationConfig config;
 
 			bool isRunning = false;

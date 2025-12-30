@@ -10,6 +10,7 @@ namespace RTBEngine {
             int width = 1280;
             int height = 720;
             bool fullscreen = false;
+            bool maximized = false;
             bool resizable = true;
             bool vSync = true;
         };

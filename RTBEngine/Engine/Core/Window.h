@@ -8,7 +8,7 @@ namespace RTBEngine {
 
         class Window {
         public:
-			Window(const std::string& title, int width, int height, bool fullscreen = false);
+			Window(const std::string& title, int width, int height, bool fullscreen = false, bool maximized = false);
 
 			~Window();
 
@@ -42,6 +42,7 @@ namespace RTBEngine {
 			int width = 0;
 			int height = 0;
 			bool fullscreen = false;
+			bool maximized = false;
 
 			bool shouldClose = false;
 
