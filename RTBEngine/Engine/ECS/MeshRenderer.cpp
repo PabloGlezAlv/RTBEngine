@@ -64,7 +64,7 @@ namespace RTBEngine {
             }
 
             // Get common data
-            Math::Matrix4 modelMatrix = owner->GetTransform().GetModelMatrix();
+            Math::Matrix4 modelMatrix = owner->GetWorldMatrix();
             Animation::Animator* animator = owner->GetComponent<Animation::Animator>();
 
             // Draw each mesh with its material

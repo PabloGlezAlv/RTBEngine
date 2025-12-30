@@ -42,28 +42,26 @@ namespace RTBEngine {
         void LightComponent::SyncWithTransform() {
             if (!light || !owner) return;
 
-            Transform& transform = owner->GetTransform();
-
             if (syncPosition) {
                 if (light->GetType() == Rendering::LightType::Point) {
                     auto* pointLight = static_cast<Rendering::PointLight*>(light.get());
-                    pointLight->SetPosition(transform.GetPosition());
+                    pointLight->SetPosition(owner->GetWorldPosition());
                 }
                 else if (light->GetType() == Rendering::LightType::Spot) {
                     auto* spotLight = static_cast<Rendering::SpotLight*>(light.get());
-                    spotLight->SetPosition(transform.GetPosition());
+                    spotLight->SetPosition(owner->GetWorldPosition());
                 }
             }
 
             if (syncDirection) {
                 if (light->GetType() == Rendering::LightType::Directional) {
                     auto* dirLight = static_cast<Rendering::DirectionalLight*>(light.get());
-                    Math::Vector3 forward = transform.GetRotation() * Math::Vector3(0, -1, 0);
+                    Math::Vector3 forward = owner->GetWorldRotation() * Math::Vector3(0, -1, 0);
                     dirLight->SetDirection(forward);
                 }
                 else if (light->GetType() == Rendering::LightType::Spot) {
                     auto* spotLight = static_cast<Rendering::SpotLight*>(light.get());
-                    Math::Vector3 forward = transform.GetRotation() * Math::Vector3(0, -1, 0);
+                    Math::Vector3 forward = owner->GetWorldRotation() * Math::Vector3(0, -1, 0);
                     spotLight->SetDirection(forward);
                 }
             }

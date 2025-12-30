@@ -46,6 +46,42 @@ namespace RTBEngine {
             this->isActive = active;
         }
 
+        Math::Matrix4 GameObject::GetWorldMatrix() const
+        {
+            if (parent) {
+                return parent->GetWorldMatrix() * transform.GetModelMatrix();
+            }
+            return transform.GetModelMatrix();
+        }
+
+        Math::Vector3 GameObject::GetWorldPosition() const
+        {
+            if (parent) {
+                // Return translation part of world matrix
+                Math::Matrix4 wm = GetWorldMatrix();
+                return Math::Vector3(wm[12], wm[13], wm[14]);
+            }
+            return transform.GetPosition();
+        }
+
+        Math::Quaternion GameObject::GetWorldRotation() const
+        {
+            if (parent) {
+                return parent->GetWorldRotation() * transform.GetRotation();
+            }
+            return transform.GetRotation();
+        }
+
+        Math::Vector3 GameObject::GetWorldScale() const
+        {
+            if (parent) {
+                Math::Vector3 parentScale = parent->GetWorldScale();
+                Math::Vector3 localScale = transform.GetScale();
+                return Math::Vector3(parentScale.x * localScale.x, parentScale.y * localScale.y, parentScale.z * localScale.z);
+            }
+            return transform.GetScale();
+        }
+
         void GameObject::Update(float deltaTime)
         {
             if (!isActive) return;

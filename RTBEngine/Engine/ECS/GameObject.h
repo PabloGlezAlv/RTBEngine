@@ -43,6 +43,11 @@ namespace RTBEngine {
             void SetActive(bool active);
             bool IsActive() const { return isActive; }
 
+            Math::Matrix4 GetWorldMatrix() const;
+            Math::Vector3 GetWorldPosition() const;
+            Math::Quaternion GetWorldRotation() const;
+            Math::Vector3 GetWorldScale() const;
+
             void Update(float deltaTime);
             void FixedUpdate(float fixedDeltaTime);
             void Render(Rendering::Camera* camera);

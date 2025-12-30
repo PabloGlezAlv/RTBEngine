@@ -26,15 +26,19 @@ namespace RTBEngine {
             if (!camera || !owner) return;
 
             // Sync position
-            camera->SetPosition(owner->GetTransform().GetPosition());
+            camera->SetPosition(owner->GetWorldPosition());
 
-            // Sync orientation vectors directly from Transform
-            // This ensures Camera uses the corrected GetForward()/GetRight()/GetUp()
-            camera->SetDirectionVectors(
-                owner->GetTransform().GetForward(),
-                owner->GetTransform().GetRight(),
-                owner->GetTransform().GetUp()
-            );
+            // Get World Matrix to extract direction vectors
+            Math::Matrix4 wm = owner->GetWorldMatrix();
+            
+            // Forward (3rd column)
+            Math::Vector3 forward(wm[8], wm[9], wm[10]);
+            // Right (1st column)
+            Math::Vector3 right(-wm[0], -wm[1], -wm[2]); // Match negated yaw convention
+            // Up (2nd column)
+            Math::Vector3 up(wm[4], wm[5], wm[6]);
+
+            camera->SetDirectionVectors(forward.Normalized(), right.Normalized(), up.Normalized());
         }
 
         void CameraComponent::SetFOV(float fov) {

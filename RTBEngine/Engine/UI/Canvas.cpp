@@ -1,5 +1,6 @@
 #include "Canvas.h"
 #include "../ECS/GameObject.h"
+#include <functional>
 
 namespace RTBEngine {
 	namespace UI {
@@ -46,24 +47,19 @@ namespace RTBEngine {
 
 			if (!owner) return;
 
-			// Get all children GameObjects
-			const auto& children = owner->GetChildren();
-			for (ECS::GameObject* child : children) {
-				// Check if child has a UIElement component
-				UIElement* uiElem = child->GetComponent<UIElement>();
-				if (uiElem) {
+			// Helper for recursive collection
+			std::function<void(ECS::GameObject*)> collectRecursive = [&](ECS::GameObject* obj) {
+				UIElement* uiElem = obj->GetComponent<UIElement>();
+				if (uiElem && uiElem->GetOwner() != owner) {
 					cachedUIElements.push_back(uiElem);
 				}
 
-				// Recursively check grandchildren
-				const auto& grandchildren = child->GetChildren();
-				for (ECS::GameObject* grandchild : grandchildren) {
-					UIElement* grandElem = grandchild->GetComponent<UIElement>();
-					if (grandElem) {
-						cachedUIElements.push_back(grandElem);
-					}
+				for (ECS::GameObject* child : obj->GetChildren()) {
+					collectRecursive(child);
 				}
-			}
+			};
+
+			collectRecursive(owner);
 		}
 
 		void Canvas::UpdateRectTransforms(const Math::Vector2& screenSize) {
