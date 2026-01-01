@@ -2,6 +2,10 @@
 #include <string>
 
 namespace RTBEngine {
+    namespace Reflection {
+        class TypeInfo;
+    }
+
     namespace Physics {
         struct CollisionInfo;
     }
@@ -43,6 +47,9 @@ namespace RTBEngine {
             bool IsEnabled() const { return isEnabled; }
 
             virtual const char* GetTypeName() const = 0;
+
+            // Returns type info for inspector. Components using RTB_COMPONENT override this.
+            virtual const Reflection::TypeInfo* GetTypeInfo() const { return nullptr; }
 
         protected:
             GameObject* owner;

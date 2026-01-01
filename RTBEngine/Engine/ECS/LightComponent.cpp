@@ -2,22 +2,27 @@
 #include "GameObject.h"
 #include "Transform.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
+#include "../Reflection/TypeInfo.h"
 
 namespace RTBEngine {
     namespace ECS {
+
+        // Property registration for reflection system
+        using ThisClass = LightComponent;
+        RTB_REGISTER_COMPONENT(LightComponent)
+            RTB_PROPERTY(syncPosition)
+            RTB_PROPERTY(syncDirection)
+        RTB_END_REGISTER(LightComponent)
+
         LightComponent::LightComponent()
             : Component()
             , light(nullptr)
-            , syncPosition(true)
-            , syncDirection(true)
         {
         }
 
         LightComponent::LightComponent(std::unique_ptr<Rendering::Light> light)
             : Component()
-            , light(std::move(light))
-            , syncPosition(true)
-            , syncDirection(true) {
+            , light(std::move(light)) {
         }
 
         LightComponent::~LightComponent() {

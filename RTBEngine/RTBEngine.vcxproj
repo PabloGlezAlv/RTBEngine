@@ -229,6 +229,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\ECS\Transform.cpp" />
     <ClCompile Include="Engine\Core\Logger.cpp" />
     <ClCompile Include="Engine\ECS\BoxColliderComponent.cpp" />
+    <ClCompile Include="Engine\Reflection\TypeInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Animation\Animator.h" />
@@ -313,6 +314,9 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="Engine\ECS\Transform.h" />
     <ClInclude Include="Engine\Core\Logger.h" />
     <ClInclude Include="Engine\ECS\BoxColliderComponent.h" />
+    <ClInclude Include="Engine\Reflection\TypeInfo.h" />
+    <ClInclude Include="Engine\Reflection\PropertyMacros.h" />
+    <ClInclude Include="Engine\Reflection\TypeInfoBuilder.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Scenes\TestScene.lua" />

@@ -3,6 +3,7 @@
 #include "../Rendering/Lighting/Light.h"
 #include "../Rendering/Lighting/PointLight.h"
 #include "../Rendering/Lighting/SpotLight.h"
+#include "../Reflection/PropertyMacros.h"
 #include <memory>
 
 namespace RTBEngine {
@@ -21,18 +22,14 @@ namespace RTBEngine {
             Rendering::Light* GetLight() const { return light.get(); }
             void SetLight(std::unique_ptr<Rendering::Light> light);
 
-            // Sync control
-            void SetSyncPositionWithTransform(bool sync) { syncPosition = sync; }
-            void SetSyncDirectionWithTransform(bool sync) { syncDirection = sync; }
+            bool syncPosition = true;
+            bool syncDirection = true;
 
-            const char* GetTypeName() const override { return "LightComponent"; }
+            RTB_COMPONENT(LightComponent)
 
         private:
             void SyncWithTransform();
-
             std::unique_ptr<Rendering::Light> light;
-            bool syncPosition = true;
-            bool syncDirection = true;
         };
 
     }

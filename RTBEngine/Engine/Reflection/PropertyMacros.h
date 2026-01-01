@@ -1,0 +1,188 @@
+#pragma once
+#include "TypeInfo.h"
+
+// Usage in header:
+//   class MyComponent : public Component {
+//   public:
+//       float speed = 5.0f;           // Public -> visible in Inspector
+//   private:
+//       RTB_SERIALIZE()
+//       float maxHealth = 100.0f;     // Private + RTB_SERIALIZE -> visible
+//       float internalTimer = 0.0f;   // Private without macro -> NOT visible
+//       RTB_COMPONENT(MyComponent)
+//   };
+//
+// Usage in cpp:
+//   using ThisClass = MyComponent;
+//   RTB_REGISTER_COMPONENT(MyComponent)
+//       RTB_PROPERTY(speed)
+//       RTB_PROPERTY_SERIALIZED(maxHealth)
+//   RTB_END_REGISTER()
+
+// Marks a private variable as visible in Inspector (semantic marker only)
+#define RTB_SERIALIZE()
+
+// Required at end of component class - generates GetTypeName() and GetTypeInfo()
+#define RTB_COMPONENT(ClassName)                                                        \
+public:                                                                                 \
+    virtual const char* GetTypeName() const override { return #ClassName; }             \
+    virtual const RTBEngine::Reflection::TypeInfo* GetTypeInfo() const override {       \
+        return &ClassName::StaticTypeInfo();                                            \
+    }                                                                                   \
+    static const RTBEngine::Reflection::TypeInfo& StaticTypeInfo() {                    \
+        return MutableTypeInfo();                                                       \
+    }                                                                                   \
+    static RTBEngine::Reflection::TypeInfo& MutableTypeInfo() {                         \
+        static RTBEngine::Reflection::TypeInfo info(#ClassName);                        \
+        return info;                                                                    \
+    }                                                                                   \
+private:
+
+// Starts property registration in cpp file
+#define RTB_REGISTER_COMPONENT(ClassName)                                               \
+    namespace {                                                                         \
+        struct ClassName##_TypeRegistrar {                                              \
+            ClassName##_TypeRegistrar() {                                               \
+                RTBEngine::Reflection::TypeInfo& info = ClassName::MutableTypeInfo();   \
+                (void)info;
+
+// Registers a public property
+#define RTB_PROPERTY(PropName)                                                          \
+                info.AddProperty(                                                       \
+                    RTBEngine::Reflection::MakePropertyInfo<decltype(std::declval<ThisClass>().PropName)>( \
+                        #PropName,                                                      \
+                        offsetof(ThisClass, PropName),                                  \
+                        RTBEngine::Reflection::PropertyFlags::None                      \
+                    )                                                                   \
+                );
+
+// Registers a private property marked with RTB_SERIALIZE
+#define RTB_PROPERTY_SERIALIZED(PropName)                                               \
+                info.AddProperty(                                                       \
+                    RTBEngine::Reflection::MakePropertyInfo<decltype(std::declval<ThisClass>().PropName)>( \
+                        #PropName,                                                      \
+                        offsetof(ThisClass, PropName),                                  \
+                        RTBEngine::Reflection::PropertyFlags::Serialize                 \
+                    )                                                                   \
+                );
+
+// Registers a property with range for sliders
+#define RTB_PROPERTY_RANGE(PropName, Min, Max)                                          \
+                {                                                                       \
+                    auto prop = RTBEngine::Reflection::MakePropertyInfo<decltype(std::declval<ThisClass>().PropName)>( \
+                        #PropName,                                                      \
+                        offsetof(ThisClass, PropName),                                  \
+                        RTBEngine::Reflection::PropertyFlags::None                      \
+                    );                                                                  \
+                    prop.range = RTBEngine::Reflection::Range(Min, Max);                \
+                    info.AddProperty(prop);                                             \
+                }
+
+// Registers a property hidden from inspector
+#define RTB_PROPERTY_HIDDEN(PropName)                                                   \
+                info.AddProperty(                                                       \
+                    RTBEngine::Reflection::MakePropertyInfo<decltype(std::declval<ThisClass>().PropName)>( \
+                        #PropName,                                                      \
+                        offsetof(ThisClass, PropName),                                  \
+                        RTBEngine::Reflection::PropertyFlags::HideInInspector           \
+                    )                                                                   \
+                );
+
+// Registers a read-only property
+#define RTB_PROPERTY_READONLY(PropName)                                                 \
+                info.AddProperty(                                                       \
+                    RTBEngine::Reflection::MakePropertyInfo<decltype(std::declval<ThisClass>().PropName)>( \
+                        #PropName,                                                      \
+                        offsetof(ThisClass, PropName),                                  \
+                        RTBEngine::Reflection::PropertyFlags::ReadOnly                  \
+                    )                                                                   \
+                );
+
+// Ends property registration - pass ClassName again
+#define RTB_END_REGISTER(ClassName)                                                     \
+                RTBEngine::Reflection::TypeRegistry::GetInstance().RegisterType(        \
+                    info.GetTypeName(), info);                                          \
+            }                                                                           \
+        };                                                                              \
+        static ClassName##_TypeRegistrar _##ClassName##_registrar;                      \
+    }
+
+namespace RTBEngine {
+    namespace Reflection {
+
+        // Base template - unknown type
+        template<typename T>
+        PropertyInfo MakePropertyInfo(const char* name, size_t offset, PropertyFlags flags) {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.offset = offset;
+            prop.size = sizeof(T);
+            prop.flags = flags;
+            prop.type = PropertyType::Unknown;
+            return prop;
+        }
+
+        // Specializations for primitive types
+        template<>
+        inline PropertyInfo MakePropertyInfo<bool>(const char* name, size_t offset, PropertyFlags flags) {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.offset = offset;
+            prop.size = sizeof(bool);
+            prop.flags = flags;
+            prop.type = PropertyType::Bool;
+            return prop;
+        }
+
+        template<>
+        inline PropertyInfo MakePropertyInfo<int>(const char* name, size_t offset, PropertyFlags flags) {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.offset = offset;
+            prop.size = sizeof(int);
+            prop.flags = flags;
+            prop.type = PropertyType::Int;
+            return prop;
+        }
+
+        template<>
+        inline PropertyInfo MakePropertyInfo<float>(const char* name, size_t offset, PropertyFlags flags) {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.offset = offset;
+            prop.size = sizeof(float);
+            prop.flags = flags;
+            prop.type = PropertyType::Float;
+            return prop;
+        }
+
+        template<>
+        inline PropertyInfo MakePropertyInfo<double>(const char* name, size_t offset, PropertyFlags flags) {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.offset = offset;
+            prop.size = sizeof(double);
+            prop.flags = flags;
+            prop.type = PropertyType::Double;
+            return prop;
+        }
+
+        template<>
+        inline PropertyInfo MakePropertyInfo<std::string>(const char* name, size_t offset, PropertyFlags flags) {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.offset = offset;
+            prop.size = sizeof(std::string);
+            prop.flags = flags;
+            prop.type = PropertyType::String;
+            return prop;
+        }
+
+    } 
+} 
