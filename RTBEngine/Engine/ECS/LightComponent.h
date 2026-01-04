@@ -25,10 +25,19 @@ namespace RTBEngine {
             bool syncPosition = true;
             bool syncDirection = true;
 
+            // Reflected properties
+            Rendering::LightType type = Rendering::LightType::Point;
+            Math::Vector3 color = Math::Vector3(1.0f);
+            float intensity = 1.0f;
+            float range = 10.0f;
+            float spotAngle = 45.0f;
+            float spotInnerAngle = 30.0f;
+
             RTB_COMPONENT(LightComponent)
 
         private:
             void SyncWithTransform();
+            void SyncProperties();
             std::unique_ptr<Rendering::Light> light;
         };
 

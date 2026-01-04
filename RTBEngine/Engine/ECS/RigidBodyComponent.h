@@ -1,5 +1,6 @@
 #pragma once
 #include "Component.h"
+#include "../Reflection/PropertyMacros.h"
 #include "../Physics/RigidBody.h"
 #include <memory>
 
@@ -21,9 +22,16 @@ namespace RTBEngine {
 
             bool HasRigidBody() const { return rigidBody != nullptr; }
 
-            const char* GetTypeName() const override { return "RigidBodyComponent"; }
+            // Reflected properties
+            float mass = 1.0f;
+            float friction = 0.5f;
+            float restitution = 0.0f;
+            Physics::RigidBodyType type = Physics::RigidBodyType::Dynamic;
+
+            RTB_COMPONENT(RigidBodyComponent)
 
         private:
+            void SyncProperties();
             std::unique_ptr<Physics::RigidBody> rigidBody;
         };
 

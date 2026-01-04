@@ -1,5 +1,6 @@
 #pragma once
 #include "TypeInfo.h"
+#include "../Math/Math.h"
 
 // Usage in header:
 //   class MyComponent : public Component {
@@ -75,6 +76,31 @@ private:
                         RTBEngine::Reflection::PropertyFlags::None                      \
                     );                                                                  \
                     prop.range = RTBEngine::Reflection::Range(Min, Max);                \
+                    info.AddProperty(prop);                                             \
+                }
+
+// Registers an enum property
+#define RTB_PROPERTY_ENUM(PropName, ...)                                                \
+                {                                                                       \
+                    auto prop = RTBEngine::Reflection::MakePropertyInfo<decltype(std::declval<ThisClass>().PropName)>( \
+                        #PropName,                                                      \
+                        offsetof(ThisClass, PropName),                                  \
+                        RTBEngine::Reflection::PropertyFlags::None                      \
+                    );                                                                  \
+                    prop.type = RTBEngine::Reflection::PropertyType::Enum;              \
+                    prop.enumNames = { __VA_ARGS__ };                                   \
+                    info.AddProperty(prop);                                             \
+                }
+
+// Registers a color property
+#define RTB_PROPERTY_COLOR(PropName)                                                    \
+                {                                                                       \
+                    auto prop = RTBEngine::Reflection::MakePropertyInfo<decltype(std::declval<ThisClass>().PropName)>( \
+                        #PropName,                                                      \
+                        offsetof(ThisClass, PropName),                                  \
+                        RTBEngine::Reflection::PropertyFlags::None                      \
+                    );                                                                  \
+                    prop.type = RTBEngine::Reflection::PropertyType::Color;             \
                     info.AddProperty(prop);                                             \
                 }
 
@@ -184,5 +210,53 @@ namespace RTBEngine {
             return prop;
         }
 
+        template<>
+        inline PropertyInfo MakePropertyInfo<RTBEngine::Math::Vector2>(const char* name, size_t offset, PropertyFlags flags) {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.offset = offset;
+            prop.size = sizeof(RTBEngine::Math::Vector2);
+            prop.flags = flags;
+            prop.type = PropertyType::Vector2;
+            return prop;
+        }
+
+        template<>
+        inline PropertyInfo MakePropertyInfo<RTBEngine::Math::Vector3>(const char* name, size_t offset, PropertyFlags flags) {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.offset = offset;
+            prop.size = sizeof(RTBEngine::Math::Vector3);
+            prop.flags = flags;
+            prop.type = PropertyType::Vector3;
+            return prop;
+        }
+
+        template<>
+        inline PropertyInfo MakePropertyInfo<RTBEngine::Math::Vector4>(const char* name, size_t offset, PropertyFlags flags) {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.offset = offset;
+            prop.size = sizeof(RTBEngine::Math::Vector4);
+            prop.flags = flags;
+            prop.type = PropertyType::Vector4;
+            return prop;
+        }
+
+        template<>
+        inline PropertyInfo MakePropertyInfo<RTBEngine::Math::Quaternion>(const char* name, size_t offset, PropertyFlags flags) {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.offset = offset;
+            prop.size = sizeof(RTBEngine::Math::Quaternion);
+            prop.flags = flags;
+            prop.type = PropertyType::Quaternion;
+            return prop;
+        }
+
     } 
-} 
+}

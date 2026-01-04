@@ -1,5 +1,6 @@
 #pragma once
 #include "Component.h"
+#include "../Reflection/PropertyMacros.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Material.h"
 #include "../Rendering/Camera.h"
@@ -37,7 +38,7 @@ namespace RTBEngine {
 
             void Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights);
 
-            const char* GetTypeName() const override { return "MeshRenderer"; }
+            RTB_COMPONENT(MeshRenderer)
 
         private:
             std::vector<Rendering::Mesh*> meshes;

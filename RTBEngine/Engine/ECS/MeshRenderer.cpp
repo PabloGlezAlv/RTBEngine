@@ -3,9 +3,14 @@
 #include "../Rendering/Lighting/Light.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
 #include "../Animation/Animator.h"
+#include "../Reflection/PropertyMacros.h"
 
 namespace RTBEngine {
     namespace ECS {
+
+        using ThisClass = MeshRenderer;
+        RTB_REGISTER_COMPONENT(MeshRenderer)
+        RTB_END_REGISTER(MeshRenderer)
 
         MeshRenderer::MeshRenderer()
             : Component()
