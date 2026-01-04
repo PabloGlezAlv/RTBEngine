@@ -32,6 +32,7 @@ namespace RTBEngine {
             Transform& GetTransform() { return transform; }
             const Transform& GetTransform() const { return transform; }
             const std::string& GetName() const { return name; }
+            void SetName(const std::string& name) { this->name = name; }
 
             void SetParent(GameObject* newParent);
             GameObject* GetParent() const { return parent; }

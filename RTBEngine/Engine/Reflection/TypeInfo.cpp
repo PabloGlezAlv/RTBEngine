@@ -1,11 +1,12 @@
 #include "TypeInfo.h"
 #include <algorithm>
+#include "../ECS/Component.h"
 
 namespace RTBEngine {
     namespace Reflection {
 
-        TypeInfo::TypeInfo(const std::string& typeName)
-            : typeName(typeName)
+        TypeInfo::TypeInfo(const std::string& typeName, FactoryFunc factory)
+            : typeName(typeName), factory(factory)
         {
         }
 
@@ -70,6 +71,14 @@ namespace RTBEngine {
                 result.push_back(pair.first);
             }
             return result;
+        }
+
+        RTBEngine::ECS::Component* TypeRegistry::CreateComponent(const std::string& typeName) const {
+            auto it = types.find(typeName);
+            if (it != types.end()) {
+                return it->second.Create();
+            }
+            return nullptr;
         }
 
     }

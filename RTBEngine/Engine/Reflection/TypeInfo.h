@@ -7,6 +7,10 @@
 #include <unordered_map>
 
 namespace RTBEngine {
+    namespace ECS {
+        class Component;
+    }
+
     namespace Reflection {
 
         // Supported property types for reflection
@@ -29,9 +33,9 @@ namespace RTBEngine {
         // Property configuration flags
         enum class PropertyFlags : uint32_t {
             None            = 0,
-            Serialize       = 1 << 0,   // Private var marked with RTB_SERIALIZE
-            HideInInspector = 1 << 1,   // Hide from inspector even if public
-            ReadOnly        = 1 << 2,   // Read-only in inspector
+            Serialize       = 1 << 0,   // 0001 Private var marked with RTB_SERIALIZE
+            HideInInspector = 1 << 1,   // 0010 Hide from inspector even if public
+            ReadOnly        = 1 << 2,   // 0100 Read-only in inspector
         };
 
         // Flag operators
@@ -90,11 +94,12 @@ namespace RTBEngine {
             bool IsReadOnly() const { return HasFlag(flags, PropertyFlags::ReadOnly); }
         };
 
-        // Type info for a component class
         class TypeInfo {
         public:
+            using FactoryFunc = std::function<ECS::Component*()>;
+
             TypeInfo() = default;
-            TypeInfo(const std::string& typeName);
+            TypeInfo(const std::string& typeName, FactoryFunc factory = nullptr);
 
             const std::string& GetTypeName() const { return typeName; }
             const std::vector<PropertyInfo>& GetProperties() const { return properties; }
@@ -105,9 +110,12 @@ namespace RTBEngine {
             bool HasProperties() const { return !properties.empty(); }
             size_t GetPropertyCount() const { return properties.size(); }
 
+            ECS::Component* Create() const { return factory ? factory() : nullptr; }
+
         private:
             std::string typeName;
             std::vector<PropertyInfo> properties;
+            FactoryFunc factory;
         };
 
         // Global registry for all reflected types
@@ -119,6 +127,7 @@ namespace RTBEngine {
             const TypeInfo* GetTypeInfo(const std::string& typeName) const;
             bool HasType(const std::string& typeName) const;
             std::vector<std::string> GetRegisteredTypes() const;
+            ECS::Component* CreateComponent(const std::string& typeName) const;
 
         private:
             TypeRegistry() = default;
@@ -130,4 +139,3 @@ namespace RTBEngine {
 
     } 
 }
-

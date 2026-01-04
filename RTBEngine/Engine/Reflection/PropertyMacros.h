@@ -33,7 +33,7 @@ public:                                                                         
         return MutableTypeInfo();                                                       \
     }                                                                                   \
     static RTBEngine::Reflection::TypeInfo& MutableTypeInfo() {                         \
-        static RTBEngine::Reflection::TypeInfo info(#ClassName);                        \
+        static RTBEngine::Reflection::TypeInfo info(#ClassName, []() -> RTBEngine::ECS::Component* { return new ClassName(); }); \
         return info;                                                                    \
     }                                                                                   \
 private:
