@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Component.h"
+#include "../Reflection/PropertyMacros.h"
 
 namespace FMOD {
     class Channel;
@@ -42,15 +43,17 @@ namespace RTBEngine {
 
             virtual void OnStart() override;
 
-            const char* GetTypeName() const override;
-        private:
-            Audio::AudioClip* audioClip = nullptr;
-            FMOD::Channel* channel = nullptr;
-
+            // Reflected properties
             float volume = 1.0f;
             float pitch = 1.0f;
             bool loop = false;
             bool playOnStart = false;
+            Audio::AudioClip* audioClip = nullptr;
+
+            RTB_COMPONENT(AudioSourceComponent)
+
+        private:
+            FMOD::Channel* channel = nullptr;
         };
 
     }

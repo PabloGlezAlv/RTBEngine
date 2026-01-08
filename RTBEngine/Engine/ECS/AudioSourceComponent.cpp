@@ -6,13 +6,17 @@
 namespace RTBEngine {
     namespace ECS {
 
+        using ThisClass = AudioSourceComponent;
+        RTB_REGISTER_COMPONENT(AudioSourceComponent)
+            RTB_PROPERTY_RANGE(volume, 0.0f, 1.0f)
+            RTB_PROPERTY_RANGE(pitch, 0.1f, 3.0f)
+            RTB_PROPERTY(loop)
+            RTB_PROPERTY(playOnStart)
+            RTB_PROPERTY_AUDIOCLIP(audioClip)
+        RTB_END_REGISTER(AudioSourceComponent)
+
         AudioSourceComponent::AudioSourceComponent()
-            : audioClip(nullptr)
-            , channel(nullptr)
-            , volume(1.0f)
-            , pitch(1.0f)
-            , loop(false)
-            , playOnStart(false) {
+            : channel(nullptr) {
         }
 
         AudioSourceComponent::~AudioSourceComponent() {
@@ -96,10 +100,6 @@ namespace RTBEngine {
             if (playOnStart && audioClip) {
                 Play();
             }
-        }
-
-        const char* AudioSourceComponent::GetTypeName() const {
-            return "AudioSourceComponent";
         }
 
     }

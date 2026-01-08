@@ -27,6 +27,12 @@ namespace RTBEngine {
             Color,
             Enum,
             AssetRef,
+            TextureRef,      // Reference to Texture*
+            AudioClipRef,    // Reference to AudioClip*
+            MeshRef,         // Reference to Mesh*
+            FontRef,         // Reference to Font*
+            GameObjectRef,   // Reference to GameObject*
+            ComponentRef,    // Reference to Component*
             Unknown
         };
 
@@ -72,6 +78,7 @@ namespace RTBEngine {
             std::optional<std::string> category;
             std::vector<std::string> enumNames;
             std::string assetType;
+            std::string componentTypeName;  // For ComponentRef: target component type name
 
             PropertyInfo()
                 : type(PropertyType::Unknown)

@@ -124,6 +124,85 @@ private:
                     )                                                                   \
                 );
 
+// Registers a Texture* property
+#define RTB_PROPERTY_TEXTURE(PropName)                                                  \
+                {                                                                       \
+                    RTBEngine::Reflection::PropertyInfo prop;                           \
+                    prop.name = #PropName;                                              \
+                    prop.displayName = #PropName;                                       \
+                    prop.offset = offsetof(ThisClass, PropName);                        \
+                    prop.size = sizeof(void*);                                          \
+                    prop.type = RTBEngine::Reflection::PropertyType::TextureRef;        \
+                    prop.flags = RTBEngine::Reflection::PropertyFlags::None;            \
+                    info.AddProperty(prop);                                             \
+                }
+
+// Registers an AudioClip* property
+#define RTB_PROPERTY_AUDIOCLIP(PropName)                                                \
+                {                                                                       \
+                    RTBEngine::Reflection::PropertyInfo prop;                           \
+                    prop.name = #PropName;                                              \
+                    prop.displayName = #PropName;                                       \
+                    prop.offset = offsetof(ThisClass, PropName);                        \
+                    prop.size = sizeof(void*);                                          \
+                    prop.type = RTBEngine::Reflection::PropertyType::AudioClipRef;      \
+                    prop.flags = RTBEngine::Reflection::PropertyFlags::None;            \
+                    info.AddProperty(prop);                                             \
+                }
+
+// Registers a Mesh* property
+#define RTB_PROPERTY_MESH(PropName)                                                     \
+                {                                                                       \
+                    RTBEngine::Reflection::PropertyInfo prop;                           \
+                    prop.name = #PropName;                                              \
+                    prop.displayName = #PropName;                                       \
+                    prop.offset = offsetof(ThisClass, PropName);                        \
+                    prop.size = sizeof(void*);                                          \
+                    prop.type = RTBEngine::Reflection::PropertyType::MeshRef;           \
+                    prop.flags = RTBEngine::Reflection::PropertyFlags::None;            \
+                    info.AddProperty(prop);                                             \
+                }
+
+// Registers a Font* property
+#define RTB_PROPERTY_FONT(PropName)                                                     \
+                {                                                                       \
+                    RTBEngine::Reflection::PropertyInfo prop;                           \
+                    prop.name = #PropName;                                              \
+                    prop.displayName = #PropName;                                       \
+                    prop.offset = offsetof(ThisClass, PropName);                        \
+                    prop.size = sizeof(void*);                                          \
+                    prop.type = RTBEngine::Reflection::PropertyType::FontRef;           \
+                    prop.flags = RTBEngine::Reflection::PropertyFlags::None;            \
+                    info.AddProperty(prop);                                             \
+                }
+
+// Registers a GameObject* property
+#define RTB_PROPERTY_GAMEOBJECT(PropName)                                               \
+                {                                                                       \
+                    RTBEngine::Reflection::PropertyInfo prop;                           \
+                    prop.name = #PropName;                                              \
+                    prop.displayName = #PropName;                                       \
+                    prop.offset = offsetof(ThisClass, PropName);                        \
+                    prop.size = sizeof(void*);                                          \
+                    prop.type = RTBEngine::Reflection::PropertyType::GameObjectRef;     \
+                    prop.flags = RTBEngine::Reflection::PropertyFlags::None;            \
+                    info.AddProperty(prop);                                             \
+                }
+
+// Registers a Component* property with target type filtering
+#define RTB_PROPERTY_COMPONENT(PropName, ComponentType)                                 \
+                {                                                                       \
+                    RTBEngine::Reflection::PropertyInfo prop;                           \
+                    prop.name = #PropName;                                              \
+                    prop.displayName = #PropName;                                       \
+                    prop.offset = offsetof(ThisClass, PropName);                        \
+                    prop.size = sizeof(void*);                                          \
+                    prop.type = RTBEngine::Reflection::PropertyType::ComponentRef;      \
+                    prop.componentTypeName = #ComponentType;                            \
+                    prop.flags = RTBEngine::Reflection::PropertyFlags::None;            \
+                    info.AddProperty(prop);                                             \
+                }
+
 // Ends property registration - pass ClassName again
 #define RTB_END_REGISTER(ClassName)                                                     \
                 RTBEngine::Reflection::TypeRegistry::GetInstance().RegisterType(        \

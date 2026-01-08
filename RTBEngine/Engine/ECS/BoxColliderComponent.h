@@ -1,6 +1,7 @@
 #pragma once
 #include "Component.h"
 #include "../Math/Vectors/Vector3.h"
+#include "../Reflection/PropertyMacros.h"
 #include <memory>
 
 namespace RTBEngine {
@@ -32,12 +33,14 @@ namespace RTBEngine {
 			void SetBulletCollisionObject(btCollisionObject* obj) { bulletObject = obj; }
 			btCollisionObject* GetBulletCollisionObject() const { return bulletObject; }
 
-			// Component interface
-			const char* GetTypeName() const override { return "BoxColliderComponent"; }
+			// Reflected properties
+			Math::Vector3 size = Math::Vector3(1.0f, 1.0f, 1.0f);
+			bool isTrigger = false;
+
+			RTB_COMPONENT(BoxColliderComponent)
 
 		private:
 			std::unique_ptr<Physics::BoxCollider> boxCollider;
-			bool isTrigger = false;
 			btCollisionObject* bulletObject = nullptr; // Owned by PhysicsWorld
 		};
 

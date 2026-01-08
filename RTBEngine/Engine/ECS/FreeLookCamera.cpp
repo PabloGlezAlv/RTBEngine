@@ -11,6 +11,13 @@
 namespace RTBEngine {
     namespace ECS {
 
+        using ThisClass = FreeLookCamera;
+        RTB_REGISTER_COMPONENT(FreeLookCamera)
+            RTB_PROPERTY(moveSpeed)
+            RTB_PROPERTY(lookSpeed)
+            RTB_PROPERTY(rotationSpeed)
+        RTB_END_REGISTER(FreeLookCamera)
+
         FreeLookCamera::FreeLookCamera()
             : Component()
         {

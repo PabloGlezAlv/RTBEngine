@@ -4,6 +4,12 @@
 namespace RTBEngine {
 	namespace ECS {
 
+		using ThisClass = BoxColliderComponent;
+		RTB_REGISTER_COMPONENT(BoxColliderComponent)
+			RTB_PROPERTY(size)
+			RTB_PROPERTY(isTrigger)
+		RTB_END_REGISTER(BoxColliderComponent)
+
 		BoxColliderComponent::BoxColliderComponent()
 			: boxCollider(std::make_unique<Physics::BoxCollider>())
 		{
@@ -11,7 +17,7 @@ namespace RTBEngine {
 
 		BoxColliderComponent::~BoxColliderComponent()
 		{
-			// bulletObject is owned by PhysicsWorld, not us
+			
 		}
 
 		void BoxColliderComponent::SetSize(const Math::Vector3& size)

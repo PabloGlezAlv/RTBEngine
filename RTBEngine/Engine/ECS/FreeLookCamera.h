@@ -1,6 +1,7 @@
 #pragma once
 #include "Component.h"
 #include "../Math/Math.h"
+#include "../Reflection/PropertyMacros.h"
 
 namespace RTBEngine {
     namespace ECS {
@@ -12,7 +13,6 @@ namespace RTBEngine {
 
             virtual void OnStart() override;
             virtual void OnUpdate(float deltaTime) override;
-            virtual const char* GetTypeName() const override { return "FreeLookCamera"; }
 
             // Settings
             void SetMoveSpeed(float speed) { moveSpeed = speed; }
@@ -22,10 +22,14 @@ namespace RTBEngine {
             float GetLookSpeed() const { return lookSpeed; }
             float GetRotationSpeed() const { return rotationSpeed; }
 
-        private:
+            // Reflected properties
             float moveSpeed = 5.0f;
             float lookSpeed = 0.1f;
             float rotationSpeed = 90.0f;  // Degrees per second for Q/E rotation
+
+            RTB_COMPONENT(FreeLookCamera)
+
+        private:
             float yaw = 0.0f;
             float pitch = 0.0f;
         };
