@@ -2,6 +2,7 @@
 #include "../ECS/Component.h"
 #include "Skeleton.h"
 #include "AnimationClip.h"
+#include "../Reflection/PropertyMacros.h"
 #include <memory>
 #include <unordered_map>
 
@@ -22,7 +23,6 @@ namespace RTBEngine {
             // Component interface
             virtual void OnStart() override;
             virtual void OnUpdate(float deltaTime) override;
-            virtual const char* GetTypeName() const override { return "Animator"; }
 
             // Skeleton
             void SetSkeleton(std::shared_ptr<Skeleton> skel);
@@ -56,17 +56,21 @@ namespace RTBEngine {
             const std::vector<Rendering::Mesh*>& GetMeshes() const { return meshes; }
             Rendering::Mesh* GetFirstMesh() const { return meshes.empty() ? nullptr : meshes[0]; }
 
+            // Reflected properties
+            std::string currentClipName;
+            float speed = 1.0f;
+            bool playing = false;
+            bool looping = true;
+
+            RTB_COMPONENT(Animator)
+
         private:
             std::shared_ptr<Skeleton> skeleton;
             std::unordered_map<std::string, std::shared_ptr<AnimationClip>> clips;
-
-            std::string currentClipName;
+            
             AnimationClip* currentClip = nullptr;
             float currentTime = 0.0f;
-            float speed = 1.0f;
-            bool playing = false;
             bool paused = false;
-            bool looping = true;
 
             std::vector<Math::Matrix4> finalBoneTransforms;
             std::vector<Rendering::Mesh*> meshes;  // Meshes with bone data

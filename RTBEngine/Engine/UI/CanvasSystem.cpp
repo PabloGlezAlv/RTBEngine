@@ -1,6 +1,7 @@
 #include "CanvasSystem.h"
 #include "Canvas.h"
 #include "UIElement.h"
+#include "UIRenderContext.h"
 #include "EventSystem/IPointerEnterHandler.h"
 #include "EventSystem/IPointerExitHandler.h"
 #include "EventSystem/IPointerDownHandler.h"
@@ -112,6 +113,30 @@ namespace RTBEngine {
 
 			ImGui::Render();
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		}
+
+		void CanvasSystem::RenderCanvasesOnly(const Math::Vector2* customScreenSize) {
+			if (!isInitialized) return;
+
+			// Use custom screen size if provided, otherwise use stored size
+			Math::Vector2 renderSize = customScreenSize ? *customScreenSize : screenSize;
+
+			for (Canvas* canvas : activeCanvases) {
+				canvas->RenderCanvas(renderSize);
+			}
+		}
+
+		void CanvasSystem::RenderCanvasesToDrawList(void* drawList, const Math::Vector2& screenSize, const Math::Vector2& offset) {
+			if (!isInitialized) return;
+
+			// Set the render context so UI elements use the provided DrawList and offset
+			UIRenderContext::Begin(static_cast<ImDrawList*>(drawList), offset);
+
+			for (Canvas* canvas : activeCanvases) {
+				canvas->RenderCanvas(screenSize);
+			}
+
+			UIRenderContext::End();
 		}
 
 		void CanvasSystem::InitializeFonts() {

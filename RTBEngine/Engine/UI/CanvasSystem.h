@@ -31,6 +31,8 @@ namespace RTBEngine {
 
 			void Update(ECS::Scene* scene);
 			void RenderAll();
+			void RenderCanvasesOnly(const Math::Vector2* customScreenSize = nullptr);
+			void RenderCanvasesToDrawList(void* drawList, const Math::Vector2& screenSize, const Math::Vector2& offset);
 			void InitializeFonts();
 			void ProcessInput();
 

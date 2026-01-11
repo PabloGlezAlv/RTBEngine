@@ -10,17 +10,56 @@ namespace RTBEngine {
 
         using ThisClass = MeshRenderer;
         RTB_REGISTER_COMPONENT(MeshRenderer)
+            RTB_PROPERTY_MESH(meshRef)
+            RTB_PROPERTY_TEXTURE(textureRef)
+            RTB_PROPERTY_COLOR(colorRef)
         RTB_END_REGISTER(MeshRenderer)
 
         MeshRenderer::MeshRenderer()
             : Component()
         {
             material = std::make_unique<Rendering::Material>(nullptr);
+            // Default material values
+            if (material) {
+                colorRef = material->GetColor();
+            }
         }
 
         MeshRenderer::~MeshRenderer()
         {
 
+        }
+
+        void MeshRenderer::OnUpdate(float deltaTime) {
+            SyncProperties();
+        }
+
+        void MeshRenderer::SyncProperties() {
+            // Apply reflection proxy values to actual state
+            // Mesh
+            if (!meshes.empty()) {
+                if (meshes[0] != meshRef) {
+                    SetMesh(meshRef);
+                }
+            } else if (meshRef) {
+                SetMesh(meshRef);
+            } else {
+                // If both empty/null, nothing to do, or if meshRef became null, clear meshes
+                if (!meshes.empty() && !meshRef) {
+                    meshes.clear();
+                }
+            }
+
+            // Material
+            if (material) {
+                if (material->GetTexture() != textureRef) {
+                    material->SetTexture(textureRef);
+                }
+                
+                // Approximate color check to avoid per-frame uniform setting if costly?
+                // Material::SetColor usually just sets member, uniform set on Bind.
+                material->SetColor(colorRef);
+            }
         }
 
         void MeshRenderer::SetMesh(Rendering::Mesh* mesh)
@@ -29,11 +68,17 @@ namespace RTBEngine {
             if (mesh) {
                 meshes.push_back(mesh);
             }
+            meshRef = mesh; // Keep synced
         }
 
         void MeshRenderer::SetMeshes(const std::vector<Rendering::Mesh*>& newMeshes)
         {
             meshes = newMeshes;
+            if (!meshes.empty()) {
+                meshRef = meshes[0];
+            } else {
+                meshRef = nullptr;
+            }
         }
 
         void MeshRenderer::SetMeshMaterials(const std::vector<Rendering::Material*>& mats)
@@ -52,6 +97,7 @@ namespace RTBEngine {
         void MeshRenderer::SetTexture(Rendering::Texture* tex) {
             if (material) {
                 material->SetTexture(tex);
+                textureRef = tex; // Keep synced
             }
         }
 

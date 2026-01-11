@@ -38,12 +38,21 @@ namespace RTBEngine {
 
             void Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights);
 
+            virtual void OnUpdate(float deltaTime) override;
+
+            // Reflected properties (Proxy)
+            Rendering::Mesh* meshRef = nullptr;
+            Rendering::Texture* textureRef = nullptr;
+            Math::Vector4 colorRef = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+
             RTB_COMPONENT(MeshRenderer)
 
         private:
             std::vector<Rendering::Mesh*> meshes;
             std::unique_ptr<Rendering::Material> material;
             std::vector<Rendering::Material*> meshMaterials;  // Per-mesh materials (not owned)
+            
+            void SyncProperties();
         };
 
     }

@@ -6,6 +6,7 @@
 #include "../EventSystem/IPointerDownHandler.h"
 #include "../EventSystem/IPointerUpHandler.h"
 #include "../EventSystem/IPointerClickHandler.h"
+#include "../../Reflection/PropertyMacros.h"
 #include <functional>
 
 namespace RTBEngine {
@@ -42,7 +43,6 @@ namespace RTBEngine {
 
 			ButtonState GetState() const { return state; }
 
-			virtual const char* GetTypeName() const override { return "UIButton"; }
 			virtual void OnAwake() override;
 
 			void OnPointerEnter(const PointerEventData& eventData) override;
@@ -51,18 +51,21 @@ namespace RTBEngine {
 			void OnPointerUp(const PointerEventData& eventData) override;
 			void OnPointerClick(const PointerEventData& eventData) override;
 
+			// Reflected properties
+			Math::Vector4 normalColor = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+			Math::Vector4 hoveredColor = Math::Vector4(0.9f, 0.9f, 0.9f, 1.0f);
+			Math::Vector4 pressedColor = Math::Vector4(0.7f, 0.7f, 0.7f, 1.0f);
+			Math::Vector4 disabledColor = Math::Vector4(0.5f, 0.5f, 0.5f, 0.5f);
+			bool interactable = true;
+
+			RTB_COMPONENT(UIButton)
+
 		private:
-			Math::Vector4 normalColor;
-			Math::Vector4 hoveredColor;
-			Math::Vector4 pressedColor;
-			Math::Vector4 disabledColor;
+			UIImage* targetImage = nullptr;
+			UIPanel* targetPanel = nullptr;
+			Math::Vector4 originalColor = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
-			UIImage* targetImage;
-			UIPanel* targetPanel;
-			Math::Vector4 originalColor;
-
-			ButtonState state;
-			bool interactable;
+			ButtonState state = ButtonState::Normal;
 
 			std::function<void()> onClick;
 

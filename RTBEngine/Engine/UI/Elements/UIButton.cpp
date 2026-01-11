@@ -6,16 +6,19 @@
 namespace RTBEngine {
 	namespace UI {
 
+		using ThisClass = UIButton;
+		RTB_REGISTER_COMPONENT(UIButton)
+			RTB_PROPERTY_COLOR(normalColor)
+			RTB_PROPERTY_COLOR(hoveredColor)
+			RTB_PROPERTY_COLOR(pressedColor)
+			RTB_PROPERTY_COLOR(disabledColor)
+			RTB_PROPERTY(interactable)
+		RTB_END_REGISTER(UIButton)
+
 		UIButton::UIButton()
 			: targetImage(nullptr)
 			, targetPanel(nullptr)
 			, state(ButtonState::Normal)
-			, interactable(true)
-			, normalColor(1.0f, 1.0f, 1.0f, 1.0f)
-			, hoveredColor(0.9f, 0.9f, 0.9f, 1.0f)
-			, pressedColor(0.7f, 0.7f, 0.7f, 1.0f)
-			, disabledColor(0.5f, 0.5f, 0.5f, 0.5f)
-			, originalColor(1.0f, 1.0f, 1.0f, 1.0f)
 			, onClick(nullptr)
 		{
 		}

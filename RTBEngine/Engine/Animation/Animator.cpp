@@ -4,6 +4,14 @@
 namespace RTBEngine {
     namespace Animation {
 
+        using ThisClass = Animator;
+        RTB_REGISTER_COMPONENT(Animator)
+            RTB_PROPERTY(currentClipName)
+            RTB_PROPERTY(speed)
+            RTB_PROPERTY(playing)
+            RTB_PROPERTY(looping)
+        RTB_END_REGISTER(Animator)
+
         Animator::Animator()
         {
         }

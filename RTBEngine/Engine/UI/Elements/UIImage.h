@@ -2,6 +2,7 @@
 #include "../UIElement.h"
 #include "../../Math/Vectors/Vector4.h"
 #include "../../Rendering/Texture.h"
+#include "../../Reflection/PropertyMacros.h"
 
 namespace RTBEngine {
 	namespace UI {
@@ -20,13 +21,14 @@ namespace RTBEngine {
 			void SetPreserveAspect(bool preserve);
 			bool GetPreserveAspect() const { return preserveAspect; }
 
-			virtual const char* GetTypeName() const override { return "UIImage"; }
 			virtual void Render() override;
 
-		private:
-			Rendering::Texture* texture;
-			Math::Vector4 tintColor;
-			bool preserveAspect;
+			// Reflected properties
+			Rendering::Texture* texture = nullptr;
+			Math::Vector4 tintColor = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+			bool preserveAspect = true;
+
+			RTB_COMPONENT(UIImage)
 		};
 
 	}

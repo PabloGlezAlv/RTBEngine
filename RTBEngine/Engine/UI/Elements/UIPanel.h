@@ -1,6 +1,7 @@
 #pragma once
 #include "../UIElement.h"
 #include "../../Math/Vectors/Vector4.h"
+#include "../../Reflection/PropertyMacros.h"
 
 namespace RTBEngine {
 	namespace UI {
@@ -17,14 +18,15 @@ namespace RTBEngine {
 			void SetBorderThickness(float thickness);
 			void SetHasBorder(bool hasBorder);
 
-			virtual const char* GetTypeName() const override { return "UIPanel"; }
 			virtual void Render() override;
 
-		private:
-			Math::Vector4 backgroundColor;
-			Math::Vector4 borderColor;
-			float borderThickness;
-			bool hasBorder;
+			// Reflected properties
+			Math::Vector4 backgroundColor = Math::Vector4(0.2f, 0.2f, 0.2f, 0.8f);
+			Math::Vector4 borderColor = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+			float borderThickness = 1.0f;
+			bool hasBorder = false;
+
+			RTB_COMPONENT(UIPanel)
 		};
 
 	}

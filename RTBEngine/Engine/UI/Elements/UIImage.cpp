@@ -1,13 +1,19 @@
 #include "UIImage.h"
+#include "../UIRenderContext.h"
 #include <imgui.h>
 
 namespace RTBEngine {
 	namespace UI {
 
+		using ThisClass = UIImage;
+		RTB_REGISTER_COMPONENT(UIImage)
+			RTB_PROPERTY_TEXTURE(texture)
+			RTB_PROPERTY_COLOR(tintColor)
+			RTB_PROPERTY(preserveAspect)
+			RTB_PROPERTY(isVisible)
+		RTB_END_REGISTER(UIImage)
+
 		UIImage::UIImage()
-			: texture(nullptr)
-			, tintColor(1.0f, 1.0f, 1.0f, 1.0f)
-			, preserveAspect(true)
 		{
 		}
 
@@ -32,10 +38,11 @@ namespace RTBEngine {
 
 			Math::Vector4 screenRect = rectTransform->GetScreenRect();
 
-			ImDrawList* drawList = ImGui::GetBackgroundDrawList();
+			ImDrawList* drawList = UIRenderContext::GetDrawList();
+			Math::Vector2 offset = UIRenderContext::Offset;
 
-			ImVec2 min(screenRect.x, screenRect.y);
-			ImVec2 max(screenRect.x + screenRect.z, screenRect.y + screenRect.w);
+			ImVec2 min(screenRect.x + offset.x, screenRect.y + offset.y);
+			ImVec2 max(screenRect.x + screenRect.z + offset.x, screenRect.y + screenRect.w + offset.y);
 
 			ImVec2 uv0(0.0f, 1.0f);
 			ImVec2 uv1(1.0f, 0.0f);

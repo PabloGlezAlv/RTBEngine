@@ -2,6 +2,7 @@
 #include "../UIElement.h"
 #include "../../Math/Vectors/Vector4.h"
 #include <string>
+#include "../../Reflection/PropertyMacros.h"
 
 namespace RTBEngine {
 	namespace Rendering {
@@ -38,15 +39,16 @@ namespace RTBEngine {
 			void SetAlignment(TextAlignment align);
 			TextAlignment GetAlignment() const { return alignment; }
 
-			virtual const char* GetTypeName() const override { return "UIText"; }
 			virtual void Render() override;
 
-		private:
-			std::string text;
-			Math::Vector4 color;
-			float fontSize;
-			TextAlignment alignment;
-			Rendering::Font* font;
+			// Reflected properties
+			std::string text = "Text";
+			Math::Vector4 color = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+			float fontSize = 16.0f;
+			TextAlignment alignment = TextAlignment::Left;
+			Rendering::Font* font = nullptr;
+
+			RTB_COMPONENT(UIText)
 		};
 
 	}

@@ -1,17 +1,23 @@
 #include "UIText.h"
 #include "../../Rendering/Font.h"
 #include "../../Core/ResourceManager.h"
+#include "../UIRenderContext.h"
 #include <imgui.h>
 
 namespace RTBEngine {
 	namespace UI {
 
+		using ThisClass = UIText;
+		RTB_REGISTER_COMPONENT(UIText)
+			RTB_PROPERTY(text)
+			RTB_PROPERTY_COLOR(color)
+			RTB_PROPERTY(fontSize)
+			RTB_PROPERTY_ENUM(alignment, "Left", "Center", "Right")
+			RTB_PROPERTY_FONT(font)
+			RTB_PROPERTY(isVisible)
+		RTB_END_REGISTER(UIText)
+
 		UIText::UIText()
-			: text("Text")
-			, color(1.0f, 1.0f, 1.0f, 1.0f)
-			, fontSize(16.0f)
-			, alignment(TextAlignment::Left)
-			, font(nullptr)
 		{
 		}
 
@@ -42,7 +48,8 @@ namespace RTBEngine {
 			if (!isVisible || text.empty()) return;
 
 			Math::Vector4 screenRect = rectTransform->GetScreenRect();
-			ImDrawList* drawList = ImGui::GetBackgroundDrawList();
+			ImDrawList* drawList = UIRenderContext::GetDrawList();
+			Math::Vector2 offset = UIRenderContext::Offset;
 
 			Rendering::Font* activeFont = font;
 			if (!activeFont) {
@@ -60,7 +67,7 @@ namespace RTBEngine {
 
 			ImVec2 textSize = imFont->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, text.c_str());
 
-			ImVec2 textPos(screenRect.x, screenRect.y);
+			ImVec2 textPos(screenRect.x + offset.x, screenRect.y + offset.y);
 
 			switch (alignment) {
 			case TextAlignment::Center:

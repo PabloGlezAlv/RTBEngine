@@ -13,6 +13,9 @@ namespace RTBEngine {
 
 			RectTransform* GetRectTransform() const { return rectTransform.get(); }
 
+			// Reflected in subclasses
+			bool isVisible = true;
+
 			void SetVisible(bool visible) { isVisible = visible; }
 			bool IsVisible() const { return isVisible; }
 
@@ -25,7 +28,6 @@ namespace RTBEngine {
 
 		protected:
 			std::unique_ptr<RectTransform> rectTransform;
-			bool isVisible = true;
 		};
 
 	}

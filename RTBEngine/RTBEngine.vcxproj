@@ -217,6 +217,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClCompile Include="Engine\UI\Elements\UIText.cpp" />
     <ClCompile Include="Engine\UI\RectTransform.cpp" />
     <ClCompile Include="Engine\UI\UIElement.cpp" />
+    <ClCompile Include="Engine\UI\UIRenderContext.cpp" />
     <ClCompile Include="Engine\Scripting\SceneLoader.cpp" />
     <ClCompile Include="Engine\ECS\SceneManager.cpp" />
     <ClCompile Include="Engine\Animation\Skeleton.cpp" />
@@ -296,6 +297,7 @@ xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
     <ClInclude Include="Engine\UI\Elements\UIText.h" />
     <ClInclude Include="Engine\UI\RectTransform.h" />
     <ClInclude Include="Engine\UI\UIElement.h" />
+    <ClInclude Include="Engine\UI\UIRenderContext.h" />
     <ClInclude Include="Engine\UI\EventSystem\IEventSystemHandler.h" />
     <ClInclude Include="Engine\UI\EventSystem\IPointerEnterHandler.h" />
     <ClInclude Include="Engine\UI\EventSystem\IPointerExitHandler.h" />
