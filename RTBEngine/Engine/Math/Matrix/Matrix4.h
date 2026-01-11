@@ -36,6 +36,9 @@ namespace RTBEngine {
 
             Matrix4 Transpose() const;
             Matrix4 Inverse() const;
+
+            const float* GetData() const { return m; }
+            float* GetData() { return m; }
         };
 
     }
