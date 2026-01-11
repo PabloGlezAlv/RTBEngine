@@ -150,3 +150,13 @@ void RTBEngine::Core::Window::SetCursorVisible(bool visible)
 	SDL_ShowCursor(visible ? SDL_ENABLE : SDL_DISABLE);
 	isCursorVisible = visible;
 }
+
+void RTBEngine::Core::Window::UpdateSize(int newWidth, int newHeight)
+{
+	width = newWidth;
+	height = newHeight;
+
+	if (resizeCallback) {
+		resizeCallback(width, height);
+	}
+}

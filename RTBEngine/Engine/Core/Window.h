@@ -2,6 +2,7 @@
 #include <SDL.h>
 #include "GL/glew.h"
 #include <string>
+#include <functional>
 
 namespace RTBEngine {
     namespace Core {
@@ -37,6 +38,11 @@ namespace RTBEngine {
 			// Cursor visibility control
 			void SetCursorVisible(bool visible);
 			bool IsCursorVisible() const { return isCursorVisible; }
+
+			void UpdateSize(int newWidth, int newHeight);
+
+			using WindowResizeCallback = std::function<void(int, int)>;
+			void SetResizeCallback(WindowResizeCallback callback) { resizeCallback = callback; }
         private:
 			std::string title = "";
 			int width = 0;
@@ -52,6 +58,8 @@ namespace RTBEngine {
 
 			SDL_Window* sdlWindow;
 			SDL_GLContext glContext;
+
+			WindowResizeCallback resizeCallback = nullptr;
 
 			Window(const Window&) = delete;
 			Window& operator=(const Window&) = delete;

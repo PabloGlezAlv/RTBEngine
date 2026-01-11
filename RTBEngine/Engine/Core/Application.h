@@ -48,6 +48,7 @@ namespace RTBEngine {
 
 		private:
 			void RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader);
+			void OnWindowResized(int width, int height);
 			ApplicationConfig config;
 
 			bool isRunning = false;

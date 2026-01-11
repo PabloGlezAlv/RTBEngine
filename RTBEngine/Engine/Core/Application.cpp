@@ -43,6 +43,10 @@ bool RTBEngine::Core::Application::Initialize()
 		return false;
 	}
 
+	window->SetResizeCallback([this](int width, int height) {
+		OnWindowResized(width, height);
+	});
+
 	RTB_INFO("RTBEngine Initializing...");
 
 	lastTime = SDL_GetTicks();
@@ -206,6 +210,14 @@ void RTBEngine::Core::Application::ProcessInput()
 	{
 		ImGui_ImplSDL2_ProcessEvent(&event);
 		input.ProcessEvent(event);
+
+		if (event.type == SDL_WINDOWEVENT) {
+			if (event.window.event == SDL_WINDOWEVENT_RESIZED || event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+				int newWidth = event.window.data1;
+				int newHeight = event.window.data2;
+				window->UpdateSize(newWidth, newHeight);
+			}
+		}
 
 		if (event.type == SDL_QUIT)
 			isRunning = false;
@@ -378,4 +390,15 @@ void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Renderi
 		skybox->Render(camera);
 	}
 
+}
+
+void RTBEngine::Core::Application::OnWindowResized(int width, int height)
+{
+	glViewport(0, 0, width, height);
+
+	ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
+	if (scene && scene->GetActiveCamera()) {
+		float aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+		scene->GetActiveCamera()->SetAspectRatio(aspectRatio);
+	}
 }

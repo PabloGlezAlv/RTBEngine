@@ -69,6 +69,9 @@ namespace RTBEngine {
             case SDL_MOUSEWHEEL:
                 scrollDelta = event.wheel.y;
                 break;
+
+            case SDL_WINDOWEVENT:
+                break;
             }
         }
 
