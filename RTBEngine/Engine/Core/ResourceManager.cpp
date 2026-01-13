@@ -77,8 +77,10 @@ namespace RTBEngine {
             // Store and return
             Rendering::Texture* texturePtr = texture.get();
             textures[path] = std::move(texture);
+            texturePathMap[texturePtr] = path; 
             return texturePtr;
         }
+
 
         Rendering::Mesh* ResourceManager::GetModel(const std::string& path)
         {
@@ -124,6 +126,7 @@ namespace RTBEngine {
 
             for (Rendering::Mesh* mesh : loadedMeshes) {
                 meshPtrs.push_back(mesh);
+                meshPathMap[mesh] = path;
                 ownedMeshes.push_back(std::unique_ptr<Rendering::Mesh>(mesh));
             }
 
@@ -157,6 +160,7 @@ namespace RTBEngine {
 
             Audio::AudioClip* clipPtr = clip.get();
             audioClips[path] = std::move(clip);
+            audioClipPathMap[clipPtr] = path;
             return clipPtr;
         }
 
@@ -184,6 +188,7 @@ namespace RTBEngine {
 
 			Rendering::Font* fontPtr = font.get();
 			fonts[path] = std::move(font);
+            fontPathMap[fontPtr] = path;
 			return fontPtr;
 		}
 
@@ -220,6 +225,7 @@ namespace RTBEngine {
 
             Rendering::Cubemap* ptr = cubemap.get();
             cubemaps[folderPath] = std::move(cubemap);
+            cubemapPathMap[ptr] = folderPath;
             return ptr;
         }
 
@@ -303,6 +309,57 @@ namespace RTBEngine {
             return nullptr;
         }
 
+        std::string ResourceManager::GetTexturePath(Rendering::Texture* texture) const {
+            if (!texture) return "";
+
+            auto it = texturePathMap.find(texture);
+            if (it != texturePathMap.end()) {
+                return it->second;
+            }
+            return "";
+        }
+
+        std::string ResourceManager::GetAudioClipPath(Audio::AudioClip* clip) const {
+            if (!clip) return "";
+
+            auto it = audioClipPathMap.find(clip);
+            if (it != audioClipPathMap.end()) {
+                return it->second;
+            }
+            return "";
+        }
+
+        std::string ResourceManager::GetMeshPath(Rendering::Mesh* mesh) const {
+            if (!mesh) return "";
+
+            auto it = meshPathMap.find(mesh);
+            if (it != meshPathMap.end()) {
+                return it->second;
+            }
+            return "";
+        }
+
+        std::string ResourceManager::GetFontPath(Rendering::Font* font) const {
+            if (!font) return "";
+
+            auto it = fontPathMap.find(font);
+            if (it != fontPathMap.end()) {
+                return it->second;
+            }
+            return "";
+        }
+
+        std::string ResourceManager::GetCubemapPath(Rendering::Cubemap* cubemap) const {
+            if (!cubemap) return "";
+
+            auto it = cubemapPathMap.find(cubemap);
+            if (it != cubemapPathMap.end()) {
+                return it->second;
+            }
+            return "";
+        }
+
+
         void ResourceManager::Clear()
         {
             shaders.clear();
@@ -310,11 +367,18 @@ namespace RTBEngine {
             modelMeshPtrs.clear();
             modelMeshes.clear();
             audioClips.clear();
-			fonts.clear();
+            fonts.clear();
             scenes.clear();
-			defaultFont = nullptr;
+            defaultFont = nullptr;
             cubemaps.clear();
             defaultSkybox.reset();
+
+            texturePathMap.clear();
+            audioClipPathMap.clear();
+            meshPathMap.clear();
+            fontPathMap.clear();
+            cubemapPathMap.clear();
         }
+
     }
 }

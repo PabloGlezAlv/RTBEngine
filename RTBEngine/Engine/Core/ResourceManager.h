@@ -76,10 +76,16 @@ namespace RTBEngine {
             Rendering::Cubemap* GetDefaultCubemap();
             Rendering::Skybox* GetDefaultSkybox();
 
-
             // Scene management
             ECS::Scene* LoadScene(const std::string& path);
             ECS::Scene* GetScene(const std::string& path);
+
+            //Reverse
+            std::string GetTexturePath(Rendering::Texture* texture) const;
+            std::string GetAudioClipPath(Audio::AudioClip* clip) const;
+            std::string GetMeshPath(Rendering::Mesh* mesh) const;
+            std::string GetFontPath(Rendering::Font* font) const;
+            std::string GetCubemapPath(Rendering::Cubemap* cubemap) const;
 
             void Clear();
 
@@ -99,6 +105,14 @@ namespace RTBEngine {
 			std::unordered_map<std::string, std::unique_ptr<Rendering::Font>> fonts;
             std::unordered_map<std::string, std::unique_ptr<ECS::Scene>> scenes;
 			Rendering::Font* defaultFont = nullptr;
+
+            // Reverse lookup maps: pointer -> path (for serialization)
+            std::unordered_map<Rendering::Texture*, std::string> texturePathMap;
+            std::unordered_map<Audio::AudioClip*, std::string> audioClipPathMap;
+            std::unordered_map<Rendering::Mesh*, std::string> meshPathMap;
+            std::unordered_map<Rendering::Font*, std::string> fontPathMap;
+            std::unordered_map<Rendering::Cubemap*, std::string> cubemapPathMap;
+
 
             std::unique_ptr<Rendering::Skybox> defaultSkybox;
         };
