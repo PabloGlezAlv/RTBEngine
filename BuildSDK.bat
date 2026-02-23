@@ -34,6 +34,28 @@ if not exist "%MSBUILD_PATH%" (
 
 echo Found MSBuild at: "%MSBUILD_PATH%"
 
+:: Detect toolset version dynamically
+echo Detecting MSVC toolset version...
+for /f "usebackq tokens=*" %%i in (`"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationVersion`) do (
+    set VS_VERSION=%%i
+)
+echo Detected Visual Studio version: %VS_VERSION%
+
+:: Extract major version
+for /f "tokens=1 delims=." %%i in ("%VS_VERSION%") do set VS_MAJOR_VERSION=%%i
+
+:: Map VS version to toolset
+set TOOLSET=vc143
+if "%VS_MAJOR_VERSION%"=="17" (
+    set TOOLSET=vc143
+    echo Using toolset: vc143 (VS2022)
+)
+if "%VS_MAJOR_VERSION%"=="18" (
+    set TOOLSET=vc145
+    echo Using toolset: vc145 (VS2026)
+)
+echo Active toolset: %TOOLSET%
+
 :: 1. Clean output directory
 if exist "%OUTPUT_DIR%" (
     echo Cleaning previous build...
@@ -84,6 +106,8 @@ xcopy "%THIRD_PARTY_DIR%\luaBridge\Source\*.h" "%OUTPUT_DIR%\Include\LuaBridge\"
 xcopy "%THIRD_PARTY_DIR%\glew-2.1.0\include\GL\*.h" "%OUTPUT_DIR%\Include\GL\" /s /y /i >nul
 xcopy "%THIRD_PARTY_DIR%\fmod\api\core\inc\*.hpp" "%OUTPUT_DIR%\Include\" /s /y /i >nul
 xcopy "%THIRD_PARTY_DIR%\fmod\api\core\inc\*.h" "%OUTPUT_DIR%\Include\" /s /y /i >nul
+xcopy "%THIRD_PARTY_DIR%\assimp\include\assimp\*.h" "%OUTPUT_DIR%\Include\assimp\" /s /y /i >nul
+xcopy "%THIRD_PARTY_DIR%\assimp\include\assimp\*.hpp" "%OUTPUT_DIR%\Include\assimp\" /s /y /i >nul
 
 :: 4. Copy Compiled Library
 echo Copying RTBEngine.lib [Debug]...
@@ -110,7 +134,7 @@ copy "%THIRD_PARTY_DIR%\glew-2.1.0\lib\Release\x64\glew32.lib" "%OUTPUT_DIR%\Lib
 copy "%THIRD_PARTY_DIR%\bullet3-3.25\build_msvc\lib\Release\LinearMath.lib" "%OUTPUT_DIR%\Lib\Release\" >nul
 copy "%THIRD_PARTY_DIR%\bullet3-3.25\build_msvc\lib\Release\BulletCollision.lib" "%OUTPUT_DIR%\Lib\Release\" >nul
 copy "%THIRD_PARTY_DIR%\bullet3-3.25\build_msvc\lib\Release\BulletDynamics.lib" "%OUTPUT_DIR%\Lib\Release\" >nul
-copy "%THIRD_PARTY_DIR%\assimp\lib\Release\x64\assimp-vc143-mt.lib" "%OUTPUT_DIR%\Lib\Release\" >nul
+copy "%THIRD_PARTY_DIR%\assimp\lib\Release\x64\assimp-%TOOLSET%-mt.lib" "%OUTPUT_DIR%\Lib\Release\" >nul
 copy "%THIRD_PARTY_DIR%\lua\lua54.lib" "%OUTPUT_DIR%\Lib\Release\" >nul
 copy "%THIRD_PARTY_DIR%\fmod\api\core\lib\x64\fmod_vc.lib" "%OUTPUT_DIR%\Lib\Release\" >nul
 
@@ -121,7 +145,7 @@ copy "%THIRD_PARTY_DIR%\glew-2.1.0\lib\Release\x64\glew32.lib" "%OUTPUT_DIR%\Lib
 copy "%THIRD_PARTY_DIR%\bullet3-3.25\build_msvc\lib\Debug\LinearMath_Debug.lib" "%OUTPUT_DIR%\Lib\Debug\" >nul
 copy "%THIRD_PARTY_DIR%\bullet3-3.25\build_msvc\lib\Debug\BulletCollision_Debug.lib" "%OUTPUT_DIR%\Lib\Debug\" >nul
 copy "%THIRD_PARTY_DIR%\bullet3-3.25\build_msvc\lib\Debug\BulletDynamics_Debug.lib" "%OUTPUT_DIR%\Lib\Debug\" >nul
-copy "%THIRD_PARTY_DIR%\assimp\lib\Debug\x64\assimp-vc143-mtd.lib" "%OUTPUT_DIR%\Lib\Debug\" >nul
+copy "%THIRD_PARTY_DIR%\assimp\lib\Debug\x64\assimp-%TOOLSET%-mtd.lib" "%OUTPUT_DIR%\Lib\Debug\" >nul
 copy "%THIRD_PARTY_DIR%\lua\lua54.lib" "%OUTPUT_DIR%\Lib\Debug\" >nul
 copy "%THIRD_PARTY_DIR%\fmod\api\core\lib\x64\fmod_vc.lib" "%OUTPUT_DIR%\Lib\Debug\" >nul
 
@@ -129,7 +153,7 @@ copy "%THIRD_PARTY_DIR%\fmod\api\core\lib\x64\fmod_vc.lib" "%OUTPUT_DIR%\Lib\Deb
 echo Copying DLLs to Bin directory...
 copy "%THIRD_PARTY_DIR%\SDL2-2.32.10\lib\x64\SDL2.dll" "%OUTPUT_DIR%\Bin\" >nul
 copy "%THIRD_PARTY_DIR%\glew-2.1.0\bin\Release\x64\glew32.dll" "%OUTPUT_DIR%\Bin\" >nul
-copy "%THIRD_PARTY_DIR%\assimp\bin\x64\assimp-vc143-mt.dll" "%OUTPUT_DIR%\Bin\" >nul
+copy "%THIRD_PARTY_DIR%\assimp\bin\x64\assimp-%TOOLSET%-mt.dll" "%OUTPUT_DIR%\Bin\" >nul
 copy "%THIRD_PARTY_DIR%\fmod\api\core\lib\x64\fmod.dll" "%OUTPUT_DIR%\Bin\" >nul
 copy "%THIRD_PARTY_DIR%\lua\lua54.dll" "%OUTPUT_DIR%\Bin\" >nul
 

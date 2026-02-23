@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\IDMath.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\MultiBodyTree.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\details\MultiBodyTreeInitCache.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\details\MultiBodyTreeImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\IDConfig.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\IDConfigEigen.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\IDMath.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\IDConfigBuiltin.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\IDErrorMessages.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\MultiBodyTree.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\details\IDEigenInterface.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\details\IDMatVec.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\details\IDLinearMathInterface.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\details\MultiBodyTreeImpl.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\src\BulletInverseDynamics\details\MultiBodyTreeInitCache.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{9AA3D3F8-0A42-3354-8D42-CFF52C677B14}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{7C5B268E-1412-34C8-A06E-AAF7F0D739E9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

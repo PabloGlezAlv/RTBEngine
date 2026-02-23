@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Solution>
+	<Configurations>
+		<BuildType Name="Debug"/>
+		<BuildType Name="Release"/>
+		<BuildType Name="MinSizeRel"/>
+		<BuildType Name="RelWithDebInfo"/>
+		<Platform Name="x64"/>
+	</Configurations>
+	<Project Path="ALL_BUILD.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="e3a7ef93-b048-3e73-9faa-df3669830bdb" DefaultStartup="true">
+		<BuildDependency Project="src/Bullet3Serialize/Bullet2FileLoader/Bullet2FileLoader.vcxproj"/>
+		<BuildDependency Project="src/Bullet3Collision/Bullet3Collision.vcxproj"/>
+		<BuildDependency Project="src/Bullet3Common/Bullet3Common.vcxproj"/>
+		<BuildDependency Project="src/Bullet3Dynamics/Bullet3Dynamics.vcxproj"/>
+		<BuildDependency Project="src/Bullet3Geometry/Bullet3Geometry.vcxproj"/>
+		<BuildDependency Project="src/Bullet3OpenCL/Bullet3OpenCL_clew.vcxproj"/>
+		<BuildDependency Project="src/BulletCollision/BulletCollision.vcxproj"/>
+		<BuildDependency Project="src/BulletDynamics/BulletDynamics.vcxproj"/>
+		<BuildDependency Project="src/BulletInverseDynamics/BulletInverseDynamics.vcxproj"/>
+		<BuildDependency Project="src/BulletSoftBody/BulletSoftBody.vcxproj"/>
+		<BuildDependency Project="src/LinearMath/LinearMath.vcxproj"/>
+	</Project>
+	<Project Path="src/Bullet3Serialize/Bullet2FileLoader/Bullet2FileLoader.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="d17920ff-ad03-3f2e-a355-e6d1e8875c09"/>
+	<Project Path="src/Bullet3Collision/Bullet3Collision.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="88410611-bd1c-3acd-9539-7c82b152453f"/>
+	<Project Path="src/Bullet3Common/Bullet3Common.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="dfeb190d-3c1d-3008-b01c-c1e046ba42a3"/>
+	<Project Path="src/Bullet3Dynamics/Bullet3Dynamics.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="4913a6f1-ef66-3914-a7a2-68c9a5b46861"/>
+	<Project Path="src/Bullet3Geometry/Bullet3Geometry.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="9be177f6-1b22-32a7-a53c-a7dc5ea800d0"/>
+	<Project Path="src/Bullet3OpenCL/Bullet3OpenCL_clew.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="4a4a1819-0bb9-3f43-ad0d-649dc744e3ff"/>
+	<Project Path="src/BulletCollision/BulletCollision.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="61b089e7-ef9a-3923-8562-d627f962b52a"/>
+	<Project Path="src/BulletDynamics/BulletDynamics.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="08435fe5-5f62-3642-b507-0cc581f052f3"/>
+	<Project Path="src/BulletInverseDynamics/BulletInverseDynamics.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="b125b183-328b-345d-9291-495bb01cca98"/>
+	<Project Path="src/BulletSoftBody/BulletSoftBody.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="6b65a1f8-dbe1-3d2c-917c-0b1cd946dac0"/>
+	<Project Path="INSTALL.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="897c30a9-ffb3-3a63-b042-0ce1b6ac87aa">
+		<BuildDependency Project="ALL_BUILD.vcxproj"/>
+		<Build Solution="Debug|*" Project="false"/>
+		<Build Solution="Release|*" Project="false"/>
+		<Build Solution="MinSizeRel|*" Project="false"/>
+		<Build Solution="RelWithDebInfo|*" Project="false"/>
+	</Project>
+	<Project Path="src/LinearMath/LinearMath.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="e1c3d909-e93c-381a-a4d9-8a6054cb7253"/>
+</Solution>

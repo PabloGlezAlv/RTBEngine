@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\pablo\Desktop\Proyectos\RTBEngine\RTBEngine\RTBEngine\ThirdParty\bullet3-3.25\build_msvc\CMakeFiles\37b65ff0b3f9197ed17d3b996c057a4b\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{437E4739-848C-3EAD-9EB9-31AC29E2E798}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
