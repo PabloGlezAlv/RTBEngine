@@ -57,6 +57,11 @@ namespace RTBEngine {
 
         void LightComponent::SetLight(std::unique_ptr<Rendering::Light> light) {
             this->light = std::move(light);
+            if (this->light) {
+                type = this->light->GetType();
+                color = this->light->GetColor();
+                intensity = this->light->GetIntensity();
+            }
         }
 
         void LightComponent::SyncProperties() {

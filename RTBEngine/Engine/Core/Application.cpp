@@ -266,7 +266,8 @@ void RTBEngine::Core::Application::RenderShadowPass(ECS::Scene* scene)
 		auto* lightComp = go->GetComponent<ECS::LightComponent>();
 		if (!lightComp) continue;
 
-		auto* dirLight = dynamic_cast<Rendering::DirectionalLight*>(lightComp->GetLight());
+		if (lightComp->GetLight()->GetType() != Rendering::LightType::Directional) continue;
+		auto* dirLight = static_cast<Rendering::DirectionalLight*>(lightComp->GetLight());
 		if (!dirLight || !dirLight->GetCastShadows()) continue;
 
 		Math::Vector3 sceneCenter(0.0f, 2.0f, 0.0f);
