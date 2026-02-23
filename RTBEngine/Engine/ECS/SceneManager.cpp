@@ -64,5 +64,13 @@ namespace RTBEngine {
             onSceneUnloading = callback;
         }
 
+        void SceneManager::MarkSceneDirty() {
+            sceneDirty = true;
+        }
+
+        void SceneManager::ClearSceneDirty() {
+            sceneDirty = false;
+        }
+
     }
 }

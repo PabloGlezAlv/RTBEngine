@@ -27,12 +27,17 @@ namespace RTBEngine {
             void SetOnSceneLoaded(std::function<void(Scene*)> callback);
             void SetOnSceneUnloading(std::function<void(Scene*)> callback);
 
+            void MarkSceneDirty();
+            void ClearSceneDirty();
+            bool IsSceneDirty() const { return sceneDirty; }
+
         private:
             SceneManager() = default;
             ~SceneManager() = default;
 
             std::unique_ptr<Scene> activeScene;
             std::string activeScenePath;
+            bool sceneDirty = false;
 
             std::function<void(Scene*)> onSceneLoaded;
             std::function<void(Scene*)> onSceneUnloading;

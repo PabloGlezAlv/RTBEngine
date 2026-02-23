@@ -157,17 +157,8 @@ copy "%THIRD_PARTY_DIR%\assimp\bin\x64\assimp-%TOOLSET%-mt.dll" "%OUTPUT_DIR%\Bi
 copy "%THIRD_PARTY_DIR%\fmod\api\core\lib\x64\fmod.dll" "%OUTPUT_DIR%\Bin\" >nul
 copy "%THIRD_PARTY_DIR%\lua\lua54.dll" "%OUTPUT_DIR%\Bin\" >nul
 
-:: Additional Assimp dependencies
-if exist "..\RTBEditor\RTBEngineEditor\RTBEngineEditor\x64\Debug\zlib1.dll" (
-    copy "..\RTBEditor\RTBEngineEditor\RTBEngineEditor\x64\Debug\zlib1.dll" "%OUTPUT_DIR%\Bin\" >nul
-    copy "..\RTBEditor\RTBEngineEditor\RTBEngineEditor\x64\Debug\zlibd1.dll" "%OUTPUT_DIR%\Bin\" >nul
-    copy "..\RTBEditor\RTBEngineEditor\RTBEngineEditor\x64\Debug\kubazip.dll" "%OUTPUT_DIR%\Bin\" >nul
-    copy "..\RTBEditor\RTBEngineEditor\RTBEngineEditor\x64\Debug\minizip.dll" "%OUTPUT_DIR%\Bin\" >nul
-    copy "..\RTBEditor\RTBEngineEditor\RTBEngineEditor\x64\Debug\poly2tri.dll" "%OUTPUT_DIR%\Bin\" >nul
-    copy "..\RTBEditor\RTBEngineEditor\RTBEngineEditor\x64\Debug\pugixml.dll" "%OUTPUT_DIR%\Bin\" >nul
-) else (
-    echo [WARNING] Assimp dependency DLLs not found in RTBEditor Debug directory
-)
+:: Note: Assimp dependencies (zlib, kubazip, minizip, poly2tri, pugixml) are statically
+:: linked into assimp-%TOOLSET%-mt.dll, so no additional dependency DLLs are needed.
 
 :: 7. Copy Default Assets
 echo Copying default assets...
