@@ -24,7 +24,7 @@ namespace RTBEngine {
         class ResourceManager {
         public:
             // Default asset paths
-            static constexpr const char* DEFAULT_TEXTURE_PATH = "Default/Textures/white.png";
+            static constexpr const char* DEFAULT_TEXTURE_PATH = "Default/Textures/default.png";
             static constexpr const char* DEFAULT_LOGO_PATH = "Default/Textures/logo.png";
             static constexpr const char* DEFAULT_FONT_PATH = "Default/Fonts/SourceSans3-Black.ttf";
             static constexpr const char* DEFAULT_CUBE_PATH = "Default/Models/cube.obj";
