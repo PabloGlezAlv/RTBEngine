@@ -30,6 +30,7 @@ namespace RTBEngine {
             void AddGameObject(GameObject* gameObject);
             void RemoveGameObject(GameObject* gameObject);
             GameObject* FindGameObject(const std::string& name);
+            GameObject* FindGameObjectByUUID(const std::string& uuid);
 
             void Update(float deltaTime);
             void FixedUpdate(float fixedDeltaTime);

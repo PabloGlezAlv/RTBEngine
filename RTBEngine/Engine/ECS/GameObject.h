@@ -34,6 +34,10 @@ namespace RTBEngine {
             const std::string& GetName() const { return name; }
             void SetName(const std::string& name) { this->name = name; }
 
+            const std::string& GetUUID() const { return uuid; }
+            void SetUUID(const std::string& id) { uuid = id; }
+
+
             void SetParent(GameObject* newParent);
             GameObject* GetParent() const { return parent; }
             void AddChild(GameObject* child);
@@ -55,6 +59,8 @@ namespace RTBEngine {
 
         private:
             std::string name;
+            std::string uuid;
+
             Transform transform;
             std::vector<std::unique_ptr<Component>> components;
             bool isActive;

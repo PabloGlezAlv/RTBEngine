@@ -45,6 +45,20 @@ RTBEngine::ECS::GameObject* RTBEngine::ECS::Scene::FindGameObject(const std::str
 	return nullptr;
 }
 
+RTBEngine::ECS::GameObject *RTBEngine::ECS::Scene::FindGameObjectByUUID(const std::string &uuid)
+{
+    	auto it = std::find_if(gameObjects.begin(), gameObjects.end(),
+		[&uuid](const std::unique_ptr<GameObject>& obj) {
+			return obj->GetUUID() == uuid;
+		});
+
+	if (it != gameObjects.end()) {
+        return it->get();
+    }
+
+	return nullptr;
+}
+
 void RTBEngine::ECS::Scene::Update(float deltaTime)
 {
 	for (auto& gameObject : gameObjects) {

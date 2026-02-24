@@ -73,6 +73,7 @@ namespace RTBEngine {
 
             file << ind << "{\n";
             file << ind << "    name = \"" << go->GetName() << "\",\n";
+            file << ind << "    uuid = \"" << go->GetUUID() << "\",\n";
 
             WriteTransform(file, go, indent + 1);
             WriteComponents(file, go, indent + 1);
@@ -209,7 +210,25 @@ namespace RTBEngine {
             case Reflection::PropertyType::Enum:
                 file << *(int*)data;
                 break;
-
+            
+            case Reflection::PropertyType::GameObjectRef: {
+                ECS::GameObject* target = *(ECS::GameObject**)data;
+                if (target) file << FormatString(target->GetUUID());
+                else         file << "nil";
+                break;
+            }
+            case Reflection::PropertyType::ComponentRef: {
+                ECS::Component* target = *(ECS::Component**)data;
+                if (target && target->GetOwner()) {
+                    std::string ref = target->GetOwner()->GetUUID()
+                                    + "/" + std::string(target->GetTypeName());
+                    file << FormatString(ref);
+                } else {
+                    file << "nil";
+                }
+                break;
+            }
+            
             default:
                 file << "nil";
                 break;

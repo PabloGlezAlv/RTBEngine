@@ -1,10 +1,28 @@
 #include "GameObject.h"
+#include <objbase.h>
+#include <cstdio>
+
 
 namespace RTBEngine {
     namespace ECS {
+        static std::string GenerateUUID()
+        {
+            GUID guid;
+            CoCreateGuid(&guid);
+            char buf[37];
+            snprintf(buf, sizeof(buf),
+                "%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+                guid.Data1, guid.Data2, guid.Data3,
+                guid.Data4[0], guid.Data4[1],
+                guid.Data4[2], guid.Data4[3], guid.Data4[4],
+                guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+            return std::string(buf);
+        }
+
 
         GameObject::GameObject(const std::string& name)
             : name(name)
+            , uuid(GenerateUUID())
             , transform()
             , isActive(true)
             , started(false)

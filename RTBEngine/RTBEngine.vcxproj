@@ -217,6 +217,7 @@ if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$
     <ClCompile Include="Engine\UI\UIElement.cpp" />
     <ClCompile Include="Engine\UI\UIRenderContext.cpp" />
     <ClCompile Include="Engine\Scripting\SceneLoader.cpp" />
+    <ClCompile Include="Engine\Scripting\SceneSaver.cpp" />
     <ClCompile Include="Engine\ECS\SceneManager.cpp" />
     <ClCompile Include="Engine\Animation\Skeleton.cpp" />
     <ClCompile Include="Engine\Rendering\ShadowMap.cpp" />
@@ -304,6 +305,7 @@ if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$
     <ClInclude Include="Engine\UI\EventSystem\IPointerClickHandler.h" />
     <ClInclude Include="Engine\UI\EventSystem\PointerEventData.h" />
     <ClInclude Include="Engine\Scripting\SceneLoader.h" />
+    <ClInclude Include="Engine\Scripting\SceneSaver.h" />
     <ClInclude Include="Engine\ECS\SceneManager.h" />
     <ClInclude Include="Engine\Animation\Skeleton.h" />
     <ClInclude Include="Engine\Rendering\ShadowMap.h" />
