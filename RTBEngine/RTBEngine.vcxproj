@@ -262,6 +262,7 @@ if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$
     <ClInclude Include="Engine\Math\Vectors\Vector3.h" />
     <ClInclude Include="Engine\Math\Vectors\Vector2.h" />
     <ClInclude Include="Engine\Math\Vectors\Vector4.h" />
+    <ClInclude Include="Engine\Math\Color.h" />
     <ClInclude Include="Engine\Math\Matrix\Matrix4.h" />
     <ClInclude Include="Engine\Math\Quaternions\Quaternion.h" />
     <ClInclude Include="Engine\Input\InputManager.h" />

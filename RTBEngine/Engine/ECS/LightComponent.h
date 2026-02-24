@@ -4,6 +4,7 @@
 #include "../Rendering/Lighting/PointLight.h"
 #include "../Rendering/Lighting/SpotLight.h"
 #include "../Reflection/PropertyMacros.h"
+#include "../Math/Color.h"
 #include <memory>
 
 namespace RTBEngine {
@@ -25,19 +26,20 @@ namespace RTBEngine {
             bool syncPosition = true;
             bool syncDirection = true;
 
-            // Reflected properties
-            Rendering::LightType type = Rendering::LightType::Point;
-            Math::Vector3 color = Math::Vector3(1.0f);
+            // Reflected properties (Proxy)
+            Rendering::LightType lightType = Rendering::LightType::Point;
+            Math::Color color = Math::Color(1.0f, 1.0f, 1.0f, 1.0f);
             float intensity = 1.0f;
             float range = 10.0f;
             float spotAngle = 45.0f;
             float spotInnerAngle = 30.0f;
 
+            void SyncProperties();
+
             RTB_COMPONENT(LightComponent)
 
         private:
             void SyncWithTransform();
-            void SyncProperties();
             std::unique_ptr<Rendering::Light> light;
         };
 

@@ -6,6 +6,7 @@ namespace RTBEngine {
 
         using ThisClass = Animator;
         RTB_REGISTER_COMPONENT(Animator)
+            RTB_PROPERTY(modelRef)
             RTB_PROPERTY(currentClipName)
             RTB_PROPERTY(speed)
             RTB_PROPERTY(playing)

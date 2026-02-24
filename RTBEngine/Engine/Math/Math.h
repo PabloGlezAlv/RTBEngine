@@ -5,3 +5,4 @@
 #include "Vectors/Vector4.h"
 #include "Matrix/Matrix4.h"
 #include "Quaternions/Quaternion.h"
+#include "Color.h"

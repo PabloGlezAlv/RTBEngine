@@ -264,7 +264,7 @@ void RTBEngine::Core::Application::RenderShadowPass(ECS::Scene* scene)
 
 	for (auto& go : scene->GetGameObjects()) {
 		auto* lightComp = go->GetComponent<ECS::LightComponent>();
-		if (!lightComp) continue;
+		if (!lightComp || !lightComp->GetLight()) continue;
 
 		if (lightComp->GetLight()->GetType() != Rendering::LightType::Directional) continue;
 		auto* dirLight = static_cast<Rendering::DirectionalLight*>(lightComp->GetLight());

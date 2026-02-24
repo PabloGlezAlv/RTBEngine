@@ -6,6 +6,8 @@ namespace RTBEngine {
         DirectionalLight::DirectionalLight()
             : Light(LightType::Directional), direction(0.0f, -1.0f, 0.0f), castShadows(true), shadowBias(0.005f)
         {
+            shadowMap = std::make_unique<ShadowMap>(2048);
+            shadowMap->Initialize();
         }
 
 
@@ -13,6 +15,8 @@ namespace RTBEngine {
             : Light(LightType::Directional), direction(direction.Normalized()), castShadows(true), shadowBias(0.005f)
         {
             this->color = color;
+            shadowMap = std::make_unique<ShadowMap>(2048);
+            shadowMap->Initialize();
         }
 
         void DirectionalLight::ApplyToShader(Shader* shader)

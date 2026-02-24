@@ -10,7 +10,7 @@ namespace RTBEngine {
         // Property registration for reflection system
         using ThisClass = LightComponent;
         RTB_REGISTER_COMPONENT(LightComponent)
-            RTB_PROPERTY_ENUM(type, "Directional", "Point", "Spot")
+            RTB_PROPERTY_ENUM(lightType, "Directional", "Point", "Spot")
             RTB_PROPERTY_COLOR(color)
             RTB_PROPERTY(intensity)
             RTB_PROPERTY_RANGE(range, 0.0f, 1000.0f)
@@ -24,15 +24,16 @@ namespace RTBEngine {
             : Component()
             , light(std::make_unique<Rendering::PointLight>())
         {
-            type = Rendering::LightType::Point;
+            lightType = Rendering::LightType::Point;
         }
 
         LightComponent::LightComponent(std::unique_ptr<Rendering::Light> light)
             : Component()
             , light(std::move(light)) {
             if (this->light) {
-                type = this->light->GetType();
-                color = this->light->GetColor();
+                lightType = this->light->GetType();
+                Math::Vector3 c = this->light->GetColor();
+                color = Math::Color(c.x, c.y, c.z, 1.0f);
                 intensity = this->light->GetIntensity();
             }
         }
@@ -58,15 +59,16 @@ namespace RTBEngine {
         void LightComponent::SetLight(std::unique_ptr<Rendering::Light> light) {
             this->light = std::move(light);
             if (this->light) {
-                type = this->light->GetType();
-                color = this->light->GetColor();
+                lightType = this->light->GetType();
+                Math::Vector3 c = this->light->GetColor();
+                color = Math::Color(c.x, c.y, c.z, 1.0f);
                 intensity = this->light->GetIntensity();
             }
         }
 
         void LightComponent::SyncProperties() {
-            if (!light || light->GetType() != type) {
-                switch (type) {
+            if (!light || light->GetType() != lightType) {
+                switch (lightType) {
                 case Rendering::LightType::Directional:
                     light = std::make_unique<Rendering::DirectionalLight>();
                     break;
@@ -80,14 +82,14 @@ namespace RTBEngine {
             }
 
             if (light) {
-                light->SetColor(color);
+                light->SetColor(Math::Vector3(color.r, color.g, color.b));
                 light->SetIntensity(intensity);
 
-                if (type == Rendering::LightType::Point) {
+                if (lightType == Rendering::LightType::Point) {
                     auto* pl = static_cast<Rendering::PointLight*>(light.get());
                     pl->SetRange(range);
                 }
-                else if (type == Rendering::LightType::Spot) {
+                else if (lightType == Rendering::LightType::Spot) {
                     auto* sl = static_cast<Rendering::SpotLight*>(light.get());
                     sl->SetRange(range);
                     sl->SetCutOff(spotInnerAngle, spotAngle);

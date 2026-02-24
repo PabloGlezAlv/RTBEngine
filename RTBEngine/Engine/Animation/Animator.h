@@ -56,7 +56,8 @@ namespace RTBEngine {
             const std::vector<Rendering::Mesh*>& GetMeshes() const { return meshes; }
             Rendering::Mesh* GetFirstMesh() const { return meshes.empty() ? nullptr : meshes[0]; }
 
-            // Reflected properties
+            // Reflected properties (Proxy)
+            std::string modelRef;
             std::string currentClipName;
             float speed = 1.0f;
             bool playing = false;

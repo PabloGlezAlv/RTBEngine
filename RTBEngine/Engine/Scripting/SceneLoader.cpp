@@ -268,8 +268,9 @@ namespace RTBEngine {
                 }
             }
             else {
-                // mesh (string path) - simple mesh loading without materials
+                // mesh / meshRef (string path) - simple mesh loading without materials
                 std::string meshPath = ReadOptionalString(L, tableIndex, "mesh", "");
+                if (meshPath.empty()) meshPath = ReadOptionalString(L, tableIndex, "meshRef", "");
                 if (!meshPath.empty()) {
                     const std::vector<Rendering::Mesh*>& meshes = resources.LoadModelMeshes(meshPath);
                     if (!meshes.empty()) {
@@ -289,48 +290,23 @@ namespace RTBEngine {
         }
 
         static void ConfigureLightComponent(lua_State* L, int tableIndex, ECS::LightComponent* comp) {
-            std::string lightType = ReadOptionalString(L, tableIndex, "lightType", "Directional");
+            // lightType is stored as int (0=Directional, 1=Point, 2=Spot)
+            int lightTypeInt = ReadOptionalInt(L, tableIndex, "lightType", 0);
+            comp->lightType = static_cast<Rendering::LightType>(lightTypeInt);
 
-            Math::Vector3 color = ReadOptionalVector3(L, tableIndex, "color", Math::Vector3(1.0f, 1.0f, 1.0f));
-            float intensity = ReadOptionalFloat(L, tableIndex, "intensity", 1.0f);
+            // color is stored as Color (r,g,b,a) — read via Vector4 and convert
+            Math::Vector4 colorV4 = ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+            comp->color = Math::Color(colorV4.x, colorV4.y, colorV4.z, colorV4.w);
 
-            if (lightType == "Directional") {
-                auto dirLight = std::make_unique<Rendering::DirectionalLight>();
-                dirLight->SetColor(color);
-                dirLight->SetIntensity(intensity);
+            comp->intensity     = ReadOptionalFloat(L, tableIndex, "intensity", 1.0f);
+            comp->range         = ReadOptionalFloat(L, tableIndex, "range", 10.0f);
+            comp->spotAngle     = ReadOptionalFloat(L, tableIndex, "spotAngle", 45.0f);
+            comp->spotInnerAngle = ReadOptionalFloat(L, tableIndex, "spotInnerAngle", 30.0f);
+            comp->syncPosition  = ReadOptionalBool(L, tableIndex, "syncPosition", true);
+            comp->syncDirection = ReadOptionalBool(L, tableIndex, "syncDirection", true);
 
-                bool castShadows = ReadOptionalBool(L, tableIndex, "castShadows", false);
-                if (castShadows) {
-                    dirLight->SetCastShadows(true);
-
-                    int shadowMapResolution = ReadOptionalInt(L, tableIndex, "shadowMapResolution", 1024);
-                    if (shadowMapResolution != 1024) {
-                        dirLight->SetShadowMapResolution(shadowMapResolution);
-                    }
-
-                    float shadowBias = ReadOptionalFloat(L, tableIndex, "shadowBias", 0.005f);
-                    dirLight->SetShadowBias(shadowBias);
-                }
-
-                comp->SetLight(std::move(dirLight));
-            }
-            else if (lightType == "Point") {
-                auto pointLight = std::make_unique<Rendering::PointLight>();
-                pointLight->SetColor(color);
-                pointLight->SetIntensity(intensity);
-                pointLight->SetRange(ReadOptionalFloat(L, tableIndex, "range", 50.0f));
-                comp->SetLight(std::move(pointLight));
-            }
-            else if (lightType == "Spot") {
-                auto spotLight = std::make_unique<Rendering::SpotLight>();
-                spotLight->SetColor(color);
-                spotLight->SetIntensity(intensity);
-                spotLight->SetRange(ReadOptionalFloat(L, tableIndex, "range", 50.0f));
-                float innerCutOff = ReadOptionalFloat(L, tableIndex, "innerCutOff", 12.5f);
-                float outerCutOff = ReadOptionalFloat(L, tableIndex, "outerCutOff", 15.0f);
-                spotLight->SetCutOff(innerCutOff, outerCutOff);
-                comp->SetLight(std::move(spotLight));
-            }
+            // Force immediate sync — OnUpdate is not called in editor edit mode
+            comp->SyncProperties();
         }
 
         static void ConfigureAudioSource(lua_State* L, int tableIndex, ECS::AudioSourceComponent* comp) {
@@ -400,26 +376,35 @@ namespace RTBEngine {
         }
 
         static void ConfigureCameraComponent(lua_State* L, int tableIndex, ECS::CameraComponent* comp) {
-            comp->SetFOV(ReadOptionalFloat(L, tableIndex, "fov", 45.0f));
-            comp->SetNearPlane(ReadOptionalFloat(L, tableIndex, "nearPlane", 0.1f));
-            comp->SetFarPlane(ReadOptionalFloat(L, tableIndex, "farPlane", 100.0f));
-            comp->SetAsMain(ReadOptionalBool(L, tableIndex, "isMain", false));
+            comp->fov               = ReadOptionalFloat(L, tableIndex, "fov", 45.0f);
+            comp->nearClip          = ReadOptionalFloat(L, tableIndex, "nearClip", 0.1f);
+            comp->farClip           = ReadOptionalFloat(L, tableIndex, "farClip", 1000.0f);
+            comp->orthographicSize  = ReadOptionalFloat(L, tableIndex, "orthographicSize", 10.0f);
+            comp->syncWithTransform = ReadOptionalBool(L, tableIndex, "syncWithTransform", true);
+            comp->isMainCamera      = ReadOptionalBool(L, tableIndex, "isMainCamera", false);
 
-            std::string projType = ReadOptionalString(L, tableIndex, "projection", "Perspective");
-            if (projType == "Orthographic") {
-                comp->SetProjectionType(Rendering::ProjectionType::Orthographic);
-                comp->SetOrthographicSize(ReadOptionalFloat(L, tableIndex, "orthoSize", 5.0f));
-            }
+            int projInt = ReadOptionalInt(L, tableIndex, "projectionType", 0);
+            comp->projectionType = static_cast<Rendering::ProjectionType>(projInt);
+
+            // Apply immediately — OnUpdate is not called in editor edit mode
+            comp->SetFOV(comp->fov);
+            comp->SetNearPlane(comp->nearClip);
+            comp->SetFarPlane(comp->farClip);
+            comp->SetProjectionType(comp->projectionType);
+            comp->SetOrthographicSize(comp->orthographicSize);
         }
 
         static void ConfigureFreeLookCamera(lua_State* L, int tableIndex, ECS::FreeLookCamera* comp) {
             comp->SetMoveSpeed(ReadOptionalFloat(L, tableIndex, "moveSpeed", 5.0f));
             comp->SetLookSpeed(ReadOptionalFloat(L, tableIndex, "lookSpeed", 0.1f));
+            comp->SetRotationSpeed(ReadOptionalFloat(L, tableIndex, "rotationSpeed", 90.0f));
         }
 
         static void ConfigureAnimator(lua_State* L, int tableIndex, Animation::Animator* comp) {
-            // model (string path) - Load model with animations
-            std::string modelPath = ReadOptionalString(L, tableIndex, "model", "");
+            // modelRef (string path) - Load model with animations (saved by SceneSaver as proxy)
+            std::string modelPath = ReadOptionalString(L, tableIndex, "modelRef", "");
+            if (modelPath.empty()) modelPath = ReadOptionalString(L, tableIndex, "model", "");
+            comp->modelRef = modelPath;
             if (!modelPath.empty()) {
                 Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelPath);
 
@@ -505,14 +490,17 @@ namespace RTBEngine {
                 }
             }
 
-            // defaultClip (string) - Name of animation to play by default
-            std::string defaultClip = ReadOptionalString(L, tableIndex, "defaultClip", "");
-            if (!defaultClip.empty()) {
-                bool loop = ReadOptionalBool(L, tableIndex, "loop", true);
-                comp->Play(defaultClip, loop);
+            // currentClipName (string) - clip to play (saved by SceneSaver)
+            std::string clipName = ReadOptionalString(L, tableIndex, "currentClipName", "");
+            if (clipName.empty()) clipName = ReadOptionalString(L, tableIndex, "defaultClip", "");
+            bool loop = ReadOptionalBool(L, tableIndex, "looping", true);
+            if (!loop) loop = ReadOptionalBool(L, tableIndex, "loop", true);
+            if (!clipName.empty()) {
+                comp->Play(clipName, loop);
             }
 
-            // speed (float) - Playback speed
+            // playing / speed
+            comp->playing = ReadOptionalBool(L, tableIndex, "playing", true);
             comp->SetSpeed(ReadOptionalFloat(L, tableIndex, "speed", 1.0f));
         }
 
@@ -552,6 +540,16 @@ namespace RTBEngine {
                 .addProperty("y", &Math::Vector4::y)
                 .addProperty("z", &Math::Vector4::z)
                 .addProperty("w", &Math::Vector4::w)
+                .endClass();
+
+            // Bind Math::Color
+            luabridge::getGlobalNamespace(L)
+                .beginClass<Math::Color>("Color")
+                .addConstructor<void(*)(float, float, float, float)>()
+                .addProperty("r", &Math::Color::r)
+                .addProperty("g", &Math::Color::g)
+                .addProperty("b", &Math::Color::b)
+                .addProperty("a", &Math::Color::a)
                 .endClass();
         }
 

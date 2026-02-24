@@ -103,7 +103,7 @@ namespace RTBEngine {
             }
 
             if (rot.x != 0.0f || rot.y != 0.0f || rot.z != 0.0f) {
-                file << ind << "rotation = Quaternion.FromEulerAngles" << FormatVector3(rot) << ",\n";
+                file << ind << "rotation = " << FormatQuaternion(transform.GetRotation()) << ",\n";
             }
 
             if (scale.x != 1.0f || scale.y != 1.0f || scale.z != 1.0f) {
@@ -125,7 +125,8 @@ namespace RTBEngine {
                 WriteComponent(file, comp.get(), indent + 1);
             }
 
-            file << ind << "}\n";
+            bool hasChildren = !go->GetChildren().empty();
+            file << ind << (hasChildren ? "},\n" : "}\n");
         }
 
         void SceneSaver::WriteComponent(std::ofstream& file, const ECS::Component* comp, int indent) {
