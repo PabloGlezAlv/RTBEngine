@@ -13,6 +13,10 @@ namespace RTBEngine {
 			RTB_PROPERTY_COLOR(pressedColor)
 			RTB_PROPERTY_COLOR(disabledColor)
 			RTB_PROPERTY(interactable)
+			{ using ThisClass = UIElement; RTB_PROPERTY(anchorMin) }
+			{ using ThisClass = UIElement; RTB_PROPERTY(anchorMax) }
+			{ using ThisClass = UIElement; RTB_PROPERTY(anchoredPosition) }
+			{ using ThisClass = UIElement; RTB_PROPERTY(sizeDelta) }
 		RTB_END_REGISTER(UIButton)
 
 		UIButton::UIButton()
@@ -26,7 +30,12 @@ namespace RTBEngine {
 		UIButton::~UIButton() {
 		}
 
+		void UIButton::Render() {
+			// UIButton has no visual of its own — visuals are on sibling UIPanel/UIImage
+		}
+
 		void UIButton::OnAwake() {
+			UIElement::OnAwake();
 			if (owner) {
 				targetImage = owner->GetComponent<UIImage>();
 				targetPanel = owner->GetComponent<UIPanel>();

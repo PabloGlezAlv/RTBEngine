@@ -11,7 +11,11 @@ namespace RTBEngine {
 			RTB_PROPERTY_COLOR(borderColor)
 			RTB_PROPERTY(borderThickness)
 			RTB_PROPERTY(hasBorder)
-			RTB_PROPERTY(isVisible)
+			{ using ThisClass = UIElement; RTB_PROPERTY(isVisible) }
+			{ using ThisClass = UIElement; RTB_PROPERTY(anchorMin) }
+			{ using ThisClass = UIElement; RTB_PROPERTY(anchorMax) }
+			{ using ThisClass = UIElement; RTB_PROPERTY(anchoredPosition) }
+			{ using ThisClass = UIElement; RTB_PROPERTY(sizeDelta) }
 		RTB_END_REGISTER(UIPanel)
 
 		UIPanel::UIPanel()

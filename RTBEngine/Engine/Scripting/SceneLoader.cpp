@@ -152,16 +152,25 @@ namespace RTBEngine {
             comp->SetSortOrder(static_cast<int>(ReadOptionalFloat(L, tableIndex, "sortOrder", 0.0f)));
         }
 
+        static void SyncUIElementProxies(lua_State* L, int tableIndex, UI::UIElement* comp) {
+            comp->isVisible       = ReadOptionalBool(L, tableIndex, "isVisible", true);
+            comp->anchorMin       = ReadOptionalVector2(L, tableIndex, "anchorMin", Math::Vector2(0.0f, 0.0f));
+            comp->anchorMax       = ReadOptionalVector2(L, tableIndex, "anchorMax", Math::Vector2(0.0f, 0.0f));
+            comp->anchoredPosition = ReadOptionalVector2(L, tableIndex, "anchoredPosition", Math::Vector2(0.0f, 0.0f));
+            comp->sizeDelta       = ReadOptionalVector2(L, tableIndex, "sizeDelta", Math::Vector2(100.0f, 100.0f));
+            comp->SyncRectTransform();
+        }
+
         static void ConfigureUIText(lua_State* L, int tableIndex, UI::UIText* comp) {
             comp->SetText(ReadOptionalString(L, tableIndex, "text", "New Text"));
-            comp->SetColor(ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(0, 0, 0, 1)));
+            comp->SetColor(ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(1, 1, 1, 1)));
             comp->SetFontSize(ReadOptionalFloat(L, tableIndex, "fontSize", 14.0f));
-            
+
             // Alignment mapping 0: Left, 1: Center, 2: Right
             int align = static_cast<int>(ReadOptionalFloat(L, tableIndex, "alignment", 0.0f));
             comp->SetAlignment(static_cast<UI::TextAlignment>(align));
 
-            ConfigureRectTransform(L, tableIndex, comp->GetRectTransform());
+            SyncUIElementProxies(L, tableIndex, comp);
         }
 
         static void ConfigureUIImage(lua_State* L, int tableIndex, UI::UIImage* comp) {
@@ -172,19 +181,19 @@ namespace RTBEngine {
                 if (tex) comp->SetTexture(tex);
             }
 
-            comp->SetTint(ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(1, 1, 1, 1)));
+            comp->SetTint(ReadOptionalVector4(L, tableIndex, "tintColor", Math::Vector4(1, 1, 1, 1)));
             comp->SetPreserveAspect(ReadOptionalBool(L, tableIndex, "preserveAspect", false));
 
-            ConfigureRectTransform(L, tableIndex, comp->GetRectTransform());
+            SyncUIElementProxies(L, tableIndex, comp);
         }
 
         static void ConfigureUIPanel(lua_State* L, int tableIndex, UI::UIPanel* comp) {
-            comp->SetBackgroundColor(ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(1, 1, 1, 1)));
+            comp->SetBackgroundColor(ReadOptionalVector4(L, tableIndex, "backgroundColor", Math::Vector4(1, 1, 1, 1)));
             comp->SetBorderColor(ReadOptionalVector4(L, tableIndex, "borderColor", Math::Vector4(1, 1, 1, 1)));
             comp->SetBorderThickness(ReadOptionalFloat(L, tableIndex, "borderThickness", 0.0f));
             comp->SetHasBorder(ReadOptionalBool(L, tableIndex, "hasBorder", false));
 
-            ConfigureRectTransform(L, tableIndex, comp->GetRectTransform());
+            SyncUIElementProxies(L, tableIndex, comp);
         }
 
         static void ConfigureUIButton(lua_State* L, int tableIndex, UI::UIButton* comp) {
@@ -192,6 +201,8 @@ namespace RTBEngine {
             comp->SetHoveredColor(ReadOptionalVector4(L, tableIndex, "hoveredColor", Math::Vector4(0.9f, 0.9f, 0.9f, 1)));
             comp->SetPressedColor(ReadOptionalVector4(L, tableIndex, "pressedColor", Math::Vector4(0.7f, 0.7f, 0.7f, 1)));
             comp->SetDisabledColor(ReadOptionalVector4(L, tableIndex, "disabledColor", Math::Vector4(0.5f, 0.5f, 0.5f, 1)));
+            comp->SetInteractable(ReadOptionalBool(L, tableIndex, "interactable", true));
+            SyncUIElementProxies(L, tableIndex, comp);
         }
 
         static void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp) {
@@ -745,6 +756,24 @@ namespace RTBEngine {
             lua_getfield(L, tableIndex, "components");
             if (lua_istable(L, -1)) {
                 ProcessComponents(L, lua_gettop(L), go, uuidRefRequests);
+            }
+            lua_pop(L, 1);
+
+            // Process inline children (format written by SceneSaver)
+            lua_getfield(L, tableIndex, "children");
+            if (lua_istable(L, -1)) {
+                int childCount = luaL_len(L, -1);
+                for (int c = 1; c <= childCount; c++) {
+                    lua_geti(L, -1, c);
+                    if (lua_istable(L, -1)) {
+                        ECS::GameObject* child = ProcessGameObject(L, lua_gettop(L), scene, parentingRequests, uuidRefRequests);
+                        if (child) {
+                            scene->AddGameObject(child);
+                            child->SetParent(go);
+                        }
+                    }
+                    lua_pop(L, 1);
+                }
             }
             lua_pop(L, 1);
 

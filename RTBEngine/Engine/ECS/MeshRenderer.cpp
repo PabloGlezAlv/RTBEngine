@@ -2,6 +2,8 @@
 #include "GameObject.h"
 #include "../Rendering/Lighting/Light.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
+#include "../Rendering/Lighting/PointLight.h"
+#include "../Rendering/Lighting/SpotLight.h"
 #include "../Animation/Animator.h"
 #include "../Reflection/PropertyMacros.h"
 
@@ -149,12 +151,42 @@ namespace RTBEngine {
                     }
 
                     // Lighting
-                    if (!lights.empty()) {
-                        lights[0]->ApplyToShader(shader);
+                    int pointLightCount = 0;
+                    int spotLightCount = 0;
+                    bool directionalLightSet = false;
+
+                    for (Rendering::Light* light : lights) {
+                        if (!light) continue;
+
+                        Rendering::LightType type = light->GetType();
+                        if (type == Rendering::LightType::Directional) {
+                            if (!directionalLightSet) {
+                                light->ApplyToShader(shader);
+                                directionalLightSet = true;
+                            }
+                        }
+                        else if (type == Rendering::LightType::Point) {
+                            if (pointLightCount < 8) { // MAX_POINT_LIGHTS in shader is 8
+                                auto* pl = static_cast<Rendering::PointLight*>(light);
+                                pl->ApplyToShader(shader, pointLightCount++);
+                            }
+                        }
+                        else if (type == Rendering::LightType::Spot) {
+                            if (spotLightCount < 8) { // MAX_SPOT_LIGHTS in shader is 8
+                                auto* sl = static_cast<Rendering::SpotLight*>(light);
+                                sl->ApplyToShader(shader, spotLightCount++);
+                            }
+                        }
                     }
-                    else {
-                        shader->SetVector3("uLightDir", Math::Vector3(0.0f, -1.0f, 0.0f));
-                        shader->SetVector3("uLightColor", Math::Vector3(1.0f, 1.0f, 1.0f));
+
+                    shader->SetInt("numPointLights", pointLightCount);
+                    shader->SetInt("numSpotLights", spotLightCount);
+
+                    if (!directionalLightSet) {
+                        // Reset defaults if no directional light
+                        shader->SetVector3("dirLight.direction", Math::Vector3(0.0f, -1.0f, 0.0f));
+                        shader->SetVector3("dirLight.color", Math::Vector3(0.0f, 0.0f, 0.0f));
+                        shader->SetFloat("dirLight.intensity", 0.0f);
                     }
                 }
 

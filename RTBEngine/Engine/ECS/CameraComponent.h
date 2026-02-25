@@ -13,6 +13,7 @@ namespace RTBEngine {
             ~CameraComponent();
 
             void OnUpdate(float deltaTime) override;
+            void OnValidate() override;
 
             // Reflected properties
             float fov = 45.0f;
@@ -24,10 +25,6 @@ namespace RTBEngine {
             // Transform sync control
             bool syncWithTransform = true;
             bool isMainCamera = false;
-
-            // Getters/Setters wrapping members if needed, or removing them if we use direct access. 
-            // Keeping them for compatibility might be wise, updating members inside them?
-            // For now, let's keep the API but update it in .cpp implementation to use the members.
 
             Rendering::Camera* GetCamera() const { return camera.get(); }
 

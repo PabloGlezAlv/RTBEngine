@@ -11,17 +11,21 @@ namespace RTBEngine {
 
 		}
 
+		void UIElement::SyncRectTransform() {
+			if (!rectTransform) return;
+			rectTransform->SetAnchorMin(anchorMin);
+			rectTransform->SetAnchorMax(anchorMax);
+			rectTransform->SetPivot(Math::Vector2(0.5f, 0.5f));
+			rectTransform->SetAnchoredPosition(anchoredPosition);
+			rectTransform->SetSize(sizeDelta);
+		}
+
 		void UIElement::OnAwake() {
-			if (rectTransform) {
-				rectTransform->SetAnchorMin(Math::Vector2(0.5f, 0.5f));
-				rectTransform->SetAnchorMax(Math::Vector2(0.5f, 0.5f));
-				rectTransform->SetPivot(Math::Vector2(0.5f, 0.5f));
-				rectTransform->SetSize(Math::Vector2(100.0f, 100.0f));
-			}
+			SyncRectTransform();
 		}
 
 		void UIElement::OnUpdate(float deltaTime) {
-			
+			SyncRectTransform();
 		}
 
 	}

@@ -28,6 +28,9 @@ namespace RTBEngine {
             virtual void OnUpdate(float deltaTime) {}
             virtual void OnFixedUpdate(float fixedDeltaTime) {}
             virtual void OnDestroy() {}
+            
+            // Editor methods
+            virtual void OnValidate() {}
 
             //Collision methods
             // Collision callbacks

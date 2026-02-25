@@ -56,6 +56,11 @@ namespace RTBEngine {
             SyncWithTransform();
         }
 
+        void LightComponent::OnValidate() {
+            SyncProperties();
+            SyncWithTransform();
+        }
+
         void LightComponent::SetLight(std::unique_ptr<Rendering::Light> light) {
             this->light = std::move(light);
             if (this->light) {

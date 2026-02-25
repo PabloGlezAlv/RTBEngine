@@ -19,6 +19,7 @@ namespace RTBEngine {
             void OnAwake() override;
             void OnStart() override;
             void OnUpdate(float deltaTime) override;
+            void OnValidate() override;
 
             Rendering::Light* GetLight() const { return light.get(); }
             void SetLight(std::unique_ptr<Rendering::Light> light);

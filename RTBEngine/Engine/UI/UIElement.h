@@ -1,6 +1,7 @@
 #pragma once
 #include "../ECS/Component.h"
 #include "RectTransform.h"
+#include "../Math/Vectors/Vector2.h"
 #include <memory>
 
 namespace RTBEngine {
@@ -13,8 +14,7 @@ namespace RTBEngine {
 
 			RectTransform* GetRectTransform() const { return rectTransform.get(); }
 
-			// Reflected in subclasses
-			bool isVisible = true;
+			void SyncRectTransform();
 
 			void SetVisible(bool visible) { isVisible = visible; }
 			bool IsVisible() const { return isVisible; }
@@ -25,6 +25,13 @@ namespace RTBEngine {
 			virtual const char* GetTypeName() const override = 0;
 
 			virtual void Render() = 0;
+
+			// Reflected properties (Proxy)
+			bool isVisible = true;
+			Math::Vector2 anchorMin = Math::Vector2(0.0f, 0.0f);
+			Math::Vector2 anchorMax = Math::Vector2(0.0f, 0.0f);
+			Math::Vector2 anchoredPosition = Math::Vector2(0.0f, 0.0f);
+			Math::Vector2 sizeDelta = Math::Vector2(100.0f, 100.0f);
 
 		protected:
 			std::unique_ptr<RectTransform> rectTransform;

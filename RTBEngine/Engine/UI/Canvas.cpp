@@ -1,4 +1,5 @@
 #include "Canvas.h"
+#include "UIElement.h"
 #include "../ECS/GameObject.h"
 #include <functional>
 
@@ -31,7 +32,17 @@ namespace RTBEngine {
 		}
 
 		void Canvas::RenderCanvas(const Math::Vector2& screenSize) {
-			if (!isInitialized) return;
+			if (!owner) return;
+
+			// Collect elements on demand (editor mode never calls OnStart/OnUpdate)
+			if (cachedUIElements.empty()) {
+				CollectUIElements();
+			}
+
+			// Sync proxy values to RectTransform (editor mode never calls OnAwake/OnUpdate)
+			for (UIElement* element : cachedUIElements) {
+				if (element) element->SyncRectTransform();
+			}
 
 			UpdateRectTransforms(screenSize);
 

@@ -203,7 +203,8 @@ namespace RTBEngine {
             case Reflection::PropertyType::FontRef:
             case Reflection::PropertyType::AssetRef: {
                 void* resourcePtr = *(void**)data;
-                std::string path = GetResourcePath(resourcePtr);
+                bool isFontRef = (prop.type == Reflection::PropertyType::FontRef);
+                std::string path = GetResourcePath(resourcePtr, isFontRef);
                 file << FormatString(path);
                 break;
             }
@@ -273,7 +274,7 @@ namespace RTBEngine {
             return "\"" + s + "\"";
         }
 
-        std::string SceneSaver::GetResourcePath(void* resourcePtr) {
+        std::string SceneSaver::GetResourcePath(void* resourcePtr, bool silentOnFailure) {
             if (!resourcePtr) {
                 return "";
             }
@@ -282,22 +283,32 @@ namespace RTBEngine {
             std::string path;
 
             path = rm.GetTexturePath(static_cast<Rendering::Texture*>(resourcePtr));
-            if (!path.empty()) return path;
+            if (!path.empty()) return NormalizePath(path);
 
             path = rm.GetAudioClipPath(static_cast<Audio::AudioClip*>(resourcePtr));
-            if (!path.empty()) return path;
+            if (!path.empty()) return NormalizePath(path);
 
             path = rm.GetMeshPath(static_cast<Rendering::Mesh*>(resourcePtr));
-            if (!path.empty()) return path;
+            if (!path.empty()) return NormalizePath(path);
 
             path = rm.GetFontPath(static_cast<Rendering::Font*>(resourcePtr));
-            if (!path.empty()) return path;
+            if (!path.empty()) return NormalizePath(path);
 
             path = rm.GetCubemapPath(static_cast<Rendering::Cubemap*>(resourcePtr));
-            if (!path.empty()) return path;
+            if (!path.empty()) return NormalizePath(path);
 
-            RTB_WARN("SceneSaver: Could not resolve resource path for pointer");
+            if (!silentOnFailure) {
+                RTB_WARN("SceneSaver: Could not resolve resource path for pointer");
+            }
             return "";
+        }
+
+        std::string SceneSaver::NormalizePath(const std::string& path) {
+            std::string result = path;
+            for (char& c : result) {
+                if (c == '\\') c = '/';
+            }
+            return result;
         }
 
 

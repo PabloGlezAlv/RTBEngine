@@ -35,6 +35,13 @@ namespace RTBEngine {
             }
         }
 
+        void CameraComponent::OnValidate() {
+            SyncProperties();
+            if (syncWithTransform) {
+                SyncWithTransform();
+            }
+        }
+
         void CameraComponent::SyncProperties() {
             if (!camera) return;
             camera->SetFOV(fov);

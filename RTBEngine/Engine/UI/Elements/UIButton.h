@@ -1,5 +1,5 @@
 #pragma once
-#include "../../ECS/Component.h"
+#include "../UIElement.h"
 #include "../../Math/Vectors/Vector4.h"
 #include "../EventSystem/IPointerEnterHandler.h"
 #include "../EventSystem/IPointerExitHandler.h"
@@ -21,7 +21,7 @@ namespace RTBEngine {
 			Disabled
 		};
 
-		class UIButton : public ECS::Component,
+		class UIButton : public UIElement,
 						 public IPointerEnterHandler,
 						 public IPointerExitHandler,
 						 public IPointerDownHandler,
@@ -44,6 +44,7 @@ namespace RTBEngine {
 			ButtonState GetState() const { return state; }
 
 			virtual void OnAwake() override;
+			virtual void Render() override;
 
 			void OnPointerEnter(const PointerEventData& eventData) override;
 			void OnPointerExit(const PointerEventData& eventData) override;

@@ -59,7 +59,10 @@ namespace RTBEngine {
             static std::string FormatString(const std::string& s);
 
             // Helper to get file path from resource pointer (for serialization)
-            static std::string GetResourcePath(void* resourcePtr);
+            static std::string GetResourcePath(void* resourcePtr, bool silentOnFailure = false);
+
+            // Normalize path separators to forward slashes
+            static std::string NormalizePath(const std::string& path);
 
             // Helper to generate indentation spaces
             static std::string Indent(int level);
