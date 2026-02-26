@@ -1,4 +1,4 @@
-#include "UIText.h"
+﻿#include "UIText.h"
 #include "../../Rendering/Font.h"
 #include "../../Core/ResourceManager.h"
 #include "../UIRenderContext.h"
@@ -15,6 +15,7 @@ namespace RTBEngine {
 			RTB_PROPERTY_ENUM(alignment, "Left", "Center", "Right")
 			RTB_PROPERTY_FONT(font)
 			{ using ThisClass = UIElement; RTB_PROPERTY(isVisible) }
+			{ using ThisClass = UIElement; RTB_PROPERTY(raycastTarget) }
 			{ using ThisClass = UIElement; RTB_PROPERTY(anchorMin) }
 			{ using ThisClass = UIElement; RTB_PROPERTY(anchorMax) }
 			{ using ThisClass = UIElement; RTB_PROPERTY(anchoredPosition) }
@@ -23,6 +24,7 @@ namespace RTBEngine {
 
 		UIText::UIText()
 		{
+			raycastTarget = false;
 		}
 
 		UIText::~UIText() {

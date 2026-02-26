@@ -203,9 +203,20 @@ namespace RTBEngine {
             case Reflection::PropertyType::FontRef:
             case Reflection::PropertyType::AssetRef: {
                 void* resourcePtr = *(void**)data;
+                if (!resourcePtr) {
+                    file << "nil";
+                    break;
+                }
                 bool isFontRef = (prop.type == Reflection::PropertyType::FontRef);
                 std::string path = GetResourcePath(resourcePtr, isFontRef);
-                file << FormatString(path);
+                if (path.empty()) {
+                    if (!isFontRef) {
+                        RTB_WARN("SceneSaver: Could not resolve path for property '" + std::string(prop.name) + "' — saving as nil");
+                    }
+                    file << "nil";
+                } else {
+                    file << FormatString(path);
+                }
                 break;
             }
 
@@ -275,9 +286,7 @@ namespace RTBEngine {
         }
 
         std::string SceneSaver::GetResourcePath(void* resourcePtr, bool silentOnFailure) {
-            if (!resourcePtr) {
-                return "";
-            }
+            if (!resourcePtr) return "";
 
             Core::ResourceManager& rm = Core::ResourceManager::GetInstance();
             std::string path;
@@ -297,9 +306,6 @@ namespace RTBEngine {
             path = rm.GetCubemapPath(static_cast<Rendering::Cubemap*>(resourcePtr));
             if (!path.empty()) return NormalizePath(path);
 
-            if (!silentOnFailure) {
-                RTB_WARN("SceneSaver: Could not resolve resource path for pointer");
-            }
             return "";
         }
 

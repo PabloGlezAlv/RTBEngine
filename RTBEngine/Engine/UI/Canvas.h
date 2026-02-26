@@ -18,7 +18,8 @@ namespace RTBEngine {
 			Canvas();
 			virtual ~Canvas();
 
-			void RenderCanvas(const Math::Vector2& screenSize);
+			void PrepareForHitTest(const Math::Vector2& screenSize);
+		void RenderCanvas(const Math::Vector2& screenSize);
 
 			RenderMode GetRenderMode() const { return renderMode; }
 			void SetRenderMode(RenderMode mode) { renderMode = mode; }

@@ -2,6 +2,7 @@
 #include "UIImage.h"
 #include "UIPanel.h"
 #include "../../ECS/GameObject.h"
+#include "../../Core/Logger.h"
 
 namespace RTBEngine {
 	namespace UI {
@@ -13,10 +14,6 @@ namespace RTBEngine {
 			RTB_PROPERTY_COLOR(pressedColor)
 			RTB_PROPERTY_COLOR(disabledColor)
 			RTB_PROPERTY(interactable)
-			{ using ThisClass = UIElement; RTB_PROPERTY(anchorMin) }
-			{ using ThisClass = UIElement; RTB_PROPERTY(anchorMax) }
-			{ using ThisClass = UIElement; RTB_PROPERTY(anchoredPosition) }
-			{ using ThisClass = UIElement; RTB_PROPERTY(sizeDelta) }
 		RTB_END_REGISTER(UIButton)
 
 		UIButton::UIButton()
@@ -30,22 +27,13 @@ namespace RTBEngine {
 		UIButton::~UIButton() {
 		}
 
-		void UIButton::Render() {
-			// UIButton has no visual of its own — visuals are on sibling UIPanel/UIImage
+		void UIButton::OnAwake() {
 		}
 
-		void UIButton::OnAwake() {
-			UIElement::OnAwake();
-			if (owner) {
-				targetImage = owner->GetComponent<UIImage>();
-				targetPanel = owner->GetComponent<UIPanel>();
-
-				if (targetImage) {
-					originalColor = targetImage->GetTint();
-				} else if (targetPanel) {
-					originalColor = targetPanel->GetBackgroundColor();
-				}
-			}
+		void UIButton::ResolveTarget() {
+			if (!owner) return;
+			if (!targetImage) targetImage = owner->GetComponent<UIImage>();
+			if (!targetPanel) targetPanel = owner->GetComponent<UIPanel>();
 		}
 
 		void UIButton::SetNormalColor(const Math::Vector4& color) {
@@ -69,18 +57,12 @@ namespace RTBEngine {
 		}
 
 		void UIButton::UpdateVisuals() {
-			Math::Vector4 currentColor = GetCurrentColor();
-			Math::Vector4 finalColor(
-				originalColor.x * currentColor.x,
-				originalColor.y * currentColor.y,
-				originalColor.z * currentColor.z,
-				originalColor.w * currentColor.w
-			);
-
+			ResolveTarget();
+			Math::Vector4 color = GetCurrentColor();
 			if (targetImage) {
-				targetImage->SetTint(finalColor);
+				targetImage->SetTint(color);
 			} else if (targetPanel) {
-				targetPanel->SetBackgroundColor(finalColor);
+				targetPanel->SetBackgroundColor(color);
 			}
 		}
 
@@ -96,6 +78,7 @@ namespace RTBEngine {
 		}
 
 		void UIButton::OnPointerEnter(const PointerEventData& eventData) {
+			RTB_INFO("UIButton::OnPointerEnter on " + (owner ? owner->GetName() : "null"));
 			if (!interactable) return;
 			if (state == ButtonState::Normal) {
 				state = ButtonState::Hovered;
@@ -104,24 +87,28 @@ namespace RTBEngine {
 		}
 
 		void UIButton::OnPointerExit(const PointerEventData& eventData) {
+			RTB_INFO("UIButton::OnPointerExit on " + (owner ? owner->GetName() : "null"));
 			if (!interactable) return;
 			state = ButtonState::Normal;
 			UpdateVisuals();
 		}
 
 		void UIButton::OnPointerDown(const PointerEventData& eventData) {
+			RTB_INFO("UIButton::OnPointerDown on " + (owner ? owner->GetName() : "null"));
 			if (!interactable) return;
 			state = ButtonState::Pressed;
 			UpdateVisuals();
 		}
 
 		void UIButton::OnPointerUp(const PointerEventData& eventData) {
+			RTB_INFO("UIButton::OnPointerUp on " + (owner ? owner->GetName() : "null"));
 			if (!interactable) return;
 			state = ButtonState::Hovered;
 			UpdateVisuals();
 		}
 
 		void UIButton::OnPointerClick(const PointerEventData& eventData) {
+			RTB_INFO("UIButton::OnPointerClick on " + (owner ? owner->GetName() : "null"));
 			if (!interactable) return;
 			if (onClick) {
 				onClick();

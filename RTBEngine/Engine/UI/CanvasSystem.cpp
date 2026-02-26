@@ -9,82 +9,19 @@
 #include "EventSystem/IPointerClickHandler.h"
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
-#include "../Core/ResourceManager.h"
 #include "../Input/InputManager.h"
 #include "../Input/MouseButton.h"
 #include <imgui.h>
-#include <backends/imgui_impl_sdl2.h>
-#include <backends/imgui_impl_opengl3.h>
-#include <SDL.h>
 #include <algorithm>
-#include <iostream>
-#include "../RTBEngine.h"
 
 namespace RTBEngine {
 	namespace UI {
 
-		bool CanvasSystem::Initialize(SDL_Window* sdlWindow) {
-			if (isInitialized) return true;
-
-			if (!sdlWindow) {
-				RTB_ERROR("CanvasSystem::Initialize - Invalid SDL_Window");
-				return false;
-			}
-
-			window = sdlWindow;
-
-			int width, height;
-			SDL_GetWindowSize(window, &width, &height);
-			screenSize = Math::Vector2(static_cast<float>(width), static_cast<float>(height));
-
-			IMGUI_CHECKVERSION();
-			ImGui::CreateContext();
-			if (!ImGui::GetCurrentContext()) {
-				RTB_ERROR("CanvasSystem::Initialize - Failed to create ImGui context");
-				return false;
-			}
-
-			ImGuiIO& io = ImGui::GetIO();
-			io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-
-			ImGui::StyleColorsDark();
-
-			if (!ImGui_ImplSDL2_InitForOpenGL(window, SDL_GL_GetCurrentContext())) {
-				RTB_ERROR("CanvasSystem::Initialize - Failed to initialize ImGui SDL2 backend");
-				return false;
-			}
-
-			if (!ImGui_ImplOpenGL3_Init("#version 330")) {
-				RTB_ERROR("CanvasSystem::Initialize - Failed to initialize ImGui OpenGL3 backend");
-				ImGui_ImplSDL2_Shutdown();
-				return false;
-			}
-
-			InitializeFonts();
-
-			isInitialized = true;
-			return true;
-		}
-
-		void CanvasSystem::Shutdown() {
-			if (!isInitialized) return;
-
-			ImGui_ImplOpenGL3_Shutdown();
-			ImGui_ImplSDL2_Shutdown();
-			ImGui::DestroyContext();
-
-			activeCanvases.clear();
-			isInitialized = false;
-		}
-
 		void CanvasSystem::Update(ECS::Scene* scene) {
 			if (!scene) return;
 
+			activeScene = scene;
 			activeCanvases.clear();
-
-			int width, height;
-			SDL_GetWindowSize(window, &width, &height);
-			screenSize = Math::Vector2(static_cast<float>(width), static_cast<float>(height));
 
 			for (const auto& objPtr : scene->GetGameObjects()) {
 				ECS::GameObject* obj = objPtr.get();
@@ -100,53 +37,42 @@ namespace RTBEngine {
 				});
 		}
 
-		void CanvasSystem::RenderAll() {
-			if (!isInitialized) return;
-
-			ImGui_ImplOpenGL3_NewFrame();
-			ImGui_ImplSDL2_NewFrame();
-			ImGui::NewFrame();
-
+		void CanvasSystem::UpdateAllRectTransforms(const Math::Vector2& customScreenSize) {
+			screenSize = customScreenSize;
 			for (Canvas* canvas : activeCanvases) {
-				canvas->RenderCanvas(screenSize);
-			}
-
-			ImGui::Render();
-			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-		}
-
-		void CanvasSystem::RenderCanvasesOnly(const Math::Vector2* customScreenSize) {
-			if (!isInitialized) return;
-
-			// Use custom screen size if provided, otherwise use stored size
-			Math::Vector2 renderSize = customScreenSize ? *customScreenSize : screenSize;
-
-			for (Canvas* canvas : activeCanvases) {
-				canvas->RenderCanvas(renderSize);
+				canvas->PrepareForHitTest(customScreenSize);
 			}
 		}
 
-		void CanvasSystem::RenderCanvasesToDrawList(void* drawList, const Math::Vector2& screenSize, const Math::Vector2& offset) {
-			if (!isInitialized) return;
-
-			// Set the render context so UI elements use the provided DrawList and offset
-			UIRenderContext::Begin(static_cast<ImDrawList*>(drawList), offset);
+		void CanvasSystem::RenderToDrawList(ImDrawList* drawList, const Math::Vector2& renderScreenSize, const Math::Vector2& offset) {
+			UIRenderContext::Begin(drawList, offset);
 
 			for (Canvas* canvas : activeCanvases) {
-				canvas->RenderCanvas(screenSize);
+				canvas->RenderCanvas(renderScreenSize);
 			}
 
 			UIRenderContext::End();
 		}
 
-		void CanvasSystem::InitializeFonts() {
-			Core::ResourceManager::GetInstance().GetDefaultFont();
+		bool CanvasSystem::IsGameObjectAlive(ECS::GameObject* gameObject) const {
+			if (!activeScene || !gameObject) return false;
+			for (const auto& obj : activeScene->GetGameObjects()) {
+				if (obj.get() == gameObject) return true;
+			}
+			return false;
 		}
 
-		Math::Vector2 CanvasSystem::GetMousePosition() const {
-			int x, y;
-			SDL_GetMouseState(&x, &y);
-			return Math::Vector2(static_cast<float>(x), static_cast<float>(y));
+		std::vector<Math::Vector4> CanvasSystem::GetRaycastRectsForGameObject(ECS::GameObject* gameObject) const {
+			std::vector<Math::Vector4> rects;
+			if (!gameObject) return rects;
+			for (Canvas* canvas : activeCanvases) {
+				for (UIElement* element : canvas->GetUIElements()) {
+					if (element->GetOwner() == gameObject && element->IsRaycastTarget()) {
+						rects.push_back(element->GetRectTransform()->GetScreenRect());
+					}
+				}
+			}
+			return rects;
 		}
 
 		bool CanvasSystem::IsPointInRect(const Math::Vector2& point, const Math::Vector4& rect) {
@@ -161,7 +87,7 @@ namespace RTBEngine {
 
 				for (auto elemIt = elements.rbegin(); elemIt != elements.rend(); ++elemIt) {
 					UIElement* element = *elemIt;
-					if (!element->IsVisible()) continue;
+					if (!element->IsVisible() || !element->IsEnabled() || !element->IsRaycastTarget()) continue;
 
 					Math::Vector4 screenRect = element->GetRectTransform()->GetScreenRect();
 					if (IsPointInRect(mousePos, screenRect)) {
@@ -184,11 +110,11 @@ namespace RTBEngine {
 			}
 		}
 
-		void CanvasSystem::ProcessInput() {
-			if (!isInitialized) return;
+		void CanvasSystem::ProcessInput(const Math::Vector2& mousePos) {
+			if (!IsGameObjectAlive(hoveredGameObject)) hoveredGameObject = nullptr;
+			if (!IsGameObjectAlive(pressedGameObject)) pressedGameObject = nullptr;
 
 			Input::InputManager& input = Input::InputManager::GetInstance();
-			Math::Vector2 mousePos = GetMousePosition();
 
 			UIElement* elementUnderMouse = GetElementUnderMouse(mousePos);
 			ECS::GameObject* currentGO = elementUnderMouse ? elementUnderMouse->GetOwner() : nullptr;

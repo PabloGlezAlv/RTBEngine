@@ -210,6 +210,7 @@ if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$
     <ClCompile Include="Engine\UI\Canvas.cpp" />
     <ClCompile Include="Engine\UI\CanvasSystem.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIButton.cpp" />
+    <ClCompile Include="Engine\UI\Elements\UIContainer.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIImage.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIPanel.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIText.cpp" />
@@ -292,6 +293,7 @@ if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$
     <ClInclude Include="Engine\UI\Canvas.h" />
     <ClInclude Include="Engine\UI\CanvasSystem.h" />
     <ClInclude Include="Engine\UI\Elements\UIButton.h" />
+    <ClInclude Include="Engine\UI\Elements\UIContainer.h" />
     <ClInclude Include="Engine\UI\Elements\UIImage.h" />
     <ClInclude Include="Engine\UI\Elements\UIPanel.h" />
     <ClInclude Include="Engine\UI\Elements\UIText.h" />

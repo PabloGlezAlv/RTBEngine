@@ -1,4 +1,4 @@
-#include "UIElement.h"
+﻿#include "UIElement.h"
 
 namespace RTBEngine {
 	namespace UI {
@@ -15,7 +15,7 @@ namespace RTBEngine {
 			if (!rectTransform) return;
 			rectTransform->SetAnchorMin(anchorMin);
 			rectTransform->SetAnchorMax(anchorMax);
-			rectTransform->SetPivot(Math::Vector2(0.5f, 0.5f));
+			rectTransform->SetPivot(pivot);
 			rectTransform->SetAnchoredPosition(anchoredPosition);
 			rectTransform->SetSize(sizeDelta);
 		}

@@ -47,6 +47,8 @@ namespace RTBEngine {
 			void SetIsRunning(bool value) { isRunning = value; }
 
 		private:
+			bool InitializeImGui();
+			void ShutdownImGui();
 			void RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader);
 			void OnWindowResized(int width, int height);
 			ApplicationConfig config;

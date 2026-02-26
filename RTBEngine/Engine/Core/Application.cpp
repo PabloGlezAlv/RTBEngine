@@ -19,7 +19,9 @@
 #include "../Rendering/Skybox.h"
 #include "../Rendering/Cubemap.h"
 
+#include <imgui.h>
 #include <backends/imgui_impl_sdl2.h>
+#include <backends/imgui_impl_opengl3.h>
 #include <iostream>
 #include "Logger.h"
 
@@ -33,6 +35,41 @@ RTBEngine::Core::Application::Application(const ApplicationConfig& cfg)
 RTBEngine::Core::Application::~Application()
 {
 	Shutdown();
+}
+
+bool RTBEngine::Core::Application::InitializeImGui()
+{
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	if (!ImGui::GetCurrentContext()) {
+		RTB_ERROR("Application::InitializeImGui - Failed to create ImGui context");
+		return false;
+	}
+
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+	ImGui::StyleColorsDark();
+
+	if (!ImGui_ImplSDL2_InitForOpenGL(window->GetSDLWindow(), SDL_GL_GetCurrentContext())) {
+		RTB_ERROR("Application::InitializeImGui - Failed to initialize ImGui SDL2 backend");
+		return false;
+	}
+
+	if (!ImGui_ImplOpenGL3_Init("#version 330")) {
+		RTB_ERROR("Application::InitializeImGui - Failed to initialize ImGui OpenGL3 backend");
+		ImGui_ImplSDL2_Shutdown();
+		return false;
+	}
+
+	return true;
+}
+
+void RTBEngine::Core::Application::ShutdownImGui()
+{
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplSDL2_Shutdown();
+	ImGui::DestroyContext();
 }
 
 bool RTBEngine::Core::Application::Initialize()
@@ -54,7 +91,7 @@ bool RTBEngine::Core::Application::Initialize()
 	Scripting::ComponentRegistry::GetInstance().RegisterBuiltInComponents();
 
 	ResourceManager& resources = ResourceManager::GetInstance();
-	
+
 	// Shader
 	Rendering::Shader* shader = resources.LoadShader(
 		"basic",
@@ -102,10 +139,13 @@ bool RTBEngine::Core::Application::Initialize()
 		return false;
 	}
 
-	if (!UI::CanvasSystem::GetInstance().Initialize(window->GetSDLWindow())) {
-		RTB_ERROR("Failed to initialize CanvasSystem");
+	if (!InitializeImGui()) {
+		RTB_ERROR("Failed to initialize ImGui");
 		return false;
 	}
+
+	// Load fonts after ImGui context is ready
+	resources.GetDefaultFont();
 
 	RTB_INFO("RTBEngine Initialized Successfully");
 
@@ -179,7 +219,7 @@ void RTBEngine::Core::Application::Shutdown()
 {
 	isRunning = false;
 
-	UI::CanvasSystem::GetInstance().Shutdown();
+	ShutdownImGui();
 
 	if (physicsWorld) {
 		physicsWorld->Cleanup();
@@ -248,9 +288,32 @@ void RTBEngine::Core::Application::Render()
 	RenderShadowPass(scene);
 	RenderGeometryPass(scene, activeCamera);
 
-	UI::CanvasSystem::GetInstance().Update(scene);
-	UI::CanvasSystem::GetInstance().ProcessInput();
-	UI::CanvasSystem::GetInstance().RenderAll();
+	// Begin ImGui frame
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplSDL2_NewFrame();
+	ImGui::NewFrame();
+
+	// Render engine UI through the same path as the editor
+	Math::Vector2 screenSize(
+		static_cast<float>(window->GetWidth()),
+		static_cast<float>(window->GetHeight())
+	);
+
+	auto& canvasSystem = UI::CanvasSystem::GetInstance();
+	canvasSystem.Update(scene);
+	canvasSystem.UpdateAllRectTransforms(screenSize);
+
+	// Mouse position in window space (no offset for standalone)
+	int mx, my;
+	SDL_GetMouseState(&mx, &my);
+	canvasSystem.ProcessInput(Math::Vector2(static_cast<float>(mx), static_cast<float>(my)));
+
+	// Render to the background draw list (full screen, no offset)
+	canvasSystem.RenderToDrawList(ImGui::GetBackgroundDrawList(), screenSize, Math::Vector2(0.0f, 0.0f));
+
+	// End ImGui frame
+	ImGui::Render();
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 	window->SwapBuffers();
 }

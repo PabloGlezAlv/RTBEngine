@@ -1,10 +1,12 @@
 #include "RectTransform.h"
+#include <algorithm>
+#include <cmath>
 
 namespace RTBEngine {
     namespace UI {
 
         RectTransform::RectTransform() {
-            
+
         }
 
         void RectTransform::SetAnchor(const RTBEngine::Math::Vector2& anchor) {
@@ -34,50 +36,61 @@ namespace RTBEngine {
 
         void RectTransform::CalculateScreenRect(const RTBEngine::Math::Vector2& parentPos,
             const RTBEngine::Math::Vector2& parentSize) {
-            
-            // Calculate anchor positions in parent space
+
+            // Unity-convention mapping to screen Y-down space:
+            //   anchor.y=1 -> top of parent    -> screen_y = parentPos.y
+            //   anchor.y=0 -> bottom of parent -> screen_y = parentPos.y + parentSize.y
+            //   screen_anchorY = parentPos.y + parentSize.y * (1 - anchor.y)
+            //
+            // anchoredPosition.y positive = up (Unity convention):
+            //   screenPos.y = anchorY - anchoredPos.y - (height * (1 - pivot.y))
+            //
+            // pivot.y=1 -> top edge at anchor    -> offset = height*(1-1)=0  -> top-left is anchorY
+            // pivot.y=0 -> bottom edge at anchor -> offset = height*(1-0)=h  -> top-left is anchorY - height
+            // pivot.y=0.5 -> center at anchor    -> offset = height*0.5
+
             RTBEngine::Math::Vector2 anchorMinPos(
-                parentPos.x + parentSize.x * anchorMin.x,
-                parentPos.y + parentSize.y * anchorMin.y
-            );
-            
-            RTBEngine::Math::Vector2 anchorMaxPos(
-                parentPos.x + parentSize.x * anchorMax.x,
-                parentPos.y + parentSize.y * anchorMax.y
+                parentPos.x + parentSize.x *  anchorMin.x,
+                parentPos.y + parentSize.y * (1.0f - anchorMin.y)
             );
 
-            // If anchors are the same, use sizeDelta as absolute size
+            RTBEngine::Math::Vector2 anchorMaxPos(
+                parentPos.x + parentSize.x *  anchorMax.x,
+                parentPos.y + parentSize.y * (1.0f - anchorMax.y)
+            );
+
             if (anchorMin.x == anchorMax.x && anchorMin.y == anchorMax.y) {
                 screenSize = RTBEngine::Math::Vector2(
                     sizeDelta.x * scale.x,
                     sizeDelta.y * scale.y
                 );
-                
-                // Position based on anchor point and pivot
+
                 screenPosition = RTBEngine::Math::Vector2(
                     anchorMinPos.x + anchoredPosition.x - (screenSize.x * pivot.x),
-                    anchorMinPos.y + anchoredPosition.y - (screenSize.y * pivot.y)
+                    anchorMinPos.y - anchoredPosition.y - (screenSize.y * pivot.y)
                 );
             }
             else {
-                // Stretched mode: size is determined by anchors, sizeDelta is offset
+                // Stretched mode: anchor band defines base size.
+                float anchorTop    = std::min(anchorMinPos.y, anchorMaxPos.y);
+                float anchorBottom = std::max(anchorMinPos.y, anchorMaxPos.y);
+
                 RTBEngine::Math::Vector2 anchorSize(
-                    anchorMaxPos.x - anchorMinPos.x,
-                    anchorMaxPos.y - anchorMinPos.y
+                    std::abs(anchorMaxPos.x - anchorMinPos.x),
+                    anchorBottom - anchorTop
                 );
-                
+
                 screenSize = RTBEngine::Math::Vector2(
                     (anchorSize.x + sizeDelta.x) * scale.x,
                     (anchorSize.y + sizeDelta.y) * scale.y
                 );
-                
-                // Position at anchor min, adjusted by pivot and anchored position
+
                 screenPosition = RTBEngine::Math::Vector2(
-                    anchorMinPos.x + anchoredPosition.x - (sizeDelta.x * 0.5f * pivot.x),
-                    anchorMinPos.y + anchoredPosition.y - (sizeDelta.y * 0.5f * pivot.y)
+                    anchorMinPos.x + anchoredPosition.x,
+                    anchorTop      - anchoredPosition.y
                 );
             }
         }
 
-    } 
-} 
+    }
+}

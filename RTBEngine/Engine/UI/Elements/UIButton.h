@@ -1,5 +1,5 @@
 #pragma once
-#include "../UIElement.h"
+#include "../../ECS/Component.h"
 #include "../../Math/Vectors/Vector4.h"
 #include "../EventSystem/IPointerEnterHandler.h"
 #include "../EventSystem/IPointerExitHandler.h"
@@ -21,7 +21,7 @@ namespace RTBEngine {
 			Disabled
 		};
 
-		class UIButton : public UIElement,
+		class UIButton : public ECS::Component,
 						 public IPointerEnterHandler,
 						 public IPointerExitHandler,
 						 public IPointerDownHandler,
@@ -31,6 +31,9 @@ namespace RTBEngine {
 		public:
 			UIButton();
 			virtual ~UIButton();
+
+			UIButton(const UIButton&) = delete;
+			UIButton& operator=(const UIButton&) = delete;
 
 			void SetNormalColor(const Math::Vector4& color);
 			void SetHoveredColor(const Math::Vector4& color);
@@ -44,7 +47,6 @@ namespace RTBEngine {
 			ButtonState GetState() const { return state; }
 
 			virtual void OnAwake() override;
-			virtual void Render() override;
 
 			void OnPointerEnter(const PointerEventData& eventData) override;
 			void OnPointerExit(const PointerEventData& eventData) override;
@@ -52,7 +54,7 @@ namespace RTBEngine {
 			void OnPointerUp(const PointerEventData& eventData) override;
 			void OnPointerClick(const PointerEventData& eventData) override;
 
-			// Reflected properties
+			// Reflected properties (Proxy)
 			Math::Vector4 normalColor = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 			Math::Vector4 hoveredColor = Math::Vector4(0.9f, 0.9f, 0.9f, 1.0f);
 			Math::Vector4 pressedColor = Math::Vector4(0.7f, 0.7f, 0.7f, 1.0f);
@@ -64,12 +66,12 @@ namespace RTBEngine {
 		private:
 			UIImage* targetImage = nullptr;
 			UIPanel* targetPanel = nullptr;
-			Math::Vector4 originalColor = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
 			ButtonState state = ButtonState::Normal;
 
 			std::function<void()> onClick;
 
+			void ResolveTarget();
 			void UpdateVisuals();
 			Math::Vector4 GetCurrentColor() const;
 		};

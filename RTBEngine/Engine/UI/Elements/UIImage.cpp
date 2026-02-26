@@ -1,4 +1,4 @@
-#include "UIImage.h"
+﻿#include "UIImage.h"
 #include "../UIRenderContext.h"
 #include <imgui.h>
 
@@ -11,6 +11,7 @@ namespace RTBEngine {
 			RTB_PROPERTY_COLOR(tintColor)
 			RTB_PROPERTY(preserveAspect)
 			{ using ThisClass = UIElement; RTB_PROPERTY(isVisible) }
+			{ using ThisClass = UIElement; RTB_PROPERTY(raycastTarget) }
 			{ using ThisClass = UIElement; RTB_PROPERTY(anchorMin) }
 			{ using ThisClass = UIElement; RTB_PROPERTY(anchorMax) }
 			{ using ThisClass = UIElement; RTB_PROPERTY(anchoredPosition) }

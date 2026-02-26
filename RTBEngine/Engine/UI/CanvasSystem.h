@@ -4,7 +4,7 @@
 #include "EventSystem/PointerEventData.h"
 #include <vector>
 
-struct SDL_Window;
+struct ImDrawList;
 
 namespace RTBEngine {
 	namespace ECS {
@@ -26,33 +26,28 @@ namespace RTBEngine {
 			CanvasSystem(const CanvasSystem&) = delete;
 			CanvasSystem& operator=(const CanvasSystem&) = delete;
 
-			bool Initialize(SDL_Window* window);
-			void Shutdown();
-
 			void Update(ECS::Scene* scene);
-			void RenderAll();
-			void RenderCanvasesOnly(const Math::Vector2* customScreenSize = nullptr);
-			void RenderCanvasesToDrawList(void* drawList, const Math::Vector2& screenSize, const Math::Vector2& offset);
-			void InitializeFonts();
-			void ProcessInput();
+			void UpdateAllRectTransforms(const Math::Vector2& screenSize);
+			void ProcessInput(const Math::Vector2& mousePos);
+			void RenderToDrawList(ImDrawList* drawList, const Math::Vector2& screenSize, const Math::Vector2& offset);
 
 			Math::Vector2 GetScreenSize() const { return screenSize; }
-			Math::Vector2 GetMousePosition() const;
+			std::vector<Math::Vector4> GetRaycastRectsForGameObject(ECS::GameObject* gameObject) const;
 
 		private:
 			CanvasSystem() = default;
 			~CanvasSystem() = default;
 
+			bool IsGameObjectAlive(ECS::GameObject* gameObject) const;
 			UIElement* GetElementUnderMouse(const Math::Vector2& mousePos);
 			bool IsPointInRect(const Math::Vector2& point, const Math::Vector4& rect);
 
 			template<typename THandler, typename TCallback>
 			void ExecuteEvents(ECS::GameObject* target, const PointerEventData& eventData, TCallback callback);
 
-			SDL_Window* window = nullptr;
 			Math::Vector2 screenSize;
 			std::vector<Canvas*> activeCanvases;
-			bool isInitialized = false;
+			ECS::Scene* activeScene = nullptr;
 
 			ECS::GameObject* hoveredGameObject = nullptr;
 			ECS::GameObject* pressedGameObject = nullptr;

@@ -1,4 +1,4 @@
-#include "SceneLoader.h"
+﻿#include "SceneLoader.h"
 #include "ComponentRegistry.h"
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
@@ -21,6 +21,7 @@
 #include "../UI/Elements/UIImage.h"
 #include "../UI/Elements/UIPanel.h"
 #include "../UI/Elements/UIButton.h"
+#include "../UI/Elements/UIContainer.h"
 #include "../ECS/CameraComponent.h"
 #include "../ECS/FreeLookCamera.h"
 #include "../Animation/Animator.h"
@@ -156,6 +157,7 @@ namespace RTBEngine {
             comp->isVisible       = ReadOptionalBool(L, tableIndex, "isVisible", true);
             comp->anchorMin       = ReadOptionalVector2(L, tableIndex, "anchorMin", Math::Vector2(0.0f, 0.0f));
             comp->anchorMax       = ReadOptionalVector2(L, tableIndex, "anchorMax", Math::Vector2(0.0f, 0.0f));
+            comp->pivot           = ReadOptionalVector2(L, tableIndex, "pivot", Math::Vector2(0.5f, 0.5f));
             comp->anchoredPosition = ReadOptionalVector2(L, tableIndex, "anchoredPosition", Math::Vector2(0.0f, 0.0f));
             comp->sizeDelta       = ReadOptionalVector2(L, tableIndex, "sizeDelta", Math::Vector2(100.0f, 100.0f));
             comp->SyncRectTransform();
@@ -202,7 +204,6 @@ namespace RTBEngine {
             comp->SetPressedColor(ReadOptionalVector4(L, tableIndex, "pressedColor", Math::Vector4(0.7f, 0.7f, 0.7f, 1)));
             comp->SetDisabledColor(ReadOptionalVector4(L, tableIndex, "disabledColor", Math::Vector4(0.5f, 0.5f, 0.5f, 1)));
             comp->SetInteractable(ReadOptionalBool(L, tableIndex, "interactable", true));
-            SyncUIElementProxies(L, tableIndex, comp);
         }
 
         static void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp) {
@@ -829,6 +830,9 @@ namespace RTBEngine {
                             }
                             else if (componentType == "UIButton") {
                                 ConfigureUIButton(L, componentTableIndex, static_cast<UI::UIButton*>(comp));
+                            }
+                            else if (componentType == "UIContainer") {
+                                SyncUIElementProxies(L, componentTableIndex, static_cast<UI::UIElement*>(comp));
                             }
                             else if (componentType == "CameraComponent") {
                                 ConfigureCameraComponent(L, componentTableIndex, static_cast<ECS::CameraComponent*>(comp));

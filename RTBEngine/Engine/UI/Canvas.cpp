@@ -31,20 +31,22 @@ namespace RTBEngine {
 			isInitialized = false;
 		}
 
-		void Canvas::RenderCanvas(const Math::Vector2& screenSize) {
+		void Canvas::PrepareForHitTest(const Math::Vector2& screenSize) {
 			if (!owner) return;
 
-			// Collect elements on demand (editor mode never calls OnStart/OnUpdate)
-			if (cachedUIElements.empty()) {
-				CollectUIElements();
-			}
+			CollectUIElements();
 
-			// Sync proxy values to RectTransform (editor mode never calls OnAwake/OnUpdate)
 			for (UIElement* element : cachedUIElements) {
 				if (element) element->SyncRectTransform();
 			}
 
 			UpdateRectTransforms(screenSize);
+		}
+
+		void Canvas::RenderCanvas(const Math::Vector2& screenSize) {
+			if (!owner) return;
+
+			PrepareForHitTest(screenSize);
 
 			for (UIElement* element : cachedUIElements) {
 				if (element && element->IsVisible() && element->IsEnabled()) {
