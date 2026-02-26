@@ -82,6 +82,9 @@ bool RTBEngine::Core::Window::Initialize()
 		isFullscreen = true;
 	}
 
+	// Read back the real size SDL assigned (maximize/fullscreen/DPI may differ from config)
+	SDL_GetWindowSize(sdlWindow, &width, &height);
+
 	return true;
 }
 

@@ -78,7 +78,6 @@ namespace RTBEngine {
 		}
 
 		void UIButton::OnPointerEnter(const PointerEventData& eventData) {
-			RTB_INFO("UIButton::OnPointerEnter on " + (owner ? owner->GetName() : "null"));
 			if (!interactable) return;
 			if (state == ButtonState::Normal) {
 				state = ButtonState::Hovered;
@@ -87,28 +86,24 @@ namespace RTBEngine {
 		}
 
 		void UIButton::OnPointerExit(const PointerEventData& eventData) {
-			RTB_INFO("UIButton::OnPointerExit on " + (owner ? owner->GetName() : "null"));
 			if (!interactable) return;
 			state = ButtonState::Normal;
 			UpdateVisuals();
 		}
 
 		void UIButton::OnPointerDown(const PointerEventData& eventData) {
-			RTB_INFO("UIButton::OnPointerDown on " + (owner ? owner->GetName() : "null"));
 			if (!interactable) return;
 			state = ButtonState::Pressed;
 			UpdateVisuals();
 		}
 
 		void UIButton::OnPointerUp(const PointerEventData& eventData) {
-			RTB_INFO("UIButton::OnPointerUp on " + (owner ? owner->GetName() : "null"));
 			if (!interactable) return;
 			state = ButtonState::Hovered;
 			UpdateVisuals();
 		}
 
 		void UIButton::OnPointerClick(const PointerEventData& eventData) {
-			RTB_INFO("UIButton::OnPointerClick on " + (owner ? owner->GetName() : "null"));
 			if (!interactable) return;
 			if (onClick) {
 				onClick();
