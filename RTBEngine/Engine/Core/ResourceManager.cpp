@@ -136,6 +136,22 @@ namespace RTBEngine {
             return modelMeshPtrs[path];
         }
 
+        void ResourceManager::RegisterMeshes(const std::string& path, const std::vector<Rendering::Mesh*>& meshes)
+        {
+            // Register externally created meshes (e.g. from LoadModelWithAnimations) so that
+            // GetMeshPath() can resolve their path for serialization. Does not take ownership.
+            if (meshes.empty() || modelMeshPtrs.count(path)) return;
+
+            std::vector<Rendering::Mesh*> meshPtrs;
+            for (Rendering::Mesh* mesh : meshes) {
+                if (mesh) {
+                    meshPtrs.push_back(mesh);
+                    meshPathMap[mesh] = path;
+                }
+            }
+            modelMeshPtrs[path] = meshPtrs;
+        }
+
         Audio::AudioClip* ResourceManager::GetAudioClip(const std::string& path)
         {
             auto it = audioClips.find(path);

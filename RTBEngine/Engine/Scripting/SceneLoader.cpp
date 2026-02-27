@@ -222,6 +222,8 @@ namespace RTBEngine {
                 Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelPath);
 
                 if (!modelData.meshes.empty()) {
+                    // Register meshes in ResourceManager so SceneSaver can resolve their paths
+                    resources.RegisterMeshes(modelPath, modelData.meshes);
                     comp->SetMeshes(modelData.meshes);
 
                     // Apply embedded materials if available
@@ -413,6 +415,7 @@ namespace RTBEngine {
         }
 
         static void ConfigureAnimator(lua_State* L, int tableIndex, Animation::Animator* comp) {
+            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
             // modelRef (string path) - Load model with animations (saved by SceneSaver as proxy)
             std::string modelPath = ReadOptionalString(L, tableIndex, "modelRef", "");
             if (modelPath.empty()) modelPath = ReadOptionalString(L, tableIndex, "model", "");
@@ -426,6 +429,8 @@ namespace RTBEngine {
 
                 // Store meshes with bone data
                 if (!modelData.meshes.empty()) {
+                    // Register meshes in ResourceManager so SceneSaver can resolve their paths
+                    resources.RegisterMeshes(modelPath, modelData.meshes);
                     comp->SetMeshes(modelData.meshes);
 
                     // Update MeshRenderer with all meshes from the model

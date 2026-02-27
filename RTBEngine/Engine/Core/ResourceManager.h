@@ -53,6 +53,7 @@ namespace RTBEngine {
             // Model management (all meshes)
             const std::vector<Rendering::Mesh*>& GetModelMeshes(const std::string& path);
             const std::vector<Rendering::Mesh*>& LoadModelMeshes(const std::string& path);
+            void RegisterMeshes(const std::string& path, const std::vector<Rendering::Mesh*>& meshes);
 
             // Audio management
             Audio::AudioClip* GetAudioClip(const std::string& path);

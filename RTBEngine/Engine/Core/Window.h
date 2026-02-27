@@ -20,6 +20,7 @@ namespace RTBEngine {
 			void Shutdown();
 
 			SDL_Window* GetSDLWindow() const { return sdlWindow; }
+		SDL_GLContext GetGLContext() const { return glContext; }
 
 			int GetWidth() const { return width; }
 			int GetHeight() const { return height; }

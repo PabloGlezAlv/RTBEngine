@@ -67,6 +67,11 @@ bool RTBEngine::Core::Application::InitializeImGui()
 
 void RTBEngine::Core::Application::ShutdownImGui()
 {
+	// Ensure the main GL context is current before releasing ImGui GL resources.
+	// ViewportsEnable can leave a different context active after rendering.
+	if (window) {
+		SDL_GL_MakeCurrent(window->GetSDLWindow(), window->GetGLContext());
+	}
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplSDL2_Shutdown();
 	ImGui::DestroyContext();
@@ -217,6 +222,8 @@ void RTBEngine::Core::Application::Run()
 
 void RTBEngine::Core::Application::Shutdown()
 {
+	if (isShutdown) return;
+	isShutdown = true;
 	isRunning = false;
 
 	ShutdownImGui();

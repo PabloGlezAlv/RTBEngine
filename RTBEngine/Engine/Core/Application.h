@@ -54,6 +54,7 @@ namespace RTBEngine {
 			ApplicationConfig config;
 
 			bool isRunning = false;
+		bool isShutdown = false;
 			Uint32 lastTime = 0;
 			float deltaTime = 0.0f;
 
