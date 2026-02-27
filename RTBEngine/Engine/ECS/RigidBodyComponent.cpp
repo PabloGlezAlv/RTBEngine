@@ -40,6 +40,11 @@ namespace RTBEngine {
         {
         }
 
+        void RigidBodyComponent::OnValidate()
+        {
+            SyncProperties();
+        }
+
         void RigidBodyComponent::SetRigidBody(std::unique_ptr<Physics::RigidBody> rb)
         {
             rigidBody = std::move(rb);

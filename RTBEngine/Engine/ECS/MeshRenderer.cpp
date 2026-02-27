@@ -36,6 +36,10 @@ namespace RTBEngine {
             SyncProperties();
         }
 
+        void MeshRenderer::OnValidate() {
+            SyncProperties();
+        }
+
         void MeshRenderer::SyncProperties() {
             // Apply reflection proxy values to actual state
             // Mesh

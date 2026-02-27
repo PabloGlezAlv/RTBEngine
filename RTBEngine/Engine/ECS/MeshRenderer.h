@@ -39,6 +39,7 @@ namespace RTBEngine {
             void Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights);
 
             virtual void OnUpdate(float deltaTime) override;
+            virtual void OnValidate() override;
 
             // Reflected properties (Proxy)
             Rendering::Mesh* meshRef = nullptr;

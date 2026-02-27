@@ -16,6 +16,7 @@ namespace RTBEngine {
             void OnStart() override;
             void OnUpdate(float deltaTime) override;
             void OnDestroy() override;
+            void OnValidate() override;
 
             void SetRigidBody(std::unique_ptr<Physics::RigidBody> rb);
             Physics::RigidBody* GetRigidBody() const { return rigidBody.get(); }
