@@ -38,6 +38,7 @@ namespace RTBEngine {
 
             void Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights);
 
+            virtual void OnAwake() override;
             virtual void OnUpdate(float deltaTime) override;
             virtual void OnValidate() override;
 

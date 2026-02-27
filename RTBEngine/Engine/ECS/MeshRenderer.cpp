@@ -32,6 +32,10 @@ namespace RTBEngine {
 
         }
 
+        void MeshRenderer::OnAwake() {
+            SyncProperties();
+        }
+
         void MeshRenderer::OnUpdate(float deltaTime) {
             SyncProperties();
         }
