@@ -1,4 +1,4 @@
-﻿#include "SceneLoader.h"
+#include "SceneLoader.h"
 #include "ComponentRegistry.h"
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
@@ -400,12 +400,13 @@ namespace RTBEngine {
             int projInt = ReadOptionalInt(L, tableIndex, "projectionType", 0);
             comp->projectionType = static_cast<Rendering::ProjectionType>(projInt);
 
-            // Apply immediately — OnUpdate is not called in editor edit mode
             comp->SetFOV(comp->fov);
             comp->SetNearPlane(comp->nearClip);
             comp->SetFarPlane(comp->farClip);
             comp->SetProjectionType(comp->projectionType);
             comp->SetOrthographicSize(comp->orthographicSize);
+
+            comp->OnValidate();
         }
 
         static void ConfigureFreeLookCamera(lua_State* L, int tableIndex, ECS::FreeLookCamera* comp) {

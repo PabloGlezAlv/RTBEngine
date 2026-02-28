@@ -28,6 +28,13 @@ namespace RTBEngine {
 
         CameraComponent::~CameraComponent() = default;
 
+        void CameraComponent::OnAwake() {
+            SyncProperties();
+            if (syncWithTransform) {
+                SyncWithTransform();
+            }
+        }
+
         void CameraComponent::OnUpdate(float deltaTime) {
             SyncProperties();
             if (syncWithTransform) {

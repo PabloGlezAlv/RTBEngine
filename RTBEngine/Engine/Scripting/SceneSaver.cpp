@@ -270,10 +270,12 @@ namespace RTBEngine {
         }
 
         std::string SceneSaver::FormatQuaternion(const Math::Quaternion& q) {
-            Math::Vector3 euler = q.ToEulerAngles();
+            Math::Vector3 eulerRad = q.ToEulerAngles();
+            const float rad2deg = 180.0f / 3.14159265f;
+            Math::Vector3 eulerDeg(eulerRad.x * rad2deg, eulerRad.y * rad2deg, eulerRad.z * rad2deg);
             std::ostringstream oss;
             oss << std::fixed << std::setprecision(2);
-            oss << "Quaternion.FromEulerAngles(" << euler.x << ", " << euler.y << ", " << euler.z << ")";
+            oss << "Quaternion.FromEulerAngles(" << eulerDeg.x << ", " << eulerDeg.y << ", " << eulerDeg.z << ")";
             return oss.str();
         }
 

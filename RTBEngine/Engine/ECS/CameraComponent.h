@@ -12,6 +12,7 @@ namespace RTBEngine {
             CameraComponent();
             ~CameraComponent();
 
+            void OnAwake() override;
             void OnUpdate(float deltaTime) override;
             void OnValidate() override;
 
