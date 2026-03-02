@@ -88,13 +88,27 @@ namespace RTBEngine {
                 return result;
             }
 
+            Math::Quaternion ReadOptionalQuaternion(lua_State* L, int tableIndex, const char* fieldName, const Math::Quaternion& defaultValue) {
+                lua_getfield(L, tableIndex, fieldName);
+                Math::Quaternion result = defaultValue;
+                if (lua_isuserdata(L, -1)) {
+                    auto quatResult = luabridge::Stack<Math::Quaternion>::get(L, -1);
+                    if (quatResult) {
+                        result = quatResult.value();
+                    }
+                }
+                lua_pop(L, 1);
+                return result;
+            }
+
             bool ValidateSceneTable(lua_State* L, int sceneTableIndex, const std::string& filePath) {
-                if (!lua_istable(L, sceneTableIndex)) {
+                const int absSceneTableIndex = lua_absindex(L, sceneTableIndex);
+                if (!lua_istable(L, absSceneTableIndex)) {
                     RTB_ERROR("SceneLoader: CreateScene() did not return a table (" + filePath + ")");
                     return false;
                 }
 
-                lua_getfield(L, sceneTableIndex, "gameObjects");
+                lua_getfield(L, absSceneTableIndex, "gameObjects");
                 const bool ok = lua_istable(L, -1);
                 lua_pop(L, 1);
 
@@ -104,7 +118,7 @@ namespace RTBEngine {
                 }
 
                 // Optional: 'version' is allowed but not required yet. We only validate its type if present.
-                lua_getfield(L, sceneTableIndex, "version");
+                lua_getfield(L, absSceneTableIndex, "version");
                 if (!lua_isnil(L, -1) && !lua_isnumber(L, -1)) {
                     RTB_WARN("SceneLoader: Scene 'version' should be a number (" + filePath + ")");
                 }

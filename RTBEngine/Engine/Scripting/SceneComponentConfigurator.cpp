@@ -1,0 +1,403 @@
+#include "SceneComponentConfigurator.h"
+
+#include "SceneParsingUtils.h"
+
+#include "../ECS/GameObject.h"
+#include "../ECS/MeshRenderer.h"
+#include "../ECS/LightComponent.h"
+#include "../ECS/AudioSourceComponent.h"
+#include "../ECS/RigidBodyComponent.h"
+#include "../ECS/BoxColliderComponent.h"
+#include "../ECS/CameraComponent.h"
+#include "../ECS/FreeLookCamera.h"
+
+#include "../Animation/Animator.h"
+
+#include "../Core/ResourceManager.h"
+
+#include "../Rendering/ModelLoader.h"
+#include "../Rendering/Shader.h"
+#include "../Rendering/Texture.h"
+#include "../Rendering/Material.h"
+
+#include "../Physics/RigidBody.h"
+#include "../Physics/BoxCollider.h"
+
+#include "../UI/Canvas.h"
+#include "../UI/UIElement.h"
+#include "../UI/Elements/UIText.h"
+#include "../UI/Elements/UIImage.h"
+#include "../UI/Elements/UIPanel.h"
+#include "../UI/Elements/UIButton.h"
+
+namespace RTBEngine {
+    namespace Scripting {
+        namespace SceneComponentConfigurator {
+            using namespace SceneParsingUtils;
+
+            static void ConfigureRectTransform(lua_State* L, int tableIndex, UI::RectTransform* rect) {
+                if (!rect) return;
+                rect->SetAnchorMin(ReadOptionalVector2(L, tableIndex, "anchorMin", rect->GetAnchorMin()));
+                rect->SetAnchorMax(ReadOptionalVector2(L, tableIndex, "anchorMax", rect->GetAnchorMax()));
+                rect->SetPivot(ReadOptionalVector2(L, tableIndex, "pivot", rect->GetPivot()));
+                rect->SetAnchoredPosition(ReadOptionalVector2(L, tableIndex, "anchoredPosition", rect->GetAnchoredPosition()));
+                rect->SetSize(ReadOptionalVector2(L, tableIndex, "sizeDelta", rect->GetSize()));
+            }
+
+            void ConfigureCanvas(lua_State* L, int tableIndex, UI::Canvas* comp) {
+                comp->SetSortOrder(static_cast<int>(ReadOptionalFloat(L, tableIndex, "sortOrder", 0.0f)));
+            }
+
+            void SyncUIElementProxies(lua_State* L, int tableIndex, UI::UIElement* comp) {
+                comp->isVisible        = ReadOptionalBool(L, tableIndex, "isVisible", true);
+                comp->anchorMin        = ReadOptionalVector2(L, tableIndex, "anchorMin", Math::Vector2(0.0f, 0.0f));
+                comp->anchorMax        = ReadOptionalVector2(L, tableIndex, "anchorMax", Math::Vector2(0.0f, 0.0f));
+                comp->pivot            = ReadOptionalVector2(L, tableIndex, "pivot", Math::Vector2(0.5f, 0.5f));
+                comp->anchoredPosition = ReadOptionalVector2(L, tableIndex, "anchoredPosition", Math::Vector2(0.0f, 0.0f));
+                comp->sizeDelta        = ReadOptionalVector2(L, tableIndex, "sizeDelta", Math::Vector2(100.0f, 100.0f));
+                comp->SyncRectTransform();
+            }
+
+            void ConfigureUIText(lua_State* L, int tableIndex, UI::UIText* comp) {
+                comp->SetText(ReadOptionalString(L, tableIndex, "text", "New Text"));
+                comp->SetColor(ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(1, 1, 1, 1)));
+                comp->SetFontSize(ReadOptionalFloat(L, tableIndex, "fontSize", 14.0f));
+
+                const int align = static_cast<int>(ReadOptionalFloat(L, tableIndex, "alignment", 0.0f));
+                comp->SetAlignment(static_cast<UI::TextAlignment>(align));
+
+                SyncUIElementProxies(L, tableIndex, comp);
+            }
+
+            void ConfigureUIImage(lua_State* L, int tableIndex, UI::UIImage* comp) {
+                Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
+                const std::string texturePath = ReadOptionalString(L, tableIndex, "texture", "");
+                if (!texturePath.empty()) {
+                    Rendering::Texture* tex = resources.LoadTexture(texturePath);
+                    if (tex) comp->SetTexture(tex);
+                }
+
+                comp->SetTint(ReadOptionalVector4(L, tableIndex, "tintColor", Math::Vector4(1, 1, 1, 1)));
+                comp->SetPreserveAspect(ReadOptionalBool(L, tableIndex, "preserveAspect", false));
+
+                SyncUIElementProxies(L, tableIndex, comp);
+            }
+
+            void ConfigureUIPanel(lua_State* L, int tableIndex, UI::UIPanel* comp) {
+                comp->SetBackgroundColor(ReadOptionalVector4(L, tableIndex, "backgroundColor", Math::Vector4(1, 1, 1, 1)));
+                comp->SetBorderColor(ReadOptionalVector4(L, tableIndex, "borderColor", Math::Vector4(1, 1, 1, 1)));
+                comp->SetBorderThickness(ReadOptionalFloat(L, tableIndex, "borderThickness", 0.0f));
+                comp->SetHasBorder(ReadOptionalBool(L, tableIndex, "hasBorder", false));
+
+                SyncUIElementProxies(L, tableIndex, comp);
+            }
+
+            void ConfigureUIButton(lua_State* L, int tableIndex, UI::UIButton* comp) {
+                comp->SetNormalColor(ReadOptionalVector4(L, tableIndex, "normalColor", Math::Vector4(1, 1, 1, 1)));
+                comp->SetHoveredColor(ReadOptionalVector4(L, tableIndex, "hoveredColor", Math::Vector4(0.9f, 0.9f, 0.9f, 1)));
+                comp->SetPressedColor(ReadOptionalVector4(L, tableIndex, "pressedColor", Math::Vector4(0.7f, 0.7f, 0.7f, 1)));
+                comp->SetDisabledColor(ReadOptionalVector4(L, tableIndex, "disabledColor", Math::Vector4(0.5f, 0.5f, 0.5f, 1)));
+                comp->SetInteractable(ReadOptionalBool(L, tableIndex, "interactable", true));
+            }
+
+            void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp) {
+                Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
+
+                const std::string shaderName = ReadOptionalString(L, tableIndex, "shader", "basic");
+                Rendering::Shader* shader = resources.GetShader(shaderName);
+                if (shader) {
+                    comp->SetShader(shader);
+                }
+
+                const std::string modelPath = ReadOptionalString(L, tableIndex, "model", "");
+                if (!modelPath.empty()) {
+                    Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelPath);
+
+                    if (!modelData.meshes.empty()) {
+                        resources.RegisterMeshes(modelPath, modelData.meshes);
+                        comp->SetMeshes(modelData.meshes);
+
+                        if (!modelData.materials.empty() && shader) {
+                            std::vector<Rendering::Texture*> embeddedTextures;
+                            embeddedTextures.reserve(modelData.embeddedTextures.size());
+                            for (size_t i = 0; i < modelData.embeddedTextures.size(); i++) {
+                                const Rendering::EmbeddedTexture& embTex = modelData.embeddedTextures[i];
+                                Rendering::Texture* tex = new Rendering::Texture();
+                                bool loaded = false;
+
+                                if (embTex.isCompressed) {
+                                    loaded = tex->LoadFromCompressedMemory(embTex.data.data(), static_cast<int>(embTex.data.size()));
+                                }
+                                else {
+                                    loaded = tex->LoadFromMemory(embTex.data.data(), embTex.width, embTex.height, embTex.channels);
+                                }
+
+                                if (loaded) {
+                                    embeddedTextures.push_back(tex);
+                                }
+                                else {
+                                    embeddedTextures.push_back(nullptr);
+                                    delete tex;
+                                }
+                            }
+
+                            std::vector<Rendering::Material*> meshMats;
+                            meshMats.reserve(modelData.meshes.size());
+                            for (Rendering::Mesh* mesh : modelData.meshes) {
+                                const int matIdx = mesh->GetMaterialIndex();
+                                if (matIdx >= 0 && matIdx < static_cast<int>(modelData.materials.size())) {
+                                    const Rendering::LoadedMaterial& loadedMat = modelData.materials[matIdx];
+
+                                    Rendering::Material* mat = new Rendering::Material(shader);
+                                    mat->SetDiffuseColor(loadedMat.diffuseColor);
+
+                                    if (loadedMat.embeddedTextureIndex >= 0 &&
+                                        loadedMat.embeddedTextureIndex < static_cast<int>(embeddedTextures.size()) &&
+                                        embeddedTextures[loadedMat.embeddedTextureIndex]) {
+                                        mat->SetTexture(embeddedTextures[loadedMat.embeddedTextureIndex]);
+                                    }
+                                    else if (!loadedMat.diffuseTexturePath.empty()) {
+                                        Rendering::Texture* tex = resources.LoadTexture(loadedMat.diffuseTexturePath);
+                                        if (tex) {
+                                            mat->SetTexture(tex);
+                                        }
+                                    }
+
+                                    meshMats.push_back(mat);
+                                }
+                                else {
+                                    meshMats.push_back(nullptr);
+                                }
+                            }
+
+                            comp->SetMeshMaterials(meshMats);
+                        }
+                    }
+                }
+                else {
+                    std::string meshPath = ReadOptionalString(L, tableIndex, "mesh", "");
+                    if (meshPath.empty()) meshPath = ReadOptionalString(L, tableIndex, "meshRef", "");
+                    if (!meshPath.empty()) {
+                        const std::vector<Rendering::Mesh*>& meshes = resources.LoadModelMeshes(meshPath);
+                        if (!meshes.empty()) {
+                            comp->SetMeshes(meshes);
+                        }
+                    }
+                }
+
+                const std::string texturePath = ReadOptionalString(L, tableIndex, "texture", "");
+                if (!texturePath.empty()) {
+                    Rendering::Texture* texture = resources.LoadTexture(texturePath);
+                    if (texture) {
+                        comp->SetTexture(texture);
+                    }
+                }
+            }
+
+            void ConfigureLightComponent(lua_State* L, int tableIndex, ECS::LightComponent* comp) {
+                const int lightTypeInt = ReadOptionalInt(L, tableIndex, "lightType", 0);
+                comp->lightType = static_cast<Rendering::LightType>(lightTypeInt);
+
+                const Math::Vector4 colorV4 = ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+                comp->color = Math::Color(colorV4.x, colorV4.y, colorV4.z, colorV4.w);
+
+                comp->intensity      = ReadOptionalFloat(L, tableIndex, "intensity", 1.0f);
+                comp->range          = ReadOptionalFloat(L, tableIndex, "range", 10.0f);
+                comp->spotAngle      = ReadOptionalFloat(L, tableIndex, "spotAngle", 45.0f);
+                comp->spotInnerAngle = ReadOptionalFloat(L, tableIndex, "spotInnerAngle", 30.0f);
+                comp->syncPosition   = ReadOptionalBool(L, tableIndex, "syncPosition", true);
+                comp->syncDirection  = ReadOptionalBool(L, tableIndex, "syncDirection", true);
+
+                comp->SyncProperties();
+            }
+
+            void ConfigureAudioSource(lua_State* L, int tableIndex, ECS::AudioSourceComponent* comp) {
+                Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
+
+                const std::string clipPath = ReadOptionalString(L, tableIndex, "clip", "");
+                if (!clipPath.empty()) {
+                    Audio::AudioClip* clip = resources.LoadAudioClip(clipPath);
+                    if (clip) {
+                        comp->SetClip(clip);
+                    }
+                }
+
+                comp->SetVolume(ReadOptionalFloat(L, tableIndex, "volume", 1.0f));
+                comp->SetPitch(ReadOptionalFloat(L, tableIndex, "pitch", 1.0f));
+                comp->SetLoop(ReadOptionalBool(L, tableIndex, "loop", false));
+                comp->SetPlayOnStart(ReadOptionalBool(L, tableIndex, "playOnStart", false));
+            }
+
+            void ConfigureRigidBody(lua_State* L, int tableIndex, ECS::RigidBodyComponent* comp, ECS::GameObject* /*gameObject*/) {
+                auto rigidBody = std::make_unique<Physics::RigidBody>();
+
+                const std::string bodyType = ReadOptionalString(L, tableIndex, "bodyType", "Dynamic");
+                if (bodyType == "Static") {
+                    rigidBody->SetType(Physics::RigidBodyType::Static);
+                }
+                else if (bodyType == "Dynamic") {
+                    rigidBody->SetType(Physics::RigidBodyType::Dynamic);
+                }
+                else if (bodyType == "Kinematic") {
+                    rigidBody->SetType(Physics::RigidBodyType::Kinematic);
+                }
+
+                rigidBody->SetMass(ReadOptionalFloat(L, tableIndex, "mass", 1.0f));
+                rigidBody->SetFriction(ReadOptionalFloat(L, tableIndex, "friction", 0.5f));
+                rigidBody->SetRestitution(ReadOptionalFloat(L, tableIndex, "restitution", 0.0f));
+
+                comp->SetRigidBody(std::move(rigidBody));
+            }
+
+            void ConfigureBoxCollider(lua_State* L, int tableIndex, ECS::BoxColliderComponent* comp, ECS::GameObject* gameObject) {
+                Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
+
+                const std::string colliderMesh = ReadOptionalString(L, tableIndex, "mesh", "");
+                if (!colliderMesh.empty()) {
+                    Rendering::Mesh* mesh = resources.LoadModel(colliderMesh);
+                    if (mesh) {
+                        Physics::BoxCollider tempCollider(mesh);
+                        const Math::Vector3 size = tempCollider.GetSize() * gameObject->GetTransform().GetScale();
+                        comp->SetSize(size);
+                    }
+                }
+                else {
+                    const Math::Vector3 size = ReadOptionalVector3(L, tableIndex, "size", Math::Vector3(1.0f, 1.0f, 1.0f));
+                    comp->SetSize(size * gameObject->GetTransform().GetScale());
+                }
+
+                comp->SetIsTrigger(ReadOptionalBool(L, tableIndex, "isTrigger", false));
+            }
+
+            void ConfigureCameraComponent(lua_State* L, int tableIndex, ECS::CameraComponent* comp) {
+                comp->fov               = ReadOptionalFloat(L, tableIndex, "fov", 45.0f);
+                comp->nearClip          = ReadOptionalFloat(L, tableIndex, "nearClip", 0.1f);
+                comp->farClip           = ReadOptionalFloat(L, tableIndex, "farClip", 1000.0f);
+                comp->orthographicSize  = ReadOptionalFloat(L, tableIndex, "orthographicSize", 10.0f);
+                comp->syncWithTransform = ReadOptionalBool(L, tableIndex, "syncWithTransform", true);
+                comp->isMainCamera      = ReadOptionalBool(L, tableIndex, "isMainCamera", false);
+
+                const int projInt = ReadOptionalInt(L, tableIndex, "projectionType", 0);
+                comp->projectionType = static_cast<Rendering::ProjectionType>(projInt);
+
+                comp->SetFOV(comp->fov);
+                comp->SetNearPlane(comp->nearClip);
+                comp->SetFarPlane(comp->farClip);
+                comp->SetProjectionType(comp->projectionType);
+                comp->SetOrthographicSize(comp->orthographicSize);
+
+                comp->OnValidate();
+            }
+
+            void ConfigureFreeLookCamera(lua_State* L, int tableIndex, ECS::FreeLookCamera* comp) {
+                comp->SetMoveSpeed(ReadOptionalFloat(L, tableIndex, "moveSpeed", 5.0f));
+                comp->SetLookSpeed(ReadOptionalFloat(L, tableIndex, "lookSpeed", 0.1f));
+                comp->SetRotationSpeed(ReadOptionalFloat(L, tableIndex, "rotationSpeed", 90.0f));
+            }
+
+            void ConfigureAnimator(lua_State* L, int tableIndex, Animation::Animator* comp) {
+                Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
+
+                std::string modelPath = ReadOptionalString(L, tableIndex, "modelRef", "");
+                if (modelPath.empty()) modelPath = ReadOptionalString(L, tableIndex, "model", "");
+                comp->modelRef = modelPath;
+
+                if (!modelPath.empty()) {
+                    Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelPath);
+
+                    if (modelData.skeleton) {
+                        comp->SetSkeleton(modelData.skeleton);
+                    }
+
+                    if (!modelData.meshes.empty()) {
+                        resources.RegisterMeshes(modelPath, modelData.meshes);
+                        comp->SetMeshes(modelData.meshes);
+
+                        ECS::GameObject* owner = comp->GetOwner();
+                        if (owner) {
+                            ECS::MeshRenderer* meshRenderer = owner->GetComponent<ECS::MeshRenderer>();
+                            if (meshRenderer) {
+                                meshRenderer->SetMeshes(modelData.meshes);
+
+                                if (!modelData.materials.empty()) {
+                                    Rendering::Shader* shader = meshRenderer->GetMaterial()->GetShader();
+
+                                    std::vector<Rendering::Texture*> embeddedTextures;
+                                    embeddedTextures.reserve(modelData.embeddedTextures.size());
+                                    for (size_t i = 0; i < modelData.embeddedTextures.size(); i++) {
+                                        const Rendering::EmbeddedTexture& embTex = modelData.embeddedTextures[i];
+                                        Rendering::Texture* tex = new Rendering::Texture();
+                                        bool loaded = false;
+
+                                        if (embTex.isCompressed) {
+                                            loaded = tex->LoadFromCompressedMemory(embTex.data.data(), static_cast<int>(embTex.data.size()));
+                                        }
+                                        else {
+                                            loaded = tex->LoadFromMemory(embTex.data.data(), embTex.width, embTex.height, embTex.channels);
+                                        }
+
+                                        if (loaded) {
+                                            embeddedTextures.push_back(tex);
+                                        }
+                                        else {
+                                            embeddedTextures.push_back(nullptr);
+                                            delete tex;
+                                        }
+                                    }
+
+                                    std::vector<Rendering::Material*> meshMats;
+                                    meshMats.reserve(modelData.meshes.size());
+                                    for (Rendering::Mesh* mesh : modelData.meshes) {
+                                        const int matIdx = mesh->GetMaterialIndex();
+                                        if (matIdx >= 0 && matIdx < static_cast<int>(modelData.materials.size())) {
+                                            const Rendering::LoadedMaterial& loadedMat = modelData.materials[matIdx];
+
+                                            Rendering::Material* mat = new Rendering::Material(shader);
+                                            mat->SetDiffuseColor(loadedMat.diffuseColor);
+
+                                            if (loadedMat.embeddedTextureIndex >= 0 &&
+                                                loadedMat.embeddedTextureIndex < static_cast<int>(embeddedTextures.size()) &&
+                                                embeddedTextures[loadedMat.embeddedTextureIndex]) {
+                                                mat->SetTexture(embeddedTextures[loadedMat.embeddedTextureIndex]);
+                                            }
+                                            else if (!loadedMat.diffuseTexturePath.empty()) {
+                                                Rendering::Texture* tex = resources.LoadTexture(loadedMat.diffuseTexturePath);
+                                                if (tex) {
+                                                    mat->SetTexture(tex);
+                                                }
+                                            }
+
+                                            meshMats.push_back(mat);
+                                        }
+                                        else {
+                                            meshMats.push_back(nullptr);
+                                        }
+                                    }
+
+                                    meshRenderer->SetMeshMaterials(meshMats);
+                                }
+                            }
+                        }
+                    }
+
+                    for (const auto& clip : modelData.animations) {
+                        comp->AddClip(clip->GetName(), clip);
+                    }
+                }
+
+                std::string clipName = ReadOptionalString(L, tableIndex, "currentClipName", "");
+                if (clipName.empty()) clipName = ReadOptionalString(L, tableIndex, "defaultClip", "");
+                bool loop = ReadOptionalBool(L, tableIndex, "looping", true);
+                if (!loop) loop = ReadOptionalBool(L, tableIndex, "loop", true);
+                if (!clipName.empty()) {
+                    comp->Play(clipName, loop);
+                }
+
+                comp->playing = ReadOptionalBool(L, tableIndex, "playing", true);
+                comp->SetSpeed(ReadOptionalFloat(L, tableIndex, "speed", 1.0f));
+            }
+
+        }
+    }
+}
+

@@ -32,543 +32,15 @@
 #include <cstdio>
 #include "../RTBEngine.h"
 
+#include "SceneLuaBindings.h"
+#include "SceneComponentConfigurator.h"
+#include "SceneParsingUtils.h"
+
 namespace RTBEngine {
     namespace Scripting {
-
-        #pragma region Lua Helpers
-        // Helper wrapper for Quaternion::FromEulerAngles (converts degrees to radians)
-        static Math::Quaternion QuaternionFromEulerAngles(float pitch, float yaw, float roll) {
-            const float toRadians = 3.14159265f / 180.0f;
-            return Math::Quaternion::FromEulerAngles(
-                pitch * toRadians,
-                yaw * toRadians,
-                roll * toRadians
-            );
-        }
-
-
-        static std::string ReadOptionalString(lua_State* L, int tableIndex, const char* fieldName, const std::string& defaultValue = "") {
-            lua_getfield(L, tableIndex, fieldName);
-            std::string result = defaultValue;
-            if (lua_isstring(L, -1)) {
-                result = lua_tostring(L, -1);
-            }
-            lua_pop(L, 1);
-            return result;
-        }
-
-        static int ReadOptionalInt(lua_State* L, int tableIndex, const char* fieldName, int defaultValue) {
-            lua_getfield(L, tableIndex, fieldName);
-            int result = defaultValue;
-            if (lua_isnumber(L, -1)) {
-                result = static_cast<int>(lua_tonumber(L, -1));
-            }
-            lua_pop(L, 1);
-            return result;
-        }
-
-        static float ReadOptionalFloat(lua_State* L, int tableIndex, const char* fieldName, float defaultValue) {
-            lua_getfield(L, tableIndex, fieldName);
-            float result = defaultValue;
-            if (lua_isnumber(L, -1)) {
-                result = static_cast<float>(lua_tonumber(L, -1));
-            }
-            lua_pop(L, 1);
-            return result;
-        }
-
-        static bool ReadOptionalBool(lua_State* L, int tableIndex, const char* fieldName, bool defaultValue) {
-            lua_getfield(L, tableIndex, fieldName);
-            bool result = defaultValue;
-            if (lua_isboolean(L, -1)) {
-                result = lua_toboolean(L, -1) != 0;
-            }
-            lua_pop(L, 1);
-            return result;
-        }
-
-        static Math::Vector3 ReadOptionalVector3(lua_State* L, int tableIndex, const char* fieldName, const Math::Vector3& defaultValue) {
-            lua_getfield(L, tableIndex, fieldName);
-            Math::Vector3 result = defaultValue;
-            if (lua_isuserdata(L, -1)) {
-                auto vecResult = luabridge::Stack<Math::Vector3>::get(L, -1);
-                if (vecResult) {
-                    result = vecResult.value();
-                }
-            }
-            lua_pop(L, 1);
-            return result;
-        }
-
-        static Math::Vector2 ReadOptionalVector2(lua_State* L, int tableIndex, const char* fieldName, const Math::Vector2& defaultValue) {
-            lua_getfield(L, tableIndex, fieldName);
-            Math::Vector2 result = defaultValue;
-            if (lua_isuserdata(L, -1)) {
-                auto vecResult = luabridge::Stack<Math::Vector2>::get(L, -1);
-                if (vecResult) {
-                    result = vecResult.value();
-                }
-            }
-            lua_pop(L, 1);
-            return result;
-        }
-
-        static Math::Vector4 ReadOptionalVector4(lua_State* L, int tableIndex, const char* fieldName, const Math::Vector4& defaultValue) {
-            lua_getfield(L, tableIndex, fieldName);
-            Math::Vector4 result = defaultValue;
-            if (lua_isuserdata(L, -1)) {
-                auto vecResult = luabridge::Stack<Math::Vector4>::get(L, -1);
-                if (vecResult) {
-                    result = vecResult.value();
-                }
-            }
-            lua_pop(L, 1);
-            return result;
-        }
-
-        #pragma endregion
-
-        #pragma region Component Configurators
-
-        static void ConfigureRectTransform(lua_State* L, int tableIndex, UI::RectTransform* rect) {
-            if (!rect) return;
-
-            // AnchorMin (Vector2)
-            rect->SetAnchorMin(ReadOptionalVector2(L, tableIndex, "anchorMin", rect->GetAnchorMin()));
-
-            // AnchorMax (Vector2)
-            rect->SetAnchorMax(ReadOptionalVector2(L, tableIndex, "anchorMax", rect->GetAnchorMax()));
-
-            // Pivot (Vector2)
-            rect->SetPivot(ReadOptionalVector2(L, tableIndex, "pivot", rect->GetPivot()));
-
-            // AnchoredPosition (Vector2)
-            rect->SetAnchoredPosition(ReadOptionalVector2(L, tableIndex, "anchoredPosition", rect->GetAnchoredPosition()));
-
-            // Size (Vector2)
-            rect->SetSize(ReadOptionalVector2(L, tableIndex, "sizeDelta", rect->GetSize()));
-        }
-
-        static void ConfigureCanvas(lua_State* L, int tableIndex, UI::Canvas* comp) {
-            comp->SetSortOrder(static_cast<int>(ReadOptionalFloat(L, tableIndex, "sortOrder", 0.0f)));
-        }
-
-        static void SyncUIElementProxies(lua_State* L, int tableIndex, UI::UIElement* comp) {
-            comp->isVisible       = ReadOptionalBool(L, tableIndex, "isVisible", true);
-            comp->anchorMin       = ReadOptionalVector2(L, tableIndex, "anchorMin", Math::Vector2(0.0f, 0.0f));
-            comp->anchorMax       = ReadOptionalVector2(L, tableIndex, "anchorMax", Math::Vector2(0.0f, 0.0f));
-            comp->pivot           = ReadOptionalVector2(L, tableIndex, "pivot", Math::Vector2(0.5f, 0.5f));
-            comp->anchoredPosition = ReadOptionalVector2(L, tableIndex, "anchoredPosition", Math::Vector2(0.0f, 0.0f));
-            comp->sizeDelta       = ReadOptionalVector2(L, tableIndex, "sizeDelta", Math::Vector2(100.0f, 100.0f));
-            comp->SyncRectTransform();
-        }
-
-        static void ConfigureUIText(lua_State* L, int tableIndex, UI::UIText* comp) {
-            comp->SetText(ReadOptionalString(L, tableIndex, "text", "New Text"));
-            comp->SetColor(ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(1, 1, 1, 1)));
-            comp->SetFontSize(ReadOptionalFloat(L, tableIndex, "fontSize", 14.0f));
-
-            // Alignment mapping 0: Left, 1: Center, 2: Right
-            int align = static_cast<int>(ReadOptionalFloat(L, tableIndex, "alignment", 0.0f));
-            comp->SetAlignment(static_cast<UI::TextAlignment>(align));
-
-            SyncUIElementProxies(L, tableIndex, comp);
-        }
-
-        static void ConfigureUIImage(lua_State* L, int tableIndex, UI::UIImage* comp) {
-            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
-            std::string texturePath = ReadOptionalString(L, tableIndex, "texture", "");
-            if (!texturePath.empty()) {
-                Rendering::Texture* tex = resources.LoadTexture(texturePath);
-                if (tex) comp->SetTexture(tex);
-            }
-
-            comp->SetTint(ReadOptionalVector4(L, tableIndex, "tintColor", Math::Vector4(1, 1, 1, 1)));
-            comp->SetPreserveAspect(ReadOptionalBool(L, tableIndex, "preserveAspect", false));
-
-            SyncUIElementProxies(L, tableIndex, comp);
-        }
-
-        static void ConfigureUIPanel(lua_State* L, int tableIndex, UI::UIPanel* comp) {
-            comp->SetBackgroundColor(ReadOptionalVector4(L, tableIndex, "backgroundColor", Math::Vector4(1, 1, 1, 1)));
-            comp->SetBorderColor(ReadOptionalVector4(L, tableIndex, "borderColor", Math::Vector4(1, 1, 1, 1)));
-            comp->SetBorderThickness(ReadOptionalFloat(L, tableIndex, "borderThickness", 0.0f));
-            comp->SetHasBorder(ReadOptionalBool(L, tableIndex, "hasBorder", false));
-
-            SyncUIElementProxies(L, tableIndex, comp);
-        }
-
-        static void ConfigureUIButton(lua_State* L, int tableIndex, UI::UIButton* comp) {
-            comp->SetNormalColor(ReadOptionalVector4(L, tableIndex, "normalColor", Math::Vector4(1, 1, 1, 1)));
-            comp->SetHoveredColor(ReadOptionalVector4(L, tableIndex, "hoveredColor", Math::Vector4(0.9f, 0.9f, 0.9f, 1)));
-            comp->SetPressedColor(ReadOptionalVector4(L, tableIndex, "pressedColor", Math::Vector4(0.7f, 0.7f, 0.7f, 1)));
-            comp->SetDisabledColor(ReadOptionalVector4(L, tableIndex, "disabledColor", Math::Vector4(0.5f, 0.5f, 0.5f, 1)));
-            comp->SetInteractable(ReadOptionalBool(L, tableIndex, "interactable", true));
-        }
-
-        static void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp) {
-            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
-
-            // shader (string name, default "basic") - load first so materials can use it
-            std::string shaderName = ReadOptionalString(L, tableIndex, "shader", "basic");
-            Rendering::Shader* shader = resources.GetShader(shaderName);
-            if (shader) {
-                comp->SetShader(shader);
-            }
-
-            // model (string path) - loads model with embedded materials/textures
-            std::string modelPath = ReadOptionalString(L, tableIndex, "model", "");
-            if (!modelPath.empty()) {
-                Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelPath);
-
-                if (!modelData.meshes.empty()) {
-                    // Register meshes in ResourceManager so SceneSaver can resolve their paths
-                    resources.RegisterMeshes(modelPath, modelData.meshes);
-                    comp->SetMeshes(modelData.meshes);
-
-                    // Apply embedded materials if available
-                    if (!modelData.materials.empty() && shader) {
-                        // Create textures from embedded data
-                        std::vector<Rendering::Texture*> embeddedTextures;
-                        for (size_t i = 0; i < modelData.embeddedTextures.size(); i++) {
-                            const Rendering::EmbeddedTexture& embTex = modelData.embeddedTextures[i];
-                            Rendering::Texture* tex = new Rendering::Texture();
-                            bool loaded = false;
-
-                            if (embTex.isCompressed) {
-                                loaded = tex->LoadFromCompressedMemory(embTex.data.data(), static_cast<int>(embTex.data.size()));
-                            } else {
-                                loaded = tex->LoadFromMemory(embTex.data.data(), embTex.width, embTex.height, embTex.channels);
-                            }
-
-                            if (loaded) {
-                                embeddedTextures.push_back(tex);
-                            } else {
-                                embeddedTextures.push_back(nullptr);
-                                delete tex;
-                            }
-                        }
-
-                        // Create materials for each mesh
-                        std::vector<Rendering::Material*> meshMats;
-                        for (Rendering::Mesh* mesh : modelData.meshes) {
-                            int matIdx = mesh->GetMaterialIndex();
-                            if (matIdx >= 0 && matIdx < static_cast<int>(modelData.materials.size())) {
-                                const Rendering::LoadedMaterial& loadedMat = modelData.materials[matIdx];
-
-                                Rendering::Material* mat = new Rendering::Material(shader);
-                                mat->SetDiffuseColor(loadedMat.diffuseColor);
-
-                                // Apply embedded texture if available
-                                if (loadedMat.embeddedTextureIndex >= 0 &&
-                                    loadedMat.embeddedTextureIndex < static_cast<int>(embeddedTextures.size()) &&
-                                    embeddedTextures[loadedMat.embeddedTextureIndex]) {
-                                    mat->SetTexture(embeddedTextures[loadedMat.embeddedTextureIndex]);
-                                }
-                                else if (!loadedMat.diffuseTexturePath.empty()) {
-                                    Rendering::Texture* tex = resources.LoadTexture(loadedMat.diffuseTexturePath);
-                                    if (tex) {
-                                        mat->SetTexture(tex);
-                                    }
-                                }
-
-                                meshMats.push_back(mat);
-                            } else {
-                                meshMats.push_back(nullptr);
-                            }
-                        }
-                        comp->SetMeshMaterials(meshMats);
-                    }
-                }
-            }
-            else {
-                // mesh / meshRef (string path) - simple mesh loading without materials
-                std::string meshPath = ReadOptionalString(L, tableIndex, "mesh", "");
-                if (meshPath.empty()) meshPath = ReadOptionalString(L, tableIndex, "meshRef", "");
-                if (!meshPath.empty()) {
-                    const std::vector<Rendering::Mesh*>& meshes = resources.LoadModelMeshes(meshPath);
-                    if (!meshes.empty()) {
-                        comp->SetMeshes(meshes);
-                    }
-                }
-            }
-
-            // texture (string path) - override texture for all meshes
-            std::string texturePath = ReadOptionalString(L, tableIndex, "texture", "");
-            if (!texturePath.empty()) {
-                Rendering::Texture* texture = resources.LoadTexture(texturePath);
-                if (texture) {
-                    comp->SetTexture(texture);
-                }
-            }
-        }
-
-        static void ConfigureLightComponent(lua_State* L, int tableIndex, ECS::LightComponent* comp) {
-            // lightType is stored as int (0=Directional, 1=Point, 2=Spot)
-            int lightTypeInt = ReadOptionalInt(L, tableIndex, "lightType", 0);
-            comp->lightType = static_cast<Rendering::LightType>(lightTypeInt);
-
-            // color is stored as Color (r,g,b,a) — read via Vector4 and convert
-            Math::Vector4 colorV4 = ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-            comp->color = Math::Color(colorV4.x, colorV4.y, colorV4.z, colorV4.w);
-
-            comp->intensity     = ReadOptionalFloat(L, tableIndex, "intensity", 1.0f);
-            comp->range         = ReadOptionalFloat(L, tableIndex, "range", 10.0f);
-            comp->spotAngle     = ReadOptionalFloat(L, tableIndex, "spotAngle", 45.0f);
-            comp->spotInnerAngle = ReadOptionalFloat(L, tableIndex, "spotInnerAngle", 30.0f);
-            comp->syncPosition  = ReadOptionalBool(L, tableIndex, "syncPosition", true);
-            comp->syncDirection = ReadOptionalBool(L, tableIndex, "syncDirection", true);
-
-            // Force immediate sync — OnUpdate is not called in editor edit mode
-            comp->SyncProperties();
-        }
-
-        static void ConfigureAudioSource(lua_State* L, int tableIndex, ECS::AudioSourceComponent* comp) {
-            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
-
-            // clip (string path)
-            std::string clipPath = ReadOptionalString(L, tableIndex, "clip", "");
-            if (!clipPath.empty()) {
-                Audio::AudioClip* clip = resources.LoadAudioClip(clipPath);
-                if (clip) {
-                    comp->SetClip(clip);
-                }
-            }
-
-            // volume, pitch, loop, playOnStart
-            comp->SetVolume(ReadOptionalFloat(L, tableIndex, "volume", 1.0f));
-            comp->SetPitch(ReadOptionalFloat(L, tableIndex, "pitch", 1.0f));
-            comp->SetLoop(ReadOptionalBool(L, tableIndex, "loop", false));
-            comp->SetPlayOnStart(ReadOptionalBool(L, tableIndex, "playOnStart", false));
-        }
-
-        static void ConfigureRigidBody(lua_State* L, int tableIndex, ECS::RigidBodyComponent* comp, ECS::GameObject* gameObject) {
-            // Create RigidBody
-            auto rigidBody = std::make_unique<Physics::RigidBody>();
-
-            // bodyType (string: "Static", "Dynamic", "Kinematic")
-            std::string bodyType = ReadOptionalString(L, tableIndex, "bodyType", "Dynamic");
-            if (bodyType == "Static") {
-                rigidBody->SetType(Physics::RigidBodyType::Static);
-            }
-            else if (bodyType == "Dynamic") {
-                rigidBody->SetType(Physics::RigidBodyType::Dynamic);
-            }
-            else if (bodyType == "Kinematic") {
-                rigidBody->SetType(Physics::RigidBodyType::Kinematic);
-            }
-
-            rigidBody->SetMass(ReadOptionalFloat(L, tableIndex, "mass", 1.0f));
-            rigidBody->SetFriction(ReadOptionalFloat(L, tableIndex, "friction", 0.5f));
-            rigidBody->SetRestitution(ReadOptionalFloat(L, tableIndex, "restitution", 0.0f));
-
-            comp->SetRigidBody(std::move(rigidBody));
-        }
-
-        static void ConfigureBoxCollider(lua_State* L, int tableIndex, ECS::BoxColliderComponent* comp, ECS::GameObject* gameObject) {
-            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
-
-            // Size - either from mesh or explicit
-            std::string colliderMesh = ReadOptionalString(L, tableIndex, "mesh", "");
-            if (!colliderMesh.empty()) {
-                Rendering::Mesh* mesh = resources.LoadModel(colliderMesh);
-                if (mesh) {
-                    // Create temporary BoxCollider to calculate size from mesh
-                    Physics::BoxCollider tempCollider(mesh);
-                    Math::Vector3 size = tempCollider.GetSize() * gameObject->GetTransform().GetScale();
-                    comp->SetSize(size);
-                }
-            }
-            else {
-                // Use explicit size or default
-                Math::Vector3 size = ReadOptionalVector3(L, tableIndex, "size", Math::Vector3(1.0f, 1.0f, 1.0f));
-                comp->SetSize(size * gameObject->GetTransform().GetScale());
-            }
-
-            // Trigger
-            comp->SetIsTrigger(ReadOptionalBool(L, tableIndex, "isTrigger", false));
-        }
-
-        static void ConfigureCameraComponent(lua_State* L, int tableIndex, ECS::CameraComponent* comp) {
-            comp->fov               = ReadOptionalFloat(L, tableIndex, "fov", 45.0f);
-            comp->nearClip          = ReadOptionalFloat(L, tableIndex, "nearClip", 0.1f);
-            comp->farClip           = ReadOptionalFloat(L, tableIndex, "farClip", 1000.0f);
-            comp->orthographicSize  = ReadOptionalFloat(L, tableIndex, "orthographicSize", 10.0f);
-            comp->syncWithTransform = ReadOptionalBool(L, tableIndex, "syncWithTransform", true);
-            comp->isMainCamera      = ReadOptionalBool(L, tableIndex, "isMainCamera", false);
-
-            int projInt = ReadOptionalInt(L, tableIndex, "projectionType", 0);
-            comp->projectionType = static_cast<Rendering::ProjectionType>(projInt);
-
-            comp->SetFOV(comp->fov);
-            comp->SetNearPlane(comp->nearClip);
-            comp->SetFarPlane(comp->farClip);
-            comp->SetProjectionType(comp->projectionType);
-            comp->SetOrthographicSize(comp->orthographicSize);
-
-            comp->OnValidate();
-        }
-
-        static void ConfigureFreeLookCamera(lua_State* L, int tableIndex, ECS::FreeLookCamera* comp) {
-            comp->SetMoveSpeed(ReadOptionalFloat(L, tableIndex, "moveSpeed", 5.0f));
-            comp->SetLookSpeed(ReadOptionalFloat(L, tableIndex, "lookSpeed", 0.1f));
-            comp->SetRotationSpeed(ReadOptionalFloat(L, tableIndex, "rotationSpeed", 90.0f));
-        }
-
-        static void ConfigureAnimator(lua_State* L, int tableIndex, Animation::Animator* comp) {
-            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
-            // modelRef (string path) - Load model with animations (saved by SceneSaver as proxy)
-            std::string modelPath = ReadOptionalString(L, tableIndex, "modelRef", "");
-            if (modelPath.empty()) modelPath = ReadOptionalString(L, tableIndex, "model", "");
-            comp->modelRef = modelPath;
-            if (!modelPath.empty()) {
-                Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelPath);
-
-                if (modelData.skeleton) {
-                    comp->SetSkeleton(modelData.skeleton);
-                }
-
-                // Store meshes with bone data
-                if (!modelData.meshes.empty()) {
-                    // Register meshes in ResourceManager so SceneSaver can resolve their paths
-                    resources.RegisterMeshes(modelPath, modelData.meshes);
-                    comp->SetMeshes(modelData.meshes);
-
-                    // Update MeshRenderer with all meshes from the model
-                    ECS::GameObject* owner = comp->GetOwner();
-                    if (owner) {
-                        ECS::MeshRenderer* meshRenderer = owner->GetComponent<ECS::MeshRenderer>();
-                        if (meshRenderer) {
-                            meshRenderer->SetMeshes(modelData.meshes);
-
-                            // Apply materials from model if available
-                            if (!modelData.materials.empty()) {
-                                Rendering::Shader* shader = meshRenderer->GetMaterial()->GetShader();
-
-                                // Create textures from embedded data if available
-                                std::vector<Rendering::Texture*> embeddedTextures;
-                                for (size_t i = 0; i < modelData.embeddedTextures.size(); i++) {
-                                    const Rendering::EmbeddedTexture& embTex = modelData.embeddedTextures[i];
-                                    Rendering::Texture* tex = new Rendering::Texture();
-                                    bool loaded = false;
-
-                                    if (embTex.isCompressed) {
-                                        loaded = tex->LoadFromCompressedMemory(embTex.data.data(), static_cast<int>(embTex.data.size()));
-                                    } else {
-                                        loaded = tex->LoadFromMemory(embTex.data.data(), embTex.width, embTex.height, embTex.channels);
-                                    }
-
-                                    if (loaded) {
-                                        embeddedTextures.push_back(tex);
-                                    } else {
-                                        embeddedTextures.push_back(nullptr);
-                                        delete tex;
-                                    }
-                                }
-
-                                // Create materials for each mesh based on materialIndex
-                                std::vector<Rendering::Material*> meshMats;
-                                for (Rendering::Mesh* mesh : modelData.meshes) {
-                                    int matIdx = mesh->GetMaterialIndex();
-                                    if (matIdx >= 0 && matIdx < static_cast<int>(modelData.materials.size())) {
-                                        const Rendering::LoadedMaterial& loadedMat = modelData.materials[matIdx];
-
-                                        // Create new material
-                                        Rendering::Material* mat = new Rendering::Material(shader);
-                                        mat->SetDiffuseColor(loadedMat.diffuseColor);
-
-                                        // Try embedded texture first, then external file
-                                        if (loadedMat.embeddedTextureIndex >= 0 &&
-                                            loadedMat.embeddedTextureIndex < static_cast<int>(embeddedTextures.size()) &&
-                                            embeddedTextures[loadedMat.embeddedTextureIndex]) {
-                                            mat->SetTexture(embeddedTextures[loadedMat.embeddedTextureIndex]);
-                                        }
-                                        else if (!loadedMat.diffuseTexturePath.empty()) {
-                                            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
-                                            Rendering::Texture* tex = resources.LoadTexture(loadedMat.diffuseTexturePath);
-                                            if (tex) {
-                                                mat->SetTexture(tex);
-                                            }
-                                        }
-
-                                        meshMats.push_back(mat);
-                                    } else {
-                                        meshMats.push_back(nullptr);  // Use default material
-                                    }
-                                }
-                                meshRenderer->SetMeshMaterials(meshMats);
-                            }
-                        }
-                    }
-                }
-
-                // Add all animations from the model
-                for (const auto& clip : modelData.animations) {
-                    comp->AddClip(clip->GetName(), clip);
-                }
-            }
-
-            // currentClipName (string) - clip to play (saved by SceneSaver)
-            std::string clipName = ReadOptionalString(L, tableIndex, "currentClipName", "");
-            if (clipName.empty()) clipName = ReadOptionalString(L, tableIndex, "defaultClip", "");
-            bool loop = ReadOptionalBool(L, tableIndex, "looping", true);
-            if (!loop) loop = ReadOptionalBool(L, tableIndex, "loop", true);
-            if (!clipName.empty()) {
-                comp->Play(clipName, loop);
-            }
-
-            // playing / speed
-            comp->playing = ReadOptionalBool(L, tableIndex, "playing", true);
-            comp->SetSpeed(ReadOptionalFloat(L, tableIndex, "speed", 1.0f));
-        }
-
-
-        #pragma endregion
-
         #pragma region SceneLoader Implementation
         void SceneLoader::SetupLuaBindings(lua_State* L) {
-            // Bind Math::Vector3
-            luabridge::getGlobalNamespace(L)
-                .beginClass<Math::Vector3>("Vector3")
-                .addConstructor<void(*)(float, float, float)>()
-                .addProperty("x", &Math::Vector3::x)
-                .addProperty("y", &Math::Vector3::y)
-                .addProperty("z", &Math::Vector3::z)
-                .endClass();
-
-            // Bind Math::Vector2
-            luabridge::getGlobalNamespace(L)
-                .beginClass<Math::Vector2>("Vector2")
-                .addConstructor<void(*)(float, float)>()
-                .addProperty("x", &Math::Vector2::x)
-                .addProperty("y", &Math::Vector2::y)
-                .endClass();
-
-            // Bind Math::Quaternion (only FromEulerAngles for now)
-            luabridge::getGlobalNamespace(L)
-                .beginClass<Math::Quaternion>("Quaternion")
-                .addStaticFunction("FromEulerAngles", QuaternionFromEulerAngles)
-                .endClass();
-
-            // Bind Math::Vector4 (for colors)
-            luabridge::getGlobalNamespace(L)
-                .beginClass<Math::Vector4>("Vector4")
-                .addConstructor<void(*)(float, float, float, float)>()
-                .addProperty("x", &Math::Vector4::x)
-                .addProperty("y", &Math::Vector4::y)
-                .addProperty("z", &Math::Vector4::z)
-                .addProperty("w", &Math::Vector4::w)
-                .endClass();
-
-            // Bind Math::Color
-            luabridge::getGlobalNamespace(L)
-                .beginClass<Math::Color>("Color")
-                .addConstructor<void(*)(float, float, float, float)>()
-                .addProperty("r", &Math::Color::r)
-                .addProperty("g", &Math::Color::g)
-                .addProperty("b", &Math::Color::b)
-                .addProperty("a", &Math::Color::a)
-                .endClass();
+            SceneLuaBindings::SetupLuaBindings(L);
         }
 
         ECS::Scene* SceneLoader::LoadScene(const std::string& filePath) {
@@ -601,27 +73,20 @@ namespace RTBEngine {
                 return nullptr;
             }
 
-            // Get scene table
-            if (!lua_istable(L, -1)) {
-                RTB_ERROR("SceneLoader: CreateScene() did not return a table");
+            // Validate root scene table before using it
+            if (!SceneParsingUtils::ValidateSceneTable(L, -1, filePath)) {
                 lua_close(L);
                 return nullptr;
             }
 
-            // Read scene name
-            lua_getfield(L, -1, "name");
-            std::string sceneName = "Unnamed Scene";
-            if (lua_isstring(L, -1)) {
-                sceneName = lua_tostring(L, -1);
-            }
-            lua_pop(L, 1);
+            const std::string sceneName = SceneParsingUtils::ReadOptionalString(L, -1, "name", "Unnamed Scene");
 
             // Create scene
             ECS::Scene* scene = new ECS::Scene(sceneName);
 
             // Read skybox settings
-            std::string skyboxPath = ReadOptionalString(L, -1, "skybox", "");
-            bool skyboxEnabled = ReadOptionalBool(L, -1, "skyboxEnabled", true);
+            std::string skyboxPath = SceneParsingUtils::ReadOptionalString(L, -1, "skybox", "");
+            bool skyboxEnabled = SceneParsingUtils::ReadOptionalBool(L, -1, "skyboxEnabled", true);
 
             scene->SetSkyboxEnabled(skyboxEnabled);
             if (!skyboxPath.empty()) {
@@ -718,7 +183,7 @@ namespace RTBEngine {
             ECS::GameObject* go = new ECS::GameObject(name);
 
             // Restore UUID if present (skip regeneration)
-            std::string savedUUID = ReadOptionalString(L, tableIndex, "uuid", "");
+            std::string savedUUID = SceneParsingUtils::ReadOptionalString(L, tableIndex, "uuid", "");
             if (!savedUUID.empty()) {
                 go->SetUUID(savedUUID);
             }
@@ -754,7 +219,7 @@ namespace RTBEngine {
             lua_pop(L, 1);
 
             // Read parent name
-            std::string parentName = ReadOptionalString(L, tableIndex, "parent", "");
+            std::string parentName = SceneParsingUtils::ReadOptionalString(L, tableIndex, "parent", "");
             if (!parentName.empty()) {
                 parentingRequests.push_back({ go, parentName });
             }
@@ -808,46 +273,46 @@ namespace RTBEngine {
 
                             // Configure component based on type
                             if (componentType == "MeshRenderer") {
-                                ConfigureMeshRenderer(L, componentTableIndex, static_cast<ECS::MeshRenderer*>(comp));
+                                SceneComponentConfigurator::ConfigureMeshRenderer(L, componentTableIndex, static_cast<ECS::MeshRenderer*>(comp));
                             }
                             else if (componentType == "LightComponent") {
-                                ConfigureLightComponent(L, componentTableIndex, static_cast<ECS::LightComponent*>(comp));
+                                SceneComponentConfigurator::ConfigureLightComponent(L, componentTableIndex, static_cast<ECS::LightComponent*>(comp));
                             }
                             else if (componentType == "AudioSourceComponent") {
-                                ConfigureAudioSource(L, componentTableIndex, static_cast<ECS::AudioSourceComponent*>(comp));
+                                SceneComponentConfigurator::ConfigureAudioSource(L, componentTableIndex, static_cast<ECS::AudioSourceComponent*>(comp));
                             }
                             else if (componentType == "RigidBodyComponent") {
-                                ConfigureRigidBody(L, componentTableIndex, static_cast<ECS::RigidBodyComponent*>(comp), gameObject);
+                                SceneComponentConfigurator::ConfigureRigidBody(L, componentTableIndex, static_cast<ECS::RigidBodyComponent*>(comp), gameObject);
                             }
                             else if (componentType == "BoxColliderComponent") {
-                                ConfigureBoxCollider(L, componentTableIndex, static_cast<ECS::BoxColliderComponent*>(comp), gameObject);
+                                SceneComponentConfigurator::ConfigureBoxCollider(L, componentTableIndex, static_cast<ECS::BoxColliderComponent*>(comp), gameObject);
                             }
                             else if (componentType == "Canvas") {
-                                ConfigureCanvas(L, componentTableIndex, static_cast<UI::Canvas*>(comp));
+                                SceneComponentConfigurator::ConfigureCanvas(L, componentTableIndex, static_cast<UI::Canvas*>(comp));
                             }
                             else if (componentType == "UIText") {
-                                ConfigureUIText(L, componentTableIndex, static_cast<UI::UIText*>(comp));
+                                SceneComponentConfigurator::ConfigureUIText(L, componentTableIndex, static_cast<UI::UIText*>(comp));
                             }
                             else if (componentType == "UIImage") {
-                                ConfigureUIImage(L, componentTableIndex, static_cast<UI::UIImage*>(comp));
+                                SceneComponentConfigurator::ConfigureUIImage(L, componentTableIndex, static_cast<UI::UIImage*>(comp));
                             }
                             else if (componentType == "UIPanel") {
-                                ConfigureUIPanel(L, componentTableIndex, static_cast<UI::UIPanel*>(comp));
+                                SceneComponentConfigurator::ConfigureUIPanel(L, componentTableIndex, static_cast<UI::UIPanel*>(comp));
                             }
                             else if (componentType == "UIButton") {
-                                ConfigureUIButton(L, componentTableIndex, static_cast<UI::UIButton*>(comp));
+                                SceneComponentConfigurator::ConfigureUIButton(L, componentTableIndex, static_cast<UI::UIButton*>(comp));
                             }
                             else if (componentType == "UIContainer") {
-                                SyncUIElementProxies(L, componentTableIndex, static_cast<UI::UIElement*>(comp));
+                                SceneComponentConfigurator::SyncUIElementProxies(L, componentTableIndex, static_cast<UI::UIElement*>(comp));
                             }
                             else if (componentType == "CameraComponent") {
-                                ConfigureCameraComponent(L, componentTableIndex, static_cast<ECS::CameraComponent*>(comp));
+                                SceneComponentConfigurator::ConfigureCameraComponent(L, componentTableIndex, static_cast<ECS::CameraComponent*>(comp));
                             }
                             else if (componentType == "FreeLookCamera") {
-                                ConfigureFreeLookCamera(L, componentTableIndex, static_cast<ECS::FreeLookCamera*>(comp));
+                                SceneComponentConfigurator::ConfigureFreeLookCamera(L, componentTableIndex, static_cast<ECS::FreeLookCamera*>(comp));
                             }
                             else if (componentType == "Animator") {
-                                ConfigureAnimator(L, componentTableIndex, static_cast<Animation::Animator*>(comp));
+                                SceneComponentConfigurator::ConfigureAnimator(L, componentTableIndex, static_cast<Animation::Animator*>(comp));
                             }
 
                             // Collect GameObjectRef / ComponentRef for deferred UUID resolution
