@@ -35,6 +35,7 @@
 #include "SceneLuaBindings.h"
 #include "SceneComponentConfigurator.h"
 #include "SceneParsingUtils.h"
+#include "SceneReflectionUtils.h"
 
 namespace RTBEngine {
     namespace Scripting {
@@ -270,6 +271,9 @@ namespace RTBEngine {
                         ECS::Component* comp = ComponentRegistry::GetInstance().CreateComponent(componentType);
                         if (comp) {
                             gameObject->AddComponent(comp);
+
+                            // Apply simple properties via reflection (floats, bools, enums, vectors, colors, etc.)
+                            SceneReflectionUtils::ApplyLuaTableToComponent(L, componentTableIndex, comp);
 
                             // Configure component based on type
                             if (componentType == "MeshRenderer") {
