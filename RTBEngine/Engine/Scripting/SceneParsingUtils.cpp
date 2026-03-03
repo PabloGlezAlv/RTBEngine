@@ -3,6 +3,7 @@
 #include <lua.hpp>
 #include <LuaBridge/LuaBridge.h>
 
+#include "../Math/Color.h"
 #include "../RTBEngine.h"
 
 namespace RTBEngine {
@@ -79,9 +80,16 @@ namespace RTBEngine {
                 lua_getfield(L, tableIndex, fieldName);
                 Math::Vector4 result = defaultValue;
                 if (lua_isuserdata(L, -1)) {
-                    auto vecResult = luabridge::Stack<Math::Vector4>::get(L, -1);
-                    if (vecResult) {
-                        result = vecResult.value();
+                    if (luabridge::Stack<Math::Vector4>::isInstance(L, -1)) {
+                        auto vecResult = luabridge::Stack<Math::Vector4>::get(L, -1);
+                        if (vecResult) result = vecResult.value();
+                    } else if (luabridge::Stack<Math::Color>::isInstance(L, -1)) {
+                        // Scene files serialized with SceneSaver use Color(...) for color fields
+                        auto colorResult = luabridge::Stack<Math::Color>::get(L, -1);
+                        if (colorResult) {
+                            const Math::Color& c = colorResult.value();
+                            result = Math::Vector4(c.r, c.g, c.b, c.a);
+                        }
                     }
                 }
                 lua_pop(L, 1);

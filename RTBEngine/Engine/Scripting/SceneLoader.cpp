@@ -92,7 +92,7 @@ namespace RTBEngine {
             scene->SetSkyboxEnabled(skyboxEnabled);
             if (!skyboxPath.empty()) {
                 Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
-                Rendering::Cubemap* cubemap = resources.LoadCubemap(skyboxPath);
+                Rendering::Cubemap* cubemap = resources.LoadCubemapAsset(skyboxPath);
                 if (cubemap) {
                     scene->SetSkyboxCubemap(cubemap);
                 }

@@ -30,9 +30,6 @@ namespace RTBEngine {
             static constexpr const char* DEFAULT_CUBE_PATH = "Default/Models/cube.obj";
             static constexpr const char* DEFAULT_SPHERE_PATH = "Default/Models/sphere.obj";
             static constexpr const char* DEFAULT_PLANE_PATH = "Default/Models/plane.obj";
-            static constexpr const char* DEFAULT_SKYBOX_PATH = "Default/Textures/Skybox";
-
-
             static ResourceManager& GetInstance();
 
             ResourceManager(const ResourceManager&) = delete;
@@ -66,7 +63,7 @@ namespace RTBEngine {
 
             // Cubemap management
             Rendering::Cubemap* GetCubemap(const std::string& path);
-            Rendering::Cubemap* LoadCubemap(const std::string& folderPath, const std::string& extension = ".png");
+            Rendering::Cubemap* LoadCubemapAsset(const std::string& cubemapFilePath);
 
             // Default resources
             Rendering::Texture* GetDefaultTexture();

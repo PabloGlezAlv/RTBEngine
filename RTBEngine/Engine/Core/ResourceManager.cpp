@@ -2,6 +2,8 @@
 #include "../Scripting/SceneLoader.h"
 #include "../ECS/Scene.h"
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include "../RTBEngine.h"
 
 namespace RTBEngine {
@@ -225,23 +227,67 @@ namespace RTBEngine {
             return nullptr;
         }
 
-        Rendering::Cubemap* ResourceManager::LoadCubemap(const std::string& folderPath, const std::string& extension) {
-            // Check cache first
-            auto existing = GetCubemap(folderPath);
+        Rendering::Cubemap* ResourceManager::LoadCubemapAsset(const std::string& cubemapFilePath) {
+            // Return cached instance if already loaded
+            auto existing = GetCubemap(cubemapFilePath);
             if (existing) {
                 return existing;
             }
 
-            // Load new cubemap
+            // Parse .cubemap file — key=value pairs, one per line
+            // Expected keys: right, left, top, bottom, front, back
+            std::ifstream file(cubemapFilePath);
+            if (!file.is_open()) {
+                RTB_ERROR("ResourceManager: Failed to open .cubemap file: " + cubemapFilePath);
+                return nullptr;
+            }
+
+            std::array<std::string, 6> faces;
+            static const char* faceKeys[] = { "right", "left", "top", "bottom", "front", "back" };
+
+            std::string line;
+            while (std::getline(file, line)) {
+                if (line.empty() || line[0] == '#') continue;
+                auto sep = line.find('=');
+                if (sep == std::string::npos) continue;
+
+                std::string key   = line.substr(0, sep);
+                std::string value = line.substr(sep + 1);
+
+                // Trim whitespace
+                auto trim = [](std::string& s) {
+                    size_t start = s.find_first_not_of(" \t\r\n");
+                    size_t end   = s.find_last_not_of(" \t\r\n");
+                    s = (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
+                };
+                trim(key);
+                trim(value);
+
+                for (int i = 0; i < 6; ++i) {
+                    if (key == faceKeys[i]) {
+                        faces[i] = value;
+                        break;
+                    }
+                }
+            }
+
+            // Validate that all 6 faces are assigned
+            for (int i = 0; i < 6; ++i) {
+                if (faces[i].empty()) {
+                    RTB_ERROR("ResourceManager: .cubemap file missing face '" + std::string(faceKeys[i]) + "': " + cubemapFilePath);
+                    return nullptr;
+                }
+            }
+
             auto cubemap = std::make_unique<Rendering::Cubemap>();
-            if (!cubemap->LoadFromFolder(folderPath, extension)) {
-                RTB_ERROR("Failed to load cubemap from: " + folderPath);
+            if (!cubemap->LoadFromFiles(faces)) {
+                RTB_ERROR("ResourceManager: Failed to load cubemap faces from: " + cubemapFilePath);
                 return nullptr;
             }
 
             Rendering::Cubemap* ptr = cubemap.get();
-            cubemaps[folderPath] = std::move(cubemap);
-            cubemapPathMap[ptr] = folderPath;
+            cubemaps[cubemapFilePath] = std::move(cubemap);
+            cubemapPathMap[ptr] = cubemapFilePath;
             return ptr;
         }
 
@@ -271,21 +317,15 @@ namespace RTBEngine {
         }
 
         Rendering::Cubemap* ResourceManager::GetDefaultCubemap() {
-            // Check if already loaded
-            auto existing = GetCubemap(DEFAULT_SKYBOX_PATH);
-            if (existing) {
-                return existing;
-            }
+            static const std::string key = "__default_cubemap__";
+            auto existing = GetCubemap(key);
+            if (existing) return existing;
 
-            // Try to load from folder
             auto cubemap = std::make_unique<Rendering::Cubemap>();
-            if (!cubemap->LoadFromFolder(DEFAULT_SKYBOX_PATH)) {
-                // Fallback: create solid color cubemap (blue-gray sky)
-                cubemap->CreateSolidColor(0.3f, 0.4f, 0.6f);
-            }
+            cubemap->CreateSolidColor(0.3f, 0.4f, 0.6f);
 
             Rendering::Cubemap* ptr = cubemap.get();
-            cubemaps[DEFAULT_SKYBOX_PATH] = std::move(cubemap);
+            cubemaps[key] = std::move(cubemap);
             return ptr;
         }
 
