@@ -65,33 +65,37 @@ namespace RTBEngine {
                         }
                         break;
                     case PropertyType::Vector2:
-                        if (lua_isuserdata(L, -1)) {
+                        if (luabridge::Stack<Math::Vector2>::isInstance(L, -1)) {
                             auto v2 = luabridge::Stack<Math::Vector2>::get(L, -1);
                             if (v2) WriteValue<Math::Vector2>(dst, v2.value());
                         }
                         break;
                     case PropertyType::Vector3:
-                        if (lua_isuserdata(L, -1)) {
+                        if (luabridge::Stack<Math::Vector3>::isInstance(L, -1)) {
                             auto v3 = luabridge::Stack<Math::Vector3>::get(L, -1);
                             if (v3) WriteValue<Math::Vector3>(dst, v3.value());
                         }
                         break;
                     case PropertyType::Vector4:
-                        if (lua_isuserdata(L, -1)) {
+                        if (luabridge::Stack<Math::Vector4>::isInstance(L, -1)) {
                             auto v4 = luabridge::Stack<Math::Vector4>::get(L, -1);
                             if (v4) WriteValue<Math::Vector4>(dst, v4.value());
                         }
                         break;
                     case PropertyType::Quaternion:
-                        if (lua_isuserdata(L, -1)) {
+                        if (luabridge::Stack<Math::Quaternion>::isInstance(L, -1)) {
                             auto q = luabridge::Stack<Math::Quaternion>::get(L, -1);
                             if (q) WriteValue<Math::Quaternion>(dst, q.value());
                         }
                         break;
                     case PropertyType::Color:
-                        if (lua_isuserdata(L, -1)) {
+                        if (luabridge::Stack<Math::Color>::isInstance(L, -1)) {
                             auto c = luabridge::Stack<Math::Color>::get(L, -1);
                             if (c) WriteValue<Math::Color>(dst, c.value());
+                        } else if (luabridge::Stack<Math::Vector4>::isInstance(L, -1)) {
+                            // SceneSaver serializes Color as Vector4 — accept both
+                            auto v4 = luabridge::Stack<Math::Vector4>::get(L, -1);
+                            if (v4) WriteValue<Math::Color>(dst, Math::Color(v4.value()));
                         }
                         break;
                     default:

@@ -7,6 +7,7 @@
 #include "../Math/Vectors/Vector3.h"
 #include "../Math/Vectors/Vector4.h"
 #include "../Math/Quaternions/Quaternion.h"
+#include "../Math/Color.h"
 #include "../Reflection/TypeInfo.h"
 #include "../Core/ResourceManager.h"
 #include "../RTBEngine.h"
@@ -52,6 +53,14 @@ namespace RTBEngine {
         void SceneSaver::WriteSceneHeader(std::ofstream& file, const ECS::Scene* scene) {
             file << "        name = \"" << scene->GetName() << "\",\n";
             file << "        skyboxEnabled = " << FormatBool(scene->IsSkyboxEnabled()) << ",\n";
+
+            Rendering::Cubemap* cubemap = scene->GetSkyboxCubemap();
+            if (cubemap) {
+                std::string path = Core::ResourceManager::GetInstance().GetCubemapPath(cubemap);
+                if (!path.empty()) {
+                    file << "        skybox = " << FormatString(NormalizePath(path)) << ",\n";
+                }
+            }
         }
 
         void SceneSaver::WriteGameObjects(std::ofstream& file, const ECS::Scene* scene) {
@@ -189,9 +198,17 @@ namespace RTBEngine {
                 break;
 
             case Reflection::PropertyType::Vector4:
-            case Reflection::PropertyType::Color:
                 file << FormatVector4(*(Math::Vector4*)data);
                 break;
+
+            case Reflection::PropertyType::Color: {
+                const Math::Color& c = *(Math::Color*)data;
+                std::ostringstream oss;
+                oss << std::fixed << std::setprecision(2);
+                oss << "Color(" << c.r << ", " << c.g << ", " << c.b << ", " << c.a << ")";
+                file << oss.str();
+                break;
+            }
 
             case Reflection::PropertyType::Quaternion:
                 file << FormatQuaternion(*(Math::Quaternion*)data);

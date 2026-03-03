@@ -221,6 +221,7 @@ if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$
     <ClCompile Include="Engine\Scripting\SceneLuaBindings.cpp" />
     <ClCompile Include="Engine\Scripting\SceneComponentConfigurator.cpp" />
     <ClCompile Include="Engine\Scripting\SceneParsingUtils.cpp" />
+    <ClCompile Include="Engine\Scripting\SceneReflectionUtils.cpp" />
     <ClCompile Include="Engine\Scripting\SceneSaver.cpp" />
     <ClCompile Include="Engine\ECS\SceneManager.cpp" />
     <ClCompile Include="Engine\Animation\Skeleton.cpp" />
