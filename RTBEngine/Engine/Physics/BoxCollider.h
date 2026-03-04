@@ -1,5 +1,5 @@
 #pragma once
-
+#include "../RTBEngineAPI.h"
 #include "Collider.h"
 #include "../Math/Vectors/Vector3.h"
 
@@ -10,7 +10,7 @@ namespace RTBEngine {
 
     namespace Physics {
 
-        class BoxCollider : public Collider {
+        class RTB_API BoxCollider : public Collider {
         public:
             BoxCollider();
             BoxCollider(const Math::Vector3& size);

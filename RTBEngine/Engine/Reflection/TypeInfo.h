@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <string>
 #include <vector>
 #include <optional>
@@ -64,8 +65,13 @@ namespace RTBEngine {
             Range(float min = 0.0f, float max = 1.0f) : min(min), max(max) {}
         };
 
+        // C4251: STL members in DLL-exported types are safe here — reflection types
+        // are used only by internal engine code and not copied across DLL boundaries.
+        #pragma warning(push)
+        #pragma warning(disable: 4251)
+
         // Info about a single property
-        struct PropertyInfo {
+        struct RTB_API PropertyInfo {
             std::string name;
             std::string displayName;
             PropertyType type;
@@ -101,7 +107,7 @@ namespace RTBEngine {
             bool IsReadOnly() const { return HasFlag(flags, PropertyFlags::ReadOnly); }
         };
 
-        class TypeInfo {
+        class RTB_API TypeInfo {
         public:
             using FactoryFunc = std::function<ECS::Component*()>;
 
@@ -126,7 +132,7 @@ namespace RTBEngine {
         };
 
         // Global registry for all reflected types
-        class TypeRegistry {
+        class RTB_API TypeRegistry {
         public:
             static TypeRegistry& GetInstance();
 
@@ -143,6 +149,7 @@ namespace RTBEngine {
 
             std::unordered_map<std::string, TypeInfo> types;
         };
+        #pragma warning(pop)
 
-    } 
+    }
 }

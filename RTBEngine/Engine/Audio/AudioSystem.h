@@ -1,5 +1,5 @@
 #pragma once
-
+#include "../RTBEngineAPI.h"
 #include <fmod.hpp>
 #include <memory>
 #include <string>
@@ -15,7 +15,7 @@ namespace RTBEngine {
             }
         };
 
-        class AudioSystem {
+        class RTB_API AudioSystem {
         public:
             static AudioSystem& GetInstance();
 

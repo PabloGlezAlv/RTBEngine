@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <GL/glew.h>
 #include <string>
 #include <array>
@@ -6,7 +7,7 @@
 namespace RTBEngine {
     namespace Rendering {
 
-        class Cubemap {
+        class RTB_API Cubemap {
         public:
             Cubemap();
             ~Cubemap();

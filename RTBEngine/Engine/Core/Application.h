@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <SDL.h>
 #include <memory>
 #include "Window.h"
@@ -24,7 +25,7 @@ namespace RTBEngine {
 
 namespace RTBEngine {
 	namespace Core {
-		class Application {
+		class RTB_API Application {
 		public:
 			explicit Application(const ApplicationConfig& config);
 			~Application();

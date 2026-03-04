@@ -1,11 +1,12 @@
 #pragma once
+#include "../../RTBEngineAPI.h"
 #include "../UIElement.h"
 #include "../../Reflection/PropertyMacros.h"
 
 namespace RTBEngine {
 	namespace UI {
 
-		class UIContainer : public UIElement {
+		class RTB_API UIContainer : public UIElement {
 		public:
 			UIContainer();
 			virtual ~UIContainer();

@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "../ECS/Component.h"
 #include "Skeleton.h"
 #include "AnimationClip.h"
@@ -15,7 +16,7 @@ namespace RTBEngine {
 namespace RTBEngine {
     namespace Animation {
 
-        class Animator : public ECS::Component {
+        class RTB_API Animator : public ECS::Component {
         public:
             Animator();
             virtual ~Animator();

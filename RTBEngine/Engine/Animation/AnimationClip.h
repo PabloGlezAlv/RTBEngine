@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "../Math/Math.h"
 #include <vector>
 #include <string>
@@ -24,7 +25,7 @@ namespace RTBEngine {
             std::vector<VectorKey> scaleKeys;
         };
 
-        class AnimationClip {
+        class RTB_API AnimationClip {
         public:
             AnimationClip(const std::string& name, float duration, float ticksPerSecond);
             ~AnimationClip() = default;

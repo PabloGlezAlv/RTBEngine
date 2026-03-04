@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "Scene.h"
 #include <memory>
 #include <string>
@@ -7,7 +8,11 @@
 namespace RTBEngine {
     namespace ECS {
 
-        class SceneManager {
+        // C4251: STL members in DLL-exported class are safe here because
+        // SceneManager is a singleton — clients never copy or directly access them.
+        #pragma warning(push)
+        #pragma warning(disable: 4251)
+        class RTB_API SceneManager {
         public:
             static SceneManager& GetInstance();
 
@@ -32,8 +37,8 @@ namespace RTBEngine {
             bool IsSceneDirty() const { return sceneDirty; }
 
         private:
-            SceneManager() = default;
-            ~SceneManager() = default;
+            SceneManager();
+            ~SceneManager();
 
             std::unique_ptr<Scene> activeScene;
             std::string activeScenePath;
@@ -42,6 +47,7 @@ namespace RTBEngine {
             std::function<void(Scene*)> onSceneLoaded;
             std::function<void(Scene*)> onSceneUnloading;
         };
+        #pragma warning(pop)
 
     }
 }

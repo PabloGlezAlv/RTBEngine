@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <string>
 #include <vector>
 #include <functional>
@@ -13,13 +14,17 @@ namespace RTBEngine {
             Error
         };
 
-        struct LogMessage {
+        struct RTB_API LogMessage {
             LogLevel level;
             std::string message;
             std::string timestamp;
         };
 
-        class Logger {
+        // C4251: std::vector members in a DLL-exported class are safe here because
+        // Logger is a singleton — clients never copy or directly access the vectors.
+        #pragma warning(push)
+        #pragma warning(disable: 4251)
+        class RTB_API Logger {
         public:
             static Logger& GetInstance();
 
@@ -44,6 +49,7 @@ namespace RTBEngine {
             std::vector<LogCallback> callbacks;
             mutable std::mutex logMutex;
         };
+        #pragma warning(pop)
 
     }
 }

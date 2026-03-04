@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "../ECS/Component.h"
 #include "../Math/Vectors/Vector2.h"
 #include "UIElement.h"
@@ -7,7 +8,7 @@
 namespace RTBEngine {
 	namespace UI {
 
-		class Canvas : public ECS::Component {
+		class RTB_API Canvas : public ECS::Component {
 		public:
 			enum class RenderMode {
 				ScreenSpaceOverlay,  // UI always on top, ignores 3D

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "../RTBEngineAPI.h"
 #include <btBulletDynamicsCommon.h>
 #include <memory>
 #include "../Math/Vectors/Vector3.h"
@@ -14,7 +14,7 @@ namespace RTBEngine {
             Mesh
         };
 
-        class Collider {
+        class RTB_API Collider {
         public:
             Collider(ColliderType type);
             virtual ~Collider();

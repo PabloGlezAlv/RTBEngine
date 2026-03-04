@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "../Math/Math.h"
 
 namespace RTBEngine {
@@ -9,7 +10,7 @@ namespace RTBEngine {
             Orthographic
         };
 
-        class Camera {
+        class RTB_API Camera {
         public:
             Camera();
             Camera(const Math::Vector3& position, float fov, float aspectRatio, float nearPlane, float farPlane);

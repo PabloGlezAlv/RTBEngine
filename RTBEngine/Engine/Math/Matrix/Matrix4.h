@@ -1,4 +1,5 @@
 #pragma once
+#include "../../RTBEngineAPI.h"
 #include "../Vectors/Vector3.h"
 #include "../Vectors/Vector4.h"
 #include <cmath>
@@ -6,7 +7,7 @@
 namespace RTBEngine {
     namespace Math {
 
-        class Matrix4 {
+        class RTB_API Matrix4 {
         public:
             float m[16];
 

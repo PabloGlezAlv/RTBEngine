@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "Component.h"
 #include "../Reflection/PropertyMacros.h"
 #include "../Rendering/Mesh.h"
@@ -16,7 +17,7 @@ namespace RTBEngine {
 namespace RTBEngine {
     namespace ECS {
 
-        class MeshRenderer : public Component {
+        class RTB_API MeshRenderer : public Component {
         public:
             MeshRenderer();
             ~MeshRenderer() override;

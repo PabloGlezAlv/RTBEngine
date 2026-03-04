@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "GameObject.h"
 #include "../Rendering/Camera.h"
 #include "../Rendering/Lighting/Light.h"
@@ -19,7 +20,7 @@ namespace RTBEngine {
 
         class CameraComponent;
 
-        class Scene {
+        class RTB_API Scene {
         public:
             Scene(const std::string& name = "Untitled Scene");
             ~Scene();

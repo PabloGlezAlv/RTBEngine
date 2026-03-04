@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <string>
 #include <fstream>
 
@@ -22,7 +23,7 @@ namespace RTBEngine {
 namespace RTBEngine {
     namespace Scripting {
 
-        class SceneSaver {
+        class RTB_API SceneSaver {
         public:
             // Main method to save a complete scene to Lua file
             static bool SaveScene(const ECS::Scene* scene, const std::string& filePath);

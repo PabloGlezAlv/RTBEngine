@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "Component.h"
 #include "../Math/Math.h"
 #include "../Reflection/PropertyMacros.h"
@@ -6,7 +7,7 @@
 namespace RTBEngine {
     namespace ECS {
 
-        class FreeLookCamera : public Component {
+        class RTB_API FreeLookCamera : public Component {
         public:
             FreeLookCamera();
             virtual ~FreeLookCamera() = default;

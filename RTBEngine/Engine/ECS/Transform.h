@@ -1,10 +1,11 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "../Math/Math.h"
 
 namespace RTBEngine {
     namespace ECS {
 
-        class Transform {
+        class RTB_API Transform {
         public:
             Transform();
             Transform(const Math::Vector3& position, const Math::Quaternion& rotation, const Math::Vector3& scale);

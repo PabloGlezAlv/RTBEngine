@@ -1,5 +1,5 @@
 #pragma once
-
+#include "../RTBEngineAPI.h"
 #include <fmod.hpp>
 #include <string>
 #include <memory>
@@ -15,7 +15,7 @@ namespace RTBEngine {
             }
         };
 
-        class AudioClip {
+        class RTB_API AudioClip {
         public:
             AudioClip();
             ~AudioClip();

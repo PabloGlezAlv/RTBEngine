@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "Bone.h"
 #include <vector>
 #include <unordered_map>
@@ -6,7 +7,7 @@
 namespace RTBEngine {
     namespace Animation {
 
-        class Skeleton {
+        class RTB_API Skeleton {
         public:
             Skeleton() = default;
             ~Skeleton() = default;

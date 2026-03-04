@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <SDL.h>
 #include <unordered_map>
 #include "KeyCode.h"
@@ -7,7 +8,7 @@
 namespace RTBEngine {
     namespace Input {
 
-        class InputManager {
+        class RTB_API InputManager {
         public:
             static InputManager& GetInstance();
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "Component.h"
 #include "../Rendering/Lighting/Light.h"
 #include "../Rendering/Lighting/PointLight.h"
@@ -10,7 +11,7 @@
 namespace RTBEngine {
     namespace ECS {
 
-        class LightComponent : public Component {
+        class RTB_API LightComponent : public Component {
         public:
             LightComponent();
             LightComponent(std::unique_ptr<Rendering::Light> light);

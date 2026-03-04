@@ -17,6 +17,8 @@ namespace RTBEngine {
             return instance;
         }
 
+        ResourceManager::ResourceManager() = default;
+
         ResourceManager::~ResourceManager()
         {
             Clear();

@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <GL/glew.h>
 #include <string>
 #include <unordered_map>
@@ -7,7 +8,7 @@
 namespace RTBEngine {
     namespace Rendering {
 
-        class Shader {
+        class RTB_API Shader {
         public:
             Shader();
             ~Shader();

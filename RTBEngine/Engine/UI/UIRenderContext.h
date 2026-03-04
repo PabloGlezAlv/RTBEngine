@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "../Math/Vectors/Vector2.h"
 
 struct ImDrawList;
@@ -8,7 +9,7 @@ namespace RTBEngine {
 
 		// Rendering context for UI elements
 		// Set before rendering canvases to control where UI is drawn
-		struct UIRenderContext {
+		struct RTB_API UIRenderContext {
 			static ImDrawList* CurrentDrawList;	// DrawList to use (nullptr = use GetBackgroundDrawList)
 			static Math::Vector2 Offset;		// Position offset for all UI elements
 			static bool IsValid;				// Whether context is active

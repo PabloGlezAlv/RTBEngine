@@ -1,11 +1,12 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <string>
 #include "../Math/Vectors/Vector3.h"
 
 namespace RTBEngine {
     namespace Core {
 
-        struct WindowConfig {
+        struct RTB_API WindowConfig {
             std::string title = "RTBEngine Application";
             int width = 1280;
             int height = 720;
@@ -15,18 +16,18 @@ namespace RTBEngine {
             bool vSync = true;
         };
 
-        struct PhysicsConfig {
+        struct RTB_API PhysicsConfig {
             float timeStep = 1.0f / 60.0f;
             Math::Vector3 gravity = Math::Vector3(0.0f, -9.81f, 0.0f);
         };
 
-        struct RenderingConfig {
+        struct RTB_API RenderingConfig {
             float clearColorR = 0.1f;
             float clearColorG = 0.1f;
             float clearColorB = 0.1f;
         };
 
-        struct ApplicationConfig {
+        struct RTB_API ApplicationConfig {
             WindowConfig window;
             PhysicsConfig physics;
             RenderingConfig rendering;

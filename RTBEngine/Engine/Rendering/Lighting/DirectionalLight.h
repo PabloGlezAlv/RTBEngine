@@ -1,4 +1,5 @@
 #pragma once
+#include "../../RTBEngineAPI.h"
 #include "Light.h"
 #include "../Shader.h"
 #include "../ShadowMap.h"
@@ -8,7 +9,7 @@
 namespace RTBEngine {
     namespace Rendering {
 
-        class DirectionalLight : public Light {
+        class RTB_API DirectionalLight : public Light {
         public:
             DirectionalLight();
             DirectionalLight(const Math::Vector3& direction, const Math::Vector3& color = Math::Vector3(1, 1, 1));

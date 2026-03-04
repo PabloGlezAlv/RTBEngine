@@ -1,10 +1,11 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <GL/glew.h>
 
 namespace RTBEngine {
     namespace Rendering {
 
-        class Framebuffer {
+        class RTB_API Framebuffer {
         public:
             Framebuffer();
             ~Framebuffer();

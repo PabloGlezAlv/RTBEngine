@@ -1,5 +1,5 @@
 #pragma once
-
+#include "../RTBEngineAPI.h"
 #include "Component.h"
 #include "../Reflection/PropertyMacros.h"
 
@@ -14,7 +14,7 @@ namespace RTBEngine {
 
     namespace ECS {
 
-        class AudioSourceComponent : public Component {
+        class RTB_API AudioSourceComponent : public Component {
         public:
             AudioSourceComponent();
             virtual ~AudioSourceComponent();

@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <btBulletDynamicsCommon.h>
 #include <memory>
 
@@ -16,7 +17,7 @@ namespace RTBEngine {
             Kinematic    
         };
 
-        class RigidBody {
+        class RTB_API RigidBody {
         public:
             RigidBody();
             ~RigidBody();

@@ -1,4 +1,5 @@
 #pragma once
+#include "../../RTBEngineAPI.h"
 #include "../Vectors/Vector3.h"
 #include "../Matrix/Matrix4.h"
 #include <cmath>
@@ -6,7 +7,7 @@
 namespace RTBEngine {
     namespace Math {
 
-        class Quaternion {
+        class RTB_API Quaternion {
         public:
             float x, y, z, w;
 

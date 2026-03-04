@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "Transform.h"
 #include "Component.h"
 #include "../Rendering/Camera.h"
@@ -10,7 +11,7 @@
 namespace RTBEngine {
     namespace ECS {
 
-        class GameObject {
+        class RTB_API GameObject {
         public:
             GameObject(const std::string& name = "GameObject");
             ~GameObject();

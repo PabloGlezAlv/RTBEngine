@@ -1,5 +1,5 @@
 #pragma once
-
+#include "../RTBEngineAPI.h"
 #include <btBulletDynamicsCommon.h>
 #include <memory>
 #include "../Math/Vectors/Vector3.h"
@@ -7,7 +7,7 @@
 namespace RTBEngine {
     namespace Physics {
 
-        class PhysicsWorld {
+        class RTB_API PhysicsWorld {
         public:
             PhysicsWorld();
             ~PhysicsWorld();

@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <GL/glew.h>
 
 namespace RTBEngine {
@@ -13,7 +14,7 @@ namespace RTBEngine {
 namespace RTBEngine {
     namespace Rendering {
 
-        class Skybox {
+        class RTB_API Skybox {
         public:
             Skybox();
             ~Skybox();

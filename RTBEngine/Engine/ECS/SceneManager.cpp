@@ -1,7 +1,7 @@
 #include "SceneManager.h"
 #include "../Scripting/SceneLoader.h"
+#include "../Core/Logger.h"
 #include <cstdio>
-#include "../RTBEngine.h"
 
 namespace RTBEngine {
     namespace ECS {
@@ -9,6 +9,12 @@ namespace RTBEngine {
         SceneManager& SceneManager::GetInstance() {
             static SceneManager instance;
             return instance;
+        }
+
+        SceneManager::SceneManager() = default;
+
+        SceneManager::~SceneManager() {
+            Shutdown();
         }
 
         bool SceneManager::Initialize() {

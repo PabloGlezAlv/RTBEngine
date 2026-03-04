@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "../RTBEngineAPI.h"
 #include "../ECS/Component.h"
 #include "RectTransform.h"
 #include "../Math/Vectors/Vector2.h"
@@ -7,7 +8,7 @@
 namespace RTBEngine {
 	namespace UI {
 
-		class UIElement : public ECS::Component {
+		class RTB_API UIElement : public ECS::Component {
 		public:
 			UIElement();
 			virtual ~UIElement();

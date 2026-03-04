@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <SDL.h>
 #include "GL/glew.h"
 #include <string>
@@ -7,7 +8,7 @@
 namespace RTBEngine {
     namespace Core {
 
-        class Window {
+        class RTB_API Window {
         public:
 			Window(const std::string& title, int width, int height, bool fullscreen = false, bool maximized = false);
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "../../RTBEngineAPI.h"
 #include "../../Math/Math.h"
 
 namespace RTBEngine {
@@ -10,7 +11,7 @@ namespace RTBEngine {
             Spot
         };
 
-        class Light {
+        class RTB_API Light {
         public:
             Light(LightType type);
             virtual ~Light() = default;

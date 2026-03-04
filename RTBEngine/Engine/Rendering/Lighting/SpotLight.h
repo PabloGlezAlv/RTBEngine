@@ -1,11 +1,12 @@
 #pragma once
+#include "../../RTBEngineAPI.h"
 #include "Light.h"
 #include "../Shader.h"
 
 namespace RTBEngine {
     namespace Rendering {
 
-        class SpotLight : public Light {
+        class RTB_API SpotLight : public Light {
         public:
             SpotLight();
             SpotLight(const Math::Vector3& position, const Math::Vector3& direction,
@@ -40,8 +41,8 @@ namespace RTBEngine {
             Math::Vector3 direction;
 
             // Cone (stored as cosine for shader efficiency)
-            float innerCutOff = 0.9763f;   // cos(12.5°)
-            float outerCutOff = 0.9659f;   // cos(15°)
+            float innerCutOff = 0.9763f;   // cos(12.5ï¿½)
+            float outerCutOff = 0.9659f;   // cos(15ï¿½)
 
             // Attenuation
             float constant = 1.0f;

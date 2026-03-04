@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <string>
 
 namespace RTBEngine {
@@ -14,7 +15,7 @@ namespace RTBEngine {
 
         class GameObject;
 
-        class Component {
+        class RTB_API Component {
         public:
             Component();
             virtual ~Component();

@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "Component.h"
 #include "../Reflection/PropertyMacros.h"
 #include "../Rendering/Camera.h"
@@ -7,7 +8,7 @@
 namespace RTBEngine {
     namespace ECS {
 
-        class CameraComponent : public Component {
+        class RTB_API CameraComponent : public Component {
         public:
             CameraComponent();
             ~CameraComponent();

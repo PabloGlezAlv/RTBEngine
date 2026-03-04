@@ -7,7 +7,7 @@ echo ===========================================
 
 set SOURCE_DIR=RTBEngine\Engine
 set THIRD_PARTY_DIR=RTBEngine\ThirdParty
-set OUTPUT_DIR=RTBEngine_SDK
+set OUTPUT_DIR=..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK
 
 :: 0. Find MSBuild
 echo Locating MSBuild...
@@ -156,6 +156,14 @@ copy "%THIRD_PARTY_DIR%\glew-2.1.0\bin\Release\x64\glew32.dll" "%OUTPUT_DIR%\Bin
 copy "%THIRD_PARTY_DIR%\assimp\bin\x64\assimp-%TOOLSET%-mt.dll" "%OUTPUT_DIR%\Bin\" >nul
 copy "%THIRD_PARTY_DIR%\fmod\api\core\lib\x64\fmod.dll" "%OUTPUT_DIR%\Bin\" >nul
 copy "%THIRD_PARTY_DIR%\lua\lua54.dll" "%OUTPUT_DIR%\Bin\" >nul
+
+:: RTBEngine is now a DLL — copy it alongside the other runtime DLLs
+echo Copying RTBEngine.dll...
+if exist "RTBEngine\x64\Release\RTBEngine.dll" (
+    copy "RTBEngine\x64\Release\RTBEngine.dll" "%OUTPUT_DIR%\Bin\" >nul
+) else (
+    echo [WARN] RTBEngine.dll [Release] not found.
+)
 
 :: Note: Assimp dependencies (zlib, kubazip, minizip, poly2tri, pugixml) are statically
 :: linked into assimp-%TOOLSET%-mt.dll, so no additional dependency DLLs are needed.

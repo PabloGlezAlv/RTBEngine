@@ -1,5 +1,5 @@
 #pragma once
-
+#include "../RTBEngineAPI.h"
 #include "PhysicsWorld.h"
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
@@ -33,7 +33,7 @@ namespace RTBEngine {
             }
         };
 
-        class PhysicsSystem {
+        class RTB_API PhysicsSystem {
         public:
             PhysicsSystem(PhysicsWorld* physicsWorld);
             ~PhysicsSystem();

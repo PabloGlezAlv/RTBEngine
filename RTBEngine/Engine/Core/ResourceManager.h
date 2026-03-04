@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "../Rendering/Shader.h"
 #include "../Rendering/Texture.h"
 #include "../Rendering/Mesh.h"
@@ -21,7 +22,7 @@ namespace RTBEngine {
 namespace RTBEngine {
     namespace Core {
 
-        class ResourceManager {
+        class RTB_API ResourceManager {
         public:
             // Default asset paths
             static constexpr const char* DEFAULT_TEXTURE_PATH = "Default/Textures/default.png";
@@ -88,7 +89,7 @@ namespace RTBEngine {
             void Clear();
 
         private:
-            ResourceManager() = default;
+            ResourceManager();
             ~ResourceManager();
 
             std::unordered_map<std::string, std::unique_ptr<Rendering::Shader>> shaders;

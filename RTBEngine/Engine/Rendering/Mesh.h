@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <GL/glew.h>
 #include <vector>
 #include "Vertex.h"
@@ -9,7 +10,7 @@
 namespace RTBEngine {
     namespace Rendering {
 
-        class Mesh {
+        class RTB_API Mesh {
         public:
             Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices);
             ~Mesh();

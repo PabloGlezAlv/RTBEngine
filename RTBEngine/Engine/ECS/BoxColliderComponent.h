@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "Component.h"
 #include "../Math/Vectors/Vector3.h"
 #include "../Reflection/PropertyMacros.h"
@@ -15,7 +16,7 @@ class btCollisionObject;
 namespace RTBEngine {
 	namespace ECS {
 
-		class BoxColliderComponent : public Component {
+		class RTB_API BoxColliderComponent : public Component {
 		public:
 			BoxColliderComponent();
 			virtual ~BoxColliderComponent();

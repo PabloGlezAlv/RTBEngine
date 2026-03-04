@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "Shader.h"
 #include "Texture.h"
 #include "../Math/Math.h"
@@ -6,7 +7,7 @@
 namespace RTBEngine {
     namespace Rendering {
 
-        class Material {
+        class RTB_API Material {
         public:
             Material(Shader* shader);
             ~Material();

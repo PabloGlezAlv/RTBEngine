@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <string>
 #include <map>
 
@@ -7,7 +8,7 @@ struct ImFont;
 namespace RTBEngine {
 	namespace Rendering {
 
-		class Font {
+		class RTB_API Font {
 		public:
 			Font();
 			~Font();

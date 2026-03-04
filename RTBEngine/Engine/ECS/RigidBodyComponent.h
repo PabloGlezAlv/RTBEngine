@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "Component.h"
 #include "../Reflection/PropertyMacros.h"
 #include "../Physics/RigidBody.h"
@@ -7,7 +8,7 @@
 namespace RTBEngine {
     namespace ECS {
 
-        class RigidBodyComponent : public Component {
+        class RTB_API RigidBodyComponent : public Component {
         public:
             RigidBodyComponent();
             ~RigidBodyComponent();

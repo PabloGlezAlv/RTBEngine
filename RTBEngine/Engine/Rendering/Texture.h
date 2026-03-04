@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <GL/glew.h>
 #include <string>
 
@@ -16,7 +17,7 @@ namespace RTBEngine {
             MirroredRepeat
         };
 
-        class Texture {
+        class RTB_API Texture {
         public:
             Texture();
             ~Texture();

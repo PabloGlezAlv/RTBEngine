@@ -1,10 +1,11 @@
 #pragma once
+#include "../../RTBEngineAPI.h"
 #include <cmath>
 
 namespace RTBEngine {
     namespace Math {
 
-        class Vector2 {
+        class RTB_API Vector2 {
         public:
             float x, y;
 

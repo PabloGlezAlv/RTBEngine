@@ -1,11 +1,12 @@
 #pragma once
+#include "../../RTBEngineAPI.h"
 #include "Light.h"
 #include "../Shader.h"
 
 namespace RTBEngine {
     namespace Rendering {
 
-        class PointLight : public Light {
+        class RTB_API PointLight : public Light {
         public:
             PointLight();
             PointLight(const Math::Vector3& position, const Math::Vector3& color = Math::Vector3(1, 1, 1));

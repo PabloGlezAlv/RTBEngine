@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "Mesh.h"
 #include "../Animation/Skeleton.h"
 #include "../Animation/AnimationClip.h"
@@ -45,7 +46,7 @@ namespace RTBEngine {
             std::string modelDirectory;
         };
 
-        class ModelLoader {
+        class RTB_API ModelLoader {
         public:
             static ModelData LoadModelWithAnimations(const std::string& path);
 

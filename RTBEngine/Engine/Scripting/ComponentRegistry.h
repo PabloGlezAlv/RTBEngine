@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <string>
 #include <unordered_map>
 #include <functional>
@@ -12,7 +13,11 @@ namespace RTBEngine {
 namespace RTBEngine {
     namespace Scripting {
 
-        class ComponentRegistry {
+        // C4251: STL members in DLL-exported class are safe here because
+        // ComponentRegistry is a singleton — clients never copy or directly access them.
+        #pragma warning(push)
+        #pragma warning(disable: 4251)
+        class RTB_API ComponentRegistry {
         public:
             static ComponentRegistry& GetInstance();
 
@@ -38,6 +43,7 @@ namespace RTBEngine {
 
             std::unordered_map<std::string, std::function<ECS::Component* ()>> factories;
         };
+        #pragma warning(pop)
 
     }
 }

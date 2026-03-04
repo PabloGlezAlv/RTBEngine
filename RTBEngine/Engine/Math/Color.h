@@ -1,10 +1,11 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include "Vectors/Vector4.h"
 
 namespace RTBEngine {
     namespace Math {
 
-        struct Color {
+        struct RTB_API Color {
             float r, g, b, a;
 
             Color() : r(1.0f), g(1.0f), b(1.0f), a(1.0f) {}

@@ -1,11 +1,11 @@
 #pragma once
-
+#include "../RTBEngineAPI.h"
 #include "Collider.h"
 
 namespace RTBEngine {
     namespace Physics {
 
-        class SphereCollider : public Collider {
+        class RTB_API SphereCollider : public Collider {
         public:
             SphereCollider();
             SphereCollider(float radius);

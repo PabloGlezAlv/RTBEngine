@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <memory>
 #include "Framebuffer.h"
 #include "Texture.h"
@@ -6,7 +7,7 @@
 namespace RTBEngine {
     namespace Rendering {
 
-        class ShadowMap {
+        class RTB_API ShadowMap {
         public:
             ShadowMap(int resolution = 1024);
             ~ShadowMap();
