@@ -7,6 +7,7 @@
 #include "../EventSystem/IPointerUpHandler.h"
 #include "../EventSystem/IPointerClickHandler.h"
 #include "../../Reflection/PropertyMacros.h"
+#include "../../RTBEngineAPI.h"
 #include <functional>
 
 namespace RTBEngine {
@@ -21,7 +22,7 @@ namespace RTBEngine {
 			Disabled
 		};
 
-		class UIButton : public ECS::Component,
+		class RTB_API UIButton : public ECS::Component,
 						 public IPointerEnterHandler,
 						 public IPointerExitHandler,
 						 public IPointerDownHandler,

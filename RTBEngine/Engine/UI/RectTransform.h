@@ -2,11 +2,12 @@
 
 #include "../Math/Vectors/Vector2.h"
 #include "../Math/Vectors/Vector4.h"
+#include "../RTBEngineAPI.h"
 
 namespace RTBEngine {
     namespace UI {
 
-        class RectTransform {
+        class RTB_API RectTransform {
         public:
             RectTransform();
             ~RectTransform() = default;

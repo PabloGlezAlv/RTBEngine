@@ -64,6 +64,11 @@ bool RTBEngine::Core::Application::InitializeImGui()
 
 	return true;
 }
+ 
+ void* RTBEngine::Core::Application::GetImGuiContext()
+ {
+ 	return ImGui::GetCurrentContext();
+ }
 
 void RTBEngine::Core::Application::ShutdownImGui()
 {

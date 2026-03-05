@@ -19,7 +19,7 @@ namespace RTBEngine {
 			Right
 		};
 
-		class UIText : public UIElement {
+		class RTB_API UIText : public UIElement {
 		public:
 			UIText();
 			virtual ~UIText();

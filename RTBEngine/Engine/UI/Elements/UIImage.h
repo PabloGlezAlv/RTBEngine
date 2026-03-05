@@ -7,7 +7,7 @@
 namespace RTBEngine {
 	namespace UI {
 
-		class UIImage : public UIElement {
+		class RTB_API UIImage : public UIElement {
 		public:
 			UIImage();
 			virtual ~UIImage();

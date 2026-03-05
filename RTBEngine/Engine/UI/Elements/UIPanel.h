@@ -6,7 +6,7 @@
 namespace RTBEngine {
 	namespace UI {
 
-		class UIPanel : public UIElement {
+		class RTB_API UIPanel : public UIElement {
 		public:
 			UIPanel();
 			virtual ~UIPanel();

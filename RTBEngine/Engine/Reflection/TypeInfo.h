@@ -60,9 +60,9 @@ namespace RTBEngine {
 
         // Range metadata for numeric sliders
         struct Range {
-            float min;
-            float max;
-            Range(float min = 0.0f, float max = 1.0f) : min(min), max(max) {}
+            float minValue;
+            float maxValue;
+            Range(float minVal = 0.0f, float maxVal = 1.0f) : minValue(minVal), maxValue(maxVal) {}
         };
 
         // C4251: STL members in DLL-exported types are safe here — reflection types

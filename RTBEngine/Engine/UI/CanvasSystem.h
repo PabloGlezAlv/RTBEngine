@@ -2,6 +2,7 @@
 #include "../Math/Vectors/Vector2.h"
 #include "../Math/Vectors/Vector4.h"
 #include "EventSystem/PointerEventData.h"
+#include "../RTBEngineAPI.h"
 #include <vector>
 
 struct ImDrawList;
@@ -16,7 +17,7 @@ namespace RTBEngine {
 		class Canvas;
 		class UIElement;
 
-		class CanvasSystem {
+		class RTB_API CanvasSystem {
 		public:
 			static CanvasSystem& GetInstance() {
 				static CanvasSystem instance;

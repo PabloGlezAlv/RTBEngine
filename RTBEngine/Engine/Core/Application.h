@@ -37,6 +37,7 @@ namespace RTBEngine {
 			bool IsRunning() const { return isRunning; }
 			void RequestExit() { isRunning = false; }
 			Window* GetWindow() { return window.get(); }
+			void* GetImGuiContext();
 			const ApplicationConfig& GetConfig() const { return config; }
 
 			void ProcessInput();
