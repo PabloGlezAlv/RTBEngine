@@ -158,9 +158,26 @@ copy "%THIRD_PARTY_DIR%\fmod\api\core\lib\x64\fmod.dll" "%OUTPUT_DIR%\Bin\" >nul
 copy "%THIRD_PARTY_DIR%\lua\lua54.dll" "%OUTPUT_DIR%\Bin\" >nul
 
 :: RTBEngine is now a DLL — copy it alongside the other runtime DLLs
-echo Copying RTBEngine.dll...
+echo Copying RTBEngine.dll [Release] to SDK Bin...
 if exist "RTBEngine\x64\Release\RTBEngine.dll" (
     copy "RTBEngine\x64\Release\RTBEngine.dll" "%OUTPUT_DIR%\Bin\" >nul
+) else (
+    echo [WARN] RTBEngine.dll [Release] not found.
+)
+
+:: Copy RTBEngine.dll to the editor binary folders so the editor picks up the latest build
+set EDITOR_OUT=..\RTBEngineEditor\RTBEngineEditor\x64
+echo Copying RTBEngine.dll [Debug] to editor output...
+if exist "RTBEngine\x64\Debug\RTBEngine.dll" (
+    if not exist "%EDITOR_OUT%\Debug" mkdir "%EDITOR_OUT%\Debug"
+    copy "RTBEngine\x64\Debug\RTBEngine.dll" "%EDITOR_OUT%\Debug\" >nul
+) else (
+    echo [WARN] RTBEngine.dll [Debug] not found.
+)
+echo Copying RTBEngine.dll [Release] to editor output...
+if exist "RTBEngine\x64\Release\RTBEngine.dll" (
+    if not exist "%EDITOR_OUT%\Release" mkdir "%EDITOR_OUT%\Release"
+    copy "RTBEngine\x64\Release\RTBEngine.dll" "%EDITOR_OUT%\Release\" >nul
 ) else (
     echo [WARN] RTBEngine.dll [Release] not found.
 )

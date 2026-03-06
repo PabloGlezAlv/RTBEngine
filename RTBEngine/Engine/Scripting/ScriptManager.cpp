@@ -29,8 +29,8 @@
 //
 // GetProcAddress(hModule, name)
 //   Resolves the address of an exported symbol by name at runtime.
-//   Not used here — component registration happens automatically via static
-//   initializers when the DLL is loaded, so no explicit entry point is needed.
+//   Used to call RTBScripts_RegisterAll exported from GameScripts.dll, which
+//   bridges the DLL-side TypeRegistry into the EXE-side TypeRegistry.
 
 namespace RTBEngine {
     namespace Scripting {
@@ -46,6 +46,75 @@ namespace RTBEngine {
             UnloadScripts();
         }
 
+        // ABI-safe property descriptor — mirrors the struct in dllmain.cpp.
+        // Only POD, no STL, safe to pass between /MT modules.
+        struct RTBPropertyDesc {
+            const char* name;
+            const char* displayName;
+            int         type;
+            size_t      offset;
+            size_t      size;
+            int         flags;
+            float       rangeMin;
+            float       rangeMax;
+            int         hasRange;
+            const char* componentTypeName;
+        };
+
+        // State shared between the three bridge callbacks during a single type registration.
+        static RTBEngine::Reflection::TypeInfo* s_pendingInfo = nullptr;
+        static std::vector<std::string>         s_pendingTypes;
+
+        static void BridgeBeginType(const char* typeName, void* factory)
+        {
+            auto& reg = RTBEngine::Reflection::TypeRegistry::GetInstance();
+            const RTBEngine::Reflection::TypeInfo* existing = reg.GetTypeInfo(typeName);
+            if (existing) {
+                // Type already registered (e.g. engine built-ins) — skip.
+                s_pendingInfo = nullptr;
+                return;
+            }
+            // Register the new script type in the EXE's registry.
+            // The factory pointer comes from the DLL-side TypeInfo (same RTBEngine.dll
+            // instance), so it is safe to copy the std::function — no module boundary crossed.
+            RTBEngine::Reflection::TypeInfo newInfo(typeName);
+            auto* dllTypeInfo = static_cast<RTBEngine::Reflection::TypeInfo*>(factory);
+            if (dllTypeInfo) {
+                newInfo.SetFactory([dllTypeInfo]() { return dllTypeInfo->Create(); });
+            }
+            reg.RegisterType(typeName, newInfo);
+            s_pendingInfo = const_cast<RTBEngine::Reflection::TypeInfo*>(reg.GetTypeInfo(typeName));
+            s_pendingTypes.push_back(typeName);
+        }
+
+        static void BridgePropCallback(const RTBPropertyDesc* desc)
+        {
+            if (!s_pendingInfo || !desc) return;
+
+            RTBEngine::Reflection::PropertyInfo prop;
+            prop.name              = desc->name;
+            prop.displayName       = desc->displayName;
+            prop.type              = static_cast<RTBEngine::Reflection::PropertyType>(desc->type);
+            prop.offset            = desc->offset;
+            prop.size              = desc->size;
+            prop.flags             = static_cast<RTBEngine::Reflection::PropertyFlags>(desc->flags);
+            prop.componentTypeName = desc->componentTypeName ? desc->componentTypeName : "";
+            if (desc->hasRange) {
+                prop.range = RTBEngine::Reflection::Range(desc->rangeMin, desc->rangeMax);
+            }
+            s_pendingInfo->AddProperty(prop);
+        }
+
+        static void BridgeEndType()
+        {
+            s_pendingInfo = nullptr;
+        }
+
+        void ScriptManager::ScriptTypeReceiver(const char* /*name*/, const RTBEngine::Reflection::TypeInfo& /*info*/)
+        {
+            // Unused — replaced by the three-callback ABI-safe bridge.
+        }
+
         bool ScriptManager::LoadScripts(const std::string& dllPath)
         {
             if (dllHandle != nullptr) {
@@ -53,13 +122,35 @@ namespace RTBEngine {
             }
 
             // LoadLibraryA maps the DLL and runs all static initializers inside it.
-            // RTB_END_REGISTER uses a static object whose constructor calls
-            // TypeRegistry::RegisterType — so components self-register here.
+            // RTB_END_REGISTER statics register components into the DLL's own copy
+            // of TypeRegistry (separate from the EXE's due to static lib linkage).
             dllHandle = LoadLibraryA(dllPath.c_str());
             if (dllHandle == nullptr) {
                 DWORD error = GetLastError();
                 RTB_ERROR("ScriptManager: Failed to load '" + dllPath + "' (error " + std::to_string(error) + ")");
                 return false;
+            }
+
+            // Bridge DLL types into the EXE registry using a POD-only ABI.
+            // Three C callbacks receive primitive data; no STL crosses the boundary.
+            using BridgeFunc = void(*)(
+                void(*)(const char*, void*),
+                void(*)(const RTBPropertyDesc*),
+                void(*)());
+            auto* bridge = reinterpret_cast<BridgeFunc>(
+                GetProcAddress(dllHandle, "RTBScripts_RegisterAll"));
+            if (bridge) {
+                loadedScriptTypes.clear();
+                s_pendingTypes.clear();
+                bridge(&BridgeBeginType, &BridgePropCallback, &BridgeEndType);
+                loadedScriptTypes = std::move(s_pendingTypes);
+                if (loadedScriptTypes.empty()) {
+                    RTB_INFO("ScriptManager: No script components registered in '" + dllPath + "'");
+                } else {
+                    for (const auto& name : loadedScriptTypes) {
+                        RTB_INFO("ScriptManager: Registered component '" + name + "'");
+                    }
+                }
             }
 
             loadedPath = dllPath;
@@ -73,10 +164,14 @@ namespace RTBEngine {
                 return;
             }
 
+            // Remove all types that came from this DLL before freeing it.
+            // Component factories inside the DLL become dangling pointers after FreeLibrary.
+            for (const auto& typeName : loadedScriptTypes) {
+                RTBEngine::Reflection::TypeRegistry::GetInstance().UnregisterType(typeName);
+            }
+            loadedScriptTypes.clear();
+
             // FreeLibrary runs DllMain(DLL_PROCESS_DETACH) and destroys static objects.
-            // After this, all component factories registered from this DLL become
-            // dangling pointers — the caller must clear TypeRegistry entries first
-            // if hot-reloading is needed.
             FreeLibrary(dllHandle);
             dllHandle = nullptr;
 

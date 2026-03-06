@@ -49,293 +49,158 @@ private:
 
 // Registers a public property
 #define RTB_PROPERTY(PropName)                                                          \
-                info.AddProperty(                                                       \
-                    RTBEngine::Reflection::MakePropertyInfo<decltype(std::declval<ThisClass>().PropName)>( \
-                        #PropName,                                                      \
-                        offsetof(ThisClass, PropName),                                  \
-                        RTBEngine::Reflection::PropertyFlags::None                      \
-                    )                                                                   \
+                info.AddPropertyPOD(                                                    \
+                    #PropName,                                                          \
+                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
+                    offsetof(ThisClass, PropName),                                      \
+                    sizeof(std::declval<ThisClass>().PropName),                          \
+                    RTBEngine::Reflection::PropertyFlags::None                           \
                 );
 
 // Registers a private property marked with RTB_SERIALIZE
 #define RTB_PROPERTY_SERIALIZED(PropName)                                               \
-                info.AddProperty(                                                       \
-                    RTBEngine::Reflection::MakePropertyInfo<decltype(std::declval<ThisClass>().PropName)>( \
-                        #PropName,                                                      \
-                        offsetof(ThisClass, PropName),                                  \
-                        RTBEngine::Reflection::PropertyFlags::Serialize                 \
-                    )                                                                   \
+                info.AddPropertyPOD(                                                    \
+                    #PropName,                                                          \
+                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
+                    offsetof(ThisClass, PropName),                                      \
+                    sizeof(std::declval<ThisClass>().PropName),                          \
+                    RTBEngine::Reflection::PropertyFlags::Serialize                      \
                 );
 
 // Registers a property with range for sliders
 #define RTB_PROPERTY_RANGE(PropName, Min, Max)                                          \
-                {                                                                       \
-                    auto prop = RTBEngine::Reflection::MakePropertyInfo<decltype(std::declval<ThisClass>().PropName)>( \
-                        #PropName,                                                      \
-                        offsetof(ThisClass, PropName),                                  \
-                        RTBEngine::Reflection::PropertyFlags::None                      \
-                    );                                                                  \
-                    prop.range = RTBEngine::Reflection::Range(Min, Max);                \
-                    info.AddProperty(prop);                                             \
-                }
+                info.AddPropertyPODRange(                                               \
+                    #PropName,                                                          \
+                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
+                    offsetof(ThisClass, PropName),                                      \
+                    sizeof(std::declval<ThisClass>().PropName),                          \
+                    RTBEngine::Reflection::PropertyFlags::None,                          \
+                    static_cast<float>(Min),                                             \
+                    static_cast<float>(Max)                                              \
+                );
 
 // Registers an enum property
 #define RTB_PROPERTY_ENUM(PropName, ...)                                                \
                 {                                                                       \
-                    auto prop = RTBEngine::Reflection::MakePropertyInfo<decltype(std::declval<ThisClass>().PropName)>( \
+                    const char* _rtb_enum_names[] = { __VA_ARGS__ };                    \
+                    info.AddPropertyPODEnum(                                             \
                         #PropName,                                                      \
                         offsetof(ThisClass, PropName),                                  \
-                        RTBEngine::Reflection::PropertyFlags::None                      \
+                        sizeof(std::declval<ThisClass>().PropName),                      \
+                        RTBEngine::Reflection::PropertyFlags::None,                      \
+                        _rtb_enum_names,                                                 \
+                        static_cast<int>(sizeof(_rtb_enum_names) / sizeof(_rtb_enum_names[0])) \
                     );                                                                  \
-                    prop.type = RTBEngine::Reflection::PropertyType::Enum;              \
-                    prop.enumNames = { __VA_ARGS__ };                                   \
-                    info.AddProperty(prop);                                             \
                 }
 
 // Registers a color property
 #define RTB_PROPERTY_COLOR(PropName)                                                    \
-                {                                                                       \
-                    auto prop = RTBEngine::Reflection::MakePropertyInfo<decltype(std::declval<ThisClass>().PropName)>( \
-                        #PropName,                                                      \
-                        offsetof(ThisClass, PropName),                                  \
-                        RTBEngine::Reflection::PropertyFlags::None                      \
-                    );                                                                  \
-                    prop.type = RTBEngine::Reflection::PropertyType::Color;             \
-                    info.AddProperty(prop);                                             \
-                }
+                info.AddPropertyPOD(                                                    \
+                    #PropName,                                                          \
+                    RTBEngine::Reflection::PropertyType::Color,                          \
+                    offsetof(ThisClass, PropName),                                      \
+                    sizeof(std::declval<ThisClass>().PropName),                          \
+                    RTBEngine::Reflection::PropertyFlags::None                           \
+                );
 
 // Registers a property hidden from inspector
 #define RTB_PROPERTY_HIDDEN(PropName)                                                   \
-                info.AddProperty(                                                       \
-                    RTBEngine::Reflection::MakePropertyInfo<decltype(std::declval<ThisClass>().PropName)>( \
-                        #PropName,                                                      \
-                        offsetof(ThisClass, PropName),                                  \
-                        RTBEngine::Reflection::PropertyFlags::HideInInspector           \
-                    )                                                                   \
+                info.AddPropertyPOD(                                                    \
+                    #PropName,                                                          \
+                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
+                    offsetof(ThisClass, PropName),                                      \
+                    sizeof(std::declval<ThisClass>().PropName),                          \
+                    RTBEngine::Reflection::PropertyFlags::HideInInspector                \
                 );
 
 // Registers a read-only property
 #define RTB_PROPERTY_READONLY(PropName)                                                 \
-                info.AddProperty(                                                       \
-                    RTBEngine::Reflection::MakePropertyInfo<decltype(std::declval<ThisClass>().PropName)>( \
-                        #PropName,                                                      \
-                        offsetof(ThisClass, PropName),                                  \
-                        RTBEngine::Reflection::PropertyFlags::ReadOnly                  \
-                    )                                                                   \
+                info.AddPropertyPOD(                                                    \
+                    #PropName,                                                          \
+                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
+                    offsetof(ThisClass, PropName),                                      \
+                    sizeof(std::declval<ThisClass>().PropName),                          \
+                    RTBEngine::Reflection::PropertyFlags::ReadOnly                       \
                 );
 
 // Registers a Texture* property
 #define RTB_PROPERTY_TEXTURE(PropName)                                                  \
-                {                                                                       \
-                    RTBEngine::Reflection::PropertyInfo prop;                           \
-                    prop.name = #PropName;                                              \
-                    prop.displayName = #PropName;                                       \
-                    prop.offset = offsetof(ThisClass, PropName);                        \
-                    prop.size = sizeof(void*);                                          \
-                    prop.type = RTBEngine::Reflection::PropertyType::TextureRef;        \
-                    prop.flags = RTBEngine::Reflection::PropertyFlags::None;            \
-                    info.AddProperty(prop);                                             \
-                }
+                info.AddPropertyPOD(                                                    \
+                    #PropName,                                                          \
+                    RTBEngine::Reflection::PropertyType::TextureRef,                     \
+                    offsetof(ThisClass, PropName),                                      \
+                    sizeof(void*),                                                       \
+                    RTBEngine::Reflection::PropertyFlags::None                           \
+                );
 
 // Registers an AudioClip* property
 #define RTB_PROPERTY_AUDIOCLIP(PropName)                                                \
-                {                                                                       \
-                    RTBEngine::Reflection::PropertyInfo prop;                           \
-                    prop.name = #PropName;                                              \
-                    prop.displayName = #PropName;                                       \
-                    prop.offset = offsetof(ThisClass, PropName);                        \
-                    prop.size = sizeof(void*);                                          \
-                    prop.type = RTBEngine::Reflection::PropertyType::AudioClipRef;      \
-                    prop.flags = RTBEngine::Reflection::PropertyFlags::None;            \
-                    info.AddProperty(prop);                                             \
-                }
+                info.AddPropertyPOD(                                                    \
+                    #PropName,                                                          \
+                    RTBEngine::Reflection::PropertyType::AudioClipRef,                   \
+                    offsetof(ThisClass, PropName),                                      \
+                    sizeof(void*),                                                       \
+                    RTBEngine::Reflection::PropertyFlags::None                           \
+                );
 
 // Registers a Mesh* property
 #define RTB_PROPERTY_MESH(PropName)                                                     \
-                {                                                                       \
-                    RTBEngine::Reflection::PropertyInfo prop;                           \
-                    prop.name = #PropName;                                              \
-                    prop.displayName = #PropName;                                       \
-                    prop.offset = offsetof(ThisClass, PropName);                        \
-                    prop.size = sizeof(void*);                                          \
-                    prop.type = RTBEngine::Reflection::PropertyType::MeshRef;           \
-                    prop.flags = RTBEngine::Reflection::PropertyFlags::None;            \
-                    info.AddProperty(prop);                                             \
-                }
+                info.AddPropertyPOD(                                                    \
+                    #PropName,                                                          \
+                    RTBEngine::Reflection::PropertyType::MeshRef,                        \
+                    offsetof(ThisClass, PropName),                                      \
+                    sizeof(void*),                                                       \
+                    RTBEngine::Reflection::PropertyFlags::None                           \
+                );
 
 // Registers a Font* property
 #define RTB_PROPERTY_FONT(PropName)                                                     \
-                {                                                                       \
-                    RTBEngine::Reflection::PropertyInfo prop;                           \
-                    prop.name = #PropName;                                              \
-                    prop.displayName = #PropName;                                       \
-                    prop.offset = offsetof(ThisClass, PropName);                        \
-                    prop.size = sizeof(void*);                                          \
-                    prop.type = RTBEngine::Reflection::PropertyType::FontRef;           \
-                    prop.flags = RTBEngine::Reflection::PropertyFlags::None;            \
-                    info.AddProperty(prop);                                             \
-                }
+                info.AddPropertyPOD(                                                    \
+                    #PropName,                                                          \
+                    RTBEngine::Reflection::PropertyType::FontRef,                        \
+                    offsetof(ThisClass, PropName),                                      \
+                    sizeof(void*),                                                       \
+                    RTBEngine::Reflection::PropertyFlags::None                           \
+                );
 
 // Registers a GameObject* property
 #define RTB_PROPERTY_GAMEOBJECT(PropName)                                               \
-                {                                                                       \
-                    RTBEngine::Reflection::PropertyInfo prop;                           \
-                    prop.name = #PropName;                                              \
-                    prop.displayName = #PropName;                                       \
-                    prop.offset = offsetof(ThisClass, PropName);                        \
-                    prop.size = sizeof(void*);                                          \
-                    prop.type = RTBEngine::Reflection::PropertyType::GameObjectRef;     \
-                    prop.flags = RTBEngine::Reflection::PropertyFlags::None;            \
-                    info.AddProperty(prop);                                             \
-                }
+                info.AddPropertyPOD(                                                    \
+                    #PropName,                                                          \
+                    RTBEngine::Reflection::PropertyType::GameObjectRef,                  \
+                    offsetof(ThisClass, PropName),                                      \
+                    sizeof(void*),                                                       \
+                    RTBEngine::Reflection::PropertyFlags::None                           \
+                );
 
 // Registers a Component* property with target type filtering
 #define RTB_PROPERTY_COMPONENT(PropName, ComponentType)                                 \
-                {                                                                       \
-                    RTBEngine::Reflection::PropertyInfo prop;                           \
-                    prop.name = #PropName;                                              \
-                    prop.displayName = #PropName;                                       \
-                    prop.offset = offsetof(ThisClass, PropName);                        \
-                    prop.size = sizeof(void*);                                          \
-                    prop.type = RTBEngine::Reflection::PropertyType::ComponentRef;      \
-                    prop.componentTypeName = #ComponentType;                            \
-                    prop.flags = RTBEngine::Reflection::PropertyFlags::None;            \
-                    info.AddProperty(prop);                                             \
-                }
+                info.AddPropertyPODTyped(                                               \
+                    #PropName,                                                          \
+                    RTBEngine::Reflection::PropertyType::ComponentRef,                   \
+                    offsetof(ThisClass, PropName),                                      \
+                    sizeof(void*),                                                       \
+                    RTBEngine::Reflection::PropertyFlags::None,                          \
+                    #ComponentType                                                       \
+                );
 
 // Ends property registration - pass ClassName again
-#define RTB_END_REGISTER(ClassName)                                                     \
-                RTBEngine::Reflection::TypeRegistry::GetInstance().RegisterType(        \
-                    info.GetTypeName(), info);                                          \
-            }                                                                           \
-        };                                                                              \
-        static ClassName##_TypeRegistrar _##ClassName##_registrar;                      \
-    }
+#define RTB_END_REGISTER(ClassName)                                                                     RTBEngine::Reflection::TypeRegistry::GetInstance().RegisterType(                             #ClassName, info);                                                               }                                                                                   };                                                                                      static ClassName##_TypeRegistrar _##ClassName##_registrar;                          }
 
 namespace RTBEngine {
     namespace Reflection {
 
-        // Base template - unknown type
-        template<typename T>
-        PropertyInfo MakePropertyInfo(const char* name, size_t offset, PropertyFlags flags) {
-            PropertyInfo prop;
-            prop.name = name;
-            prop.displayName = name;
-            prop.offset = offset;
-            prop.size = sizeof(T);
-            prop.flags = flags;
-            prop.type = PropertyType::Unknown;
-            return prop;
-        }
+        // Compile-time property type deduction — returns a plain enum, no code generation in caller
+        template<typename T> constexpr PropertyType DeducePropertyType() { return PropertyType::Unknown; }
+        template<> constexpr PropertyType DeducePropertyType<bool>() { return PropertyType::Bool; }
+        template<> constexpr PropertyType DeducePropertyType<int>() { return PropertyType::Int; }
+        template<> constexpr PropertyType DeducePropertyType<float>() { return PropertyType::Float; }
+        template<> constexpr PropertyType DeducePropertyType<double>() { return PropertyType::Double; }
+        template<> constexpr PropertyType DeducePropertyType<std::string>() { return PropertyType::String; }
+        template<> constexpr PropertyType DeducePropertyType<RTBEngine::Math::Vector2>() { return PropertyType::Vector2; }
+        template<> constexpr PropertyType DeducePropertyType<RTBEngine::Math::Vector3>() { return PropertyType::Vector3; }
+        template<> constexpr PropertyType DeducePropertyType<RTBEngine::Math::Vector4>() { return PropertyType::Vector4; }
+        template<> constexpr PropertyType DeducePropertyType<RTBEngine::Math::Quaternion>() { return PropertyType::Quaternion; }
 
-        // Specializations for primitive types
-        template<>
-        inline PropertyInfo MakePropertyInfo<bool>(const char* name, size_t offset, PropertyFlags flags) {
-            PropertyInfo prop;
-            prop.name = name;
-            prop.displayName = name;
-            prop.offset = offset;
-            prop.size = sizeof(bool);
-            prop.flags = flags;
-            prop.type = PropertyType::Bool;
-            return prop;
-        }
-
-        template<>
-        inline PropertyInfo MakePropertyInfo<int>(const char* name, size_t offset, PropertyFlags flags) {
-            PropertyInfo prop;
-            prop.name = name;
-            prop.displayName = name;
-            prop.offset = offset;
-            prop.size = sizeof(int);
-            prop.flags = flags;
-            prop.type = PropertyType::Int;
-            return prop;
-        }
-
-        template<>
-        inline PropertyInfo MakePropertyInfo<float>(const char* name, size_t offset, PropertyFlags flags) {
-            PropertyInfo prop;
-            prop.name = name;
-            prop.displayName = name;
-            prop.offset = offset;
-            prop.size = sizeof(float);
-            prop.flags = flags;
-            prop.type = PropertyType::Float;
-            return prop;
-        }
-
-        template<>
-        inline PropertyInfo MakePropertyInfo<double>(const char* name, size_t offset, PropertyFlags flags) {
-            PropertyInfo prop;
-            prop.name = name;
-            prop.displayName = name;
-            prop.offset = offset;
-            prop.size = sizeof(double);
-            prop.flags = flags;
-            prop.type = PropertyType::Double;
-            return prop;
-        }
-
-        template<>
-        inline PropertyInfo MakePropertyInfo<std::string>(const char* name, size_t offset, PropertyFlags flags) {
-            PropertyInfo prop;
-            prop.name = name;
-            prop.displayName = name;
-            prop.offset = offset;
-            prop.size = sizeof(std::string);
-            prop.flags = flags;
-            prop.type = PropertyType::String;
-            return prop;
-        }
-
-        template<>
-        inline PropertyInfo MakePropertyInfo<RTBEngine::Math::Vector2>(const char* name, size_t offset, PropertyFlags flags) {
-            PropertyInfo prop;
-            prop.name = name;
-            prop.displayName = name;
-            prop.offset = offset;
-            prop.size = sizeof(RTBEngine::Math::Vector2);
-            prop.flags = flags;
-            prop.type = PropertyType::Vector2;
-            return prop;
-        }
-
-        template<>
-        inline PropertyInfo MakePropertyInfo<RTBEngine::Math::Vector3>(const char* name, size_t offset, PropertyFlags flags) {
-            PropertyInfo prop;
-            prop.name = name;
-            prop.displayName = name;
-            prop.offset = offset;
-            prop.size = sizeof(RTBEngine::Math::Vector3);
-            prop.flags = flags;
-            prop.type = PropertyType::Vector3;
-            return prop;
-        }
-
-        template<>
-        inline PropertyInfo MakePropertyInfo<RTBEngine::Math::Vector4>(const char* name, size_t offset, PropertyFlags flags) {
-            PropertyInfo prop;
-            prop.name = name;
-            prop.displayName = name;
-            prop.offset = offset;
-            prop.size = sizeof(RTBEngine::Math::Vector4);
-            prop.flags = flags;
-            prop.type = PropertyType::Vector4;
-            return prop;
-        }
-
-        template<>
-        inline PropertyInfo MakePropertyInfo<RTBEngine::Math::Quaternion>(const char* name, size_t offset, PropertyFlags flags) {
-            PropertyInfo prop;
-            prop.name = name;
-            prop.displayName = name;
-            prop.offset = offset;
-            prop.size = sizeof(RTBEngine::Math::Quaternion);
-            prop.flags = flags;
-            prop.type = PropertyType::Quaternion;
-            return prop;
-        }
-
-    } 
+    }
 }

@@ -5,8 +5,8 @@
 namespace RTBEngine {
     namespace Reflection {
 
-        TypeInfo::TypeInfo(const std::string& typeName, FactoryFunc factory)
-            : typeName(typeName), factory(factory)
+        TypeInfo::TypeInfo(const char* typeName, FactoryFunc factory)
+            : typeName(typeName ? typeName : ""), factory(factory)
         {
         }
 
@@ -43,6 +43,54 @@ namespace RTBEngine {
             properties.push_back(prop);
         }
 
+        void TypeInfo::AddPropertyPOD(const char* name, PropertyType type, size_t offset, size_t size, PropertyFlags flags) {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.type = type;
+            prop.offset = offset;
+            prop.size = size;
+            prop.flags = flags;
+            properties.push_back(std::move(prop));
+        }
+
+        void TypeInfo::AddPropertyPODRange(const char* name, PropertyType type, size_t offset, size_t size, PropertyFlags flags, float rangeMin, float rangeMax) {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.type = type;
+            prop.offset = offset;
+            prop.size = size;
+            prop.flags = flags;
+            prop.range = Range(rangeMin, rangeMax);
+            properties.push_back(std::move(prop));
+        }
+
+        void TypeInfo::AddPropertyPODEnum(const char* name, size_t offset, size_t size, PropertyFlags flags, const char* const* enumNames, int enumCount) {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.type = PropertyType::Enum;
+            prop.offset = offset;
+            prop.size = size;
+            prop.flags = flags;
+            for (int i = 0; i < enumCount; ++i)
+                prop.enumNames.push_back(enumNames[i]);
+            properties.push_back(std::move(prop));
+        }
+
+        void TypeInfo::AddPropertyPODTyped(const char* name, PropertyType type, size_t offset, size_t size, PropertyFlags flags, const char* extraTypeName) {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.type = type;
+            prop.offset = offset;
+            prop.size = size;
+            prop.flags = flags;
+            prop.componentTypeName = extraTypeName ? extraTypeName : "";
+            properties.push_back(std::move(prop));
+        }
+
         TypeRegistry& TypeRegistry::GetInstance() {
             static TypeRegistry instance;
             return instance;
@@ -50,6 +98,10 @@ namespace RTBEngine {
 
         void TypeRegistry::RegisterType(const std::string& typeName, const TypeInfo& info) {
             types[typeName] = info;
+        }
+
+        void TypeRegistry::UnregisterType(const std::string& typeName) {
+            types.erase(typeName);
         }
 
         const TypeInfo* TypeRegistry::GetTypeInfo(const std::string& typeName) const {
@@ -71,6 +123,12 @@ namespace RTBEngine {
                 result.push_back(pair.first);
             }
             return result;
+        }
+
+        void TypeRegistry::ForEachType(void(*callback)(const char* typeName, const TypeInfo* info, void* userData), void* userData) const {
+            for (const auto& pair : types) {
+                callback(pair.first.c_str(), &pair.second, userData);
+            }
         }
 
         RTBEngine::ECS::Component* TypeRegistry::CreateComponent(const std::string& typeName) const {

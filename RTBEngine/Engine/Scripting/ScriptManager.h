@@ -1,6 +1,8 @@
 #pragma once
 #include "../RTBEngineAPI.h"
+#include "../Reflection/TypeInfo.h"
 #include <string>
+#include <vector>
 #include <Windows.h>
 
 namespace RTBEngine {
@@ -28,8 +30,11 @@ namespace RTBEngine {
             ScriptManager() = default;
             ~ScriptManager();
 
+            static void ScriptTypeReceiver(const char* name, const RTBEngine::Reflection::TypeInfo& info);
+
             HMODULE dllHandle = nullptr;
             std::string loadedPath;
+            std::vector<std::string> loadedScriptTypes;
         };
         #pragma warning(pop)
 

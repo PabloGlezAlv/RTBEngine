@@ -112,7 +112,7 @@ namespace RTBEngine {
             using FactoryFunc = std::function<ECS::Component*()>;
 
             TypeInfo() = default;
-            TypeInfo(const std::string& typeName, FactoryFunc factory = nullptr);
+            TypeInfo(const char* typeName, FactoryFunc factory = nullptr);
 
             const std::string& GetTypeName() const { return typeName; }
             const std::vector<PropertyInfo>& GetProperties() const { return properties; }
@@ -120,10 +120,15 @@ namespace RTBEngine {
             std::vector<const PropertyInfo*> GetInspectorProperties() const;
             std::vector<const PropertyInfo*> GetSerializableProperties() const;
             void AddProperty(const PropertyInfo& prop);
+            void AddPropertyPOD(const char* name, PropertyType type, size_t offset, size_t size, PropertyFlags flags);
+            void AddPropertyPODRange(const char* name, PropertyType type, size_t offset, size_t size, PropertyFlags flags, float rangeMin, float rangeMax);
+            void AddPropertyPODEnum(const char* name, size_t offset, size_t size, PropertyFlags flags, const char* const* enumNames, int enumCount);
+            void AddPropertyPODTyped(const char* name, PropertyType type, size_t offset, size_t size, PropertyFlags flags, const char* extraTypeName);
             bool HasProperties() const { return !properties.empty(); }
             size_t GetPropertyCount() const { return properties.size(); }
 
             ECS::Component* Create() const { return factory ? factory() : nullptr; }
+            void SetFactory(FactoryFunc f) { factory = f; }
 
         private:
             std::string typeName;
@@ -137,9 +142,11 @@ namespace RTBEngine {
             static TypeRegistry& GetInstance();
 
             void RegisterType(const std::string& typeName, const TypeInfo& info);
+            void UnregisterType(const std::string& typeName);
             const TypeInfo* GetTypeInfo(const std::string& typeName) const;
             bool HasType(const std::string& typeName) const;
             std::vector<std::string> GetRegisteredTypes() const;
+            void ForEachType(void(*callback)(const char* typeName, const TypeInfo* info, void* userData), void* userData) const;
             ECS::Component* CreateComponent(const std::string& typeName) const;
 
         private:
