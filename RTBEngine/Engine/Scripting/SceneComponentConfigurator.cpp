@@ -174,24 +174,6 @@ namespace RTBEngine {
                         }
                     }
                 }
-                else {
-                    std::string meshPath = ReadOptionalString(L, tableIndex, "mesh", "");
-                    if (meshPath.empty()) meshPath = ReadOptionalString(L, tableIndex, "meshRef", "");
-                    if (!meshPath.empty()) {
-                        const std::vector<Rendering::Mesh*>& meshes = resources.LoadModelMeshes(meshPath);
-                        if (!meshes.empty()) {
-                            comp->SetMeshes(meshes);
-                        }
-                    }
-                }
-
-                const std::string texturePath = ReadOptionalString(L, tableIndex, "texture", "");
-                if (!texturePath.empty()) {
-                    Rendering::Texture* texture = resources.LoadTexture(texturePath);
-                    if (texture) {
-                        comp->SetTexture(texture);
-                    }
-                }
             }
 
             void ConfigureLightComponent(lua_State* L, int tableIndex, ECS::LightComponent* comp) {

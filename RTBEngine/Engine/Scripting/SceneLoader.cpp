@@ -320,6 +320,9 @@ namespace RTBEngine {
                                 SceneComponentConfigurator::ConfigureAnimator(L, componentTableIndex, static_cast<Animation::Animator*>(comp));
                             }
 
+                            // Propagate all proxy values (textureRef, meshRef, etc.) to internal state.
+                            comp->OnValidate();
+
                             // Collect GameObjectRef / ComponentRef for deferred UUID resolution
                             const Reflection::TypeInfo* typeInfo = comp->GetTypeInfo();
                             if (typeInfo) {

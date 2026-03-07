@@ -6,6 +6,7 @@
 #include "../Reflection/TypeInfo.h"
 #include "../ECS/Component.h"
 #include "../Math/Math.h"
+#include "../Core/ResourceManager.h"
 
 namespace RTBEngine {
     namespace Scripting {
@@ -111,9 +112,38 @@ namespace RTBEngine {
                             if (v4) WriteValue<Math::Color>(dst, Math::Color(v4.value()));
                         }
                         break;
+                    case PropertyType::TextureRef: {
+                        if (lua_isstring(L, -1)) {
+                            const std::string path = lua_tostring(L, -1);
+                            if (!path.empty()) {
+                                auto* tex = Core::ResourceManager::GetInstance().LoadTexture(path);
+                                WriteValue<void*>(dst, tex);
+                            }
+                        }
+                        break;
+                    }
+                    case PropertyType::MeshRef: {
+                        if (lua_isstring(L, -1)) {
+                            const std::string path = lua_tostring(L, -1);
+                            if (!path.empty()) {
+                                auto* mesh = Core::ResourceManager::GetInstance().LoadModel(path);
+                                WriteValue<void*>(dst, mesh);
+                            }
+                        }
+                        break;
+                    }
+                    case PropertyType::AudioClipRef: {
+                        if (lua_isstring(L, -1)) {
+                            const std::string path = lua_tostring(L, -1);
+                            if (!path.empty()) {
+                                auto* clip = Core::ResourceManager::GetInstance().LoadAudioClip(path);
+                                WriteValue<void*>(dst, clip);
+                            }
+                        }
+                        break;
+                    }
                     default:
-                        // AssetRef, TextureRef, AudioClipRef, MeshRef, FontRef, GameObjectRef, ComponentRef...
-                        // These are resolved by other systems (ResourceManager, UUID resolution, etc.).
+                        // FontRef, GameObjectRef, ComponentRef are resolved by other systems.
                         break;
                     }
 
