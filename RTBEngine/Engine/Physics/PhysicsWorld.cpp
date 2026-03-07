@@ -77,6 +77,25 @@ namespace RTBEngine {
             collisionConfiguration.reset();
         }
 
+        void PhysicsWorld::ResetObjects()
+        {
+            if (!dynamicsWorld)
+                return;
+
+            // Only remove objects from the world — do NOT delete them.
+            // Ownership of btRigidBody belongs to RigidBody (unique_ptr).
+            // Ownership of static btCollisionObject belongs to BoxColliderComponent.
+            for (int i = dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
+            {
+                btCollisionObject* obj = dynamicsWorld->getCollisionObjectArray()[i];
+                btRigidBody* body = btRigidBody::upcast(obj);
+                if (body)
+                    dynamicsWorld->removeRigidBody(body);
+                else
+                    dynamicsWorld->removeCollisionObject(obj);
+            }
+        }
+
         void PhysicsWorld::AddRigidBody(btRigidBody* body)
         {
             if (dynamicsWorld && body)

@@ -48,6 +48,9 @@ namespace RTBEngine {
 			void RenderGeometryPass(ECS::Scene* scene, Rendering::Camera* camera);
 			void SetIsRunning(bool value) { isRunning = value; }
 
+		void ResetPhysics();
+		void InitializePhysicsForScene(ECS::Scene* scene);
+
 		private:
 			bool InitializeImGui();
 			void ShutdownImGui();

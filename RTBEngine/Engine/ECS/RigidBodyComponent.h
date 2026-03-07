@@ -24,11 +24,11 @@ namespace RTBEngine {
 
             bool HasRigidBody() const { return rigidBody != nullptr; }
 
-            // Reflected properties
+            // Reflected properties (Proxy)
             float mass = 1.0f;
             float friction = 0.5f;
             float restitution = 0.0f;
-            Physics::RigidBodyType type = Physics::RigidBodyType::Dynamic;
+            Physics::RigidBodyType bodyType = Physics::RigidBodyType::Dynamic;
 
             RTB_COMPONENT(RigidBodyComponent)
 

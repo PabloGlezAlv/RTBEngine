@@ -20,6 +20,12 @@ namespace RTBEngine {
         {
         }
 
+        void PhysicsSystem::Reset()
+        {
+            previousCollisions.clear();
+            currentCollisions.clear();
+        }
+
         void PhysicsSystem::Update(ECS::Scene* scene, float deltaTime)
         {
             if (!scene || !physicsWorld)

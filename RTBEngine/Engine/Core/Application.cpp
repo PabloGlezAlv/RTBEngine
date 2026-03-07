@@ -164,20 +164,16 @@ bool RTBEngine::Core::Application::Initialize()
 	sceneMgr.Initialize();
 
 	sceneMgr.SetOnSceneLoaded([this](ECS::Scene* scene) {
-		// Initialize physics for each BoxColliderComponent
-		for (const auto& go : scene->GetGameObjects()) {
-			ECS::BoxColliderComponent* boxCollider = go->GetComponent<ECS::BoxColliderComponent>();
-			if (boxCollider) {
-				physicsSystem->InitializeCollider(go.get(), boxCollider);
-			}
-		}
+		// Clean up any leftover Bullet objects from the previous session before
+		// adding new ones for the freshly loaded scene.
+		ResetPhysics();
+		InitializePhysicsForScene(scene);
 
 		if (scene->GetActiveCamera()) {
 			scene->GetActiveCamera()->SetAspectRatio(
 				static_cast<float>(config.window.width) / static_cast<float>(config.window.height)
 			);
 		}
-
 		});
 
 	if (!config.initialScenePath.empty()) {
@@ -471,6 +467,30 @@ void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Renderi
 		skybox->Render(camera);
 	}
 
+}
+
+void RTBEngine::Core::Application::ResetPhysics()
+{
+	if (physicsWorld)
+		physicsWorld->ResetObjects();
+
+	if (physicsSystem)
+		physicsSystem->Reset();
+
+	physicsAccumulator = 0.0f;
+}
+
+void RTBEngine::Core::Application::InitializePhysicsForScene(ECS::Scene* scene)
+{
+	if (!scene || !physicsSystem)
+		return;
+
+	for (const auto& go : scene->GetGameObjects())
+	{
+		ECS::BoxColliderComponent* boxCollider = go->GetComponent<ECS::BoxColliderComponent>();
+		if (boxCollider)
+			physicsSystem->InitializeCollider(go.get(), boxCollider);
+	}
 }
 
 void RTBEngine::Core::Application::OnWindowResized(int width, int height)

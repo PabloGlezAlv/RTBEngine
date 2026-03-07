@@ -40,6 +40,7 @@ namespace RTBEngine {
 
             void Update(ECS::Scene* scene, float deltaTime);
             void InitializeCollider(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider);
+            void Reset();
 
         private:
             std::set<CollisionPair> previousCollisions;

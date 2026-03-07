@@ -15,6 +15,7 @@ namespace RTBEngine {
             void Initialize();
             void Step(float deltaTime);
             void Cleanup();
+            void ResetObjects();
 
             void AddRigidBody(btRigidBody* body);
             void RemoveRigidBody(btRigidBody* body);

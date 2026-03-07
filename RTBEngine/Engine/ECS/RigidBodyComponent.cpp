@@ -9,7 +9,7 @@ namespace RTBEngine {
             RTB_PROPERTY(mass)
             RTB_PROPERTY(friction)
             RTB_PROPERTY(restitution)
-            RTB_PROPERTY_ENUM(type, "Static", "Dynamic", "Kinematic")
+            RTB_PROPERTY_ENUM(bodyType, "Static", "Dynamic", "Kinematic")
         RTB_END_REGISTER(RigidBodyComponent)
 
         RigidBodyComponent::RigidBodyComponent()
@@ -60,7 +60,7 @@ namespace RTBEngine {
                 rigidBody->SetMass(mass);
                 rigidBody->SetFriction(friction);
                 rigidBody->SetRestitution(restitution);
-                rigidBody->SetType(type);
+                rigidBody->SetType(bodyType);
             }
         }
 

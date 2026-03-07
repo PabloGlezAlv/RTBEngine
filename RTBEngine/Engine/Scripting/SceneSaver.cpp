@@ -237,9 +237,14 @@ namespace RTBEngine {
                 break;
             }
 
-            case Reflection::PropertyType::Enum:
-                file << *(int*)data;
+            case Reflection::PropertyType::Enum: {
+                int idx = *(int*)data;
+                if (!prop.enumNames.empty() && idx >= 0 && idx < (int)prop.enumNames.size())
+                    file << FormatString(prop.enumNames[idx]);
+                else
+                    file << idx;
                 break;
+            }
             
             case Reflection::PropertyType::GameObjectRef: {
                 ECS::GameObject* target = *(ECS::GameObject**)data;
