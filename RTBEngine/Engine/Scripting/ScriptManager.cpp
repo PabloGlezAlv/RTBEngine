@@ -1,5 +1,6 @@
 #include "ScriptManager.h"
 #include "../Core/Logger.h"
+#include "../ECS/SceneManager.h"
 
 // --- Windows DLL loading API ---
 //
@@ -75,12 +76,23 @@ namespace RTBEngine {
                 return;
             }
             // Register the new script type in the EXE's registry.
-            // The factory pointer comes from the DLL-side TypeInfo (same RTBEngine.dll
-            // instance), so it is safe to copy the std::function — no module boundary crossed.
+            // The factory and destroyer delegate back into the DLL-side TypeInfo via raw fn ptrs.
+            // No STL types cross the module boundary — all POD.
             RTBEngine::Reflection::TypeInfo newInfo(typeName);
             auto* dllTypeInfo = static_cast<RTBEngine::Reflection::TypeInfo*>(factory);
             if (dllTypeInfo) {
-                newInfo.SetFactory([dllTypeInfo]() { return dllTypeInfo->Create(); });
+                newInfo.SetFactory(
+                [](void* ctx) -> RTBEngine::ECS::Component* {
+                    return static_cast<RTBEngine::Reflection::TypeInfo*>(ctx)->Create();
+                },
+                static_cast<void*>(dllTypeInfo));
+                // The destroyer must run inside GameScripts.dll so that delete uses
+                // the same /MT heap that new used. Copy the lambda from the DLL TypeInfo.
+                newInfo.SetDestroyer(
+                    [](RTBEngine::ECS::Component* c, void* ctx) {
+                        static_cast<RTBEngine::Reflection::TypeInfo*>(ctx)->Destroy(c);
+                    },
+                    static_cast<void*>(dllTypeInfo));
             }
             reg.RegisterType(typeName, newInfo);
             s_pendingInfo = const_cast<RTBEngine::Reflection::TypeInfo*>(reg.GetTypeInfo(typeName));
@@ -163,6 +175,10 @@ namespace RTBEngine {
             if (dllHandle == nullptr) {
                 return;
             }
+
+            // Unload the current scene first so all script components are destroyed
+            // while the DLL is still mapped. FreeLibrary invalidates their vtables.
+            RTBEngine::ECS::SceneManager::GetInstance().UnloadCurrentScene();
 
             // Remove all types that came from this DLL before freeing it.
             // Component factories inside the DLL become dangling pointers after FreeLibrary.

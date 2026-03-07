@@ -5,8 +5,8 @@
 namespace RTBEngine {
     namespace Reflection {
 
-        TypeInfo::TypeInfo(const char* typeName, FactoryFunc factory)
-            : typeName(typeName ? typeName : ""), factory(factory)
+        TypeInfo::TypeInfo(const char* typeName, FactoryFunc /*factory*/)
+            : typeName(typeName ? typeName : "")
         {
         }
 

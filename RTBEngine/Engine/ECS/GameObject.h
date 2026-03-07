@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <functional>
 #include <typeinfo>
 
 namespace RTBEngine {
@@ -28,7 +29,8 @@ namespace RTBEngine {
             template<typename T>
             bool HasComponent();
 
-            const std::vector<std::unique_ptr<Component>>& GetComponents() const { return components; }
+            using ComponentPtr = std::unique_ptr<Component, std::function<void(Component*)>>;
+            const std::vector<ComponentPtr>& GetComponents() const { return components; }
 
             Transform& GetTransform() { return transform; }
             const Transform& GetTransform() const { return transform; }
@@ -63,7 +65,7 @@ namespace RTBEngine {
             std::string uuid;
 
             Transform transform;
-            std::vector<std::unique_ptr<Component>> components;
+            std::vector<ComponentPtr> components;
             bool isActive;
             bool started;
 

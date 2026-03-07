@@ -15,6 +15,7 @@
 #include "../Audio/AudioSystem.h"
 #include "../UI/CanvasSystem.h"
 #include "../Scripting/ComponentRegistry.h"
+#include "../Scripting/ScriptManager.h"
 #include "../ECS/SceneManager.h"
 #include "../Rendering/Skybox.h"
 #include "../Rendering/Cubemap.h"
@@ -244,7 +245,11 @@ void RTBEngine::Core::Application::Shutdown()
 		physicsSystem = nullptr;
 	}
 
+	// Destroy the scene first so script component vtables are still valid during OnDestroy.
 	ECS::SceneManager::GetInstance().Shutdown();
+
+	// Only after all GameObjects are destroyed, unload the script DLL.
+	Scripting::ScriptManager::GetInstance().UnloadScripts();
 
 	ResourceManager::GetInstance().Clear();
 

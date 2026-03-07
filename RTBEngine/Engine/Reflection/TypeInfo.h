@@ -109,7 +109,10 @@ namespace RTBEngine {
 
         class RTB_API TypeInfo {
         public:
-            using FactoryFunc = std::function<ECS::Component*()>;
+            // Raw function pointer — POD, no destructor, safe to copy across /MT module boundaries.
+            using FactoryFunc  = ECS::Component*(*)(void* context);
+            // Raw function pointer — POD, no destructor, safe to copy across /MT module boundaries.
+            using DestroyFunc  = void(*)(ECS::Component*, void* context);
 
             TypeInfo() = default;
             TypeInfo(const char* typeName, FactoryFunc factory = nullptr);
@@ -127,13 +130,23 @@ namespace RTBEngine {
             bool HasProperties() const { return !properties.empty(); }
             size_t GetPropertyCount() const { return properties.size(); }
 
-            ECS::Component* Create() const { return factory ? factory() : nullptr; }
-            void SetFactory(FactoryFunc f) { factory = f; }
+            ECS::Component* Create() const { return factoryFn ? factoryFn(factoryCtx) : nullptr; }
+            void SetFactory(FactoryFunc fn, void* ctx) { factoryFn = fn; factoryCtx = ctx; }
+
+            // Destroys a component using the heap that allocated it.
+            // Script components are created with new inside GameScripts.dll (/MT heap).
+            // Calling delete from a different module crashes; the destroyer runs in the
+            // module that allocated, using a raw fn ptr + opaque context (both POD).
+            void Destroy(ECS::Component* c) const { if (destroyFn) destroyFn(c, destroyCtx); else delete c; }
+            void SetDestroyer(DestroyFunc fn, void* ctx) { destroyFn = fn; destroyCtx = ctx; }
 
         private:
             std::string typeName;
             std::vector<PropertyInfo> properties;
-            FactoryFunc factory;
+            FactoryFunc factoryFn  = nullptr;
+            void*       factoryCtx = nullptr;
+            DestroyFunc destroyFn  = nullptr;
+            void*       destroyCtx = nullptr;
         };
 
         // Global registry for all reflected types

@@ -1,4 +1,5 @@
 #include "GameObject.h"
+#include "../Reflection/TypeInfo.h"
 #include <objbase.h>
 #include <cstdio>
 
@@ -29,6 +30,19 @@ namespace RTBEngine {
         {
         }
 
+        // Returns a deleter that destroys the component through its TypeInfo if available.
+        // This ensures delete runs in the same module (heap) that called new,
+        // which is required when GameScripts.dll uses a separate /MT CRT heap.
+        static std::function<void(Component*)> MakeComponentDeleter(Component* component)
+        {
+            if (!component) return [](Component* c) { delete c; };
+            const RTBEngine::Reflection::TypeInfo* ti = component->GetTypeInfo();
+            if (ti) {
+                return [ti](Component* c) { ti->Destroy(c); };
+            }
+            return [](Component* c) { delete c; };
+        }
+
         GameObject::~GameObject()
         {
             for (auto& comp : components) {
@@ -41,7 +55,8 @@ namespace RTBEngine {
         {
             if (component) {
                 component->SetOwner(this);
-                components.push_back(std::unique_ptr<Component>(component));
+                auto deleter = MakeComponentDeleter(component);
+                components.push_back(std::unique_ptr<Component, std::function<void(Component*)>>(component, std::move(deleter)));
                 component->OnAwake();
             }
         }
@@ -49,7 +64,7 @@ namespace RTBEngine {
         void GameObject::RemoveComponent(Component* component)
         {
             auto it = std::find_if(components.begin(), components.end(),
-                [component](const std::unique_ptr<Component>& comp) {
+                [component](const std::unique_ptr<Component, std::function<void(Component*)>>& comp) {
                     return comp.get() == component;
                 });
 

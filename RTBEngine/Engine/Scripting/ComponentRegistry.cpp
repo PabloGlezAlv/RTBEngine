@@ -1,6 +1,7 @@
 #include "ComponentRegistry.h"
 #include <iostream>
 #include "../RTBEngine.h"
+#include "../Reflection/TypeInfo.h"
 
 #include "../ECS/MeshRenderer.h"
 #include "../ECS/LightComponent.h"
@@ -35,12 +36,19 @@ namespace RTBEngine {
                 return it->second();
             }
 
+            // Fall back to TypeRegistry for script components registered via ScriptManager.
+            const Reflection::TypeInfo* ti = Reflection::TypeRegistry::GetInstance().GetTypeInfo(typeName);
+            if (ti) {
+                return ti->Create();
+            }
+
             RTB_ERROR("ComponentRegistry: Component type '" + typeName + "' not registered!");
             return nullptr;
         }
 
         bool ComponentRegistry::HasComponent(const std::string& typeName) const {
-            return factories.find(typeName) != factories.end();
+            if (factories.find(typeName) != factories.end()) return true;
+            return Reflection::TypeRegistry::GetInstance().HasType(typeName);
         }
 
         void ComponentRegistry::RegisterBuiltInComponents() {

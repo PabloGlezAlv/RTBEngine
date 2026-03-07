@@ -34,7 +34,13 @@ public:                                                                         
         return MutableTypeInfo();                                                       \
     }                                                                                   \
     static RTBEngine::Reflection::TypeInfo& MutableTypeInfo() {                         \
-        static RTBEngine::Reflection::TypeInfo info(#ClassName, []() -> RTBEngine::ECS::Component* { return new ClassName(); }); \
+        static RTBEngine::Reflection::TypeInfo info(#ClassName);                        \
+        static bool registrarSet = false;                                               \
+        if (!registrarSet) {                                                            \
+            info.SetFactory([](void*) -> RTBEngine::ECS::Component* { return new ClassName(); }, nullptr); \
+            info.SetDestroyer([](RTBEngine::ECS::Component* c, void*) { delete static_cast<ClassName*>(c); }, nullptr); \
+            registrarSet = true;                                                        \
+        }                                                                               \
         return info;                                                                    \
     }                                                                                   \
 private:
@@ -184,8 +190,19 @@ private:
                     #ComponentType                                                       \
                 );
 
+// Forward declaration visible to all script .cpp files when building GameScripts.dll.
+#ifdef GAMESCRIPTS_EXPORTS
+extern "C" void RTBScripts_RegisterLocalType(const char* typeName, const RTBEngine::Reflection::TypeInfo* info);
+#endif
+
 // Ends property registration - pass ClassName again
-#define RTB_END_REGISTER(ClassName)                                                                     RTBEngine::Reflection::TypeRegistry::GetInstance().RegisterType(                             #ClassName, info);                                                               }                                                                                   };                                                                                      static ClassName##_TypeRegistrar _##ClassName##_registrar;                          }
+// When compiling GameScripts.dll, register into the local POD list (no STL across boundary).
+// Otherwise register directly into the engine TypeRegistry.
+#ifdef GAMESCRIPTS_EXPORTS
+#define RTB_END_REGISTER(ClassName)                                                                     RTBScripts_RegisterLocalType(#ClassName, &ClassName::StaticTypeInfo());             }                                                                                   };                                                                                      static ClassName##_TypeRegistrar _##ClassName##_registrar;                          }
+#else
+#define RTB_END_REGISTER(ClassName)                                                                     RTBEngine::Reflection::TypeRegistry::GetInstance().RegisterType(                             #ClassName, ClassName::MutableTypeInfo());                                        }                                                                                   };                                                                                      static ClassName##_TypeRegistrar _##ClassName##_registrar;                          }
+#endif
 
 namespace RTBEngine {
     namespace Reflection {
