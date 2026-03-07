@@ -27,6 +27,7 @@
 #include "Scripting/ComponentRegistry.h"
 
 // Built-in Components
+#include "ECS/MissingComponent.h"
 #include "ECS/MeshRenderer.h"
 #include "ECS/LightComponent.h"
 #include "ECS/AudioSourceComponent.h"

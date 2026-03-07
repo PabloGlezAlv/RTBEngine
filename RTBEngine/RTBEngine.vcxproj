@@ -237,6 +237,7 @@ if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$
     <ClCompile Include="Engine\ECS\Transform.cpp" />
     <ClCompile Include="Engine\Core\Logger.cpp" />
     <ClCompile Include="Engine\ECS\BoxColliderComponent.cpp" />
+    <ClCompile Include="Engine\ECS\MissingComponent.cpp" />
     <ClCompile Include="Engine\Reflection\TypeInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -330,6 +331,7 @@ if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$
     <ClInclude Include="Engine\ECS\Transform.h" />
     <ClInclude Include="Engine\Core\Logger.h" />
     <ClInclude Include="Engine\ECS\BoxColliderComponent.h" />
+    <ClInclude Include="Engine\ECS\MissingComponent.h" />
     <ClInclude Include="Engine\Reflection\TypeInfo.h" />
     <ClInclude Include="Engine\Reflection\PropertyMacros.h" />
     <ClInclude Include="Engine\Reflection\TypeInfoBuilder.h" />

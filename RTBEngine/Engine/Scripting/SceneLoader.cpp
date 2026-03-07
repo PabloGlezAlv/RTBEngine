@@ -3,6 +3,7 @@
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
 #include "../ECS/Component.h"
+#include "../ECS/MissingComponent.h"
 #include "../ECS/MeshRenderer.h"
 #include "../ECS/LightComponent.h"
 #include "../ECS/AudioSourceComponent.h"
@@ -338,7 +339,9 @@ namespace RTBEngine {
                             }
                         }
                         else {
-                            RTB_ERROR("SceneLoader: Failed to create component '" + componentType + "'");
+                            RTB_ERROR("SceneLoader: Component type '" + componentType + "' not found — inserting MissingComponent placeholder");
+                            auto* missing = new ECS::MissingComponent(componentType);
+                            gameObject->AddComponent(missing);
                         }
                     }
                     else {
