@@ -163,10 +163,15 @@ bool RTBEngine::Core::Application::Initialize()
 	ECS::SceneManager& sceneMgr = ECS::SceneManager::GetInstance();
 	sceneMgr.Initialize();
 
-	sceneMgr.SetOnSceneLoaded([this](ECS::Scene* scene) {
-		// Clean up any leftover Bullet objects from the previous session before
-		// adding new ones for the freshly loaded scene.
+	sceneMgr.SetOnSceneUnloading([this](ECS::Scene* /*scene*/) {
+		// Remove all Bullet objects from the world BEFORE GameObjects are destroyed.
+		// This prevents btDbvtBroadphase::destroyProxy from accessing a freed proxy
+		// when ~BoxColliderComponent() deletes the raw btCollisionObject.
 		ResetPhysics();
+		});
+
+	sceneMgr.SetOnSceneLoaded([this](ECS::Scene* scene) {
+		// Physics was already reset by onSceneUnloading before scene destruction.
 		InitializePhysicsForScene(scene);
 
 		if (scene->GetActiveCamera()) {
