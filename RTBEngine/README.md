@@ -1,0 +1,3057 @@
+# RTBEngine
+
+A 3D game engine written in **C++17**, compiled as a static library (`RTBEngine.lib`). RTBEngine provides a complete set of subsystems for building games and interactive real-time applications on Windows: an Entity-Component-System architecture, OpenGL rendering with shadow mapping, Bullet-based rigid-body physics, FMOD spatial audio, SDL2 input, skeletal animation, Lua-based scene serialization, a macro-driven reflection system, and an ImGui-compatible UI framework.
+
+This document covers every subsystem in depth — public API, internal design, data flow, and usage patterns.
+
+---
+
+## Table of Contents
+
+1. [Project Structure](#1-project-structure)
+2. [Build System](#2-build-system)
+3. [Third-Party Libraries](#3-third-party-libraries)
+4. [Architecture Overview](#4-architecture-overview)
+5. [Core Subsystem](#5-core-subsystem)
+   - 5.1 [ApplicationConfig](#51-applicationconfig)
+   - 5.2 [Application](#52-application)
+   - 5.3 [Window](#53-window)
+   - 5.4 [Logger](#54-logger)
+   - 5.5 [ResourceManager](#55-resourcemanager)
+6. [ECS Subsystem](#6-ecs-subsystem)
+   - 6.1 [Component](#61-component)
+   - 6.2 [Transform](#62-transform)
+   - 6.3 [GameObject](#63-gameobject)
+   - 6.4 [Scene](#64-scene)
+   - 6.5 [SceneManager](#65-scenemanager)
+7. [Built-in Components](#7-built-in-components)
+   - 7.1 [MeshRenderer](#71-meshrenderer)
+   - 7.2 [CameraComponent](#72-cameracomponent)
+   - 7.3 [LightComponent](#73-lightcomponent)
+   - 7.4 [RigidBodyComponent](#74-rigidbodycomponent)
+   - 7.5 [BoxColliderComponent](#75-boxcollidercomponent)
+   - 7.6 [AudioSourceComponent](#76-audiosourcecomponent)
+   - 7.7 [FreeLookCamera](#77-freelookcamera)
+8. [Rendering Subsystem](#8-rendering-subsystem)
+   - 8.1 [Camera](#81-camera)
+   - 8.2 [Shader](#82-shader)
+   - 8.3 [Material](#83-material)
+   - 8.4 [Vertex and Mesh](#84-vertex-and-mesh)
+   - 8.5 [Texture](#85-texture)
+   - 8.6 [FrameBuffer](#86-framebuffer)
+   - 8.7 [ModelLoader](#87-modelloader)
+   - 8.8 [Skybox](#88-skybox)
+   - 8.9 [ShadowMap](#89-shadowmap)
+   - 8.10 [Lighting — DirectionalLight](#810-lighting--directionallight)
+   - 8.11 [Lighting — PointLight](#811-lighting--pointlight)
+   - 8.12 [Lighting — SpotLight](#812-lighting--spotlight)
+   - 8.13 [Rendering Pipeline](#813-rendering-pipeline)
+9. [Physics Subsystem](#9-physics-subsystem)
+   - 9.1 [PhysicsWorld](#91-physicsworld)
+   - 9.2 [RigidBody](#92-rigidbody)
+   - 9.3 [Colliders](#93-colliders)
+   - 9.4 [PhysicsSystem](#94-physicssystem)
+   - 9.5 [CollisionInfo](#95-collisioninfo)
+   - 9.6 [Physics Lifecycle](#96-physics-lifecycle)
+10. [Audio Subsystem](#10-audio-subsystem)
+    - 10.1 [AudioSystem](#101-audiosystem)
+    - 10.2 [AudioClip](#102-audioclip)
+11. [Input Subsystem](#11-input-subsystem)
+    - 11.1 [InputManager](#111-inputmanager)
+    - 11.2 [KeyCode](#112-keycode)
+    - 11.3 [MouseButton](#113-mousebutton)
+12. [Animation Subsystem](#12-animation-subsystem)
+    - 12.1 [Bone](#121-bone)
+    - 12.2 [Skeleton](#122-skeleton)
+    - 12.3 [AnimationClip](#123-animationclip)
+    - 12.4 [Animator](#124-animator)
+13. [Math Library](#13-math-library)
+    - 13.1 [Vector2](#131-vector2)
+    - 13.2 [Vector3](#132-vector3)
+    - 13.3 [Vector4](#133-vector4)
+    - 13.4 [Quaternion](#134-quaternion)
+    - 13.5 [Matrix4](#135-matrix4)
+14. [Reflection System](#14-reflection-system)
+    - 14.1 [PropertyType and PropertyFlags](#141-propertytype-and-propertyflags)
+    - 14.2 [PropertyInfo](#142-propertyinfo)
+    - 14.3 [TypeInfo](#143-typeinfo)
+    - 14.4 [TypeRegistry](#144-typeregistry)
+    - 14.5 [PropertyMacros](#145-propertymacros)
+    - 14.6 [Writing a Reflectable Component](#146-writing-a-reflectable-component)
+15. [Scripting and Serialization](#15-scripting-and-serialization)
+    - 15.1 [ComponentRegistry](#151-componentregistry)
+    - 15.2 [SceneLoader](#152-sceneloader)
+    - 15.3 [SceneSaver](#153-scenesaver)
+16. [UI Subsystem](#16-ui-subsystem)
+    - 16.1 [RectTransform](#161-recttransform)
+    - 16.2 [UIElement](#162-uielement)
+    - 16.3 [Canvas](#163-canvas)
+    - 16.4 [CanvasSystem](#164-canvassystem)
+    - 16.5 [UIButton](#165-uibutton)
+    - 16.6 [UIText](#166-uitext)
+    - 16.7 [UIImage](#167-uiimage)
+    - 16.8 [UIPanel](#168-uipanel)
+17. [DLL Boundary Safety](#17-dll-boundary-safety)
+18. [Code Conventions](#18-code-conventions)
+
+---
+
+## 1. Project Structure
+
+```
+RTBEngine/
+├── RTBEngine.sln                  Visual Studio solution
+├── SetupDeps.bat                  Downloads and builds all third-party libraries
+├── BuildSDK.bat                   Compiles the engine and packages the SDK
+│
+├── RTBEngine/                     Engine static library project
+│   ├── RTBEngine.h                Master include: pulls in the entire public API
+│   ├── RTBEngineAPI.h             RTB_API macro (dllexport / dllimport)
+│   │
+│   ├── Engine/
+│   │   ├── Core/
+│   │   │   ├── Application.h / .cpp
+│   │   │   ├── Window.h / .cpp
+│   │   │   ├── Logger.h / .cpp
+│   │   │   ├── ResourceManager.h / .cpp
+│   │   │   └── ApplicationConfig.h
+│   │   │
+│   │   ├── ECS/
+│   │   │   ├── Component.h
+│   │   │   ├── Transform.h / .cpp
+│   │   │   ├── GameObject.h / .cpp
+│   │   │   ├── Scene.h / .cpp
+│   │   │   ├── SceneManager.h / .cpp
+│   │   │   ├── MeshRenderer.h / .cpp
+│   │   │   ├── CameraComponent.h / .cpp
+│   │   │   ├── LightComponent.h / .cpp
+│   │   │   ├── RigidBodyComponent.h / .cpp
+│   │   │   ├── BoxColliderComponent.h / .cpp
+│   │   │   ├── AudioSourceComponent.h / .cpp
+│   │   │   ├── FreeLookCamera.h / .cpp
+│   │   │   └── MissingComponent.h
+│   │   │
+│   │   ├── Rendering/
+│   │   │   ├── Camera.h / .cpp
+│   │   │   ├── Shader.h / .cpp
+│   │   │   ├── Material.h / .cpp
+│   │   │   ├── Mesh.h / .cpp
+│   │   │   ├── Texture.h / .cpp
+│   │   │   ├── FrameBuffer.h / .cpp
+│   │   │   ├── ShadowMap.h / .cpp
+│   │   │   ├── ModelLoader.h / .cpp
+│   │   │   ├── Skybox.h / .cpp
+│   │   │   ├── Vertex.h
+│   │   │   ├── Font.h / .cpp
+│   │   │   ├── Cubemap.h / .cpp
+│   │   │   └── Lighting/
+│   │   │       ├── Light.h
+│   │   │       ├── DirectionalLight.h / .cpp
+│   │   │       ├── PointLight.h / .cpp
+│   │   │       └── SpotLight.h / .cpp
+│   │   │
+│   │   ├── Physics/
+│   │   │   ├── PhysicsWorld.h / .cpp
+│   │   │   ├── PhysicsSystem.h / .cpp
+│   │   │   ├── RigidBody.h / .cpp
+│   │   │   ├── Collider.h
+│   │   │   ├── BoxCollider.h / .cpp
+│   │   │   ├── SphereCollider.h / .cpp
+│   │   │   └── CollisionInfo.h
+│   │   │
+│   │   ├── Audio/
+│   │   │   ├── AudioSystem.h / .cpp
+│   │   │   └── AudioClip.h / .cpp
+│   │   │
+│   │   ├── Input/
+│   │   │   ├── InputManager.h / .cpp
+│   │   │   ├── KeyCode.h
+│   │   │   └── MouseButton.h
+│   │   │
+│   │   ├── Animation/
+│   │   │   ├── Bone.h
+│   │   │   ├── Skeleton.h / .cpp
+│   │   │   ├── AnimationClip.h / .cpp
+│   │   │   └── Animator.h / .cpp
+│   │   │
+│   │   ├── Math/
+│   │   │   ├── Vectors/
+│   │   │   │   ├── Vector2.h
+│   │   │   │   ├── Vector3.h
+│   │   │   │   └── Vector4.h
+│   │   │   ├── Quaternions/
+│   │   │   │   └── Quaternion.h
+│   │   │   └── Matrix/
+│   │   │       └── Matrix4.h
+│   │   │
+│   │   ├── UI/
+│   │   │   ├── Canvas.h / .cpp
+│   │   │   ├── UIElement.h / .cpp
+│   │   │   ├── RectTransform.h / .cpp
+│   │   │   ├── CanvasSystem.h / .cpp
+│   │   │   └── Elements/
+│   │   │       ├── UIButton.h / .cpp
+│   │   │       ├── UIText.h / .cpp
+│   │   │       ├── UIImage.h / .cpp
+│   │   │       ├── UIPanel.h / .cpp
+│   │   │       └── UIContainer.h / .cpp
+│   │   │
+│   │   ├── Scripting/
+│   │   │   ├── ComponentRegistry.h / .cpp
+│   │   │   ├── SceneLoader.h / .cpp
+│   │   │   └── SceneSaver.h / .cpp
+│   │   │
+│   │   └── Reflection/
+│   │       ├── TypeInfo.h / .cpp
+│   │       └── PropertyMacros.h
+│   │
+│   ├── Assets/                    Runtime assets (audio, fonts, models, scenes, textures)
+│   └── Default/                   Built-in engine assets (shaders, fonts, models, textures)
+│
+└── RTBEngine_SDK/                 Generated by BuildSDK.bat
+    ├── Include/RTBEngine/         Public headers (mirrors Engine/ structure)
+    └── Lib/                       RTBEngine.lib
+```
+
+---
+
+## 2. Build System
+
+### First-Time Setup
+
+```batch
+SetupDeps.bat
+```
+
+This script downloads, configures, and builds all third-party libraries into `RTBEngine/ThirdParty/`. It only needs to be run once. Libraries built include: SDL2, GLEW, Bullet, Assimp, Lua, and LuaBridge. FMOD is expected to be installed separately via the FMOD Studio installer.
+
+### Building the Engine and SDK
+
+```batch
+BuildSDK.bat
+```
+
+This script:
+1. Compiles `RTBEngine.lib` in both Debug and Release configurations.
+2. Copies all public headers into `RTBEngine_SDK/Include/RTBEngine/`.
+3. Copies the compiled `.lib` into `RTBEngine_SDK/Lib/`.
+
+Consuming projects (like the editor) reference the SDK rather than the engine source.
+
+### Visual Studio Solution
+
+- **Solution**: `RTBEngine.sln`
+- **Configurations**: `Debug | x64`, `Release | x64`
+- **Toolset**: MSVC v145 (Visual Studio 2026)
+- **C++ Standard**: `/std:c++17`
+- **Output**: `RTBEngine.lib`
+
+### Preprocessor Defines
+
+| Define | Meaning |
+|--------|---------|
+| `RTB_EXPORTS` | Defined when compiling the engine DLL; activates `__declspec(dllexport)` |
+| `RTB_API` | Expands to `__declspec(dllexport)` or `__declspec(dllimport)` depending on context |
+
+---
+
+## 3. Third-Party Libraries
+
+| Library | Version | Location | Purpose |
+|---------|---------|----------|---------|
+| SDL2 | 2.32.10 | `ThirdParty/SDL2-2.32.10/` | Window creation, OpenGL context, input events, platform abstraction |
+| GLEW | 2.1.0 | `ThirdParty/glew-2.1.0/` | OpenGL extension loading |
+| Bullet Physics | 3.25 | `ThirdParty/bullet3-3.25/` | Rigid-body dynamics, broadphase, collision detection |
+| Assimp | 5.4.3 | `ThirdParty/assimp/` | 3D model import: FBX, OBJ, GLTF, DAE, and more |
+| FMOD | — | `ThirdParty/fmod/` | Real-time audio engine with 3D spatialization |
+| ImGui | 1.92.5 | `ThirdParty/imgui/` | Immediate-mode debug/editor GUI |
+| Lua | 5.4.8 | `ThirdParty/lua/` | Embedded scripting for scene files |
+| LuaBridge | — | `ThirdParty/luabridge/` | C++ ↔ Lua binding without Lua C API boilerplate |
+| stb_image | — | `ThirdParty/stb/` | PNG/JPG/BMP image loading |
+
+---
+
+## 4. Architecture Overview
+
+RTBEngine is organized around three concepts:
+
+1. **Application** — owns the platform layer (window, OpenGL context, device), drives the main loop, and coordinates all subsystems.
+2. **Scene / SceneManager** — manages the active collection of `GameObject` instances. Scene loading and unloading happen through `SceneManager`, which fires lifecycle callbacks to let the `Application` respond (e.g., re-initialize physics).
+3. **Component** — the unit of behavior. Every distinct feature of a `GameObject` (rendering, physics, audio, scripts) is a `Component`. Components interact through their owner `GameObject` and the global singleton subsystems.
+
+### Main Loop
+
+```
+Application::Run()
+  loop:
+    deltaTime = ComputeDelta()
+    ProcessInput()            ← SDL events → InputManager
+    Update(deltaTime)         ← Scene::Update → all GameObjects → all Components
+                              ← PhysicsSystem::Update (fixed step)
+                              ← AudioSystem::Update
+    RenderShadowPass()        ← depth-only render for shadow-casting lights
+    RenderGeometryPass()      ← full lit render with shadow texture
+    ImGui::Render()           ← editor/debug overlay
+    Window::SwapBuffers()
+```
+
+### Subsystem Initialization Order
+
+Inside `Application::Initialize()`:
+
+```
+1. Window::Create()           SDL2 window + OpenGL 4.1 context
+2. GLEW::Init()               Load OpenGL extensions
+3. ResourceManager::Init()    Load default assets (shaders, textures, meshes)
+4. AudioSystem::Init()        FMOD system
+5. ImGui::Init()              Context, SDL2 + OpenGL backends
+6. SceneManager callbacks     Register onSceneUnloading / onSceneLoaded
+```
+
+Physics is initialized per-scene in `InitializePhysicsForScene()`, which is called from the `onSceneLoaded` callback. This ensures that Bullet bodies are created after the scene is fully populated.
+
+### Shutdown Order (reverse of init)
+
+```
+SceneManager::UnloadCurrentScene()
+AudioSystem::Shutdown()
+ImGui::Shutdown()
+ResourceManager::Clear()
+Window::Destroy()
+```
+
+---
+
+## 5. Core Subsystem
+
+### 5.1 ApplicationConfig
+
+`Engine/Core/ApplicationConfig.h` — Plain data struct passed to the `Application` constructor. No methods.
+
+```cpp
+struct ApplicationConfig {
+    std::string title        = "RTBEngine App";
+    int         width        = 1280;
+    int         height       = 720;
+    bool        fullscreen   = false;
+    bool        vsync        = true;
+    int         targetFPS    = 60;
+    std::string startScene   = "";
+};
+```
+
+| Field | Description |
+|-------|-------------|
+| `title` | Window title bar text |
+| `width` / `height` | Initial window resolution in pixels |
+| `fullscreen` | Start in fullscreen mode |
+| `vsync` | Enable SDL vertical sync (limits to monitor refresh) |
+| `targetFPS` | Frame cap when vsync is disabled |
+| `startScene` | Path (relative to working directory) to the `.lua` scene loaded at startup |
+
+### 5.2 Application
+
+`Engine/Core/Application.h` — Central object that owns every subsystem and drives the main loop.
+
+**Constructor and lifecycle:**
+
+```cpp
+explicit Application(const ApplicationConfig& config);
+
+bool Initialize();   // Must be called before Run()
+void Run();          // Blocks until RequestExit() is called
+void Shutdown();     // Releases all resources; called automatically after Run() returns
+```
+
+`Initialize()` returns `false` if any critical step fails (window creation, GLEW init, shader compilation). The caller should treat a `false` return as a fatal error and exit.
+
+**Input and update:**
+
+```cpp
+void ProcessInput();            // Polls SDL events; dispatches to InputManager and Window
+void Update(float deltaTime);   // Advances scene, physics, and audio
+```
+
+`Update` follows this internal order:
+1. `Scene::Update(deltaTime)` — calls `Component::OnUpdate` on every active component.
+2. `PhysicsSystem::Update(scene, deltaTime)` — syncs transforms to Bullet bodies, steps the simulation, dispatches collision callbacks.
+3. `AudioSystem::Update()` — advances the FMOD system (required each frame).
+
+**Rendering:**
+
+```cpp
+void Render();
+void RenderShadowPass(ECS::Scene* scene);
+void RenderGeometryPass(ECS::Scene* scene, Rendering::Camera* camera);
+```
+
+`Render()` orchestrates:
+1. Collects lights from the scene via `Scene::CollectLights()`.
+2. For each shadow-casting `DirectionalLight`, calls `RenderShadowPass`.
+3. Calls `RenderGeometryPass` with the active camera.
+4. Renders the `Skybox` after opaque geometry.
+5. Renders ImGui.
+6. Calls `Window::SwapBuffers()`.
+
+`RenderShadowPass` binds the light's `ShadowMap` framebuffer, sets the depth-only shader, and renders every `MeshRenderer` with `RenderSceneDepthOnly()`.
+
+`RenderGeometryPass` binds the screen framebuffer, uploads all light data to the lit shader, uploads the shadow map texture and light-space matrix, then calls `Scene::Render(camera)` which delegates to each `MeshRenderer`.
+
+**Physics helpers:**
+
+```cpp
+void InitializePhysicsForScene(ECS::Scene* scene);
+void ResetPhysics();
+```
+
+`InitializePhysicsForScene` iterates every `GameObject` in the scene, finds pairs of `RigidBodyComponent` + `BoxColliderComponent`, and calls `PhysicsSystem::InitializeCollider` to create the Bullet shape and rigid body. It then adds each body to `PhysicsWorld`.
+
+`ResetPhysics` removes all bodies from the `PhysicsWorld` and resets the `PhysicsSystem` collision state. It is registered with `SceneManager::SetOnSceneUnloading`, guaranteeing it fires **before** the scene's `GameObject` destructors run. This prevents the Bullet broadphase from accessing freed memory.
+
+**Scene load callbacks (registered in Initialize):**
+
+```cpp
+sceneMgr.SetOnSceneUnloading([this](ECS::Scene*) {
+    ResetPhysics();   // ← fires first, while GameObjects still exist
+});
+
+sceneMgr.SetOnSceneLoaded([this](ECS::Scene* scene) {
+    InitializePhysicsForScene(scene);   // ← fires after scene is populated
+    if (auto* cam = scene->GetActiveCamera())
+        cam->SetAspectRatio((float)config.width / config.height);
+});
+```
+
+**Accessors:**
+
+```cpp
+Window*                GetWindow();
+void*                  GetImGuiContext();
+const ApplicationConfig& GetConfig() const;
+bool                   IsRunning() const;
+void                   RequestExit();
+void                   SetIsRunning(bool value);
+```
+
+### 5.3 Window
+
+`Engine/Core/Window.h` — Wraps an SDL2 window with an OpenGL 4.1 Core Profile context.
+
+```cpp
+bool Create(const std::string& title, int width, int height,
+            bool fullscreen, bool vsync);
+void Destroy();
+void SwapBuffers();
+```
+
+**Mouse control:**
+
+```cpp
+void SetMouseRelativeMode(bool enabled);  // Locks cursor to window (fps-style capture)
+void SetCursorVisible(bool visible);      // Shows or hides the OS cursor
+void SetMousePosition(int x, int y);      // Warps the cursor
+```
+
+**Window state:**
+
+```cpp
+int  GetWidth() const;
+int  GetHeight() const;
+bool IsFullscreen() const;
+void SetFullscreen(bool fullscreen);
+```
+
+**Resize callback:**
+
+```cpp
+using ResizeCallback = std::function<void(int width, int height)>;
+void SetResizeCallback(ResizeCallback callback);
+```
+
+The callback fires from inside `ProcessInput` whenever an `SDL_WINDOWEVENT_RESIZED` event is received. The `Application` uses it to update the OpenGL viewport and the camera aspect ratio.
+
+**Low-level handles (for ImGui and advanced use):**
+
+```cpp
+SDL_Window*   GetSDLWindow() const;
+SDL_GLContext GetGLContext() const;
+```
+
+### 5.4 Logger
+
+`Engine/Core/Logger.h` — Thread-safe singleton. All engine subsystems write through this class. The editor's Console panel subscribes to it via a callback.
+
+**Log levels:**
+
+```cpp
+enum class LogLevel { Info, Warning, Error };
+```
+
+**LogMessage struct** (stored in history and passed to callbacks):
+
+```cpp
+struct LogMessage {
+    LogLevel    level;
+    std::string message;
+    std::string timestamp;   // formatted HH:MM:SS
+};
+```
+
+**Core API:**
+
+```cpp
+// std::string overloads (use inside the engine, where CRT is shared):
+void Log(LogLevel level, const std::string& message);
+void Info(const std::string& message);
+void Warning(const std::string& message);
+void Error(const std::string& message);
+
+// const char* overloads (ABI-safe for script DLLs with separate CRT):
+void Log(LogLevel level, const char* message);
+void Info(const char* message);
+void Warning(const char* message);
+void Error(const char* message);
+```
+
+**History and callbacks:**
+
+```cpp
+void AddCallback(LogCallback callback);     // LogCallback = std::function<void(const LogMessage&)>
+const std::vector<LogMessage>& GetLogs() const;
+void Clear();
+```
+
+**Convenience macros** (resolve to the `Instance().Info/Warning/Error()` calls):
+
+```cpp
+RTB_INFO(msg)
+RTB_WARN(msg)
+RTB_ERROR(msg)
+```
+
+These macros work with both `std::string` and `const char*` arguments. When calling from a script DLL, always pass `const char*` — see [DLL Boundary Safety](#17-dll-boundary-safety).
+
+**Singleton access:**
+
+```cpp
+static Logger& GetInstance();
+```
+
+**Thread safety**: `Log()` acquires a `std::mutex` before writing to the message list and invoking callbacks. Callbacks must not themselves call `Log()` on the same thread (would deadlock).
+
+### 5.5 ResourceManager
+
+`Engine/Core/ResourceManager.h` — Singleton asset cache with lazy loading. Assets are identified by their file path (relative to the working directory). Once loaded, a pointer is returned and the asset is kept alive for the lifetime of the manager (until `Clear()` is called).
+
+**Singleton access:**
+
+```cpp
+static ResourceManager& GetInstance();
+```
+
+**Shader management:**
+
+```cpp
+Rendering::Shader* LoadShader(const std::string& name,
+                               const std::string& vertexPath,
+                               const std::string& fragmentPath);
+Rendering::Shader* GetShader(const std::string& name);
+```
+
+Shaders are keyed by a logical name (not path) to allow the same GLSL files to be exposed under multiple names with different compilation options in the future.
+
+**Texture management:**
+
+```cpp
+Rendering::Texture* LoadTexture(const std::string& path);
+Rendering::Texture* GetTexture(const std::string& path);
+std::string         GetTexturePath(const Rendering::Texture* texture) const;
+```
+
+`GetTexturePath` is the reverse lookup used by `SceneSaver` when serializing scene files. If the texture was not loaded from a file (e.g., created programmatically), it returns an empty string.
+
+**Mesh / Model management:**
+
+```cpp
+// Single-mesh models (OBJ files, simple primitives):
+Rendering::Mesh*              LoadModel(const std::string& path);
+Rendering::Mesh*              GetModel(const std::string& path);
+
+// Multi-mesh models (FBX files with multiple submeshes):
+std::vector<Rendering::Mesh*> LoadModelMeshes(const std::string& path);
+std::vector<Rendering::Mesh*> GetModelMeshes(const std::string& path);
+
+std::string GetMeshPath(const Rendering::Mesh* mesh) const;
+```
+
+**Audio clip management:**
+
+```cpp
+Audio::AudioClip* LoadAudioClip(const std::string& path, bool stream = false);
+Audio::AudioClip* GetAudioClip(const std::string& path);
+std::string       GetAudioClipPath(const Audio::AudioClip* clip) const;
+```
+
+The `stream` parameter tells FMOD to stream the file from disk instead of loading it entirely into memory. Use streaming for long music tracks; keep short sound effects in memory.
+
+**Font management:**
+
+```cpp
+Rendering::Font* LoadFont(const std::string& path,
+                           const int* sizes, int numSizes);
+Rendering::Font* GetFont(const std::string& path, int size);
+Rendering::Font* GetDefaultFont();
+```
+
+**Cubemap management:**
+
+```cpp
+Rendering::Cubemap* LoadCubemapAsset(const std::string& path);
+Rendering::Cubemap* GetCubemap(const std::string& path);
+std::string         GetCubemapPath(const Rendering::Cubemap* cubemap) const;
+```
+
+Cubemap assets are stored as `.cubemap` files — a simple text format that lists the paths to the six face textures (Right, Left, Top, Bottom, Front, Back).
+
+**Default assets** (always available, loaded during `Initialize()`):
+
+```cpp
+Rendering::Mesh*    GetDefaultCubeMesh();
+Rendering::Mesh*    GetDefaultSphereMesh();
+Rendering::Mesh*    GetDefaultPlaneMesh();
+Rendering::Texture* GetDefaultTexture();       // 1×1 white pixel
+Rendering::Skybox*  GetDefaultSkybox();
+Rendering::Font*    GetDefaultFont();
+```
+
+**Cache management:**
+
+```cpp
+void Initialize();   // Load all default assets
+void Clear();        // Destroy all cached assets
+```
+
+---
+
+## 6. ECS Subsystem
+
+### 6.1 Component
+
+`Engine/ECS/Component.h` — Abstract base class for all behaviors. Every feature that can be attached to a `GameObject` extends this class.
+
+**Lifecycle hooks** (called by `GameObject::Update` / `Scene::Update`):
+
+```cpp
+virtual void OnAwake();                          // Fired inside AddComponent() — props not yet set
+virtual void OnStart();                          // Fired on first Update() after scene load
+virtual void OnUpdate(float deltaTime);          // Every frame while active and owner is active
+virtual void OnFixedUpdate(float fixedDelta);    // Fixed physics timestep
+virtual void OnDestroy();                        // Owner removed or scene unloaded
+```
+
+**Collision callbacks** (fired by `PhysicsSystem` when rigid bodies interact):
+
+```cpp
+virtual void OnCollisionEnter(const Physics::CollisionInfo& collision);
+virtual void OnCollisionStay(const Physics::CollisionInfo& collision);
+virtual void OnCollisionExit(const Physics::CollisionInfo& collision);
+virtual void OnTriggerEnter(const Physics::CollisionInfo& collision);
+virtual void OnTriggerStay(const Physics::CollisionInfo& collision);
+virtual void OnTriggerExit(const Physics::CollisionInfo& collision);
+```
+
+Collision callbacks are only dispatched when the `GameObject` has a `RigidBodyComponent`. All six have empty default implementations so subclasses can override only what they need.
+
+**Editor callback:**
+
+```cpp
+virtual void OnValidate();   // Called by Inspector when a reflected property is modified
+```
+
+Use `OnValidate` to sync reflected proxy members to private fields, clamp values, or trigger dependent updates.
+
+**Reflection interface:**
+
+```cpp
+virtual const char*                    GetTypeName() const  { return "Component"; }
+virtual const Reflection::TypeInfo*    GetTypeInfo()  const { return nullptr; }
+```
+
+These are overridden by the `RTB_COMPONENT(ClassName)` macro. Non-reflected components return `nullptr` from `GetTypeInfo()`.
+
+**Owner and enable state:**
+
+```cpp
+void           SetOwner(ECS::GameObject* owner);
+ECS::GameObject* GetOwner() const;
+
+void SetEnabled(bool enabled);
+bool IsEnabled() const;
+```
+
+A component does not receive `OnUpdate` or `OnFixedUpdate` when disabled. `OnDestroy` is still called even on disabled components when the owner is destroyed.
+
+> **Critical**: `OnAwake` fires inside `AddComponent()`, **before** `SceneReflectionUtils` assigns reflected property values from the scene file. Never read reflected `GameObjectRef` or asset references in `OnAwake`. Use `OnStart` instead.
+
+### 6.2 Transform
+
+`Engine/ECS/Transform.h` — Stores and manipulates a `GameObject`'s local-space position, rotation, and scale.
+
+**Setters:**
+
+```cpp
+void SetPosition(const Math::Vector3& pos);
+void SetRotation(const Math::Quaternion& rot);
+void SetEulerAngles(const Math::Vector3& eulerDegrees);
+void SetScale(const Math::Vector3& scale);
+```
+
+**Getters:**
+
+```cpp
+const Math::Vector3&    GetPosition()    const;
+const Math::Quaternion& GetRotation()    const;
+Math::Vector3           GetEulerAngles() const;   // Converts quaternion to Euler (degrees)
+const Math::Vector3&    GetScale()       const;
+```
+
+**Mutation:**
+
+```cpp
+void Translate(const Math::Vector3& delta);          // Adds to position in local space
+void Rotate(const Math::Quaternion& rotation);       // Multiplies current rotation
+void RotateEuler(const Math::Vector3& eulerDelta);   // Euler-angle rotation delta (degrees)
+```
+
+**Direction vectors** (derived from the current rotation):
+
+```cpp
+Math::Vector3 GetForward() const;   // -Z in local space, rotated to world
+Math::Vector3 GetRight()   const;   //  +X in local space, rotated to world
+Math::Vector3 GetUp()      const;   //  +Y in local space, rotated to world
+```
+
+**Matrix:**
+
+```cpp
+Math::Matrix4 GetModelMatrix() const;
+```
+
+Returns the TRS matrix: `Translation * Rotation * Scale`. Used by renderers and physics sync code.
+
+### 6.3 GameObject
+
+`Engine/ECS/GameObject.h` — Named container that owns a `Transform` and a list of `Component` instances. Can participate in a parent-child hierarchy.
+
+**Identity:**
+
+```cpp
+const std::string& GetName()      const;
+const char*        GetNameCStr()  const;   // ABI-safe: returns name.c_str()
+void               SetName(const std::string& name);
+
+uint64_t GetUUID() const;
+void     SetUUID(uint64_t uuid);
+```
+
+UUIDs are assigned by `SceneLoader` when deserializing a scene file. They are used for `GameObjectRef` resolution (deferred UUID-to-pointer mapping).
+
+**Transform access:**
+
+```cpp
+Transform&       GetTransform();
+const Transform& GetTransform() const;
+```
+
+The `Transform` is always present and is not a `Component` — it is a direct member.
+
+**World-space transforms** (computed by walking up the parent chain):
+
+```cpp
+Math::Vector3    GetWorldPosition() const;
+Math::Quaternion GetWorldRotation() const;
+Math::Vector3    GetWorldScale()    const;
+Math::Matrix4    GetWorldMatrix()   const;
+```
+
+**Component management:**
+
+```cpp
+template<typename T>
+T* AddComponent();          // Creates a T, calls T::OnAwake(), returns raw pointer
+
+template<typename T>
+T* GetComponent();          // Returns first T found, or nullptr
+
+template<typename T>
+bool HasComponent() const;
+
+template<typename T>
+void RemoveComponent();     // Calls T::OnDestroy(), removes from list
+
+const std::vector<std::unique_ptr<Component>>& GetComponents() const;
+```
+
+`AddComponent<T>()` uses `std::make_unique<T>()`, sets the owner pointer, then immediately calls `OnAwake()`. Because this happens before the scene is fully loaded, reflected properties are not yet populated at this point.
+
+**Hierarchy:**
+
+```cpp
+void             SetParent(GameObject* parent);
+void             AddChild(GameObject* child);
+void             RemoveChild(GameObject* child);
+GameObject*      GetParent() const;
+const std::vector<GameObject*>& GetChildren() const;
+```
+
+**Activation:**
+
+```cpp
+void SetActive(bool active);
+bool IsActive() const;
+```
+
+An inactive `GameObject` does not receive `Update`, `FixedUpdate`, or `Render` calls. Its children are also effectively deactivated.
+
+**Lifecycle (called by Scene):**
+
+```cpp
+void Update(float deltaTime);    // Calls OnUpdate on all enabled components
+void FixedUpdate();              // Calls OnFixedUpdate on all enabled components
+void Render(Rendering::Camera* camera);  // Calls MeshRenderer / Animator / etc.
+void Start();                    // Calls OnStart on all components (once, at first Update)
+```
+
+### 6.4 Scene
+
+`Engine/ECS/Scene.h` — Owns a flat list of `GameObject` unique pointers. Manages the active camera and aggregates lighting information.
+
+**GameObject management:**
+
+```cpp
+GameObject* AddGameObject(const std::string& name);
+void        RemoveGameObject(GameObject* gameObject);
+GameObject* FindGameObject(const std::string& name) const;
+GameObject* FindGameObjectByUUID(uint64_t uuid) const;
+
+const std::vector<std::unique_ptr<GameObject>>& GetGameObjects() const;
+```
+
+`AddGameObject` creates a new `GameObject` via `std::make_unique`, stores it in the scene's vector, and returns a raw observer pointer. The scene owns all `GameObject` instances; raw pointers are safe as long as `RemoveGameObject` has not been called.
+
+**Lifecycle (called by Application):**
+
+```cpp
+void Update(float deltaTime);    // Propagates to all active root GameObjects
+void FixedUpdate();
+void Render(Rendering::Camera* camera);
+```
+
+Update is called on all root-level `GameObject` instances (those without a parent). Each `GameObject::Update` recurses into its children.
+
+**Camera:**
+
+```cpp
+void        SetMainCamera(GameObject* cameraObject);   // Must have CameraComponent
+Camera*     GetMainCamera()   const;    // Returns the raw Camera from CameraComponent
+GameObject* GetActiveCameraObject() const;
+Camera*     GetActiveCamera() const;
+```
+
+**Lighting:**
+
+```cpp
+std::vector<Rendering::Lighting::Light*> CollectLights() const;
+const std::vector<Rendering::Lighting::Light*>& GetLights() const;
+```
+
+`CollectLights()` scans every `GameObject` for a `LightComponent` and returns their underlying `Light*` pointers. Called by `Application::Render` before the geometry pass.
+
+**Skybox:**
+
+```cpp
+void SetSkyboxCubemap(Rendering::Cubemap* cubemap);
+void SetSkyboxEnabled(bool enabled);
+bool IsSkyboxEnabled() const;
+Rendering::Skybox* GetSkybox() const;
+```
+
+Each scene has its own `Skybox` instance. When rendering, `Application` checks `IsSkyboxEnabled()` and calls `Skybox::Render(camera)` after the geometry pass.
+
+### 6.5 SceneManager
+
+`Engine/ECS/SceneManager.h` — Singleton. Handles loading and unloading scenes, and fires lifecycle callbacks so subsystems can respond.
+
+```cpp
+static SceneManager& GetInstance();
+```
+
+**Loading:**
+
+```cpp
+bool LoadScene(const std::string& path);
+void UnloadCurrentScene();
+```
+
+`LoadScene` calls:
+1. `onSceneUnloading` callback (registered by Application as `ResetPhysics`).
+2. Destroys the existing scene (all `GameObject` destructors run).
+3. Calls `SceneLoader::Load(path)` to parse the Lua file and populate a new `Scene`.
+4. Calls `onSceneLoaded` callback (registered by Application as `InitializePhysicsForScene`).
+
+**State:**
+
+```cpp
+bool         HasActiveScene()     const;
+ECS::Scene*  GetActiveScene()     const;   // Returns nullptr if no scene loaded
+const std::string& GetActiveScenePath() const;
+```
+
+**Callbacks:**
+
+```cpp
+using SceneCallback = std::function<void(ECS::Scene*)>;
+void SetOnSceneLoaded(SceneCallback callback);
+void SetOnSceneUnloading(SceneCallback callback);
+```
+
+Only one callback of each type can be registered. Registering a second one replaces the first.
+
+**Dirty tracking** (used by the editor to show unsaved-changes indicator):
+
+```cpp
+void MarkSceneDirty();
+void ClearSceneDirty();
+bool IsSceneDirty() const;
+```
+
+Dirty state is automatically set when scene content is modified through the editor Inspector or Hierarchy panels, and cleared on save.
+
+---
+
+## 7. Built-in Components
+
+All built-in components follow the full lifecycle protocol and support the reflection system. Their reflected proxy members are listed with the `Ref` suffix — these are what the Inspector reads and writes.
+
+### 7.1 MeshRenderer
+
+`Engine/ECS/MeshRenderer.h` — Renders one or more meshes using a single `Material`.
+
+**Single-mesh workflow:**
+
+```cpp
+auto* mr = go->AddComponent<MeshRenderer>();
+mr->SetMesh(resourceMgr.GetModel("Assets/Models/Crate.obj"));
+mr->SetTexture(resourceMgr.GetTexture("Assets/Textures/crate.png"));
+```
+
+**Multi-mesh workflow** (for FBX files with submeshes):
+
+```cpp
+mr->SetMeshes(resourceMgr.GetModelMeshes("Assets/Models/Character.fbx"));
+
+// Per-mesh materials (loaded from ModelData by ModelLoader):
+mr->SetMeshMaterials(modelData.materials);
+```
+
+**Material control:**
+
+```cpp
+Material*  GetMaterial();
+void       SetShader(Rendering::Shader* shader);
+void       SetTexture(Rendering::Texture* texture);
+void       SetColor(const Math::Vector4& color);
+```
+
+**Per-mesh materials** (when a model has embedded materials):
+
+```cpp
+bool        HasMeshMaterials() const;
+Material*   GetMeshMaterial(int index) const;
+void        SetMeshMaterials(const std::vector<Material*>& materials);
+```
+
+**Mesh access:**
+
+```cpp
+Rendering::Mesh*               GetMesh()   const;
+const std::vector<Rendering::Mesh*>& GetMeshes() const;
+void SetMesh(Rendering::Mesh* mesh);
+void SetMeshes(const std::vector<Rendering::Mesh*>& meshes);
+```
+
+**Reflected properties (Proxy):**
+
+```cpp
+std::string meshRef;      // Path to mesh asset (synced to SetMesh in OnValidate)
+std::string textureRef;   // Path to texture asset
+Math::Vector4 colorRef;   // RGBA tint color
+```
+
+**Lifecycle:**
+
+- `OnAwake`: initializes `Material` with the default lit shader and default white texture.
+- `OnValidate`: called by Inspector when `meshRef`, `textureRef`, or `colorRef` changes; reloads the asset from `ResourceManager`.
+- `OnUpdate`: not used (rendering happens in `OnUpdate`'s sibling call `Render(camera)`).
+
+The actual draw call is issued by `GameObject::Render(camera)`, which calls `MeshRenderer`'s internal render method.
+
+### 7.2 CameraComponent
+
+`Engine/ECS/CameraComponent.h` — Wraps a `Rendering::Camera` and can designate itself as the scene's main camera.
+
+**Camera properties:**
+
+```cpp
+void SetFOV(float fovDegrees);          float GetFOV()   const;
+void SetNearClip(float near);           float GetNearClip() const;
+void SetFarClip(float far);             float GetFarClip() const;
+void SetOrthographicSize(float size);   float GetOrthographicSize() const;
+
+enum class ProjectionType { Perspective, Orthographic };
+void SetProjectionType(ProjectionType type);
+ProjectionType GetProjectionType() const;
+```
+
+**Scene camera designation:**
+
+```cpp
+void SetAsMain();   // Registers this camera with Scene::SetMainCamera
+bool IsMain() const;
+```
+
+**Transform sync:**
+
+```cpp
+void SetSyncWithTransform(bool sync);
+bool GetSyncWithTransform() const;
+```
+
+When sync is enabled (default), `OnUpdate` copies the owner `GameObject`'s world position and rotation to the internal `Camera` every frame. Disable sync if you want to drive the camera directly (e.g., in a cinematic controller).
+
+**Reflected properties (Proxy):**
+
+```cpp
+float fovRef               = 60.0f;
+float nearClipRef          = 0.1f;
+float farClipRef           = 1000.0f;
+int   projectionTypeRef    = 0;      // 0=Perspective, 1=Orthographic
+float orthographicSizeRef  = 5.0f;
+```
+
+### 7.3 LightComponent
+
+`Engine/ECS/LightComponent.h` — Attaches a dynamic `Rendering::Light` (Directional, Point, or Spot) to a `GameObject`. The component syncs the light's world position and direction with the owner's `Transform` each frame.
+
+**Light type:**
+
+```cpp
+enum class LightType { Directional = 0, Point = 1, Spot = 2 };
+void      SetLightType(LightType type);
+LightType GetLightType() const;
+```
+
+Changing `lightType` destroys the existing `Light` object and creates a new one of the requested subclass. All property values (color, intensity, etc.) are reset to defaults on type change.
+
+**Common properties:**
+
+```cpp
+void SetColor(const Math::Vector3& color);      Math::Vector3 GetColor() const;
+void SetIntensity(float intensity);             float GetIntensity() const;
+```
+
+**Point and Spot specific:**
+
+```cpp
+void  SetRange(float range);        float GetRange() const;
+```
+
+**Spot specific:**
+
+```cpp
+void  SetSpotAngle(float degrees);       float GetSpotAngle()      const;  // outer cone
+void  SetSpotInnerAngle(float degrees);  float GetSpotInnerAngle() const;  // inner cone (soft edge)
+```
+
+**Sync flags:**
+
+```cpp
+bool syncPosition  = true;   // Copy world position to light each frame
+bool syncDirection = true;   // Copy world forward vector to light each frame (Directional/Spot)
+```
+
+**Reflected properties (Proxy):**
+
+```cpp
+int           lightTypeRef   = 0;     // LightType enum index
+Math::Vector3 colorRef       = {1,1,1};
+float         intensityRef   = 1.0f;
+float         rangeRef       = 10.0f;
+float         spotAngleRef   = 30.0f;
+float         spotInnerAngleRef = 15.0f;
+```
+
+**Lifecycle:**
+
+- `OnAwake`: creates the initial `Light` object (default type: `Point`).
+- `OnStart`: registers the light with `Scene::CollectLights`.
+- `OnUpdate`: syncs position/direction from `GetWorldPosition()` / `GetWorldMatrix().GetForward()`.
+- `OnValidate`: rebuilds the light object if `lightTypeRef` changed; updates color, intensity, range.
+- `OnDestroy`: unregisters the light from the scene.
+
+### 7.4 RigidBodyComponent
+
+`Engine/ECS/RigidBodyComponent.h` — Adds Bullet Physics simulation to a `GameObject`. Works in conjunction with `BoxColliderComponent` (or other colliders) to define the shape.
+
+**Body type:**
+
+```cpp
+enum class BodyType { Static = 0, Dynamic = 1, Kinematic = 2 };
+```
+
+- **Static**: mass = 0; never moves; other objects collide with it.
+- **Dynamic**: fully simulated; affected by gravity and forces.
+- **Kinematic**: moved by code (not physics forces); other dynamic bodies collide with it.
+
+**Runtime control** (after `OnStart`, when the Bullet body exists):
+
+```cpp
+Physics::RigidBody* GetRigidBody() const;
+```
+
+Access the underlying `RigidBody` to apply forces, set velocities, or lock axes:
+
+```cpp
+rb->GetRigidBody()->ApplyCentralImpulse({0, 10, 0});
+rb->GetRigidBody()->SetLinearVelocity({5, 0, 0});
+rb->GetRigidBody()->SetAngularFactor({0, 1, 0});  // lock X and Z rotation
+rb->GetRigidBody()->SetLinearFactor({1, 1, 0});   // lock Z movement
+```
+
+**Reflected properties (Proxy):**
+
+```cpp
+float massRef        = 1.0f;
+float frictionRef    = 0.5f;
+float restitutionRef = 0.0f;   // Bounciness (0 = no bounce, 1 = perfect bounce)
+int   bodyTypeRef    = 1;      // BodyType enum index (default: Dynamic)
+```
+
+**Lifecycle:**
+
+- `OnAwake`: stores initial values but does not create the Bullet body (no collider or physics world yet).
+- `OnStart`: Bullet body is created by `PhysicsSystem::InitializeCollider` before `OnStart` fires.
+- `OnUpdate`: syncs `Transform` from the Bullet body's world transform (for Dynamic bodies).
+- `OnValidate`: updates mass, friction, restitution on the existing Bullet body if it exists.
+- `OnDestroy`: removes the Bullet body from `PhysicsWorld`.
+
+### 7.5 BoxColliderComponent
+
+`Engine/ECS/BoxColliderComponent.h` — Defines a box-shaped collision volume for the sibling `RigidBodyComponent`.
+
+**Size and offset:**
+
+```cpp
+void          SetSize(const Math::Vector3& halfExtents);
+Math::Vector3 GetSize() const;
+
+void          SetCenter(const Math::Vector3& center);
+Math::Vector3 GetCenter() const;
+```
+
+Size is specified as **half-extents** (half the full side length in each axis), which is Bullet's native convention. A unit cube uses `{0.5f, 0.5f, 0.5f}`.
+
+**Reflected properties (Proxy):**
+
+```cpp
+Math::Vector3 sizeRef   = {0.5f, 0.5f, 0.5f};
+Math::Vector3 centerRef = {0.0f, 0.0f, 0.0f};
+```
+
+The collider is realized when `PhysicsSystem::InitializeCollider(go, boxCollider)` is called from `Application::InitializePhysicsForScene`. At that point, a `btBoxShape` is created from `sizeRef` and attached to the `btRigidBody`.
+
+### 7.6 AudioSourceComponent
+
+`Engine/ECS/AudioSourceComponent.h` — Plays audio clips through the FMOD engine. Supports positional 3D audio when the owning `GameObject` has a `Transform`.
+
+**Clip management:**
+
+```cpp
+void              SetClip(Audio::AudioClip* clip);
+Audio::AudioClip* GetClip() const;
+```
+
+**Playback control:**
+
+```cpp
+void Play();
+void Stop();
+void Pause();
+void Resume();
+bool IsPlaying() const;
+```
+
+**Properties:**
+
+```cpp
+void  SetVolume(float volume);     float GetVolume()  const;  // 0.0–1.0
+void  SetPitch(float pitch);       float GetPitch()   const;  // 0.5–2.0 typical
+void  SetLoop(bool loop);          bool  GetLoop()    const;
+void  SetPlayOnStart(bool play);   bool  GetPlayOnStart() const;
+```
+
+**Reflected properties (Proxy):**
+
+```cpp
+std::string audioClipRef  = "";
+float       volumeRef     = 1.0f;
+float       pitchRef      = 1.0f;
+bool        loopRef       = false;
+bool        playOnStartRef= false;
+```
+
+**Lifecycle:**
+
+- `OnStart`: if `playOnStartRef` is true, calls `Play()`.
+- `OnUpdate`: updates the FMOD channel's 3D position from `GetWorldPosition()`.
+- `OnDestroy`: stops and releases the FMOD channel.
+
+### 7.7 FreeLookCamera
+
+`Engine/ECS/FreeLookCamera.h` — A convenience component that implements first-person camera controls using `InputManager`. Designed for runtime use (not the editor).
+
+Reads `KeyCode::W/A/S/D/E/Q` for movement and the mouse delta for look. Speed and sensitivity are configurable. Internally drives the owner `GameObject`'s `Transform` directly.
+
+---
+
+## 8. Rendering Subsystem
+
+### 8.1 Camera
+
+`Engine/Rendering/Camera.h` — A standalone (non-component) perspective or orthographic camera. Owned by `CameraComponent`; also used directly by the editor's `SceneViewPanel`.
+
+**Projection type:**
+
+```cpp
+enum class ProjectionType { Perspective, Orthographic };
+void SetProjectionType(ProjectionType type);
+```
+
+**Projection parameters:**
+
+```cpp
+void SetFOV(float degrees);
+void SetAspectRatio(float aspect);      // width / height
+void SetNearPlane(float near);
+void SetFarPlane(float far);
+void SetOrthographicSize(float size);   // Half-height of orthographic view
+```
+
+**Position and orientation:**
+
+```cpp
+void SetPosition(const Math::Vector3& pos);
+void SetRotation(float pitchDegrees, float yawDegrees);
+
+const Math::Vector3& GetPosition() const;
+float GetPitch() const;
+float GetYaw()   const;
+```
+
+**Free-look movement helpers** (advance the position along local axes):
+
+```cpp
+void Move(const Math::Vector3& delta);
+void MoveForward(float distance);
+void MoveRight(float distance);
+void MoveUp(float distance);
+void Rotate(float deltaPitch, float deltaYaw);  // Clamps pitch to ±89°
+```
+
+**Matrices:**
+
+```cpp
+Math::Matrix4 GetViewMatrix()           const;
+Math::Matrix4 GetProjectionMatrix()     const;
+Math::Matrix4 GetViewProjectionMatrix() const;   // Projection * View
+```
+
+**Direction vectors** (derived from pitch/yaw, not stored):
+
+```cpp
+Math::Vector3 GetForward() const;
+Math::Vector3 GetRight()   const;
+Math::Vector3 GetUp()      const;
+```
+
+### 8.2 Shader
+
+`Engine/Rendering/Shader.h` — Compiles, links, and caches GLSL programs. Provides typed uniform setters.
+
+**Loading:**
+
+```cpp
+bool LoadFromFiles(const std::string& vertexPath,
+                   const std::string& fragmentPath);
+bool LoadFromStrings(const std::string& vertexSrc,
+                     const std::string& fragmentSrc);
+```
+
+Both methods compile the shaders, link the program, and log any compilation errors via `Logger`.
+
+**Binding:**
+
+```cpp
+void Bind()   const;
+void Unbind() const;
+```
+
+**Uniform setters:**
+
+```cpp
+void SetBool(const std::string& name, bool value)                  const;
+void SetInt(const std::string& name, int value)                    const;
+void SetFloat(const std::string& name, float value)                const;
+void SetVector2(const std::string& name, const Math::Vector2& v)   const;
+void SetVector3(const std::string& name, const Math::Vector3& v)   const;
+void SetVector4(const std::string& name, const Math::Vector4& v)   const;
+void SetMatrix4(const std::string& name, const Math::Matrix4& m)   const;
+```
+
+Uniform locations are cached in an `std::unordered_map<std::string, GLint>` after the first lookup to avoid repeated `glGetUniformLocation` calls.
+
+**State:**
+
+```cpp
+bool IsCompiled()    const;
+GLuint GetProgramID() const;
+```
+
+### 8.3 Material
+
+`Engine/Rendering/Material.h` — Groups a `Shader`, a `Texture`, and surface properties (color, shininess). Provides a single `Bind()` call that activates the shader and uploads all uniforms.
+
+```cpp
+void SetShader(Rendering::Shader* shader);
+void SetTexture(Rendering::Texture* texture);
+void SetColor(const Math::Vector4& color);
+void SetDiffuseColor(const Math::Vector3& color);
+void SetShininess(float shininess);
+
+Rendering::Shader*  GetShader()    const;
+Rendering::Texture* GetTexture()   const;
+Math::Vector4       GetColor()     const;
+float               GetShininess() const;
+
+void Bind();     // Binds shader, uploads uniforms, binds texture to unit 0
+void Unbind();
+```
+
+When `Bind()` is called, it uploads:
+- `u_Color` — the RGBA color multiplier.
+- `u_Shininess` — the specular shininess exponent.
+- `u_Texture` — the diffuse texture (unit 0).
+
+### 8.4 Vertex and Mesh
+
+**Vertex** (`Engine/Rendering/Vertex.h`):
+
+```cpp
+struct Vertex {
+    Math::Vector3 position;
+    Math::Vector3 normal;
+    Math::Vector2 texCoords;
+    Math::Vector3 tangent;
+    Math::Vector3 bitangent;
+
+    // Skeletal animation:
+    int   boneIDs[4]     = {-1,-1,-1,-1};
+    float boneWeights[4] = { 0, 0, 0, 0};
+};
+```
+
+All attributes are uploaded to the GPU as a single interleaved buffer. The bone ID/weight attributes are used by the skinning shader when `Animator` is present.
+
+**Mesh** (`Engine/Rendering/Mesh.h`):
+
+```cpp
+Mesh(const std::vector<Vertex>& vertices,
+     const std::vector<unsigned int>& indices);
+```
+
+Internally creates a VAO, VBO, and EBO and uploads the data. After construction the CPU-side vectors are no longer needed.
+
+```cpp
+void Draw() const;   // glDrawElements(GL_TRIANGLES, indexCount, ...)
+```
+
+**Bounding box (AABB)**:
+
+```cpp
+Math::Vector3 GetAABBMin()    const;
+Math::Vector3 GetAABBMax()    const;
+Math::Vector3 GetAABBSize()   const;   // max - min
+Math::Vector3 GetAABBCenter() const;   // (min + max) / 2
+```
+
+The AABB is computed from vertex positions at construction time and is used by the editor's object picking raycast.
+
+**Material index** (for multi-mesh models with per-mesh materials):
+
+```cpp
+void SetMaterialIndex(int index);
+int  GetMaterialIndex() const;
+```
+
+When a model is loaded with `LoadModelMeshes`, each `Mesh` is assigned the index of its corresponding material in the `LoadedMaterial` array. `MeshRenderer` uses this to select the correct `Material*` from `meshMaterials`.
+
+**GPU state:**
+
+```cpp
+int GetVertexCount() const;
+int GetIndexCount()  const;
+GLuint GetVAO()      const;
+```
+
+### 8.5 Texture
+
+`Engine/Rendering/Texture.h` — Wraps an OpenGL 2D texture object.
+
+**Loading:**
+
+```cpp
+bool LoadFromFile(const std::string& path);
+
+// For embedded textures from model files:
+bool LoadFromMemory(const unsigned char* data, int width, int height, int channels);
+bool LoadFromCompressedMemory(const unsigned char* data, size_t size);
+
+// For shadow maps:
+bool CreateDepthTexture(int width, int height);
+```
+
+`LoadFromFile` uses `stb_image` to decode PNG, JPG, BMP, and TGA files. It automatically detects the number of channels and selects the appropriate OpenGL internal format (`GL_RGB`, `GL_RGBA`, etc.).
+
+**Sampling parameters:**
+
+```cpp
+enum class FilterMode { Nearest, Linear, LinearMipmapLinear };
+enum class WrapMode   { Repeat, ClampToEdge, ClampToBorder };
+
+void SetFilter(FilterMode minFilter, FilterMode magFilter);
+void SetWrap(WrapMode wrapS, WrapMode wrapT);
+void GenerateMipmaps();
+```
+
+**Binding:**
+
+```cpp
+void Bind(unsigned int slot = 0) const;   // glActiveTexture(GL_TEXTURE0 + slot)
+void Unbind() const;
+```
+
+**Properties:**
+
+```cpp
+int    GetWidth()    const;
+int    GetHeight()   const;
+int    GetChannels() const;
+GLuint GetID()       const;
+bool   IsLoaded()    const;
+```
+
+### 8.6 FrameBuffer
+
+`Engine/Rendering/FrameBuffer.h` — Off-screen render target with a color attachment and a depth/stencil renderbuffer.
+
+```cpp
+bool Create(int width, int height);
+void Destroy();
+void Bind()   const;   // glBindFramebuffer(GL_FRAMEBUFFER, fbo)
+void Unbind() const;   // glBindFramebuffer(GL_FRAMEBUFFER, 0)
+void Resize(int newWidth, int newHeight);
+
+GLuint GetColorAttachment() const;   // OpenGL texture ID, used as ImGui image
+int GetWidth()  const;
+int GetHeight() const;
+```
+
+Used by the editor's `SceneViewPanel` and `GameViewPanel` to render the 3D scene and display it as a texture inside an ImGui window.
+
+### 8.7 ModelLoader
+
+`Engine/Rendering/ModelLoader.h` — Static class. Wraps Assimp to load 3D model files.
+
+**Embedded texture data** (for models with textures baked into the file):
+
+```cpp
+struct EmbeddedTexture {
+    std::string name;
+    bool isCompressed;
+
+    // Compressed (PNG/JPG embedded):
+    std::vector<unsigned char> compressedData;
+
+    // Uncompressed (raw RGBA):
+    std::vector<unsigned char> rawData;
+    int width;
+    int height;
+    int channels;
+};
+```
+
+**Loaded material data:**
+
+```cpp
+struct LoadedMaterial {
+    std::string name;
+    Math::Vector4 diffuseColor  = {1,1,1,1};
+    std::string   diffuseTexturePath;   // File path or embedded texture name
+    float         opacity       = 1.0f;
+};
+```
+
+**Full model data** (returned by `LoadModelWithAnimations`):
+
+```cpp
+struct ModelData {
+    std::vector<Rendering::Mesh*>      meshes;
+    Animation::Skeleton*               skeleton;
+    std::vector<Animation::AnimationClip*> animations;
+    std::vector<LoadedMaterial>        materials;
+    std::vector<EmbeddedTexture>       embeddedTextures;
+    std::string                        modelDirectory;
+};
+```
+
+**Loading methods:**
+
+```cpp
+// Simple: returns flat list of meshes (no animation data):
+static std::vector<Rendering::Mesh*> LoadModel(const std::string& path);
+
+// Full: returns meshes + skeleton + animations + materials:
+static ModelData LoadModelWithAnimations(const std::string& path);
+```
+
+`LoadModelWithAnimations` processes:
+1. All Assimp meshes → `Rendering::Mesh` with bone ID/weight attributes.
+2. The armature hierarchy → `Animation::Skeleton` with `Bone` nodes.
+3. All Assimp animations → `Animation::AnimationClip` with per-bone keyframe tracks.
+4. All Assimp materials → `LoadedMaterial` with diffuse color and texture path.
+5. Embedded textures → `EmbeddedTexture` raw or compressed data.
+
+The `ResourceManager` uses the simple `LoadModel` for quick mesh-only loading and the full version when `Animator` is involved.
+
+### 8.8 Skybox
+
+`Engine/Rendering/Skybox.h` — Renders a cubemap skybox using a dedicated cube mesh and shader. Drawn last in the render pass with depth write disabled and depth test set to `GL_LEQUAL` so it only fills pixels not covered by scene geometry.
+
+```cpp
+void Initialize(Rendering::Cubemap* cubemap, Rendering::Shader* shader);
+void Render(Rendering::Camera* camera);
+
+void SetCubemap(Rendering::Cubemap* cubemap);
+Rendering::Cubemap* GetCubemap() const;
+
+void SetEnabled(bool enabled);
+bool IsEnabled() const;
+```
+
+The view matrix passed to the skybox shader has its translation component stripped (only the rotation matters) so the skybox appears infinitely far away regardless of camera position.
+
+### 8.9 ShadowMap
+
+`Engine/Rendering/ShadowMap.h` — A `FrameBuffer` specialized for depth-only rendering. Used by `DirectionalLight` to capture a shadow depth map.
+
+```cpp
+bool Create(int width = 1024, int height = 1024);
+void Bind()   const;
+void Unbind() const;
+
+Rendering::Texture* GetDepthTexture() const;
+Math::Matrix4       GetLightSpaceMatrix() const;
+
+void SetLightSpaceMatrix(const Math::Matrix4& lsm);
+int  GetWidth()  const;
+int  GetHeight() const;
+```
+
+The light-space matrix is computed by `DirectionalLight::GetLightSpaceMatrix(sceneCenter, sceneRadius)` and stored here for later upload to the geometry-pass shader as `u_LightSpaceMatrix`.
+
+### 8.10 Lighting — DirectionalLight
+
+`Engine/Rendering/Lighting/DirectionalLight.h` — Simulates a sun-like light source with parallel rays.
+
+```cpp
+void SetDirection(const Math::Vector3& dir);    // Should be normalized
+const Math::Vector3& GetDirection() const;
+
+void SetColor(const Math::Vector3& color);
+void SetIntensity(float intensity);
+
+void SetCastShadows(bool castShadows);
+bool GetCastShadows() const;
+
+void SetShadowMapResolution(int resolution);
+int  GetShadowMapResolution() const;
+
+void SetShadowBias(float bias);         // Prevents shadow acne
+float GetShadowBias() const;
+
+ShadowMap* GetShadowMap() const;
+
+// Computes orthographic light-space matrix for shadow map rendering:
+Math::Matrix4 GetLightSpaceMatrix(const Math::Vector3& sceneCenter,
+                                   float sceneRadius) const;
+
+void ApplyToShader(Rendering::Shader* shader) const;
+```
+
+`ApplyToShader` uploads:
+- `u_DirLight.direction`
+- `u_DirLight.color`
+- `u_DirLight.intensity`
+- `u_DirLight.castShadows`
+- `u_ShadowMap` (texture unit 1)
+- `u_LightSpaceMatrix`
+- `u_ShadowBias`
+
+### 8.11 Lighting — PointLight
+
+`Engine/Rendering/Lighting/PointLight.h` — An omnidirectional point light with physical attenuation.
+
+```cpp
+void SetPosition(const Math::Vector3& pos);
+void SetColor(const Math::Vector3& color);
+void SetIntensity(float intensity);
+void SetRange(float range);
+
+// Attenuation coefficients (Ogre / Unity convention):
+void SetAttenuation(float constant, float linear, float quadratic);
+
+void ApplyToShader(Rendering::Shader* shader, int index) const;
+```
+
+The index-based `ApplyToShader` uploads to array uniforms `u_PointLights[index].*`. The maximum number of point lights is defined by the shader (`#define MAX_POINT_LIGHTS 16` in the default lit shader).
+
+Uploaded uniforms per light:
+- `u_PointLights[i].position`
+- `u_PointLights[i].color`
+- `u_PointLights[i].intensity`
+- `u_PointLights[i].range`
+- `u_PointLights[i].constant`, `.linear`, `.quadratic`
+
+### 8.12 Lighting — SpotLight
+
+`Engine/Rendering/Lighting/SpotLight.h` — A cone-shaped light, like a flashlight or stage spotlight.
+
+```cpp
+void SetPosition(const Math::Vector3& pos);
+void SetDirection(const Math::Vector3& dir);    // Normalized
+void SetColor(const Math::Vector3& color);
+void SetIntensity(float intensity);
+void SetRange(float range);
+
+// Cone angles (degrees → stored as cosine):
+void SetCutOff(float innerDegrees, float outerDegrees);
+
+void SetAttenuation(float constant, float linear, float quadratic);
+
+void ApplyToShader(Rendering::Shader* shader, int index) const;
+```
+
+The soft edge is computed in the shader as `smoothstep(outerCos, innerCos, dot(lightDir, fragDir))`.
+
+### 8.13 Rendering Pipeline
+
+The full render pipeline executed each frame by `Application::Render()`:
+
+```
+1. Scene::CollectLights()
+   └── Scans LightComponents, returns Light* list
+
+2. For each DirectionalLight with CastShadows == true:
+   a. ShadowMap::Bind()
+   b. glViewport(0, 0, shadowRes, shadowRes)
+   c. Upload u_LightSpaceMatrix to depth shader
+   d. RenderSceneDepthOnly(scene)          ← draws all MeshRenderers with depth-only shader
+   e. ShadowMap::Unbind()
+   f. Restore main viewport
+
+3. FrameBuffer::Bind() (if rendering to texture, e.g. editor)
+   glClear(COLOR | DEPTH)
+
+4. Upload all lights to lit shader:
+   └── DirectionalLight::ApplyToShader
+   └── PointLight::ApplyToShader(index)
+   └── SpotLight::ApplyToShader(index)
+   └── u_PointLightCount, u_SpotLightCount
+
+5. Scene::Render(camera)
+   └── For each root GameObject:
+       └── GameObject::Render(camera)
+           └── MeshRenderer draws mesh(es) with material bound
+
+6. Skybox::Render(camera)
+   └── GL_LEQUAL depth test, no depth write
+   └── View matrix stripped of translation
+
+7. ImGui::Render()
+
+8. Window::SwapBuffers()
+```
+
+---
+
+## 9. Physics Subsystem
+
+### 9.1 PhysicsWorld
+
+`Engine/Physics/PhysicsWorld.h` — Singleton. Owns the Bullet `btDiscreteDynamicsWorld` and all its required components (broadphase, dispatcher, solver, collision config).
+
+```cpp
+static PhysicsWorld& GetInstance();
+
+bool Initialize();
+void Step(float deltaTime);   // Calls btDynamicsWorld::stepSimulation
+void Cleanup();               // Destroys all Bullet objects
+```
+
+**Body management:**
+
+```cpp
+void AddRigidBody(btRigidBody* body);
+void RemoveRigidBody(btRigidBody* body);
+
+void AddCollisionObject(btCollisionObject* obj);
+void RemoveCollisionObject(btCollisionObject* obj);
+```
+
+`RemoveRigidBody` also calls `RemoveCollisionObject` internally since `btRigidBody` extends `btCollisionObject`.
+
+**Gravity:**
+
+```cpp
+void          SetGravity(const Math::Vector3& gravity);
+Math::Vector3 GetGravity() const;
+```
+
+Default gravity: `{0, -9.81f, 0}`.
+
+**Low-level access:**
+
+```cpp
+btDiscreteDynamicsWorld* GetDynamicsWorld() const;
+btDispatcher*            GetDispatcher()    const;
+```
+
+The dynamics world pointer is used by `PhysicsSystem` to iterate manifolds for collision detection.
+
+### 9.2 RigidBody
+
+`Engine/Physics/RigidBody.h` — Wraps a `btRigidBody`. Manages the Bullet motion state and provides a high-level API for common operations.
+
+**Body type:**
+
+```cpp
+enum class BodyType { Static, Dynamic, Kinematic };
+void SetBodyType(BodyType type);
+BodyType GetBodyType() const;
+```
+
+Changing to `Static` sets mass to 0. Changing to `Kinematic` sets mass to 0 and adds `CF_KINEMATIC_OBJECT` flag. Changing to `Dynamic` restores the stored mass.
+
+**Physical properties:**
+
+```cpp
+void SetMass(float mass);         float GetMass()         const;
+void SetFriction(float f);        float GetFriction()     const;
+void SetRestitution(float r);     float GetRestitution()  const;
+```
+
+**Velocity and forces (Dynamic only):**
+
+```cpp
+void SetLinearVelocity(const Math::Vector3& vel);
+void SetAngularVelocity(const Math::Vector3& vel);
+Math::Vector3 GetLinearVelocity()  const;
+Math::Vector3 GetAngularVelocity() const;
+
+void ApplyForce(const Math::Vector3& force, const Math::Vector3& relPos);
+void ApplyCentralForce(const Math::Vector3& force);
+void ApplyImpulse(const Math::Vector3& impulse, const Math::Vector3& relPos);
+void ApplyCentralImpulse(const Math::Vector3& impulse);
+void ApplyTorque(const Math::Vector3& torque);
+void ApplyTorqueImpulse(const Math::Vector3& torque);
+
+void ClearForces();
+```
+
+**Axis constraints:**
+
+```cpp
+void SetLinearFactor(const Math::Vector3& factor);   // {1,1,0} = lock Z movement
+void SetAngularFactor(const Math::Vector3& factor);  // {0,1,0} = only Y rotation
+```
+
+**Transform sync:**
+
+```cpp
+void SetPosition(const Math::Vector3& pos);
+void SetRotation(const Math::Quaternion& rot);
+Math::Vector3    GetPosition() const;
+Math::Quaternion GetRotation() const;
+```
+
+**Owner:**
+
+```cpp
+void             SetOwner(ECS::GameObject* owner);
+ECS::GameObject* GetOwner() const;
+```
+
+The owner pointer is stored in the `btRigidBody::setUserPointer()` field so that `PhysicsSystem` can retrieve the `GameObject` from a Bullet collision pair.
+
+**Low-level:**
+
+```cpp
+btRigidBody* GetBulletRigidBody() const;
+void         SetBulletRigidBody(btRigidBody* body);
+```
+
+### 9.3 Colliders
+
+**Base class** (`Engine/Physics/Collider.h`):
+
+```cpp
+enum class ColliderType { Box, Sphere, Capsule, Mesh };
+
+ColliderType GetType() const;
+
+void SetCenter(const Math::Vector3& center);
+Math::Vector3 GetCenter() const;
+
+btCollisionShape* GetCollisionShape() const;
+```
+
+The Bullet shape is created lazily when `GetCollisionShape()` is first called.
+
+**BoxCollider** (`Engine/Physics/BoxCollider.h`):
+
+```cpp
+void          SetHalfExtents(const Math::Vector3& halfExtents);
+Math::Vector3 GetHalfExtents() const;
+```
+
+Creates a `btBoxShape(halfExtents)`.
+
+**SphereCollider** (`Engine/Physics/SphereCollider.h`):
+
+```cpp
+void  SetRadius(float radius);
+float GetRadius() const;
+```
+
+Creates a `btSphereShape(radius)`.
+
+### 9.4 PhysicsSystem
+
+`Engine/Physics/PhysicsSystem.h` — Per-scene update system. Called from `Application::Update`.
+
+```cpp
+void Update(ECS::Scene* scene, float deltaTime);
+void InitializeCollider(ECS::GameObject* go, ECS::BoxColliderComponent* boxCollider);
+void Reset();
+```
+
+**`Update` internal flow:**
+
+```
+1. For each Dynamic RigidBodyComponent:
+   sync Transform ← Bullet body position/rotation
+
+2. PhysicsWorld::Step(deltaTime)
+   (Bullet advances the simulation)
+
+3. Collect collision manifolds from PhysicsWorld::GetDispatcher()
+4. For each manifold with contact points:
+   a. Retrieve GameObject A and B from btRigidBody::getUserPointer()
+   b. Classify as Enter / Stay / Exit based on CollisionPair tracking set
+   c. Dispatch OnCollisionEnter/Stay/Exit to all components on A and B
+```
+
+**CollisionPair:**
+
+```cpp
+struct CollisionPair {
+    ECS::GameObject* a;
+    ECS::GameObject* b;
+    bool operator<(const CollisionPair& other) const;
+};
+
+std::set<CollisionPair> activeCollisions;   // private
+std::set<CollisionPair> previousCollisions; // private
+```
+
+At the end of each update, `previousCollisions` = `activeCollisions`. Next frame, pairs in `previous` but not in `active` generate `OnCollisionExit` events.
+
+**`InitializeCollider`** creates the Bullet rigid body:
+
+```
+1. Get BoxCollider size and center from BoxColliderComponent
+2. Create btBoxShape(halfExtents)
+3. Create btDefaultMotionState with initial world transform
+4. Compute inertia for dynamic bodies (btBoxShape::calculateLocalInertia)
+5. Create btRigidBody with mass, motion state, shape
+6. Set friction, restitution, body type flags
+7. Store owner pointer in btRigidBody::setUserPointer
+8. Add to PhysicsWorld
+```
+
+### 9.5 CollisionInfo
+
+`Engine/Physics/CollisionInfo.h` — Passed to all collision callbacks.
+
+```cpp
+struct CollisionInfo {
+    ECS::GameObject* other;          // The other object in the collision
+    Math::Vector3    contactPoint;   // World-space contact position
+    Math::Vector3    contactNormal;  // Normal pointing from other toward self
+    float            penetrationDepth;
+};
+```
+
+### 9.6 Physics Lifecycle
+
+The correct order of physics operations across a scene reload:
+
+```
+1. User requests scene load (SceneManager::LoadScene)
+2. onSceneUnloading fires → Application::ResetPhysics()
+   └── PhysicsWorld removes all btRigidBody objects
+   └── PhysicsSystem::Reset() clears collision tracking
+3. activeScene.reset() — all GameObjects destroyed
+   └── ~BoxColliderComponent deletes btCollisionObject safely (already removed)
+4. SceneLoader::Load — new Scene created, GameObjects and components added
+5. onSceneLoaded fires → Application::InitializePhysicsForScene(newScene)
+   └── For each RigidBodyComponent + BoxColliderComponent pair:
+       PhysicsSystem::InitializeCollider(go, boxCollider)
+```
+
+**Critical**: steps 2 and 3 must happen in that order. If `activeScene.reset()` runs before `ResetPhysics()`, the `btDiscreteDynamicsWorld` will access freed broadphase proxies in its internal structures when the bodies are removed, causing an access violation (`0xC0000005`).
+
+---
+
+## 10. Audio Subsystem
+
+### 10.1 AudioSystem
+
+`Engine/Audio/AudioSystem.h` — Singleton. Wraps an `FMOD::System` instance.
+
+```cpp
+static AudioSystem& GetInstance();
+
+bool Initialize(int maxChannels = 512);
+void Update();      // Must be called every frame
+void Shutdown();
+
+FMOD::System* GetFMODSystem() const;
+```
+
+`GetFMODSystem()` exposes the raw FMOD handle for advanced use (3D listener positioning, DSP effects, channel groups, etc.).
+
+Setting up the FMOD 3D listener (typically done in `Application::Update` or a CameraComponent):
+
+```cpp
+FMOD_VECTOR pos      = { camPos.x, camPos.y, camPos.z };
+FMOD_VECTOR vel      = { 0, 0, 0 };
+FMOD_VECTOR forward  = { fwd.x, fwd.y, fwd.z };
+FMOD_VECTOR up       = { up.x,  up.y,  up.z  };
+AudioSystem::GetInstance().GetFMODSystem()->set3DListenerAttributes(0, &pos, &vel, &forward, &up);
+```
+
+### 10.2 AudioClip
+
+`Engine/Audio/AudioClip.h` — Wraps an `FMOD::Sound`.
+
+```cpp
+bool LoadFromFile(const std::string& path, bool stream = false);
+
+bool          IsLoaded()    const;
+const std::string& GetFilePath() const;
+float         GetLength()   const;   // Duration in seconds
+FMOD::Sound*  GetSound()    const;
+```
+
+`AudioSourceComponent` calls `AudioSystem::GetFMODSystem()->playSound(clip->GetSound(), ...)` to play the audio on a channel.
+
+---
+
+## 11. Input Subsystem
+
+### 11.1 InputManager
+
+`Engine/Input/InputManager.h` — Singleton. Processes `SDL_Event` structures and exposes a per-frame snapshot of keyboard and mouse state.
+
+```cpp
+static InputManager& GetInstance();
+
+void ProcessEvent(const SDL_Event& event);   // Call inside the SDL event loop
+void Update();                               // Call once per frame to flush just-pressed/released
+```
+
+**Keyboard:**
+
+```cpp
+bool IsKeyPressed(KeyCode key)      const;   // Held down this frame
+bool IsKeyJustPressed(KeyCode key)  const;   // First frame it was pressed
+bool IsKeyJustReleased(KeyCode key) const;   // First frame it was released
+```
+
+**Mouse buttons:**
+
+```cpp
+bool IsMouseButtonPressed(MouseButton button)      const;
+bool IsMouseButtonJustPressed(MouseButton button)  const;
+bool IsMouseButtonJustReleased(MouseButton button) const;
+```
+
+**Mouse position and movement:**
+
+```cpp
+int   GetMouseX()      const;   // Screen-space X pixel
+int   GetMouseY()      const;   // Screen-space Y pixel
+int   GetMouseDeltaX() const;   // Pixels moved since last frame
+int   GetMouseDeltaY() const;
+float GetScrollDelta() const;   // Vertical scroll wheel
+```
+
+**Mouse control:**
+
+```cpp
+void SetMouseRelativeMode(bool enabled);   // Locks cursor and returns only deltas
+void SetMousePosition(int x, int y);
+```
+
+### 11.2 KeyCode
+
+`Engine/Input/KeyCode.h` — Enum wrapping SDL keycodes. Values match `SDLK_*` constants.
+
+Selected values:
+
+```
+KeyCode::W, A, S, D, Q, E         Movement
+KeyCode::Space                     Jump / confirm
+KeyCode::Escape                    Cancel / quit
+KeyCode::LeftShift, LeftControl    Modifiers
+KeyCode::F1 … F12                  Function keys
+KeyCode::Alpha0 … Alpha9           Number row
+KeyCode::Delete, Backspace
+KeyCode::Up, Down, Left, Right     Arrow keys
+```
+
+### 11.3 MouseButton
+
+`Engine/Input/MouseButton.h` — Enum for mouse buttons.
+
+```
+MouseButton::Left
+MouseButton::Right
+MouseButton::Middle
+MouseButton::X1       // Extra button 1 (side button)
+MouseButton::X2       // Extra button 2
+```
+
+---
+
+## 12. Animation Subsystem
+
+### 12.1 Bone
+
+`Engine/Animation/Bone.h` — Represents a single joint in a skeleton.
+
+```cpp
+struct Bone {
+    std::string  name;
+    int          parentIndex;       // -1 for root bones
+    Math::Matrix4 offsetMatrix;     // Inverse bind-pose transform
+};
+```
+
+`offsetMatrix` transforms from mesh space to bone local space. Used by the skinning shader to compute final vertex positions.
+
+### 12.2 Skeleton
+
+`Engine/Animation/Skeleton.h` — The full bone hierarchy for a skinned mesh.
+
+```cpp
+void AddBone(const Bone& bone);
+const Bone& GetBone(int index) const;
+int         GetBoneIndex(const std::string& name) const;   // -1 if not found
+int         GetBoneCount() const;
+
+void          SetGlobalInverseTransform(const Math::Matrix4& m);
+Math::Matrix4 GetGlobalInverseTransform() const;
+
+void CalculateBoneTransforms(
+    const std::vector<Math::Matrix4>& localTransforms,
+    std::vector<Math::Matrix4>& outFinalTransforms
+) const;
+```
+
+`CalculateBoneTransforms` walks the bone hierarchy, multiplying each bone's local transform by its parent's accumulated transform, then by the offset matrix and the global inverse, to produce the final GPU-ready skinning matrices.
+
+### 12.3 AnimationClip
+
+`Engine/Animation/AnimationClip.h` — A named animation that stores per-bone keyframe tracks.
+
+**Keyframe types:**
+
+```cpp
+struct VectorKey {
+    double        time;
+    Math::Vector3 value;
+};
+
+struct QuatKey {
+    double           time;
+    Math::Quaternion value;
+};
+```
+
+**Per-bone track:**
+
+```cpp
+struct BoneAnimation {
+    std::string           boneName;
+    std::vector<VectorKey> positionKeys;
+    std::vector<QuatKey>   rotationKeys;
+    std::vector<VectorKey> scaleKeys;
+};
+```
+
+**Clip properties:**
+
+```cpp
+const std::string& GetName()              const;
+double             GetDuration()          const;   // In ticks
+double             GetTicksPerSecond()    const;
+float              GetDurationInSeconds() const;
+```
+
+**Interpolation:**
+
+```cpp
+bool GetBoneTransform(const std::string& boneName,
+                      float timeSeconds,
+                      Math::Matrix4& outMatrix) const;
+```
+
+Internally performs:
+1. Binary search for surrounding keys at `timeSeconds`.
+2. Linear interpolation of position (`lerp`) and scale (`lerp`).
+3. Spherical linear interpolation of rotation (`slerp`).
+4. Assembles TRS matrix.
+
+### 12.4 Animator
+
+`Engine/ECS/Animator.h` — Component that plays `AnimationClip`s and produces per-frame bone transform arrays for GPU upload.
+
+**Skeleton and clips:**
+
+```cpp
+void SetSkeleton(Animation::Skeleton* skeleton);
+Animation::Skeleton* GetSkeleton() const;
+
+void AddClip(const std::string& name, Animation::AnimationClip* clip);
+Animation::AnimationClip* GetClip(const std::string& name) const;
+```
+
+**Playback:**
+
+```cpp
+void Play(const std::string& clipName);
+void Stop();
+void Pause();
+void Resume();
+
+bool IsPlaying() const;
+bool IsPaused()  const;
+float GetCurrentTime()       const;   // Seconds within current clip
+const std::string& GetCurrentClipName() const;
+```
+
+**Speed and looping:**
+
+```cpp
+void SetSpeed(float speed);     float GetSpeed()   const;
+void SetLooping(bool loop);     bool  GetLooping() const;
+```
+
+**Bone transforms** (upload to skinning shader):
+
+```cpp
+const std::vector<Math::Matrix4>& GetBoneTransforms() const;
+```
+
+Returns a vector of `GetSkeleton()->GetBoneCount()` matrices. The skinning shader reads them as `uniform mat4 u_BoneMatrices[MAX_BONES]`.
+
+**Mesh loading:**
+
+```cpp
+void SetMeshes(const std::vector<Rendering::Mesh*>& meshes);
+const std::vector<Rendering::Mesh*>& GetMeshes() const;
+```
+
+**Reflected properties (Proxy):**
+
+```cpp
+std::string modelRef;         // Path to FBX/DAE model
+std::string currentClipName;  // Name of the clip to play
+float       speedRef    = 1.0f;
+bool        playingRef  = false;
+bool        loopingRef  = true;
+```
+
+**Lifecycle:**
+
+- `OnAwake`: initializes the bone transform buffer.
+- `OnStart`: if `playingRef` is true, calls `Play(currentClipName)`.
+- `OnUpdate(dt)`: advances `currentTime` by `dt * speed`, loops if `looping`, calls `AnimationClip::GetBoneTransform` for each bone, calls `Skeleton::CalculateBoneTransforms`, uploads results to the skinning shader via `MeshRenderer`'s shader.
+
+---
+
+## 13. Math Library
+
+All types are in `RTBEngine::Math`. Headers are in `Engine/Math/`.
+
+### 13.1 Vector2
+
+`float x, y`
+
+```cpp
+Vector2(float x = 0, float y = 0);
+Vector2 operator+(const Vector2&) const;
+Vector2 operator-(const Vector2&) const;
+Vector2 operator*(float scalar)   const;
+Vector2 operator/(float scalar)   const;
+Vector2& operator+=(const Vector2&);
+Vector2& operator-=(const Vector2&);
+bool operator==(const Vector2&) const;
+bool operator!=(const Vector2&) const;
+
+float   Dot(const Vector2& other) const;
+float   Length()        const;
+float   LengthSquared() const;
+Vector2 Normalized()    const;
+void    Normalize();
+
+static Vector2 Zero();
+static Vector2 One();
+```
+
+### 13.2 Vector3
+
+`float x, y, z`
+
+```cpp
+Vector3(float x = 0, float y = 0, float z = 0);
+
+// Arithmetic operators: +, -, * (scalar), * (component-wise), /, +=, -=, *=, /=, unary -
+// Comparison: ==, !=
+
+float   Dot(const Vector3& other)   const;
+Vector3 Cross(const Vector3& other) const;
+float   Length()        const;
+float   LengthSquared() const;
+Vector3 Normalized()    const;
+void    Normalize();
+
+// Static direction helpers:
+static Vector3 Zero();
+static Vector3 One();
+static Vector3 Up();       // { 0, 1, 0}
+static Vector3 Down();     // { 0,-1, 0}
+static Vector3 Left();     // {-1, 0, 0}
+static Vector3 Right();    // { 1, 0, 0}
+static Vector3 Forward();  // { 0, 0,-1}
+static Vector3 Back();     // { 0, 0, 1}
+```
+
+### 13.3 Vector4
+
+`float x, y, z, w`
+
+```cpp
+Vector4(float x = 0, float y = 0, float z = 0, float w = 0);
+
+// Arithmetic: +, -, *, /, +=, -=, *=
+// Dot product, length, normalize
+// Swizzles: xyz() → Vector3
+```
+
+Also used as RGBA color where `{r, g, b, a}` maps to `{x, y, z, w}`.
+
+### 13.4 Quaternion
+
+`float x, y, z, w`
+
+```cpp
+Quaternion(float x = 0, float y = 0, float z = 0, float w = 1);
+
+Quaternion operator*(const Quaternion& other) const;   // Composition
+Vector3    operator*(const Vector3& v)         const;   // Rotate vector
+
+float      Dot(const Quaternion& other)     const;
+float      Length()                         const;
+Quaternion Normalized()                     const;
+Quaternion Conjugate()                      const;
+Quaternion Inverse()                        const;
+
+Vector3    ToEulerAngles() const;     // Returns degrees (pitch, yaw, roll)
+Matrix4    ToMatrix4()     const;
+
+static Quaternion Identity();
+static Quaternion FromEuler(float pitchDeg, float yawDeg, float rollDeg);
+static Quaternion FromAxisAngle(const Vector3& axis, float angleDeg);
+static Quaternion LookRotation(const Vector3& forward, const Vector3& up = Vector3::Up());
+static Quaternion Slerp(const Quaternion& a, const Quaternion& b, float t);
+```
+
+### 13.5 Matrix4
+
+`float m[4][4]` (column-major, matching OpenGL convention)
+
+```cpp
+Matrix4();   // Identity
+Matrix4(float m00, float m01, ..., float m33);
+
+Matrix4 operator*(const Matrix4& other) const;
+Vector4 operator*(const Vector4& v)     const;
+Vector3 operator*(const Vector3& v)     const;   // w=1 implied
+
+Matrix4 Transposed() const;
+Matrix4 Inversed()   const;
+
+const float* Data() const;    // Raw pointer for glUniformMatrix4fv
+
+// Decomposition:
+Vector3    GetTranslation() const;
+Quaternion GetRotation()    const;
+Vector3    GetScale()       const;
+Vector3    GetForward()     const;
+Vector3    GetRight()       const;
+Vector3    GetUp()          const;
+
+// Factory:
+static Matrix4 Identity();
+static Matrix4 Translation(const Vector3& t);
+static Matrix4 Rotation(const Quaternion& q);
+static Matrix4 Scale(const Vector3& s);
+static Matrix4 TRS(const Vector3& t, const Quaternion& r, const Vector3& s);
+static Matrix4 LookAt(const Vector3& eye, const Vector3& center, const Vector3& up);
+static Matrix4 Perspective(float fovDeg, float aspect, float nearZ, float farZ);
+static Matrix4 Orthographic(float left, float right, float bottom, float top,
+                             float nearZ, float farZ);
+```
+
+---
+
+## 14. Reflection System
+
+The reflection system allows the editor Inspector to display and edit component properties without knowing their concrete types at compile time. It also drives the serializer (`SceneSaver`) and deserializer (`SceneLoader`).
+
+### 14.1 PropertyType and PropertyFlags
+
+`Engine/Reflection/TypeInfo.h`
+
+```cpp
+enum class PropertyType {
+    Bool,
+    Int,
+    Float,
+    Double,
+    String,
+    Vector2,
+    Vector3,
+    Vector4,
+    Quaternion,
+    Color,
+    Enum,
+    AssetRef,       // Generic asset path string
+    TextureRef,     // Texture asset path
+    AudioClipRef,   // AudioClip asset path
+    MeshRef,        // Mesh asset path
+    FontRef,        // Font asset path
+    GameObjectRef,  // Pointer to a GameObject (resolved by UUID at load time)
+    ComponentRef,   // Pointer to a specific component type
+};
+
+enum class PropertyFlags : uint32_t {
+    None             = 0,
+    Serialize        = 1 << 0,   // Include in scene file
+    HideInInspector  = 1 << 1,   // Don't show in Inspector
+    ReadOnly         = 1 << 2,   // Show but don't allow editing
+};
+```
+
+### 14.2 PropertyInfo
+
+```cpp
+struct PropertyInfo {
+    std::string  name;           // C++ member name (e.g., "speedRef")
+    std::string  displayName;    // Human-readable label (e.g., "Speed")
+    PropertyType type;
+    size_t       offset;         // offsetof(ClassName, memberRef)
+    size_t       size;           // sizeof(memberType)
+    PropertyFlags flags;
+
+    // For ranged floats/ints:
+    float rangeMin = 0.0f;
+    float rangeMax = 1.0f;
+
+    // For enums:
+    std::vector<std::string> enumNames;
+
+    // For asset references (TextureRef, MeshRef, etc.):
+    std::string assetType;
+
+    // For ComponentRef:
+    std::string componentTypeName;
+
+    // Tooltip text shown on hover in Inspector:
+    std::string tooltip;
+
+    // Category / group label:
+    std::string category;
+};
+```
+
+The Inspector uses `PropertyInfo::offset` to compute `(char*)componentPtr + offset` and cast it to the appropriate type for reading/writing.
+
+### 14.3 TypeInfo
+
+```cpp
+class TypeInfo {
+public:
+    using FactoryFn  = std::function<ECS::Component*()>;
+    using DestroyerFn= std::function<void(ECS::Component*)>;
+
+    TypeInfo(const std::string& typeName,
+             FactoryFn factory,
+             DestroyerFn destroyer);
+
+    // Component creation/destruction (ABI-safe across DLL boundaries):
+    ECS::Component* Create()                    const;
+    void            Destroy(ECS::Component* c)  const;
+
+    // Property registry:
+    void AddProperty(const PropertyInfo& prop);
+    const std::vector<PropertyInfo>& GetProperties() const;
+    const PropertyInfo* GetProperty(const std::string& name) const;
+
+    // Filtered views:
+    std::vector<const PropertyInfo*> GetInspectorProperties()  const;  // !HideInInspector
+    std::vector<const PropertyInfo*> GetSerializableProperties() const; // Serialize flag set
+};
+```
+
+The factory and destroyer lambdas capture `new T()` and `delete static_cast<T*>(c)` respectively. By keeping these captures inside the DLL that owns the type, destruction is always performed by the same CRT that allocated the object — avoiding cross-DLL heap corruption.
+
+### 14.4 TypeRegistry
+
+Singleton that maps type name strings to `TypeInfo` objects.
+
+```cpp
+static TypeRegistry& GetInstance();
+
+void            RegisterType(const std::string& name, std::unique_ptr<TypeInfo> info);
+bool            HasType(const std::string& name)      const;
+const TypeInfo* GetTypeInfo(const std::string& name)  const;
+ECS::Component* CreateComponent(const std::string& name) const;
+
+const std::unordered_map<std::string, std::unique_ptr<TypeInfo>>& GetRegisteredTypes() const;
+```
+
+All engine built-in components are registered at startup. Script components (from `GameScripts.dll`) register themselves via `RTB_REGISTER_COMPONENT` which runs as a static initializer when the DLL is loaded.
+
+### 14.5 PropertyMacros
+
+`Engine/Reflection/PropertyMacros.h` — Macro system that generates the `TypeInfo` registration boilerplate.
+
+**In the class header:**
+
+```cpp
+// Reflected properties (Proxy)
+float speedRef = 5.0f;
+
+RTB_COMPONENT(MyComponent)
+```
+
+`RTB_COMPONENT(ClassName)` generates:
+
+```cpp
+// Generated inside the class:
+virtual const char* GetTypeName() const override { return "MyComponent"; }
+virtual const Reflection::TypeInfo* GetTypeInfo() const override;
+static  const Reflection::TypeInfo* StaticTypeInfo();
+static  void RegisterType();   // Called by RTB_REGISTER_COMPONENT
+```
+
+**In the .cpp implementation file:**
+
+```cpp
+using ThisClass = MyComponent;
+
+RTB_REGISTER_COMPONENT(MyComponent)
+    RTB_PROPERTY_RANGE(speedRef, 0.0f, 100.0f)
+    RTB_PROPERTY_GAMEOBJECT(targetRef)
+RTB_END_REGISTER(MyComponent)
+```
+
+`RTB_REGISTER_COMPONENT(ClassName)` opens a static registration block that creates a `TypeInfo`, registers factory/destroyer, and begins the property list. `RTB_END_REGISTER(ClassName)` closes the block and registers the type with `TypeRegistry`.
+
+**Full property macro reference:**
+
+| Macro | Generated PropertyType | Inspector Widget |
+|-------|----------------------|-----------------|
+| `RTB_PROPERTY(name)` | Auto-detected from member type | Type-appropriate |
+| `RTB_PROPERTY_RANGE(name, min, max)` | Float or Int | Slider |
+| `RTB_PROPERTY_COLOR(name)` | Color | RGBA picker |
+| `RTB_PROPERTY_ENUM(name, "A", "B", ...)` | Enum | Dropdown |
+| `RTB_PROPERTY_TEXTURE(name)` | TextureRef | Path + asset browser button |
+| `RTB_PROPERTY_AUDIOCLIP(name)` | AudioClipRef | Path + asset browser button |
+| `RTB_PROPERTY_MESH(name)` | MeshRef | Path + asset browser button |
+| `RTB_PROPERTY_FONT(name)` | FontRef | Path + asset browser button |
+| `RTB_PROPERTY_GAMEOBJECT(name)` | GameObjectRef | Drag-and-drop from Hierarchy |
+| `RTB_PROPERTY_COMPONENT(name, TypeName)` | ComponentRef | Drag-and-drop from Hierarchy |
+| `RTB_PROPERTY_HIDDEN(name)` | (any) | Not shown, but serialized |
+| `RTB_PROPERTY_READONLY(name)` | (any) | Shown, greyed out |
+| `RTB_PROPERTY_SERIALIZED(name)` | (any) | Serialized, not shown |
+
+### 14.6 Writing a Reflectable Component
+
+Complete example — a component that has a speed float, a target `GameObject` reference, and a light color:
+
+**Header** (`Assets/Scripts/Seeker.h`):
+
+```cpp
+#pragma once
+#include <RTBEngine/ECS/Component.h>
+#include <RTBEngine/Reflection/PropertyMacros.h>
+
+class Seeker : public RTBEngine::ECS::Component {
+public:
+    Seeker();
+    ~Seeker() override;
+
+    Seeker(const Seeker&) = delete;
+    Seeker& operator=(const Seeker&) = delete;
+
+    //Loop methods
+    void OnAwake() override;
+    void OnStart() override;
+    void OnUpdate(float deltaTime) override;
+    void OnFixedUpdate(float fixedDeltaTime) override;
+    void OnDestroy() override;
+
+    // Reflected properties (Proxy)
+    float                     speedRef  = 3.0f;
+    RTBEngine::ECS::GameObject* targetRef = nullptr;
+
+    RTB_COMPONENT(Seeker)
+
+private:
+    float speed  = 3.0f;
+};
+```
+
+**Implementation** (`Assets/Scripts/Seeker.cpp`):
+
+```cpp
+#include "Seeker.h"
+#include <RTBEngine/Core/Logger.h>
+#include <RTBEngine/ECS/GameObject.h>
+#include <RTBEngine/ECS/Transform.h>
+
+using ThisClass = Seeker;
+
+RTB_REGISTER_COMPONENT(Seeker)
+    RTB_PROPERTY_RANGE(speedRef, 0.0f, 20.0f)
+    RTB_PROPERTY_GAMEOBJECT(targetRef)
+RTB_END_REGISTER(Seeker)
+
+Seeker::Seeker() {}
+Seeker::~Seeker() {}
+
+void Seeker::OnAwake() {}
+
+void Seeker::OnStart()
+{
+    speed = speedRef;    // Sync proxy to private member
+
+    if (!targetRef) {
+        RTB_WARN("Seeker: no target assigned.");
+    }
+}
+
+void Seeker::OnUpdate(float deltaTime)
+{
+    if (!targetRef) return;
+
+    auto& myPos     = GetOwner()->GetTransform().GetPosition();
+    auto  targetPos = targetRef->GetTransform().GetPosition();
+
+    auto  dir    = (targetPos - myPos).Normalized();
+    auto  newPos = myPos + dir * speed * deltaTime;
+    GetOwner()->GetTransform().SetPosition(newPos);
+}
+
+void Seeker::OnFixedUpdate(float fixedDeltaTime) {}
+void Seeker::OnDestroy() {}
+```
+
+---
+
+## 15. Scripting and Serialization
+
+### 15.1 ComponentRegistry
+
+`Engine/Scripting/ComponentRegistry.h` — Singleton. Stores factory functions for component types. Unlike `TypeRegistry` (which handles reflection metadata), this registry is focused on runtime instantiation.
+
+```cpp
+static ComponentRegistry& GetInstance();
+
+void             RegisterComponent(const std::string& typeName,
+                                   std::function<ECS::Component*()> factory);
+ECS::Component*  CreateComponent(const std::string& typeName) const;
+bool             HasComponent(const std::string& typeName) const;
+
+void RegisterBuiltInComponents();   // Called by Application::Initialize()
+```
+
+Script DLLs typically register through `RTB_REGISTER_COMPONENT` static initializers, which call both `ComponentRegistry::RegisterComponent` and `TypeRegistry::RegisterType`.
+
+### 15.2 SceneLoader
+
+`Engine/Scripting/SceneLoader.h` — Reads `.lua` scene files and populates an `ECS::Scene`.
+
+Scene files use a Lua table format:
+
+```lua
+return {
+  gameObjects = {
+    {
+      name = "Cube",
+      uuid = 12345678,
+      active = true,
+      transform = {
+        position = {x=0, y=1, z=0},
+        rotation = {x=0, y=0, z=0, w=1},
+        scale    = {x=1, y=1, z=1}
+      },
+      components = {
+        {
+          type = "MeshRenderer",
+          properties = {
+            meshRef    = "Assets/Models/Cube.obj",
+            textureRef = "Assets/Textures/stone.png",
+            colorRef   = {x=1, y=1, z=1, w=1}
+          }
+        }
+      },
+      children = { ... }
+    }
+  }
+}
+```
+
+**Load sequence:**
+
+```
+1. Open Lua state, execute scene file
+2. Iterate gameObjects table recursively (handles parent-child nesting)
+3. For each object:
+   a. scene.AddGameObject(name)
+   b. Set UUID, active flag
+   c. Apply transform (position, rotation, scale)
+   d. For each component entry:
+      i.  ComponentRegistry::CreateComponent(type)
+      ii. scene.AddComponent(component)
+      iii. SceneReflectionUtils::ApplyProperties(component, properties)
+           (writes each property value to the proxy member via offset)
+      iv. component.OnValidate()
+4. Deferred UUID resolution:
+   For each GameObjectRef property:
+     Resolve UUID → GameObject* and write directly to the proxy pointer offset
+5. Set parent-child relationships from hierarchy
+6. SceneManager stores the new scene as active
+```
+
+### 15.3 SceneSaver
+
+`Engine/Scripting/SceneSaver.h` — Serializes the active `Scene` to a `.lua` file.
+
+For each `GameObject`, iterates its components. For each component, calls `TypeInfo::GetSerializableProperties()` and reads each proxy member value via its `offset`, then formats it as Lua table syntax.
+
+`GameObjectRef` properties are serialized as the target `GameObject`'s UUID (an integer), not a pointer. On load, `SceneLoader` performs UUID-to-pointer resolution after all objects are created.
+
+---
+
+## 16. UI Subsystem
+
+The UI subsystem provides a component-based 2D UI framework that runs on top of the 3D scene. It is separate from ImGui (which is only for the editor). The runtime UI uses OpenGL quads rendered in screen space.
+
+### 16.1 RectTransform
+
+`Engine/UI/RectTransform.h` — 2D layout component analogous to `Transform` for 3D objects.
+
+```cpp
+// Anchor defines which corner/side of the parent the element is anchored to.
+// Values in normalized [0,1] range: (0,0) = bottom-left, (1,1) = top-right.
+Math::Vector2 anchorMin = {0.5f, 0.5f};
+Math::Vector2 anchorMax = {0.5f, 0.5f};
+
+// Pivot: the origin point of this element. (0.5, 0.5) = center.
+Math::Vector2 pivot = {0.5f, 0.5f};
+
+// Position offset from the anchor point (pixels):
+Math::Vector2 anchoredPosition = {0, 0};
+
+// Width and height of the element in pixels:
+Math::Vector2 sizeDelta = {100, 30};
+```
+
+`RectTransform::GetWorldRect(canvasSize)` computes the final screen-space rectangle by resolving anchors against the canvas size.
+
+### 16.2 UIElement
+
+`Engine/UI/UIElement.h` — Base class for all UI components. Extends `Component`.
+
+```cpp
+virtual void Render() = 0;         // Draw the element to screen
+
+bool IsVisible()        const;
+void SetVisible(bool v);
+
+bool IsRaycastTarget()  const;
+void SetRaycastTarget(bool t);     // Whether this element receives click events
+
+RectTransform& GetRectTransform();
+void           SyncRectTransform();  // Sync proxy values to RectTransform
+```
+
+**Reflected properties (Proxy) — common to all elements:**
+
+```cpp
+bool          isVisible     = true;
+bool          raycastTarget = true;
+Math::Vector2 anchorMin;
+Math::Vector2 anchorMax;
+Math::Vector2 pivot;
+Math::Vector2 anchoredPosition;
+Math::Vector2 sizeDelta;
+```
+
+### 16.3 Canvas
+
+`Engine/UI/Canvas.h` — Root container. Extends `Component`. Must be on the root `GameObject` of a UI hierarchy.
+
+**Render modes:**
+
+```cpp
+enum class RenderMode {
+    ScreenSpaceOverlay,   // Drawn on top of 3D, ignores camera
+    ScreenSpaceCamera,    // Follows a camera, can have depth
+    WorldSpace            // Placed in 3D world space
+};
+
+void SetRenderMode(RenderMode mode);
+RenderMode GetRenderMode() const;
+```
+
+**Canvas size:**
+
+```cpp
+void          SetCanvasSize(const Math::Vector2& size);
+Math::Vector2 GetCanvasSize() const;
+```
+
+In `ScreenSpaceOverlay` mode, canvas size is automatically set to the window dimensions each frame.
+
+**Sort order** (for multi-canvas layering):
+
+```cpp
+void SetSortOrder(int order);
+int  GetSortOrder() const;
+```
+
+Higher sort order renders on top.
+
+**Rendering:**
+
+```cpp
+void RenderCanvas(const Math::Vector2& screenSize);
+void PrepareForHitTest(const Math::Vector2& screenSize);
+```
+
+`RenderCanvas` collects all `UIElement` children recursively, sorts them by depth, and calls `Render()` on each visible one.
+
+**Element collection:**
+
+```cpp
+const std::vector<UIElement*>& GetUIElements() const;
+```
+
+Returns a cached list of all `UIElement` descendants. Refreshed each frame.
+
+### 16.4 CanvasSystem
+
+`Engine/UI/CanvasSystem.h` — Global system that manages all active canvases and dispatches pointer input events.
+
+```cpp
+static CanvasSystem& GetInstance();
+
+void RegisterCanvas(Canvas* canvas);
+void UnregisterCanvas(Canvas* canvas);
+
+void Update(const Math::Vector2& screenSize);
+void RenderAll(const Math::Vector2& screenSize);
+
+// Mouse input (called by GameViewPanel in Play mode):
+void OnMouseMove(float x, float y);
+void OnMouseDown(int button, float x, float y);
+void OnMouseUp(int button, float x, float y);
+```
+
+`CanvasSystem` processes input events through `PrepareForHitTest()` and walks the element tree in reverse render order to find the front-most `raycastTarget` element under the cursor.
+
+### 16.5 UIButton
+
+`Engine/UI/Elements/UIButton.h` — A clickable rectangular region with optional text label.
+
+```cpp
+void SetOnClick(std::function<void()> callback);
+void SetLabel(const std::string& label);
+void SetNormalColor(const Math::Vector4& color);
+void SetHoveredColor(const Math::Vector4& color);
+void SetPressedColor(const Math::Vector4& color);
+```
+
+`Render()` draws a colored quad (color changes based on hover/press state) and overlays the label text using the default font.
+
+### 16.6 UIText
+
+`Engine/UI/Elements/UIText.h` — Renders a text string.
+
+```cpp
+void SetText(const std::string& text);
+void SetFontSize(int size);
+void SetColor(const Math::Vector4& color);
+void SetAlignment(TextAlignment alignment);   // Left, Center, Right
+
+enum class TextAlignment { Left, Center, Right };
+```
+
+Uses `Font` (FreeType/stb_truetype) to rasterize glyphs into a texture atlas and renders quads for each character.
+
+**Reflected properties (Proxy):**
+
+```cpp
+std::string textRef;
+int         fontSizeRef = 14;
+Math::Vector4 colorRef  = {1,1,1,1};
+int         alignmentRef = 0;
+```
+
+### 16.7 UIImage
+
+`Engine/UI/Elements/UIImage.h` — Renders a textured quad.
+
+```cpp
+void SetTexture(Rendering::Texture* texture);
+void SetColor(const Math::Vector4& tint);   // Multiplied with texture color
+```
+
+**Reflected properties (Proxy):**
+
+```cpp
+std::string   textureRef;
+Math::Vector4 colorRef = {1,1,1,1};
+```
+
+### 16.8 UIPanel
+
+`Engine/UI/Elements/UIPanel.h` — A solid-colored or textured background rectangle. Used as a container backdrop.
+
+```cpp
+void SetColor(const Math::Vector4& color);
+void SetTexture(Rendering::Texture* texture);   // Optional background texture
+```
+
+---
+
+## 17. DLL Boundary Safety
+
+RTBEngine exports its API via `RTB_API` (`__declspec(dllexport/import)`). Script DLLs (`GameScripts.dll`) are compiled separately with `/MTd` (static CRT), while the engine uses its own CRT. This creates a critical constraint: **`std::string` and any heap-allocated STL types must never cross the DLL boundary by value**.
+
+### The Problem
+
+```cpp
+// In Connector.cpp (GameScripts.dll — /MTd CRT):
+std::string name = targetRef->GetName();   // GetName() returns std::string from engine's heap
+RTB_INFO("Name: " + name);                // operator+ allocates in script's heap
+// Crash: name's internal buffer is freed by the script's CRT,
+// but the engine's CRT allocated it — two different heaps.
+```
+
+### The Solution
+
+**Pattern 1**: Use `const char*` accessors for string data:
+
+```cpp
+// Engine side adds ABI-safe accessor:
+const char* GetNameCStr() const { return name.c_str(); }
+
+// Script side uses it:
+const char* name = targetRef->GetNameCStr();
+```
+
+**Pattern 2**: Use `snprintf` into a stack buffer:
+
+```cpp
+char buf[256];
+snprintf(buf, sizeof(buf), "Connected to: %s", targetRef->GetNameCStr());
+RTB_INFO(buf);   // const char* overload — no heap allocation
+```
+
+**Pattern 3**: Logger `const char*` overloads (added explicitly for this purpose):
+
+```cpp
+void Logger::Info(const char* message);
+void Logger::Warning(const char* message);
+void Logger::Error(const char* message);
+```
+
+These overloads convert to `std::string` inside the engine's CRT — safe because the engine always owns that string's memory.
+
+### What Is Safe Across the Boundary
+
+| Passes safely | Does NOT pass safely |
+|--------------|---------------------|
+| `const char*` | `std::string` (by value or reference) |
+| `int`, `float`, `bool`, all POD types | `std::vector<T>` |
+| Raw pointers (`T*`) | `std::shared_ptr<T>` |
+| `Math::Vector2/3/4` (all-float structs) | `std::function<>` with captures |
+| `Math::Matrix4` | Any STL container |
+
+### C4251 Warning Suppression
+
+The `RTB_API` annotation on classes with STL member variables triggers MSVC C4251 ("class needs to have DLL-interface"). This is suppressed per-class with:
+
+```cpp
+#pragma warning(push)
+#pragma warning(disable: 4251)
+class RTB_API MyClass {
+    std::vector<int> items;   // Would trigger C4251
+};
+#pragma warning(pop)
+```
+
+All engine classes with STL members have this suppression applied.
+
+---
+
+## 18. Code Conventions
+
+### Naming
+
+| Element | Convention | Example |
+|---------|-----------|---------|
+| Namespace | PascalCase | `RTBEngine::Rendering` |
+| Class | PascalCase | `MeshRenderer`, `PhysicsWorld` |
+| Method | PascalCase | `GetComponent()`, `OnUpdate()` |
+| Member variable | camelCase | `isActive`, `deltaTime`, `owner` |
+| Parameter | camelCase | `deltaTime`, `newParent` |
+| Macro | UPPER_SNAKE_CASE | `RTB_COMPONENT`, `RTB_PROPERTY_FLOAT` |
+
+### Header Structure
+
+```cpp
+#pragma once                           // Always first, never #ifndef
+#include "DirectDependency.h"          // Project headers first
+#include <standard_header>             // STL and third-party after
+
+namespace RTBEngine {
+    namespace SubSystem {
+
+        class OtherClass;              // Forward declarations before class
+
+        class ClassName {
+        public:
+            ClassName();
+            virtual ~ClassName();
+
+            ClassName(const ClassName&) = delete;             // Always deleted
+            ClassName& operator=(const ClassName&) = delete;  // Always deleted
+
+            //Public interface grouped by purpose
+            void Method();
+            Type GetValue() const { return member; }
+            void SetValue(Type v) { member = v; }
+
+        private:
+            Type member;
+        };
+
+    }   // No closing annotation
+}       // No closing annotation
+```
+
+### Comments
+
+- All comments in **English only**.
+- Section headers: `//Section name` (no space after `//`).
+- Explanatory comments: `// One space then text`.
+- No block comments (`/* */`) except for complex math.
+- No redundant comments — names must be self-documenting.
+
+### Memory Management
+
+```cpp
+// Ownership — always unique_ptr:
+std::unique_ptr<RigidBody> body = std::make_unique<RigidBody>();
+
+// Non-owning reference — raw pointer:
+RigidBody* bodyRef = body.get();   // Does not extend lifetime
+
+// No raw new/delete except for third-party API requirements:
+btRigidBody* btBody = new btRigidBody(info);   // Bullet requires raw new
+```
+
+### Virtual Methods
+
+- Always `override` on overridden methods.
+- Base class empty implementations defined in-header as `{}`.
+- Base class destructors always `virtual`.
+
+### Component Lifecycle Hook Order
+
+The following order must always be preserved in component declarations:
+
+```cpp
+void OnAwake() override;
+void OnStart() override;
+void OnUpdate(float deltaTime) override;
+void OnFixedUpdate(float fixedDeltaTime) override;
+void OnDestroy() override;
+```
+
+### Reflected Proxy Convention
+
+- Reflected proxy members always have the `Ref` suffix: `speedRef`, `targetRef`, `colorRef`.
+- They are declared `public` (the Inspector writes to them via pointer offset).
+- They are grouped under the comment `// Reflected properties (Proxy)`.
+- `RTB_COMPONENT(ClassName)` macro is placed last in the public section.
+- Private non-reflected copies of the same data (if needed) use the plain name: `speed`, `target`.
