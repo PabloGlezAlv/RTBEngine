@@ -41,6 +41,10 @@ namespace RTBEngine {
             }
         }
 
+        void Logger::Log(LogLevel level, const char* message) {
+            Log(level, std::string(message ? message : ""));
+        }
+
         void Logger::AddCallback(LogCallback callback) {
             std::lock_guard<std::mutex> lock(logMutex);
             callbacks.push_back(callback);

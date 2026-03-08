@@ -29,9 +29,14 @@ namespace RTBEngine {
             static Logger& GetInstance();
 
             void Log(LogLevel level, const std::string& message);
+            // ABI-safe overload: const char* crosses DLL boundaries without heap issues.
+            void Log(LogLevel level, const char* message);
             void Info(const std::string& message) { Log(LogLevel::Info, message); }
+            void Info(const char* message)         { Log(LogLevel::Info, message); }
             void Warning(const std::string& message) { Log(LogLevel::Warning, message); }
+            void Warning(const char* message)        { Log(LogLevel::Warning, message); }
             void Error(const std::string& message) { Log(LogLevel::Error, message); }
+            void Error(const char* message)        { Log(LogLevel::Error, message); }
 
             using LogCallback = std::function<void(const LogMessage&)>;
             void AddCallback(LogCallback callback);

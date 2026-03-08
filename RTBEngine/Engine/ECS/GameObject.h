@@ -35,6 +35,8 @@ namespace RTBEngine {
             Transform& GetTransform() { return transform; }
             const Transform& GetTransform() const { return transform; }
             const std::string& GetName() const { return name; }
+            // ABI-safe accessor for use from script DLLs with separate CRT heaps.
+            const char* GetNameCStr() const { return name.c_str(); }
             void SetName(const std::string& name) { this->name = name; }
 
             const std::string& GetUUID() const { return uuid; }
