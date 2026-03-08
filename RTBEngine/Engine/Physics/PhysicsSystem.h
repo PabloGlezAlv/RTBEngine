@@ -33,6 +33,8 @@ namespace RTBEngine {
             }
         };
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API PhysicsSystem {
         public:
             PhysicsSystem(PhysicsWorld* physicsWorld);
@@ -56,6 +58,7 @@ namespace RTBEngine {
             void ProcessCollisions();
             void NotifyCallbacks(ECS::GameObject* object, const CollisionInfo& info, bool isTrigger, CollisionState state);
         };
+#pragma warning(pop)
 
     }
 }

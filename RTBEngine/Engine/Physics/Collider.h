@@ -14,6 +14,8 @@ namespace RTBEngine {
             Mesh
         };
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API Collider {
         public:
             Collider(ColliderType type);
@@ -35,6 +37,7 @@ namespace RTBEngine {
             Math::Vector3 centerOffset;
             std::unique_ptr<btCollisionShape> collisionShape;
         };
+#pragma warning(pop)
 
     }
-} 
+}

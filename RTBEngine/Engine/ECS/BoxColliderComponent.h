@@ -16,6 +16,8 @@ class btCollisionObject;
 namespace RTBEngine {
 	namespace ECS {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
 		class RTB_API BoxColliderComponent : public Component {
 		public:
 			BoxColliderComponent();
@@ -44,6 +46,7 @@ namespace RTBEngine {
 			std::unique_ptr<Physics::BoxCollider> boxCollider;
 			btCollisionObject* bulletObject = nullptr; // Owned by PhysicsWorld
 		};
+#pragma warning(pop)
 
 	}
 }

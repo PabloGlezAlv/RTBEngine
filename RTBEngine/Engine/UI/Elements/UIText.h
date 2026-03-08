@@ -19,6 +19,8 @@ namespace RTBEngine {
 			Right
 		};
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
 		class RTB_API UIText : public UIElement {
 		public:
 			UIText();
@@ -50,6 +52,7 @@ namespace RTBEngine {
 
 			RTB_COMPONENT(UIText)
 		};
+#pragma warning(pop)
 
 	}
 }

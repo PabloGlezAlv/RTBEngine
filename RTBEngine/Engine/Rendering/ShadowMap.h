@@ -7,6 +7,8 @@
 namespace RTBEngine {
     namespace Rendering {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API ShadowMap {
         public:
             ShadowMap(int resolution = 1024);
@@ -28,6 +30,7 @@ namespace RTBEngine {
             std::unique_ptr<Framebuffer> framebuffer;
             std::unique_ptr<Texture> depthTexture;
         };
+#pragma warning(pop)
 
     }
 }

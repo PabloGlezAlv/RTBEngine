@@ -8,6 +8,8 @@
 namespace RTBEngine {
     namespace Rendering {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API Shader {
         public:
             Shader();
@@ -43,6 +45,7 @@ namespace RTBEngine {
             bool isCompiled;
             std::unordered_map<std::string, GLint> uniformCache;
         };
+#pragma warning(pop)
 
     }
 }

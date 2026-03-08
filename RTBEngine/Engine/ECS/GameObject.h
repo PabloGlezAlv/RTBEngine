@@ -12,6 +12,8 @@
 namespace RTBEngine {
     namespace ECS {
 
+        #pragma warning(push)
+        #pragma warning(disable: 4251)
         class RTB_API GameObject {
         public:
             GameObject(const std::string& name = "GameObject");
@@ -74,6 +76,7 @@ namespace RTBEngine {
             GameObject* parent = nullptr;
             std::vector<GameObject*> children;
         };
+        #pragma warning(pop)
 
         template<typename T>
         T* GameObject::GetComponent()

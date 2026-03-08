@@ -8,6 +8,8 @@
 namespace RTBEngine {
 	namespace UI {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
 		class RTB_API UIElement : public ECS::Component {
 		public:
 			UIElement();
@@ -42,6 +44,7 @@ namespace RTBEngine {
 		protected:
 			std::unique_ptr<RectTransform> rectTransform;
 		};
+#pragma warning(pop)
 
 	}
 }

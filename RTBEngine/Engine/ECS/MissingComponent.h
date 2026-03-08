@@ -8,6 +8,8 @@ namespace RTBEngine {
 
         // Placeholder inserted by SceneLoader when a component type is not found.
         // Preserves the original type name so it can be displayed in the inspector.
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API MissingComponent : public Component {
         public:
             MissingComponent();
@@ -24,6 +26,7 @@ namespace RTBEngine {
         private:
             std::string missingTypeName;
         };
+#pragma warning(pop)
 
     }
 }

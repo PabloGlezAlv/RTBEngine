@@ -17,6 +17,8 @@ namespace RTBEngine {
             Kinematic    
         };
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API RigidBody {
         public:
             RigidBody();
@@ -70,6 +72,7 @@ namespace RTBEngine {
 
             ECS::GameObject* owner = nullptr;
         };
+#pragma warning(pop)
 
-    } 
+    }
 }

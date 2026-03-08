@@ -25,6 +25,8 @@ namespace RTBEngine {
             std::vector<VectorKey> scaleKeys;
         };
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API AnimationClip {
         public:
             AnimationClip(const std::string& name, float duration, float ticksPerSecond);
@@ -57,6 +59,7 @@ namespace RTBEngine {
             template<typename T>
             size_t FindKeyIndex(const std::vector<T>& keys, float time) const;
         };
+#pragma warning(pop)
 
     }
 }

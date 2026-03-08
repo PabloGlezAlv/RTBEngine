@@ -7,6 +7,8 @@
 namespace RTBEngine {
     namespace Physics {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API PhysicsWorld {
         public:
             PhysicsWorld();
@@ -37,6 +39,7 @@ namespace RTBEngine {
             std::unique_ptr<btSequentialImpulseConstraintSolver> solver;
             std::unique_ptr<btDiscreteDynamicsWorld> dynamicsWorld;
         };
+#pragma warning(pop)
 
     }
 }

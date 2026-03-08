@@ -11,6 +11,8 @@
 namespace RTBEngine {
     namespace ECS {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API LightComponent : public Component {
         public:
             LightComponent();
@@ -44,6 +46,7 @@ namespace RTBEngine {
             void SyncWithTransform();
             std::unique_ptr<Rendering::Light> light;
         };
+#pragma warning(pop)
 
     }
 }

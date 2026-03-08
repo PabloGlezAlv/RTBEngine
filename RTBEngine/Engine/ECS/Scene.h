@@ -20,6 +20,8 @@ namespace RTBEngine {
 
         class CameraComponent;
 
+        #pragma warning(push)
+        #pragma warning(disable: 4251)
         class RTB_API Scene {
         public:
             Scene(const std::string& name = "Untitled Scene");
@@ -63,6 +65,7 @@ namespace RTBEngine {
             Rendering::Cubemap* skyboxCubemap = nullptr;
             bool skyboxEnabled = true;
         };
+        #pragma warning(pop)
 
     }
 }

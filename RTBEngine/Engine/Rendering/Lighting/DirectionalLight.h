@@ -9,6 +9,8 @@
 namespace RTBEngine {
     namespace Rendering {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API DirectionalLight : public Light {
         public:
             DirectionalLight();
@@ -42,6 +44,7 @@ namespace RTBEngine {
             std::unique_ptr<ShadowMap> shadowMap;
 
         };
+#pragma warning(pop)
 
     }
 }

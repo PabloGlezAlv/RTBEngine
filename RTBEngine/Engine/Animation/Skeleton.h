@@ -7,6 +7,8 @@
 namespace RTBEngine {
     namespace Animation {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API Skeleton {
         public:
             Skeleton() = default;
@@ -31,6 +33,7 @@ namespace RTBEngine {
             std::unordered_map<std::string, int> boneNameToIndex;
             Math::Matrix4 globalInverseTransform;
         };
+#pragma warning(pop)
 
     }
 }

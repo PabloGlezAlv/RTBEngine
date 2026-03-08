@@ -8,6 +8,8 @@
 namespace RTBEngine {
     namespace ECS {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API RigidBodyComponent : public Component {
         public:
             RigidBodyComponent();
@@ -36,6 +38,7 @@ namespace RTBEngine {
             void SyncProperties();
             std::unique_ptr<Physics::RigidBody> rigidBody;
         };
+#pragma warning(pop)
 
     }
 }

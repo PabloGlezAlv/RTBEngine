@@ -22,6 +22,8 @@ namespace RTBEngine {
 namespace RTBEngine {
     namespace Core {
 
+        #pragma warning(push)
+        #pragma warning(disable: 4251)
         class RTB_API ResourceManager {
         public:
             // Default asset paths
@@ -115,6 +117,7 @@ namespace RTBEngine {
 
             std::unique_ptr<Rendering::Skybox> defaultSkybox;
         };
+        #pragma warning(pop)
 
     }
 }

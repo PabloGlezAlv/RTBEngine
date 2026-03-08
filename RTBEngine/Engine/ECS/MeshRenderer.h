@@ -17,6 +17,8 @@ namespace RTBEngine {
 namespace RTBEngine {
     namespace ECS {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API MeshRenderer : public Component {
         public:
             MeshRenderer();
@@ -57,6 +59,7 @@ namespace RTBEngine {
             
             void SyncProperties();
         };
+#pragma warning(pop)
 
     }
 }

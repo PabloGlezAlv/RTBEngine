@@ -8,6 +8,8 @@ struct ImFont;
 namespace RTBEngine {
 	namespace Rendering {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
 		class RTB_API Font {
 		public:
 			Font();
@@ -27,6 +29,7 @@ namespace RTBEngine {
 			std::map<float, ImFont*> fontSizes;
 			bool isLoaded;
 		};
+#pragma warning(pop)
 
 	}
 }

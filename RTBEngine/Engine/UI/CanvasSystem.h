@@ -17,6 +17,8 @@ namespace RTBEngine {
 		class Canvas;
 		class UIElement;
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
 		class RTB_API CanvasSystem {
 		public:
 			static CanvasSystem& GetInstance() {
@@ -53,6 +55,7 @@ namespace RTBEngine {
 			ECS::GameObject* hoveredGameObject = nullptr;
 			ECS::GameObject* pressedGameObject = nullptr;
 		};
+#pragma warning(pop)
 
 	}
 }

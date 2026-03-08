@@ -22,6 +22,8 @@ namespace RTBEngine {
 			Disabled
 		};
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
 		class RTB_API UIButton : public ECS::Component,
 						 public IPointerEnterHandler,
 						 public IPointerExitHandler,
@@ -76,6 +78,7 @@ namespace RTBEngine {
 			void UpdateVisuals();
 			Math::Vector4 GetCurrentColor() const;
 		};
+#pragma warning(pop)
 
 	}
 }

@@ -8,6 +8,8 @@
 namespace RTBEngine {
 	namespace UI {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
 		class RTB_API Canvas : public ECS::Component {
 		public:
 			enum class RenderMode {
@@ -50,6 +52,7 @@ namespace RTBEngine {
 			std::vector<UIElement*> cachedUIElements;
 			bool isInitialized = false;
 		};
+#pragma warning(pop)
 
 	}
 }

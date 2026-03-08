@@ -8,6 +8,8 @@
 namespace RTBEngine {
     namespace ECS {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API CameraComponent : public Component {
         public:
             CameraComponent();
@@ -61,6 +63,7 @@ namespace RTBEngine {
 
             std::unique_ptr<Rendering::Camera> camera;
         };
+#pragma warning(pop)
 
     }
 }

@@ -25,6 +25,8 @@ namespace RTBEngine {
 
 namespace RTBEngine {
 	namespace Core {
+#pragma warning(push)
+#pragma warning(disable: 4251)
 		class RTB_API Application {
 		public:
 			explicit Application(const ApplicationConfig& config);
@@ -75,6 +77,7 @@ namespace RTBEngine {
 			Application(const Application&) = delete;
 			Application& operator=(const Application&) = delete;
 		};
+#pragma warning(pop)
 	}
 
 	// Helper functionto simply run the program

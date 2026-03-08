@@ -16,6 +16,8 @@ namespace RTBEngine {
 namespace RTBEngine {
     namespace Animation {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API Animator : public ECS::Component {
         public:
             Animator();
@@ -79,6 +81,7 @@ namespace RTBEngine {
 
             void UpdateBoneTransforms();
         };
+#pragma warning(pop)
 
     }
 }

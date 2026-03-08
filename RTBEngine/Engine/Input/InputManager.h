@@ -8,6 +8,8 @@
 namespace RTBEngine {
     namespace Input {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         class RTB_API InputManager {
         public:
             static InputManager& GetInstance();
@@ -53,6 +55,7 @@ namespace RTBEngine {
             int mouseDeltaY;
             int scrollDelta;
         };
+#pragma warning(pop)
 
     }
 }
