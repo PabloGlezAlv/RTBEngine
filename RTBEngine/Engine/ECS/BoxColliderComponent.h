@@ -23,6 +23,8 @@ namespace RTBEngine {
 			BoxColliderComponent();
 			virtual ~BoxColliderComponent();
 
+			void OnDestroy() override;
+
 			// Size
 			void SetSize(const Math::Vector3& size);
 			Math::Vector3 GetSize() const;

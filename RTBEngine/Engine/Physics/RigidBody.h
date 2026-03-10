@@ -11,6 +11,8 @@ namespace RTBEngine {
 
     namespace Physics {
 
+        class PhysicsWorld;
+
         enum class RigidBodyType {
             Static,      
             Dynamic,     
@@ -57,11 +59,14 @@ namespace RTBEngine {
             const btRigidBody* GetBulletRigidBody() const { return bulletRigidBody.get(); }
 
             void SetBulletRigidBody(std::unique_ptr<btRigidBody> rigidBody);
+            void ClearBulletRigidBody();
 
             bool IsInitialized() const { return bulletRigidBody != nullptr; }
 
             void SetOwner(ECS::GameObject* gameObject) { owner = gameObject; }
             ECS::GameObject* GetOwner() const { return owner; }
+
+            void SetPhysicsWorld(PhysicsWorld* world) { physicsWorldRef = world; }
         private:
             RigidBodyType bodyType;
             float bodyMass;
@@ -71,6 +76,7 @@ namespace RTBEngine {
             std::unique_ptr<btRigidBody> bulletRigidBody;
 
             ECS::GameObject* owner = nullptr;
+            PhysicsWorld* physicsWorldRef = nullptr;
         };
 #pragma warning(pop)
 

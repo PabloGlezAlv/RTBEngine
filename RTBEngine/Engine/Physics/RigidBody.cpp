@@ -1,4 +1,5 @@
 #include "RigidBody.h"
+#include "PhysicsWorld.h"
 
 namespace RTBEngine {
     namespace Physics {
@@ -139,6 +140,14 @@ namespace RTBEngine {
             if (bulletRigidBody) {
                 bulletRigidBody->setLinearFactor(factor);
             }
+        }
+
+        void RigidBody::ClearBulletRigidBody() {
+            if (bulletRigidBody && physicsWorldRef) {
+                physicsWorldRef->RemoveRigidBody(bulletRigidBody.get());
+            }
+            bulletRigidBody.reset();
+            physicsWorldRef = nullptr;
         }
 
         void RigidBody::SetBulletRigidBody(std::unique_ptr<btRigidBody> rigidBody) {

@@ -1,6 +1,8 @@
 #include "PhysicsSystem.h"
 #include "PhysicsUtils.h"
 #include "BoxCollider.h"
+#include "SphereCollider.h"
+#include "../ECS/SphereColliderComponent.h"
 #include "../ECS/Transform.h"
 #include "../ECS/GameObject.h"
 #include "../ECS/RigidBodyComponent.h"
@@ -136,6 +138,7 @@ namespace RTBEngine {
             btBody->setUserPointer(gameObject);
 
             physicsWorld->AddRigidBody(btBody.get());
+            rigidBody->SetPhysicsWorld(physicsWorld);
             rigidBody->SetBulletRigidBody(std::move(btBody));
             boxCollider->SetBulletCollisionObject(rigidBody->GetBulletRigidBody());
         }
@@ -232,9 +235,11 @@ namespace RTBEngine {
 
                 ECS::BoxColliderComponent* boxColliderA = goA->GetComponent<ECS::BoxColliderComponent>();
                 ECS::BoxColliderComponent* boxColliderB = goB->GetComponent<ECS::BoxColliderComponent>();
+                ECS::SphereColliderComponent* sphereColliderA = goA->GetComponent<ECS::SphereColliderComponent>();
+                ECS::SphereColliderComponent* sphereColliderB = goB->GetComponent<ECS::SphereColliderComponent>();
 
-                bool isTriggerA = boxColliderA && boxColliderA->IsTrigger();
-                bool isTriggerB = boxColliderB && boxColliderB->IsTrigger();
+                bool isTriggerA = (boxColliderA && boxColliderA->IsTrigger()) || (sphereColliderA && sphereColliderA->IsTrigger());
+                bool isTriggerB = (boxColliderB && boxColliderB->IsTrigger()) || (sphereColliderB && sphereColliderB->IsTrigger());
                 bool isTrigger = isTriggerA || isTriggerB;
 
                 btManifoldPoint& pt = manifold->getContactPoint(0);
@@ -319,6 +324,102 @@ namespace RTBEngine {
                     }
                 }
             }
+        }
+
+        void PhysicsSystem::InitializeCollider(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider)
+        {
+            if (!gameObject || !sphereCollider || !physicsWorld)
+                return;
+
+            ECS::RigidBodyComponent* rbComp = gameObject->GetComponent<ECS::RigidBodyComponent>();
+
+            if (rbComp && rbComp->HasRigidBody()) {
+                InitializeDynamicBody(gameObject, sphereCollider, rbComp);
+            }
+            else {
+                InitializeStaticCollider(gameObject, sphereCollider);
+            }
+        }
+
+        void PhysicsSystem::InitializeStaticCollider(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider)
+        {
+            Physics::SphereCollider* collider = sphereCollider->GetSphereCollider();
+            if (!collider)
+                return;
+
+            btCollisionShape* shape = collider->GetCollisionShape();
+            if (!shape)
+                return;
+
+            ECS::Transform& transform = gameObject->GetTransform();
+            btVector3 position = PhysicsUtils::ToBullet(transform.GetPosition());
+            btQuaternion rotation = PhysicsUtils::ToBullet(transform.GetRotation());
+
+            btTransform btTrans;
+            btTrans.setIdentity();
+            btTrans.setOrigin(position);
+            btTrans.setRotation(rotation);
+
+            btCollisionObject* collisionObj = new btCollisionObject();
+            collisionObj->setCollisionShape(shape);
+            collisionObj->setWorldTransform(btTrans);
+            collisionObj->setUserPointer(gameObject);
+            collisionObj->setCollisionFlags(collisionObj->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
+
+            physicsWorld->AddCollisionObject(collisionObj);
+            sphereCollider->SetBulletCollisionObject(collisionObj);
+        }
+
+        void PhysicsSystem::InitializeDynamicBody(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider, ECS::RigidBodyComponent* rbComp)
+        {
+            Physics::SphereCollider* collider = sphereCollider->GetSphereCollider();
+            Physics::RigidBody* rigidBody = rbComp->GetRigidBody();
+
+            if (!collider || !rigidBody)
+                return;
+
+            btCollisionShape* shape = collider->GetCollisionShape();
+            if (!shape)
+                return;
+
+            ECS::Transform& transform = gameObject->GetTransform();
+            btVector3 position = PhysicsUtils::ToBullet(transform.GetPosition());
+            btQuaternion rotation = PhysicsUtils::ToBullet(transform.GetRotation());
+
+            btTransform btTrans;
+            btTrans.setIdentity();
+            btTrans.setOrigin(position);
+            btTrans.setRotation(rotation);
+
+            btDefaultMotionState* motionState = new btDefaultMotionState(btTrans);
+
+            float mass = rigidBody->GetMass();
+            btVector3 inertia(0, 0, 0);
+            if (mass > 0.0f) {
+                shape->calculateLocalInertia(mass, inertia);
+            }
+
+            btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, motionState, shape, inertia);
+            rbInfo.m_friction = rigidBody->GetFriction();
+            rbInfo.m_restitution = rigidBody->GetRestitution();
+
+            std::unique_ptr<btRigidBody> btBody = std::make_unique<btRigidBody>(rbInfo);
+
+            if (rigidBody->GetType() == RigidBodyType::Static) {
+                btBody->setCollisionFlags(btBody->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
+            }
+            else if (rigidBody->GetType() == RigidBodyType::Kinematic) {
+                btBody->setCollisionFlags(btBody->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
+                btBody->setActivationState(DISABLE_DEACTIVATION);
+            }
+
+            rigidBody->SetOwner(gameObject);
+            btBody->setUserPointer(gameObject);
+
+            physicsWorld->AddRigidBody(btBody.get());
+            rigidBody->SetPhysicsWorld(physicsWorld);
+            rigidBody->SetBulletRigidBody(std::move(btBody));
+            sphereCollider->SetBulletCollisionObject(rigidBody->GetBulletRigidBody());
         }
 
     }

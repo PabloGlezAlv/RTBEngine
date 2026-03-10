@@ -6,6 +6,7 @@
 #include "../ECS/LightComponent.h"
 #include "../ECS/RigidBodyComponent.h"
 #include "../ECS/BoxColliderComponent.h"
+#include "../ECS/SphereColliderComponent.h"
 #include "../ECS/MeshRenderer.h"
 #include "../Animation/Animator.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
@@ -493,8 +494,14 @@ void RTBEngine::Core::Application::InitializePhysicsForScene(ECS::Scene* scene)
 	for (const auto& go : scene->GetGameObjects())
 	{
 		ECS::BoxColliderComponent* boxCollider = go->GetComponent<ECS::BoxColliderComponent>();
-		if (boxCollider)
+		if (boxCollider) {
 			physicsSystem->InitializeCollider(go.get(), boxCollider);
+			continue;
+		}
+
+		ECS::SphereColliderComponent* sphereCollider = go->GetComponent<ECS::SphereColliderComponent>();
+		if (sphereCollider)
+			physicsSystem->InitializeCollider(go.get(), sphereCollider);
 	}
 }
 

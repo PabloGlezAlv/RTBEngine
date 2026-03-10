@@ -5,6 +5,7 @@
 #include "../ECS/GameObject.h"
 #include "../ECS/RigidBodyComponent.h"
 #include "../ECS/BoxColliderComponent.h"
+#include "../ECS/SphereColliderComponent.h"
 #include <set>
 
 namespace RTBEngine {
@@ -42,6 +43,7 @@ namespace RTBEngine {
 
             void Update(ECS::Scene* scene, float deltaTime);
             void InitializeCollider(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider);
+            void InitializeCollider(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider);
             void Reset();
 
         private:
@@ -51,6 +53,9 @@ namespace RTBEngine {
 
             void InitializeStaticCollider(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider);
             void InitializeDynamicBody(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider, ECS::RigidBodyComponent* rbComp);
+
+            void InitializeStaticCollider(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider);
+            void InitializeDynamicBody(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider, ECS::RigidBodyComponent* rbComp);
 
             void SyncTransformsToPhysics(ECS::Scene* scene);
             void SyncPhysicsToTransforms(ECS::Scene* scene);

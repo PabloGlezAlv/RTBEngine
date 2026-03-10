@@ -1,5 +1,7 @@
 #include "BoxColliderComponent.h"
 #include "../Physics/BoxCollider.h"
+#include "RigidBodyComponent.h"
+#include "GameObject.h"
 
 namespace RTBEngine {
 	namespace ECS {
@@ -21,6 +23,18 @@ namespace RTBEngine {
 			// Dynamic btRigidBody is owned by RigidBody::bulletRigidBody (unique_ptr).
 			if (bulletObject && !btRigidBody::upcast(bulletObject))
 				delete bulletObject;
+		}
+
+		void BoxColliderComponent::OnDestroy()
+		{
+			// If a sibling RigidBodyComponent shares the btRigidBody whose collision shape
+			// belongs to this collider, clear it now so it does not hold a dangling shape pointer.
+			if (owner) {
+				RigidBodyComponent* rb = owner->GetComponent<RigidBodyComponent>();
+				if (rb && rb->HasRigidBody()) {
+					rb->GetRigidBody()->ClearBulletRigidBody();
+				}
+			}
 		}
 
 		void BoxColliderComponent::SetSize(const Math::Vector3& size)

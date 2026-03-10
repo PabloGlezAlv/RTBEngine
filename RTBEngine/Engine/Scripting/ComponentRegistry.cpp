@@ -8,6 +8,7 @@
 #include "../ECS/AudioSourceComponent.h"
 #include "../ECS/RigidBodyComponent.h"
 #include "../ECS/BoxColliderComponent.h"
+#include "../ECS/SphereColliderComponent.h"
 #include "../ECS/CameraComponent.h"
 #include "../ECS/FreeLookCamera.h"
 #include "../Animation/Animator.h"
@@ -57,6 +58,7 @@ namespace RTBEngine {
             RegisterComponent("AudioSourceComponent", []() { return new ECS::AudioSourceComponent(); });
             RegisterComponent("RigidBodyComponent", []() { return new ECS::RigidBodyComponent(); });
             RegisterComponent("BoxColliderComponent", []() { return new ECS::BoxColliderComponent(); });
+            RegisterComponent("SphereColliderComponent", []() { return new ECS::SphereColliderComponent(); });
             RegisterComponent("CameraComponent", []() { return new ECS::CameraComponent(); });
             RegisterComponent("FreeLookCamera", []() { return new ECS::FreeLookCamera(); });
             RegisterComponent("Animator", []() { return new Animation::Animator(); });
