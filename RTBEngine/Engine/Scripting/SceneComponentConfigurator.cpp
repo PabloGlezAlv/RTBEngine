@@ -1,6 +1,8 @@
 #include "SceneComponentConfigurator.h"
 
 #include "SceneParsingUtils.h"
+#include "../RTBEngine.h"
+#include <lua.hpp>
 
 #include "../ECS/GameObject.h"
 #include "../ECS/MeshRenderer.h"
@@ -364,15 +366,62 @@ namespace RTBEngine {
 
                     for (const auto& clip : modelData.animations) {
                         comp->AddClip(clip->GetName(), clip);
+                        RTB_INFO("[Animator] Loaded clip: \"" + clip->GetName() + "\" from " + modelPath);
                     }
                 }
 
+                // Load additional animation-only FBX files (clips merged, meshes ignored)
+                comp->additionalModels.clear();
+                lua_getfield(L, tableIndex, "additionalModels");
+                if (lua_istable(L, -1)) {
+                    int additionalTable = lua_gettop(L);
+                    lua_pushnil(L);
+                    while (lua_next(L, additionalTable) != 0) {
+                        if (lua_isstring(L, -1)) {
+                            std::string addPath = lua_tostring(L, -1);
+                            comp->additionalModels.push_back(addPath);
+
+                            Rendering::ModelData addData = Rendering::ModelLoader::LoadModelWithAnimations(addPath);
+                            if (addData.animations.empty() && addData.meshes.empty()) {
+                                RTB_WARN("[Animator] Additional model not found or empty: " + addPath);
+                            } else {
+                                for (const auto& clip : addData.animations) {
+                                    comp->AddClip(clip->GetName(), clip);
+                                    RTB_INFO("[Animator] Loaded clip: \"" + clip->GetName() + "\" from " + addPath);
+                                }
+                            }
+                            // Free meshes from additional models — only clips are kept
+                            for (Rendering::Mesh* mesh : addData.meshes) {
+                                delete mesh;
+                            }
+                        }
+                        lua_pop(L, 1);
+                    }
+                }
+                lua_pop(L, 1);
+
+                // Strip legacy "vendor|" prefix from clip name fields (e.g. old scene files with "mixamo.com|Walk")
+                auto StripPrefix = [](const std::string& s) -> std::string {
+                    size_t pipe = s.find('|');
+                    return (pipe != std::string::npos) ? s.substr(pipe + 1) : s;
+                };
+
+                // Sync defaultClip from Lua
+                comp->defaultClip = StripPrefix(ReadOptionalString(L, tableIndex, "defaultClip", ""));
+
                 std::string clipName = ReadOptionalString(L, tableIndex, "currentClipName", "");
                 if (clipName.empty()) clipName = ReadOptionalString(L, tableIndex, "defaultClip", "");
+                clipName = StripPrefix(clipName);
                 bool loop = ReadOptionalBool(L, tableIndex, "looping", true);
                 if (!loop) loop = ReadOptionalBool(L, tableIndex, "loop", true);
                 if (!clipName.empty()) {
                     comp->Play(clipName, loop);
+                } else {
+                    // No explicit clip — pose to first available clip for edit-mode preview
+                    auto clipNames = comp->GetClipNames();
+                    if (!clipNames.empty()) {
+                        comp->Play(clipNames[0], loop);
+                    }
                 }
 
                 comp->playing = ReadOptionalBool(L, tableIndex, "playing", true);

@@ -6,6 +6,8 @@
 #include "../Reflection/PropertyMacros.h"
 #include <memory>
 #include <unordered_map>
+#include <vector>
+#include <string>
 
 namespace RTBEngine {
     namespace Rendering {
@@ -34,6 +36,7 @@ namespace RTBEngine {
             // Animation clips
             void AddClip(const std::string& name, std::shared_ptr<AnimationClip> clip);
             AnimationClip* GetClip(const std::string& name) const;
+            std::vector<std::string> GetClipNames() const;
 
             // Playback control
             void Play(const std::string& clipName, bool loop = true);
@@ -61,7 +64,9 @@ namespace RTBEngine {
 
             // Reflected properties (Proxy)
             std::string modelRef;
+            std::vector<std::string> additionalModels;
             std::string currentClipName;
+            std::string defaultClip;
             float speed = 1.0f;
             bool playing = false;
             bool looping = true;

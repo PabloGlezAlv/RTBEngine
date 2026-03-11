@@ -1,5 +1,7 @@
 #include "Animator.h"
+#include "../RTBEngine.h"
 #include <cmath>
+#include <algorithm>
 
 namespace RTBEngine {
     namespace Animation {
@@ -8,6 +10,7 @@ namespace RTBEngine {
         RTB_REGISTER_COMPONENT(Animator)
             RTB_PROPERTY(modelRef)
             RTB_PROPERTY(currentClipName)
+            RTB_PROPERTY(defaultClip)
             RTB_PROPERTY(speed)
             RTB_PROPERTY(playing)
             RTB_PROPERTY(looping)
@@ -26,6 +29,12 @@ namespace RTBEngine {
             // Initialize bone transforms array
             if (skeleton) {
                 finalBoneTransforms.resize(skeleton->GetBoneCount(), Math::Matrix4());
+            }
+
+            if (!defaultClip.empty() && GetClip(defaultClip) != nullptr) {
+                Play(defaultClip, true);
+            } else if (playing && !clips.empty()) {
+                Play(clips.begin()->first, true);
             }
         }
 
@@ -63,6 +72,9 @@ namespace RTBEngine {
 
         void Animator::AddClip(const std::string& name, std::shared_ptr<AnimationClip> clip)
         {
+            if (clips.find(name) != clips.end()) {
+                RTB_WARN("[Animator] Clip name collision: \"" + name + "\" already exists and will be overwritten.");
+            }
             clips[name] = clip;
         }
 
@@ -73,6 +85,17 @@ namespace RTBEngine {
                 return it->second.get();
             }
             return nullptr;
+        }
+
+        std::vector<std::string> Animator::GetClipNames() const
+        {
+            std::vector<std::string> names;
+            names.reserve(clips.size());
+            for (const auto& pair : clips) {
+                names.push_back(pair.first);
+            }
+            std::sort(names.begin(), names.end());
+            return names;
         }
 
         void Animator::Play(const std::string& clipName, bool loop)

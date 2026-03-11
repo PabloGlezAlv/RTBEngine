@@ -68,7 +68,7 @@ namespace RTBEngine {
                 aiProcess_LimitBoneWeights
             );
 
-            if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+            if (!scene || !scene->mRootNode) {
                 RTB_ERROR("[ModelLoader] Assimp Error: " + std::string(importer.GetErrorString()));
                 return result;
             }
@@ -94,7 +94,7 @@ namespace RTBEngine {
 
             // Process animations
             for (unsigned int i = 0; i < scene->mNumAnimations; i++) {
-                auto clip = ProcessAnimation(scene->mAnimations[i]);
+                auto clip = ProcessAnimation(scene->mAnimations[i], path);
                 if (clip) {
                     result.animations.push_back(clip);
                 }
@@ -283,11 +283,28 @@ namespace RTBEngine {
             }
         }
 
-        std::shared_ptr<Animation::AnimationClip> ModelLoader::ProcessAnimation(const aiAnimation* anim)
+        static bool IsDomainLikeName(const std::string& s)
+        {
+            return s.find('.') != std::string::npos && s.find(' ') == std::string::npos;
+        }
+
+        std::shared_ptr<Animation::AnimationClip> ModelLoader::ProcessAnimation(const aiAnimation* anim, const std::string& sourceFilePath)
         {
             std::string name = anim->mName.C_Str();
-            if (name.empty()) {
-                name = "Animation";
+            size_t pipe = name.find('|');
+            if (pipe != std::string::npos) {
+                name = name.substr(pipe + 1);
+            }
+            if (name.empty() || IsDomainLikeName(name)) {
+                std::string stem = sourceFilePath;
+                size_t lastSlash = stem.find_last_of("/\\");
+                if (lastSlash != std::string::npos) stem = stem.substr(lastSlash + 1);
+                size_t dot = stem.rfind('.');
+                if (dot != std::string::npos) stem = stem.substr(0, dot);
+                if (!stem.empty()) {
+                    stem[0] = static_cast<char>(toupper(static_cast<unsigned char>(stem[0])));
+                }
+                name = stem.empty() ? "Animation" : stem;
             }
 
             float duration = static_cast<float>(anim->mDuration);

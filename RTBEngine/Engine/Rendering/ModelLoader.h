@@ -62,7 +62,7 @@ namespace RTBEngine {
             static void ExtractBoneInfo(aiMesh* mesh, std::vector<Vertex>& vertices,
                 std::shared_ptr<Animation::Skeleton>& skeleton);
             static std::shared_ptr<Animation::AnimationClip> ProcessAnimation(
-                const aiAnimation* anim);
+                const aiAnimation* anim, const std::string& sourceFilePath);
             static void BuildBoneHierarchy(const aiNode* node,
                 std::shared_ptr<Animation::Skeleton>& skeleton, int parentIndex);
             static void ComputeLocalBindTransforms(std::shared_ptr<Animation::Skeleton>& skeleton);

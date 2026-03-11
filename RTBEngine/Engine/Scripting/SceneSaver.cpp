@@ -11,6 +11,7 @@
 #include "../Reflection/TypeInfo.h"
 #include "../Core/ResourceManager.h"
 #include "../RTBEngine.h"
+#include "../Animation/Animator.h"
 #include <sstream>
 #include <iomanip>
 
@@ -151,6 +152,19 @@ namespace RTBEngine {
                 for (const auto* prop : properties) {
                     file << ",\n";
                     WriteProperty(file, comp, *prop, indent + 1);
+                }
+            }
+
+            // Animator extras: additionalModels list
+            if (std::string(typeName) == "Animator") {
+                const auto* animator = static_cast<const Animation::Animator*>(comp);
+                if (!animator->additionalModels.empty()) {
+                    file << ",\n";
+                    file << ind << "    additionalModels = {\n";
+                    for (const auto& path : animator->additionalModels) {
+                        file << ind << "        " << FormatString(NormalizePath(path)) << ",\n";
+                    }
+                    file << ind << "    }";
                 }
             }
 
