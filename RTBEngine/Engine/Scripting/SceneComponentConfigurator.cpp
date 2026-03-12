@@ -366,7 +366,6 @@ namespace RTBEngine {
 
                     for (const auto& clip : modelData.animations) {
                         comp->AddClip(clip->GetName(), clip);
-                        RTB_INFO("[Animator] Loaded clip: \"" + clip->GetName() + "\" from " + modelPath);
                     }
                 }
 
@@ -387,7 +386,6 @@ namespace RTBEngine {
                             } else {
                                 for (const auto& clip : addData.animations) {
                                     comp->AddClip(clip->GetName(), clip);
-                                    RTB_INFO("[Animator] Loaded clip: \"" + clip->GetName() + "\" from " + addPath);
                                 }
                             }
                             // Free meshes from additional models — only clips are kept
@@ -414,10 +412,11 @@ namespace RTBEngine {
                 clipName = StripPrefix(clipName);
                 bool loop = ReadOptionalBool(L, tableIndex, "looping", true);
                 if (!loop) loop = ReadOptionalBool(L, tableIndex, "loop", true);
-                if (!clipName.empty()) {
+                if (!clipName.empty() && comp->GetClip(clipName) != nullptr) {
                     comp->Play(clipName, loop);
                 } else {
-                    // No explicit clip — pose to first available clip for edit-mode preview
+                    // Clip name not found (e.g. stale "mixamo.com" name) or no clip specified —
+                    // fall back to first available clip so the mesh is visible in edit mode
                     auto clipNames = comp->GetClipNames();
                     if (!clipNames.empty()) {
                         comp->Play(clipNames[0], loop);
