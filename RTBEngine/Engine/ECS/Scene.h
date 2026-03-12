@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <cstdint>
 
 namespace RTBEngine {
     namespace Rendering {
@@ -44,6 +45,10 @@ namespace RTBEngine {
             Rendering::Cubemap* GetSkyboxCubemap() const { return skyboxCubemap; }
             void SetSkyboxEnabled(bool enabled) { skyboxEnabled = enabled; }
             bool IsSkyboxEnabled() const { return skyboxEnabled; }
+
+            //Stats counters
+            uint32_t GetActiveGameObjectCount() const;
+            uint32_t GetActiveComponentCount() const;
 
             const std::string& GetName() const { return name; }
             void CollectLights();

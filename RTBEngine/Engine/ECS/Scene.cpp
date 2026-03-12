@@ -93,6 +93,24 @@ void RTBEngine::ECS::Scene::SetSkyboxCubemap(Rendering::Cubemap* cubemap) {
     skyboxCubemap = cubemap;
 }
 
+uint32_t RTBEngine::ECS::Scene::GetActiveGameObjectCount() const {
+    uint32_t count = 0;
+    for (const auto& go : gameObjects) {
+        if (go->IsActive()) count++;
+    }
+    return count;
+}
+
+uint32_t RTBEngine::ECS::Scene::GetActiveComponentCount() const {
+    uint32_t count = 0;
+    for (const auto& go : gameObjects) {
+        if (go->IsActive()) {
+            count += static_cast<uint32_t>(go->GetComponents().size());
+        }
+    }
+    return count;
+}
+
 void RTBEngine::ECS::Scene::CollectLights()
 {
 	lights.clear();

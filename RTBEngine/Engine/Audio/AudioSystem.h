@@ -26,6 +26,7 @@ namespace RTBEngine {
             void Shutdown();
 
             FMOD::System* GetFMODSystem() const { return fmodSystem.get(); }
+            int GetActiveSourceCount() const;
 
         private:
             AudioSystem();

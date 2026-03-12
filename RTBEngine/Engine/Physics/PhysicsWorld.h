@@ -31,6 +31,7 @@ namespace RTBEngine {
 
             btDynamicsWorld* GetDynamicsWorld() const { return dynamicsWorld.get(); }
             btDispatcher* GetDispatcher() const { return dispatcher.get(); }
+            int GetActiveBodyCount() const { return dynamicsWorld ? dynamicsWorld->getNumCollisionObjects() : 0; }
 
         private:
             std::unique_ptr<btDefaultCollisionConfiguration> collisionConfiguration;

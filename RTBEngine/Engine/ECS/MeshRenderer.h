@@ -7,6 +7,7 @@
 #include "../Rendering/Camera.h"
 #include <vector>
 #include <memory>
+#include <cstdint>
 
 namespace RTBEngine {
 	namespace Rendering {
@@ -41,6 +42,11 @@ namespace RTBEngine {
 
             void Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights);
 
+            //Render stats
+            static void ResetRenderStats();
+            static uint32_t GetDrawCallCount() { return drawCallCount; }
+            static uint32_t GetTriangleCount() { return triangleCount; }
+
             virtual void OnAwake() override;
             virtual void OnUpdate(float deltaTime) override;
             virtual void OnValidate() override;
@@ -58,6 +64,9 @@ namespace RTBEngine {
             std::vector<Rendering::Material*> meshMaterials;  // Per-mesh materials (not owned)
             
             void SyncProperties();
+
+            static uint32_t drawCallCount;
+            static uint32_t triangleCount;
         };
 #pragma warning(pop)
 

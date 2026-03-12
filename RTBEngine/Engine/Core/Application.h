@@ -52,6 +52,7 @@ namespace RTBEngine {
 
 		void ResetPhysics();
 		void InitializePhysicsForScene(ECS::Scene* scene);
+		Physics::PhysicsWorld* GetPhysicsWorld() const { return physicsWorld; }
 
 		private:
 			bool InitializeImGui();

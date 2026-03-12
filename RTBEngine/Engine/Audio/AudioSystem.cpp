@@ -54,5 +54,12 @@ namespace RTBEngine {
             isInitialized = false;
         }
 
+        int AudioSystem::GetActiveSourceCount() const {
+            if (!fmodSystem) return 0;
+            int playing = 0;
+            fmodSystem->getChannelsPlaying(&playing, nullptr);
+            return playing;
+        }
+
     }
 }

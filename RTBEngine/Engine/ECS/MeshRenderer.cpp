@@ -10,6 +10,14 @@
 namespace RTBEngine {
     namespace ECS {
 
+        uint32_t MeshRenderer::drawCallCount = 0;
+        uint32_t MeshRenderer::triangleCount = 0;
+
+        void MeshRenderer::ResetRenderStats() {
+            drawCallCount = 0;
+            triangleCount = 0;
+        }
+
         using ThisClass = MeshRenderer;
         RTB_REGISTER_COMPONENT(MeshRenderer)
             RTB_PROPERTY_MESH(meshRef)
@@ -199,6 +207,8 @@ namespace RTBEngine {
                 }
 
                 mesh->Draw();
+                drawCallCount++;
+                triangleCount += mesh->GetIndexCount() / 3;
                 mat->Unbind();
             }
         }
