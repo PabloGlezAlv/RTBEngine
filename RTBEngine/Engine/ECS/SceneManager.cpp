@@ -1,6 +1,7 @@
 #include "SceneManager.h"
 #include "../Scripting/SceneLoader.h"
 #include "../Core/Logger.h"
+#include "Prefab.h"
 #include <cstdio>
 
 namespace RTBEngine {
@@ -61,6 +62,21 @@ namespace RTBEngine {
                 activeScenePath.clear();
             }
         }
+
+        GameObject* SceneManager::Instantiate(const std::string& name, GameObject* parent)
+        {
+            auto* go = new GameObject(name);
+            if (parent)
+                go->SetParent(parent);
+            GetActiveScene()->AddGameObject(go);
+            return go;
+        }
+
+        GameObject* SceneManager::Instantiate(const Prefab& prefab, GameObject* parent)
+        {
+            return prefab.Instantiate(parent);
+        }
+
 
         void SceneManager::SetOnSceneLoaded(std::function<void(Scene*)> callback) {
             onSceneLoaded = callback;

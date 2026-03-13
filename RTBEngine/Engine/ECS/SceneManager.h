@@ -12,6 +12,8 @@ namespace RTBEngine {
         // SceneManager is a singleton — clients never copy or directly access them.
         #pragma warning(push)
         #pragma warning(disable: 4251)
+        class Prefab;
+
         class RTB_API SceneManager {
         public:
             static SceneManager& GetInstance();
@@ -31,6 +33,10 @@ namespace RTBEngine {
 
             void SetOnSceneLoaded(std::function<void(Scene*)> callback);
             void SetOnSceneUnloading(std::function<void(Scene*)> callback);
+
+            GameObject* Instantiate(const std::string& name = "GameObject", GameObject* parent = nullptr);
+            GameObject* Instantiate(const ECS::Prefab& prefab, GameObject* parent = nullptr);
+
 
             void MarkSceneDirty();
             void ClearSceneDirty();

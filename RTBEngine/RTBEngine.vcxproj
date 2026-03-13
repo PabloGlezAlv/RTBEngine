@@ -227,6 +227,7 @@ if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$
     <ClCompile Include="Engine\Animation\Skeleton.cpp" />
     <ClCompile Include="Engine\Rendering\ShadowMap.cpp" />
     <ClCompile Include="Engine\Rendering\Skybox.cpp" />
+    <ClCompile Include="Engine\ECS\Prefab.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui_draw.cpp" />
@@ -323,6 +324,7 @@ if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$
     <ClInclude Include="Engine\Animation\Skeleton.h" />
     <ClInclude Include="Engine\Rendering\ShadowMap.h" />
     <ClInclude Include="Engine\Rendering\Skybox.h" />
+    <ClInclude Include="Engine\ECS\Prefab.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imgui.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imconfig.h" />
