@@ -13,6 +13,7 @@ namespace RTBEngine {
         struct ComponentSnapshot {
             std::string typeName;
             std::vector<uint8_t> rawData;
+            std::unordered_map<size_t, std::string> stringData;
         };
 
         class Prefab {

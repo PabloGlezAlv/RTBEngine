@@ -28,28 +28,33 @@ namespace RTBEngine {
 
             for (const Reflection::PropertyInfo* prop : typeInfo->GetSerializableProperties())
             {
-                // Write: [offset 8 bytes][size 8 bytes][data N bytes]
                 size_t offset = prop->offset;
                 size_t size = prop->size;
 
+                if (prop->type == Reflection::PropertyType::String)
+                {
+                    const std::string* strPtr = reinterpret_cast<const std::string*>(
+                        reinterpret_cast<const char*>(comp) + offset);
+                    snap.stringData[offset] = *strPtr;
+                    continue;
+                }
+
                 const char* src = reinterpret_cast<const char*>(comp) + offset;
 
-                // Append offset
                 snap.rawData.insert(snap.rawData.end(),
-                    reinterpret_cast<uint8_t*>(&offset),
-                    reinterpret_cast<uint8_t*>(&offset) + sizeof(size_t));
+                    reinterpret_cast<const uint8_t*>(&offset),
+                    reinterpret_cast<const uint8_t*>(&offset) + sizeof(size_t));
 
-                // Append size
                 snap.rawData.insert(snap.rawData.end(),
-                    reinterpret_cast<uint8_t*>(&size),
-                    reinterpret_cast<uint8_t*>(&size) + sizeof(size_t));
+                    reinterpret_cast<const uint8_t*>(&size),
+                    reinterpret_cast<const uint8_t*>(&size) + sizeof(size_t));
 
-                // Append data
                 snap.rawData.insert(snap.rawData.end(),
                     reinterpret_cast<const uint8_t*>(src),
                     reinterpret_cast<const uint8_t*>(src) + size);
             }
         }
+
 
         void Prefab::ApplySnapshot(Component* target, const ComponentSnapshot& snap)
         {
