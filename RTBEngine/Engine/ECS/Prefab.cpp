@@ -63,20 +63,25 @@ namespace RTBEngine {
 
             while (ptr < end)
             {
-                // Read offset
                 size_t offset = *reinterpret_cast<const size_t*>(ptr);
                 ptr += sizeof(size_t);
 
-                // Read size
                 size_t size = *reinterpret_cast<const size_t*>(ptr);
                 ptr += sizeof(size_t);
 
-                // Write data to target
                 char* dst = reinterpret_cast<char*>(target) + offset;
                 std::memcpy(dst, ptr, size);
                 ptr += size;
             }
+
+            for (const auto& [offset, str] : snap.stringData)
+            {
+                std::string* dst = reinterpret_cast<std::string*>(
+                    reinterpret_cast<char*>(target) + offset);
+                *dst = str;
+            }
         }
+
 
         std::unique_ptr<Prefab> Prefab::CreateFromGameObject(const GameObject* source)
         {

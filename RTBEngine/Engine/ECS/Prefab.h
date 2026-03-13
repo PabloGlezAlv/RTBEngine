@@ -3,6 +3,8 @@
 #include <vector>
 #include <memory>
 #include <cstdint>
+#include <unordered_map>
+
 
 namespace RTBEngine {
     namespace ECS {
@@ -28,13 +30,15 @@ namespace RTBEngine {
             GameObject* Instantiate(GameObject* parent = nullptr) const;
 
             const std::string& GetName() const { return name; }
+            const std::vector<ComponentSnapshot>& GetSnapshots() const { return componentSnapshots; }
+
+            static void ApplySnapshot(Component* target, const ComponentSnapshot& snap);
 
         private:
             std::string name;
             std::vector<ComponentSnapshot> componentSnapshots;
 
             static void SnapshotComponent(ComponentSnapshot& snap, const Component* comp);
-            static void ApplySnapshot(Component* target, const ComponentSnapshot& snap);
         };
 
     }
