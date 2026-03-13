@@ -26,6 +26,8 @@ namespace RTBEngine {
             Prefab(const Prefab&) = delete;
             Prefab& operator=(const Prefab&) = delete;
 
+            void AddSnapshot(ComponentSnapshot&& snap) { componentSnapshots.push_back(std::move(snap)); }
+
             static std::unique_ptr<Prefab> CreateFromGameObject(const GameObject* source);
             GameObject* Instantiate(GameObject* parent = nullptr) const;
 
@@ -34,11 +36,10 @@ namespace RTBEngine {
 
             static void ApplySnapshot(Component* target, const ComponentSnapshot& snap);
 
+            static void SnapshotComponent(ComponentSnapshot& snap, const Component* comp);
         private:
             std::string name;
             std::vector<ComponentSnapshot> componentSnapshots;
-
-            static void SnapshotComponent(ComponentSnapshot& snap, const Component* comp);
         };
 
     }

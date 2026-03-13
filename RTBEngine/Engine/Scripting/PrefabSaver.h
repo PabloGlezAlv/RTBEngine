@@ -2,15 +2,15 @@
 #include <string>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace ECS { class Prefab; }
 
-        class Prefab;
+    namespace Scripting {
 
         class PrefabSaver {
         public:
             PrefabSaver() = delete;
 
-            static bool Save(const Prefab& prefab, const std::string& filePath);
+            static bool Save(const ECS::Prefab& prefab, const std::string& filePath);
         };
 
     }
