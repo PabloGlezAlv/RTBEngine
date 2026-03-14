@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <string>
 
 namespace RTBEngine {
@@ -6,7 +7,7 @@ namespace RTBEngine {
 
     namespace Scripting {
 
-        class PrefabSaver {
+        class RTB_API PrefabSaver {
         public:
             PrefabSaver() = delete;
 

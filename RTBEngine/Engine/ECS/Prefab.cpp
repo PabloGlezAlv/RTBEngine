@@ -5,7 +5,6 @@
 #include "Component.h"
 #include "../Reflection/TypeInfo.h"
 #include "../Scripting/ComponentRegistry.h"
-#include "../ECS/SceneManager.h"
 
 namespace RTBEngine {
     namespace ECS {
@@ -100,6 +99,7 @@ namespace RTBEngine {
         GameObject* Prefab::Instantiate(GameObject* parent) const
         {
             auto* go = new GameObject(name);
+            go->SetPrefabName(name);
 
             for (const ComponentSnapshot& snap : componentSnapshots)
             {
@@ -112,8 +112,6 @@ namespace RTBEngine {
 
             if (parent)
                 go->SetParent(parent);
-
-            SceneManager::GetInstance().GetActiveScene()->AddGameObject(go);
 
             return go;
         }

@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -9,7 +10,7 @@ namespace RTBEngine {
 
         class Prefab;
 
-        class PrefabRegistry {
+        class RTB_API PrefabRegistry {
         public:
             static PrefabRegistry& GetInstance();
 

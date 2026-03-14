@@ -1,4 +1,5 @@
 #pragma once
+#include "../RTBEngineAPI.h"
 #include <string>
 #include <vector>
 #include <memory>
@@ -12,13 +13,13 @@ namespace RTBEngine {
         class GameObject;
         class Component;
 
-        struct ComponentSnapshot {
+        struct RTB_API ComponentSnapshot {
             std::string typeName;
             std::vector<uint8_t> rawData;
             std::unordered_map<size_t, std::string> stringData;
         };
 
-        class Prefab {
+        class RTB_API Prefab {
         public:
             Prefab(const std::string& name = "Prefab");
             ~Prefab();

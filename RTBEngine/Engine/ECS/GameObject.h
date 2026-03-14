@@ -44,6 +44,10 @@ namespace RTBEngine {
             const std::string& GetUUID() const { return uuid; }
             void SetUUID(const std::string& id) { uuid = id; }
 
+            const std::string& GetPrefabName() const { return prefabName; }
+            void SetPrefabName(const std::string& name) { prefabName = name; }
+            bool IsPrefabInstance() const { return !prefabName.empty(); }
+
 
             void SetParent(GameObject* newParent);
             GameObject* GetParent() const { return parent; }
@@ -67,6 +71,7 @@ namespace RTBEngine {
         private:
             std::string name;
             std::string uuid;
+            std::string prefabName;
 
             Transform transform;
             std::vector<ComponentPtr> components;
