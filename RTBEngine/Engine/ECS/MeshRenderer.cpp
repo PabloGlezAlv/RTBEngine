@@ -6,6 +6,7 @@
 #include "../Rendering/Lighting/SpotLight.h"
 #include "../Animation/Animator.h"
 #include "../Reflection/PropertyMacros.h"
+#include "../Core/ResourceManager.h"
 
 namespace RTBEngine {
     namespace ECS {
@@ -41,6 +42,10 @@ namespace RTBEngine {
         }
 
         void MeshRenderer::OnAwake() {
+            if (material && !material->GetShader()) {
+                Rendering::Shader* shader = Core::ResourceManager::GetInstance().GetShader("basic");
+                if (shader) material->SetShader(shader);
+            }
             SyncProperties();
         }
 

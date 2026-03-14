@@ -74,5 +74,11 @@ namespace RTBEngine {
             return prefabs.find(name) != prefabs.end();
         }
 
+        void PrefabRegistry::Clear()
+        {
+            prefabs.clear();
+            nameToPaths.clear();
+        }
+
     }
 }

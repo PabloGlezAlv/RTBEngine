@@ -23,6 +23,9 @@ namespace RTBEngine {
             static void WriteGameObject(std::ofstream& file, const ECS::GameObject* go, int indent);
             static void WriteTransform(std::ofstream& file, const ECS::GameObject* go, int indent);
             static void WriteComponents(std::ofstream& file, const ECS::GameObject* go, int indent);
+            static void WritePrefabInstance(std::ofstream& file, const ECS::GameObject* go, int indent);
+            static void WritePrefabOverrides(std::ofstream& file, const ECS::GameObject* go, int indent);
+
         };
 
     }

@@ -29,15 +29,31 @@ namespace RTBEngine {
                 std::string uuidString;
             };
 
-            // Setup LuaBridge bindings for Math types
             static void SetupLuaBindings(lua_State* L);
 
-            // Process a GameObject table from Lua
             static ECS::GameObject* ProcessGameObject(lua_State* L, int tableIndex, ECS::Scene* scene,
                 std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests,
                 std::vector<UUIDRefRequest>& uuidRefRequests);
-            // Process components array for a GameObject
-            static void ProcessComponents(lua_State* L, int arrayIndex, ECS::GameObject* gameObject, std::vector<UUIDRefRequest>& uuidRefRequests);
+
+            static ECS::GameObject* ProcessPrefabInstance(lua_State* L, int tableIndex, ECS::Scene* scene,
+                const std::string& name, const std::string& uuid,
+                std::vector<UUIDRefRequest>& uuidRefRequests);
+
+            static void ProcessComponents(lua_State* L, int arrayIndex, ECS::GameObject* gameObject,
+                std::vector<UUIDRefRequest>& uuidRefRequests);
+
+            static void ReadTransform(lua_State* L, int tableIndex, ECS::GameObject* go);
+
+            static void ProcessChildren(lua_State* L, int tableIndex, ECS::Scene* scene,
+                ECS::GameObject* parent,
+                std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests,
+                std::vector<UUIDRefRequest>& uuidRefRequests);
+
+            static void ResolveParenting(ECS::Scene* scene,
+                const std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests);
+
+            static void ResolveUUIDRefs(ECS::Scene* scene,
+                const std::vector<UUIDRefRequest>& uuidRefRequests);
         };
 
     }

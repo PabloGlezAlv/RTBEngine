@@ -17,6 +17,7 @@ namespace RTBEngine {
             std::string typeName;
             std::vector<uint8_t> rawData;
             std::unordered_map<size_t, std::string> stringData;
+            std::unordered_map<size_t, std::string> ptrPathData;
         };
 
         class RTB_API Prefab {

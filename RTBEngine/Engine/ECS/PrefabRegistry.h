@@ -21,6 +21,7 @@ namespace RTBEngine {
             void Register(const std::string& filePath);
             void Unload(const std::string& name);
             void Reload(const std::string& name);
+            void Clear();
 
             Prefab* Get(const std::string& name) const;
             bool Has(const std::string& name) const;

@@ -1,9 +1,13 @@
 #include "SceneSaver.h"
+#include <sstream>
+
 #include "ScenePropertySerializer.h"
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
 #include "../ECS/Component.h"
 #include "../ECS/Transform.h"
+#include "../ECS/Prefab.h"
+#include "../ECS/PrefabRegistry.h"
 #include "../Math/Vectors/Vector3.h"
 #include "../Math/Quaternions/Quaternion.h"
 #include "../Rendering/Cubemap.h"
@@ -80,8 +84,15 @@ namespace RTBEngine {
             file << ind << "    name = \"" << go->GetName() << "\",\n";
             file << ind << "    uuid = \"" << go->GetUUID() << "\",\n";
 
-            WriteTransform(file, go, indent + 1);
-            WriteComponents(file, go, indent + 1);
+            if (go->IsPrefabInstance())
+            {
+                WritePrefabInstance(file, go, indent);
+            }
+            else
+            {
+                WriteTransform(file, go, indent + 1);
+                WriteComponents(file, go, indent + 1);
+            }
 
             const auto& children = go->GetChildren();
             if (!children.empty()) {
@@ -94,6 +105,7 @@ namespace RTBEngine {
 
             file << ind << "},\n";
         }
+
 
         void SceneSaver::WriteTransform(std::ofstream& file, const ECS::GameObject* go, int indent) {
             std::string ind = ScenePropertySerializer::Indent(indent);
@@ -129,5 +141,106 @@ namespace RTBEngine {
             file << ind << (hasChildren ? "},\n" : "}\n");
         }
 
+        void SceneSaver::WritePrefabInstance(std::ofstream& file, const ECS::GameObject* go, int indent) {
+            std::string ind = ScenePropertySerializer::Indent(indent);
+
+            file << ind << "    prefab = \"" << go->GetPrefabName() << "\",\n";
+
+            WriteTransform(file, go, indent + 1);
+
+            file << ind << "    overrides = {\n";
+            WritePrefabOverrides(file, go, indent + 2);
+            file << ind << "    },\n";
+        }
+
+        void SceneSaver::WritePrefabOverrides(std::ofstream& file, const ECS::GameObject* go, int indent) {
+            std::string ind = ScenePropertySerializer::Indent(indent);
+
+            const ECS::Prefab* prefab = ECS::PrefabRegistry::GetInstance().Get(go->GetPrefabName());
+            if (!prefab)
+                return;
+
+            const auto& snapshots = prefab->GetSnapshots();
+            const auto& components = go->GetComponents();
+
+            file << ind << "components = {\n";
+
+            for (const auto& comp : components)
+            {
+                const std::string typeName = comp->GetTypeName();
+
+                const ECS::ComponentSnapshot* snap = nullptr;
+                for (const auto& s : snapshots)
+                {
+                    if (s.typeName == typeName)
+                    {
+                        snap = &s;
+                        break;
+                    }
+                }
+
+                if (!snap)
+                {
+                    ScenePropertySerializer::WriteComponent(file, comp.get(), indent + 1);
+                    continue;
+                }
+
+                const Reflection::TypeInfo* typeInfo = comp->GetTypeInfo();
+                if (!typeInfo) continue;
+
+                // First pass — detect which properties are overrides
+                std::vector<const Reflection::PropertyInfo*> overrideProps;
+
+                for (const Reflection::PropertyInfo* prop : typeInfo->GetSerializableProperties())
+                {
+                    size_t offset = prop->offset;
+                    size_t size = prop->size;
+
+                    if (prop->type == Reflection::PropertyType::String)
+                    {
+                        const std::string* liveStr = reinterpret_cast<const std::string*>(
+                            reinterpret_cast<const char*>(comp.get()) + offset);
+
+                        auto it = snap->stringData.find(offset);
+                        if (it == snap->stringData.end() || it->second != *liveStr)
+                            overrideProps.push_back(prop);
+                        continue;
+                    }
+
+                    const uint8_t* raw = snap->rawData.data();
+                    const uint8_t* rawEnd = raw + snap->rawData.size();
+                    const uint8_t* snapBytes = nullptr;
+
+                    while (raw < rawEnd)
+                    {
+                        size_t rawOffset = *reinterpret_cast<const size_t*>(raw); raw += sizeof(size_t);
+                        size_t rawSize = *reinterpret_cast<const size_t*>(raw); raw += sizeof(size_t);
+
+                        if (rawOffset == offset) { snapBytes = raw; break; }
+                        raw += rawSize;
+                    }
+
+                    const char* liveBytes = reinterpret_cast<const char*>(comp.get()) + offset;
+
+                    if (!snapBytes || std::memcmp(liveBytes, snapBytes, size) != 0)
+                        overrideProps.push_back(prop);
+                }
+
+                if (overrideProps.empty()) continue;
+
+                // Second pass — write only the overridden properties
+                file << ind << "    { type = \"" << typeName << "\",\n";
+                
+                for (const Reflection::PropertyInfo* prop : overrideProps)
+                {
+                    ScenePropertySerializer::WriteProperty(file, comp.get(), *prop, indent + 2);
+                    file << ",\n";
+                }
+
+                file << ind << "    },\n";
+            }
+
+            file << ind << "},\n";
+        }
     }
 }

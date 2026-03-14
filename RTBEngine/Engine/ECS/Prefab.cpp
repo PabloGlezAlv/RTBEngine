@@ -5,6 +5,10 @@
 #include "Component.h"
 #include "../Reflection/TypeInfo.h"
 #include "../Scripting/ComponentRegistry.h"
+#include "../Core/ResourceManager.h"
+#include "../Rendering/Mesh.h"
+#include "../Rendering/Texture.h"
+#include "../Audio/AudioClip.h"
 
 namespace RTBEngine {
     namespace ECS {
@@ -25,6 +29,8 @@ namespace RTBEngine {
             const Reflection::TypeInfo* typeInfo = comp->GetTypeInfo();
             if (!typeInfo) return;
 
+            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
+
             for (const Reflection::PropertyInfo* prop : typeInfo->GetSerializableProperties())
             {
                 size_t offset = prop->offset;
@@ -35,6 +41,33 @@ namespace RTBEngine {
                     const std::string* strPtr = reinterpret_cast<const std::string*>(
                         reinterpret_cast<const char*>(comp) + offset);
                     snap.stringData[offset] = *strPtr;
+                    continue;
+                }
+
+                if (prop->type == Reflection::PropertyType::MeshRef)
+                {
+                    const Rendering::Mesh* mesh = *reinterpret_cast<Rendering::Mesh* const*>(
+                        reinterpret_cast<const char*>(comp) + offset);
+                    if (mesh)
+                        snap.ptrPathData[offset] = resources.GetMeshPath(const_cast<Rendering::Mesh*>(mesh));
+                    continue;
+                }
+
+                if (prop->type == Reflection::PropertyType::TextureRef)
+                {
+                    const Rendering::Texture* tex = *reinterpret_cast<Rendering::Texture* const*>(
+                        reinterpret_cast<const char*>(comp) + offset);
+                    if (tex)
+                        snap.ptrPathData[offset] = resources.GetTexturePath(const_cast<Rendering::Texture*>(tex));
+                    continue;
+                }
+
+                if (prop->type == Reflection::PropertyType::AudioClipRef)
+                {
+                    const Audio::AudioClip* clip = *reinterpret_cast<Audio::AudioClip* const*>(
+                        reinterpret_cast<const char*>(comp) + offset);
+                    if (clip)
+                        snap.ptrPathData[offset] = resources.GetAudioClipPath(const_cast<Audio::AudioClip*>(clip));
                     continue;
                 }
 
@@ -79,6 +112,37 @@ namespace RTBEngine {
                     reinterpret_cast<char*>(target) + offset);
                 *dst = str;
             }
+
+            if (snap.ptrPathData.empty()) return;
+
+            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
+            const Reflection::TypeInfo* typeInfo = target->GetTypeInfo();
+            if (!typeInfo) return;
+
+            for (const Reflection::PropertyInfo* prop : typeInfo->GetSerializableProperties())
+            {
+                auto it = snap.ptrPathData.find(prop->offset);
+                if (it == snap.ptrPathData.end()) continue;
+
+                const std::string& path = it->second;
+                char* dst = reinterpret_cast<char*>(target) + prop->offset;
+
+                if (prop->type == Reflection::PropertyType::MeshRef)
+                {
+                    Rendering::Mesh* mesh = path.empty() ? nullptr : resources.LoadModel(path);
+                    std::memcpy(dst, &mesh, sizeof(Rendering::Mesh*));
+                }
+                else if (prop->type == Reflection::PropertyType::TextureRef)
+                {
+                    Rendering::Texture* tex = path.empty() ? nullptr : resources.LoadTexture(path);
+                    std::memcpy(dst, &tex, sizeof(Rendering::Texture*));
+                }
+                else if (prop->type == Reflection::PropertyType::AudioClipRef)
+                {
+                    Audio::AudioClip* clip = path.empty() ? nullptr : resources.LoadAudioClip(path);
+                    std::memcpy(dst, &clip, sizeof(Audio::AudioClip*));
+                }
+            }
         }
 
 
@@ -108,6 +172,7 @@ namespace RTBEngine {
 
                 ApplySnapshot(comp, snap);
                 go->AddComponent(comp);
+                comp->OnValidate();
             }
 
             if (parent)
