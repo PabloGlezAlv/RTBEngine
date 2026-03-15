@@ -25,7 +25,7 @@ namespace RTBEngine {
             Texture(const Texture&) = delete;
             Texture& operator=(const Texture&) = delete;
 
-            bool LoadFromFile(const std::string& path);
+            bool LoadFromFile(const std::string& path, bool flipVertically = true);
 
             // Load from raw RGBA data (width * height * channels bytes)
             bool LoadFromMemory(const unsigned char* data, int width, int height, int channels);

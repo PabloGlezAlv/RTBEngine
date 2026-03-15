@@ -64,7 +64,7 @@ namespace RTBEngine {
             return nullptr;
         }
 
-        Rendering::Texture* ResourceManager::LoadTexture(const std::string& path)
+        Rendering::Texture* ResourceManager::LoadTexture(const std::string& path, bool flipVertically)
         {
             auto existing = GetTexture(path);
             if (existing) {
@@ -73,7 +73,7 @@ namespace RTBEngine {
 
             // Create new texture
             auto texture = std::make_unique<Rendering::Texture>();
-            if (!texture->LoadFromFile(path)) {
+            if (!texture->LoadFromFile(path, flipVertically)) {
                 RTB_ERROR("Failed to load texture: " + path);
                 return nullptr;
             }

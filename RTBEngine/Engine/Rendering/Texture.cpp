@@ -18,9 +18,9 @@ namespace RTBEngine {
             }
         }
 
-        bool Texture::LoadFromFile(const std::string& path)
+        bool Texture::LoadFromFile(const std::string& path, bool flipVertically)
         {
-            stbi_set_flip_vertically_on_load(true);
+            stbi_set_flip_vertically_on_load(flipVertically ? 1 : 0);
 
             unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 0);
             if (!data) {
