@@ -37,8 +37,6 @@ namespace RTBEngine {
             nameToPaths[name] = filePath;
             prefabs[name] = std::move(prefab);
 
-            RTB_INFO("PrefabRegistry: Registered prefab '" + name + "'");
-
             if (onPrefabChanged)
                 onPrefabChanged(name);
         }
@@ -67,6 +65,21 @@ namespace RTBEngine {
         {
             auto it = prefabs.find(name);
             return it != prefabs.end() ? it->second.get() : nullptr;
+        }
+
+        Prefab* PrefabRegistry::GetByPath(const std::string& filePath) const
+        {
+            std::filesystem::path canonical;
+            std::error_code ec;
+            canonical = std::filesystem::weakly_canonical(filePath, ec);
+
+            for (const auto& [name, path] : nameToPaths)
+            {
+                std::filesystem::path registeredCanonical = std::filesystem::weakly_canonical(path, ec);
+                if (registeredCanonical == canonical)
+                    return Get(name);
+            }
+            return nullptr;
         }
 
         bool PrefabRegistry::Has(const std::string& name) const

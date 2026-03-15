@@ -1,5 +1,9 @@
 #include "Animator.h"
 #include "../RTBEngine.h"
+#include "../Rendering/ModelLoader.h"
+#include "../Rendering/FbxBinding.h"
+#include "../Core/ResourceManager.h"
+#include "../ECS/MeshRenderer.h"
 #include <cmath>
 #include <algorithm>
 
@@ -24,8 +28,79 @@ namespace RTBEngine {
         {
         }
 
+        void Animator::EnsureModelDataLoaded()
+        {
+            // Lazy-load model data (skeleton, meshes, clips, materials) if we have a modelRef
+            // but no runtime data yet (típico en duplicados por prefab snapshot).
+            if (!modelRef.empty() && !skeleton && clips.empty()) {
+                auto& resources = Core::ResourceManager::GetInstance();
+
+                Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelRef);
+                RTB_INFO(std::string("[ENSURE_MODEL] LoadModelWithAnimations returned meshes=") + std::to_string(modelData.meshes.size()) +
+                    " anims=" + std::to_string(modelData.animations.size()) +
+                    " skeleton=" + (modelData.skeleton ? "valid" : "null"));
+
+                if (modelData.skeleton) {
+                    SetSkeleton(modelData.skeleton);
+                }
+
+                if (!modelData.meshes.empty()) {
+                    resources.RegisterMeshes(modelRef, modelData.meshes);
+                    SetMeshes(modelData.meshes);
+                }
+
+                for (const auto& clip : modelData.animations) {
+                    AddClip(clip->GetName(), clip);
+                }
+
+                // Intentar sincronizar el MeshRenderer del mismo GameObject con los datos del FBX
+                ECS::GameObject* owner = GetOwner();
+                RTB_INFO(std::string("[ENSURE_MODEL] owner=") + (owner ? owner->GetName() : "null"));
+                if (owner) {
+                    ECS::MeshRenderer* meshRenderer = owner->GetComponent<ECS::MeshRenderer>();
+                    RTB_INFO(std::string("[ENSURE_MODEL] meshRenderer=") + (meshRenderer ? "found" : "null"));
+                    if (meshRenderer && !modelData.meshes.empty()) {
+                        meshRenderer->SetMeshes(modelData.meshes);
+                        RTB_INFO(std::string("[ENSURE_MODEL] SetMeshes called on MeshRenderer with ") + std::to_string(modelData.meshes.size()) + " meshes");
+
+                        if (!modelData.materials.empty()) {
+                            // Reutilizar la utilidad compartida de binding
+                            Rendering::FbxBindingContext ctx{ resources, modelRef, modelData };
+                            Rendering::FbxBindingResult bind = Rendering::BuildMeshesAndMaterials(ctx);
+
+                            // Aplicar shader actual del renderer o básico por defecto
+                            Rendering::Shader* shader =
+                                meshRenderer->GetMeshMaterial(0)
+                                    ? meshRenderer->GetMeshMaterial(0)->GetShader()
+                                    : resources.GetShader("basic");
+
+                            for (Rendering::Material* mat : bind.meshMaterials) {
+                                if (mat) {
+                                    mat->SetShader(shader);
+                                }
+                            }
+
+                            meshRenderer->SetMeshMaterials(bind.meshMaterials);
+                        }
+                    }
+                }
+            }
+        }
+
+        void Animator::OnAwake()
+        {
+            EnsureModelDataLoaded();
+        }
+
+        void Animator::OnValidate()
+        {
+            EnsureModelDataLoaded();
+        }
+
         void Animator::OnStart()
         {
+            EnsureModelDataLoaded();
+
             // Initialize bone transforms array
             if (skeleton) {
                 finalBoneTransforms.resize(skeleton->GetBoneCount(), Math::Matrix4());

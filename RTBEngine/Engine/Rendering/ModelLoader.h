@@ -46,9 +46,22 @@ namespace RTBEngine {
             std::string modelDirectory;
         };
 
+        // Descriptor summarizing FBX asset data for ECS instantiation
+        struct FbxAssetDescription {
+            std::string sourcePath;
+            std::vector<Mesh*> meshes;
+            std::vector<LoadedMaterial> materials;
+            std::vector<EmbeddedTexture> embeddedTextures;
+            std::shared_ptr<Animation::Skeleton> skeleton;
+            std::vector<std::shared_ptr<Animation::AnimationClip>> animations;
+        };
+
         class RTB_API ModelLoader {
         public:
             static ModelData LoadModelWithAnimations(const std::string& path);
+
+            // Helper to build a descriptor from an FBX model path
+            static FbxAssetDescription BuildFbxAssetDescription(const std::string& path);
 
             static std::vector<Mesh*> LoadModel(const std::string& path);
 

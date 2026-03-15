@@ -6,6 +6,7 @@
 #include "../Reflection/TypeInfo.h"
 #include "../Scripting/ComponentRegistry.h"
 #include "../Core/ResourceManager.h"
+#include "../Core/Logger.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Texture.h"
 #include "../Audio/AudioClip.h"
@@ -48,8 +49,15 @@ namespace RTBEngine {
                 {
                     const Rendering::Mesh* mesh = *reinterpret_cast<Rendering::Mesh* const*>(
                         reinterpret_cast<const char*>(comp) + offset);
-                    if (mesh)
-                        snap.ptrPathData[offset] = resources.GetMeshPath(const_cast<Rendering::Mesh*>(mesh));
+                    if (mesh) {
+                        std::string meshPath = resources.GetMeshPath(const_cast<Rendering::Mesh*>(mesh));
+                        if (meshPath.empty()) {
+                            RTB_WARN(std::string("[SNAPSHOT WARNING] MeshRef has no path in ResourceManager for component '") + snap.typeName + "' ptr=" + std::to_string(reinterpret_cast<size_t>(mesh)));
+                        } else {
+                            RTB_INFO(std::string("[SNAPSHOT] MeshRef path='") + meshPath + "' for component '" + snap.typeName + "'");
+                        }
+                        snap.ptrPathData[offset] = meshPath;
+                    }
                     continue;
                 }
 
@@ -129,7 +137,9 @@ namespace RTBEngine {
 
                 if (prop->type == Reflection::PropertyType::MeshRef)
                 {
+                    RTB_INFO(std::string("[APPLY_SNAPSHOT] Restoring MeshRef from path='") + path + "'");
                     Rendering::Mesh* mesh = path.empty() ? nullptr : resources.LoadModel(path);
+                    RTB_INFO(std::string("[APPLY_SNAPSHOT] LoadModel returned ") + (mesh ? std::string("valid ptr=") + std::to_string(reinterpret_cast<size_t>(mesh)) : "nullptr") + " for path='" + path + "'");
                     std::memcpy(dst, &mesh, sizeof(Rendering::Mesh*));
                 }
                 else if (prop->type == Reflection::PropertyType::TextureRef)
@@ -157,28 +167,58 @@ namespace RTBEngine {
                 prefab->componentSnapshots.push_back(std::move(snap));
             }
 
+            // Recursively snapshot all child GameObjects
+            for (const auto* child : source->GetChildren())
+            {
+                if (child)
+                    prefab->childPrefabs.push_back(CreateFromGameObject(child));
+            }
+
             return prefab;
         }
 
-        GameObject* Prefab::Instantiate(GameObject* parent) const
+        GameObject* Prefab::Instantiate(GameObject* parent, std::vector<GameObject*>& outChildren) const
         {
+            RTB_INFO(std::string("[INSTANTIATE] Creating GO '") + name + "' with " + std::to_string(componentSnapshots.size()) + " components, " + std::to_string(childPrefabs.size()) + " children. Parent=" + (parent ? parent->GetName() : "null"));
+
             auto* go = new GameObject(name);
             go->SetPrefabName(name);
 
             for (const ComponentSnapshot& snap : componentSnapshots)
             {
                 Component* comp = Scripting::ComponentRegistry::GetInstance().CreateComponent(snap.typeName);
-                if (!comp) continue;
+                if (!comp) {
+                    RTB_WARN(std::string("[INSTANTIATE WARNING] Could not create component '") + snap.typeName + "' for GO '" + name + "'");
+                    continue;
+                }
 
                 ApplySnapshot(comp, snap);
                 go->AddComponent(comp);
                 comp->OnValidate();
+                RTB_INFO(std::string("[INSTANTIATE] OnValidate called on '") + snap.typeName + "' for GO '" + name + "'");
             }
 
             if (parent)
                 go->SetParent(parent);
 
+            // Recursively instantiate children; collect them all in outChildren so the
+            // caller can add them to the scene (Scene::Render only iterates the flat list).
+            for (const auto& childPrefab : childPrefabs)
+            {
+                if (!childPrefab) continue;
+                RTB_INFO(std::string("[INSTANTIATE] Recursing into child prefab '") + childPrefab->name + "' for parent GO '" + name + "'");
+                GameObject* child = childPrefab->Instantiate(go, outChildren);
+                if (child)
+                    outChildren.push_back(child);
+            }
+
             return go;
+        }
+
+        GameObject* Prefab::Instantiate(GameObject* parent) const
+        {
+            std::vector<GameObject*> discarded;
+            return Instantiate(parent, discarded);
         }
 
     }

@@ -23,6 +23,16 @@ namespace RTBEngine {
 
         void RigidBodyComponent::OnAwake()
         {
+            // Create the RigidBody on first wake if it wasn't set by SceneLoader/ConfigureRigidBody.
+            // This happens when a component is instantiated via Prefab::Instantiate (copy-paste / prefab drop).
+            if (!rigidBody) {
+                auto rb = std::make_unique<Physics::RigidBody>();
+                rb->SetMass(mass);
+                rb->SetFriction(friction);
+                rb->SetRestitution(restitution);
+                rb->SetType(bodyType);
+                rigidBody = std::move(rb);
+            }
             SyncProperties();
         }
 

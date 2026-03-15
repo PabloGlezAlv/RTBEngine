@@ -7,6 +7,7 @@
 #include "../Animation/Animator.h"
 #include "../Reflection/PropertyMacros.h"
 #include "../Core/ResourceManager.h"
+#include "../Core/Logger.h"
 
 namespace RTBEngine {
     namespace ECS {
@@ -54,21 +55,47 @@ namespace RTBEngine {
         }
 
         void MeshRenderer::OnValidate() {
+            if (material && !material->GetShader()) {
+                Rendering::Shader* shader = Core::ResourceManager::GetInstance().GetShader("basic");
+                if (shader) material->SetShader(shader);
+            }
             SyncProperties();
         }
 
         void MeshRenderer::SyncProperties() {
-            // Apply reflection proxy values to actual state
+            // Ensure material has a shader
+            if (material && !material->GetShader()) {
+                Rendering::Shader* shader = Core::ResourceManager::GetInstance().GetShader("basic");
+                if (shader) material->SetShader(shader);
+            }
+
             // Mesh
-            if (!meshes.empty()) {
-                if (meshes[0] != meshRef) {
-                    SetMesh(meshRef);
-                }
-            } else if (meshRef) {
-                SetMesh(meshRef);
-            } else {
-                // If both empty/null, nothing to do, or if meshRef became null, clear meshes
-                if (!meshes.empty() && !meshRef) {
+            bool meshChanged = (!meshes.empty()) ? (meshes[0] != meshRef) : (meshRef != nullptr);
+
+            if (meshChanged) {
+                RTB_INFO(std::string("[SYNC] GO='") + (owner ? owner->GetName() : "null") +
+                    "' meshRef=" + (meshRef ? "valid" : "null") +
+                    " meshes.size()=" + std::to_string(meshes.size()) +
+                    " meshChanged=true");
+                if (meshRef) {
+                    auto& rm = Core::ResourceManager::GetInstance();
+                    std::string path = rm.GetMeshPath(meshRef);
+                    RTB_INFO(std::string("[SYNC] Mesh changed. meshRef ptr=") + std::to_string(reinterpret_cast<size_t>(meshRef)) +
+                        " GetMeshPath='" + path + "'");
+                    if (!path.empty()) {
+                        const auto& allMeshes = rm.GetModelMeshes(path);
+                        if (allMeshes.size() > 1) {
+                            RTB_INFO(std::string("[SYNC] Multi-mesh model '") + path + "' allMeshes.size()=" + std::to_string(allMeshes.size()) + ". Calling SetMeshes.");
+                            SetMeshes(allMeshes);
+                        } else {
+                            RTB_INFO(std::string("[SYNC] Single-mesh path '") + path + "'. Calling SetMesh.");
+                            SetMesh(meshRef);
+                        }
+                    } else {
+                        RTB_WARN(std::string("[SYNC WARNING] Path empty for meshRef ptr=") + std::to_string(reinterpret_cast<size_t>(meshRef)) + ". Calling SetMesh directly.");
+                        SetMesh(meshRef);
+                    }
+                } else {
                     meshes.clear();
                 }
             }
@@ -78,9 +105,6 @@ namespace RTBEngine {
                 if (material->GetTexture() != textureRef) {
                     material->SetTexture(textureRef);
                 }
-                
-                // Approximate color check to avoid per-frame uniform setting if costly?
-                // Material::SetColor usually just sets member, uniform set on Bind.
                 material->SetColor(colorRef);
             }
         }
@@ -133,7 +157,11 @@ namespace RTBEngine {
 
         void MeshRenderer::Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights)
         {
-            if (!isEnabled || meshes.empty() || !owner) {
+            if (!isEnabled || !owner) {
+                return;
+            }
+            if (meshes.empty()) {
+                RTB_WARN(std::string("[RENDER WARNING] GO='") + owner->GetName() + "' has no meshes to render (meshRef=" + (meshRef ? "valid" : "null") + ")");
                 return;
             }
 
@@ -144,15 +172,24 @@ namespace RTBEngine {
             // Draw each mesh with its material
             for (size_t i = 0; i < meshes.size(); i++) {
                 Rendering::Mesh* mesh = meshes[i];
-                if (!mesh) continue;
+                if (!mesh) {
+                    RTB_WARN(std::string("[RENDER] GO='") + owner->GetName() + "' mesh[" + std::to_string(i) + "] is null");
+                    continue;
+                }
 
                 // Get material for this mesh
                 Rendering::Material* mat = GetMeshMaterial(i);
-                if (!mat) continue;
+                if (!mat) {
+                    RTB_WARN(std::string("[RENDER] GO='") + owner->GetName() + "' material[" + std::to_string(i) + "] is null");
+                    continue;
+                }
 
                 mat->Bind();
 
                 Rendering::Shader* shader = mat->GetShader();
+                if (!shader) {
+                    RTB_WARN(std::string("[RENDER] GO='") + owner->GetName() + "' shader is null for mesh[" + std::to_string(i) + "]");
+                }
                 if (shader) {
                     shader->SetMatrix4("uModel", modelMatrix);
                     shader->SetMatrix4("uView", camera->GetViewMatrix());

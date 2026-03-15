@@ -69,6 +69,8 @@ namespace RTBEngine {
             // Skybox settings
             Rendering::Cubemap* skyboxCubemap = nullptr;
             bool skyboxEnabled = true;
+
+            bool pendingRenderLog = false;
         };
         #pragma warning(pop)
 

@@ -21,6 +21,7 @@
 #include "../Rendering/Shader.h"
 #include "../Rendering/Texture.h"
 #include "../Rendering/Material.h"
+#include "../Rendering/FbxBinding.h"
 
 #include "../Physics/RigidBody.h"
 #include "../Physics/BoxCollider.h"
@@ -120,59 +121,17 @@ namespace RTBEngine {
                         comp->SetMeshes(modelData.meshes);
 
                         if (!modelData.materials.empty() && shader) {
-                            std::vector<Rendering::Texture*> embeddedTextures;
-                            embeddedTextures.reserve(modelData.embeddedTextures.size());
-                            for (size_t i = 0; i < modelData.embeddedTextures.size(); i++) {
-                                const Rendering::EmbeddedTexture& embTex = modelData.embeddedTextures[i];
-                                Rendering::Texture* tex = new Rendering::Texture();
-                                bool loaded = false;
+                            Rendering::FbxBindingContext ctx{ resources, modelPath, modelData };
+                            Rendering::FbxBindingResult bind = Rendering::BuildMeshesAndMaterials(ctx);
 
-                                if (embTex.isCompressed) {
-                                    loaded = tex->LoadFromCompressedMemory(embTex.data.data(), static_cast<int>(embTex.data.size()));
-                                }
-                                else {
-                                    loaded = tex->LoadFromMemory(embTex.data.data(), embTex.width, embTex.height, embTex.channels);
-                                }
-
-                                if (loaded) {
-                                    embeddedTextures.push_back(tex);
-                                }
-                                else {
-                                    embeddedTextures.push_back(nullptr);
-                                    delete tex;
+                            // Apply shader to all materials
+                            for (Rendering::Material* mat : bind.meshMaterials) {
+                                if (mat) {
+                                    mat->SetShader(shader);
                                 }
                             }
 
-                            std::vector<Rendering::Material*> meshMats;
-                            meshMats.reserve(modelData.meshes.size());
-                            for (Rendering::Mesh* mesh : modelData.meshes) {
-                                const int matIdx = mesh->GetMaterialIndex();
-                                if (matIdx >= 0 && matIdx < static_cast<int>(modelData.materials.size())) {
-                                    const Rendering::LoadedMaterial& loadedMat = modelData.materials[matIdx];
-
-                                    Rendering::Material* mat = new Rendering::Material(shader);
-                                    mat->SetDiffuseColor(loadedMat.diffuseColor);
-
-                                    if (loadedMat.embeddedTextureIndex >= 0 &&
-                                        loadedMat.embeddedTextureIndex < static_cast<int>(embeddedTextures.size()) &&
-                                        embeddedTextures[loadedMat.embeddedTextureIndex]) {
-                                        mat->SetTexture(embeddedTextures[loadedMat.embeddedTextureIndex]);
-                                    }
-                                    else if (!loadedMat.diffuseTexturePath.empty()) {
-                                        Rendering::Texture* tex = resources.LoadTexture(loadedMat.diffuseTexturePath);
-                                        if (tex) {
-                                            mat->SetTexture(tex);
-                                        }
-                                    }
-
-                                    meshMats.push_back(mat);
-                                }
-                                else {
-                                    meshMats.push_back(nullptr);
-                                }
-                            }
-
-                            comp->SetMeshMaterials(meshMats);
+                            comp->SetMeshMaterials(bind.meshMaterials);
                         }
                     }
                 }

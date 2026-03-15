@@ -26,8 +26,10 @@ namespace RTBEngine {
             virtual ~Animator();
 
             // Component interface
+            virtual void OnAwake() override;
             virtual void OnStart() override;
             virtual void OnUpdate(float deltaTime) override;
+            virtual void OnValidate() override;
 
             // Skeleton
             void SetSkeleton(std::shared_ptr<Skeleton> skel);
@@ -84,6 +86,7 @@ namespace RTBEngine {
             std::vector<Math::Matrix4> finalBoneTransforms;
             std::vector<Rendering::Mesh*> meshes;  // Meshes with bone data
 
+            void EnsureModelDataLoaded();
             void UpdateBoneTransforms();
         };
 #pragma warning(pop)

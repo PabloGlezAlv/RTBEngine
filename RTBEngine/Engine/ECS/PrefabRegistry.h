@@ -24,6 +24,7 @@ namespace RTBEngine {
             void Clear();
 
             Prefab* Get(const std::string& name) const;
+            Prefab* GetByPath(const std::string& filePath) const;
             bool Has(const std::string& name) const;
 
             std::function<void(const std::string&)> onPrefabChanged;

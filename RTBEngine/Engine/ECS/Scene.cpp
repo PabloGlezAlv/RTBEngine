@@ -4,6 +4,7 @@
 #include "GameObject.h"
 #include "MeshRenderer.h"
 #include "CameraComponent.h"
+#include "../Core/Logger.h"
 
 RTBEngine::ECS::Scene::Scene(const std::string& name) : name(name)
 {
@@ -17,6 +18,7 @@ RTBEngine::ECS::Scene::~Scene()
 void RTBEngine::ECS::Scene::AddGameObject(GameObject* gameObject)
 {
 	gameObjects.push_back(std::unique_ptr<GameObject>(gameObject));
+	pendingRenderLog = true;
 }
 
 void RTBEngine::ECS::Scene::RemoveGameObject(GameObject* gameObject)
@@ -80,6 +82,15 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 	CollectLights();
 
 	for (auto& gameObject : gameObjects) {
+		if (pendingRenderLog) {
+			MeshRenderer* renderer = gameObject->GetComponent<MeshRenderer>();
+			RTB_INFO(std::string("[SCENE_RENDER] GO='") + gameObject->GetName() +
+				"' active=" + (gameObject->IsActive() ? "true" : "false") +
+				" hasMeshRenderer=" + (renderer ? "true" : "false") +
+				(renderer ? std::string(" enabled=") + (renderer->IsEnabled() ? "true" : "false") +
+				" meshes=" + std::to_string(renderer->GetMeshes().size()) +
+				" meshRef=" + (renderer->meshRef ? "valid" : "null") : ""));
+		}
 		if (gameObject->IsActive()) {
 			MeshRenderer* renderer = gameObject->GetComponent<MeshRenderer>();
 			if (renderer && renderer->IsEnabled()) {
@@ -87,6 +98,7 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 			}
 		}
 	}
+	pendingRenderLog = false;
 }
 
 void RTBEngine::ECS::Scene::SetSkyboxCubemap(Rendering::Cubemap* cubemap) {

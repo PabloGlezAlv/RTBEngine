@@ -116,6 +116,23 @@ namespace RTBEngine {
             return data.meshes;
         }
 
+        FbxAssetDescription ModelLoader::BuildFbxAssetDescription(const std::string& path)
+        {
+            FbxAssetDescription desc;
+
+            desc.sourcePath = path;
+
+            ModelData data = LoadModelWithAnimations(path);
+
+            desc.meshes = data.meshes;
+            desc.materials = data.materials;
+            desc.embeddedTextures = data.embeddedTextures;
+            desc.skeleton = data.skeleton;
+            desc.animations = data.animations;
+
+            return desc;
+        }
+
         void ModelLoader::ProcessNode(const aiNode* node, const aiScene* scene,
             std::vector<Mesh*>& meshes, std::shared_ptr<Animation::Skeleton>& skeleton)
         {

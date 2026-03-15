@@ -119,7 +119,6 @@ namespace RTBEngine {
             lua_pop(L, 1);
             lua_close(L);
 
-            RTB_INFO("PrefabLoader: Loaded prefab '" + prefabName + "' from: " + filePath);
             return prefab;
         }
 

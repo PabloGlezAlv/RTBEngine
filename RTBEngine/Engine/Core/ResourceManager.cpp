@@ -114,10 +114,12 @@ namespace RTBEngine {
         {
             auto it = modelMeshPtrs.find(path);
             if (it != modelMeshPtrs.end()) {
+                RTB_INFO(std::string("[LOAD_MODEL_MESHES] Cache hit for '") + path + "' returning " + std::to_string(it->second.size()) + " meshes");
                 return it->second;
             }
 
             std::vector<Rendering::Mesh*> loadedMeshes = Rendering::ModelLoader::LoadModel(path);
+            RTB_INFO(std::string("[LOAD_MODEL_MESHES] Cache miss for '") + path + "'. ModelLoader::LoadModel returned " + std::to_string(loadedMeshes.size()) + " meshes");
 
             if (loadedMeshes.empty()) {
                 RTB_ERROR("ResourceManager: Failed to load model: " + path);
@@ -142,18 +144,42 @@ namespace RTBEngine {
 
         void ResourceManager::RegisterMeshes(const std::string& path, const std::vector<Rendering::Mesh*>& meshes)
         {
-            // Register externally created meshes (e.g. from LoadModelWithAnimations) so that
-            // GetMeshPath() can resolve their path for serialization. Does not take ownership.
-            if (meshes.empty() || modelMeshPtrs.count(path)) return;
+            RTB_INFO(std::string("[REGISTER_MESHES] path='") + path + "' count=" + std::to_string(meshes.size()));
+            if (meshes.empty()) return;
 
-            std::vector<Rendering::Mesh*> meshPtrs;
+            // Always register each Mesh* in the reverse-lookup map
             for (Rendering::Mesh* mesh : meshes) {
                 if (mesh) {
-                    meshPtrs.push_back(mesh);
                     meshPathMap[mesh] = path;
                 }
             }
-            modelMeshPtrs[path] = meshPtrs;
+
+            // Always update the raw-pointer list so GetModelMeshes stays consistent with
+            // meshPathMap. ConfigureMeshRenderer and ConfigureAnimator allocate Mesh objects
+            // via LoadModelWithAnimations (bypassing LoadModelMeshes), so without updating
+            // modelMeshPtrs here the list would point to a stale/different set, causing
+            // SyncProperties to restore wrong meshes after paste or prefab-drop.
+            std::vector<Rendering::Mesh*> meshPtrs;
+            meshPtrs.reserve(meshes.size());
+            for (Rendering::Mesh* mesh : meshes) {
+                if (mesh) meshPtrs.push_back(mesh);
+            }
+            modelMeshPtrs[path] = std::move(meshPtrs);
+
+            // Take ownership of any pointers not already held by modelMeshes.
+            // This covers the case where ConfigureMeshRenderer / ConfigureAnimator created
+            // fresh allocations that no other owner would free.
+            auto& owned = modelMeshes[path];
+            for (Rendering::Mesh* mesh : meshes) {
+                if (!mesh) continue;
+                bool alreadyOwned = false;
+                for (const auto& u : owned) {
+                    if (u.get() == mesh) { alreadyOwned = true; break; }
+                }
+                if (!alreadyOwned) {
+                    owned.push_back(std::unique_ptr<Rendering::Mesh>(mesh));
+                }
+            }
         }
 
         Audio::AudioClip* ResourceManager::GetAudioClip(const std::string& path)
@@ -394,6 +420,7 @@ namespace RTBEngine {
             if (it != meshPathMap.end()) {
                 return it->second;
             }
+            RTB_WARN(std::string("[GET_MESH_PATH WARNING] Mesh ptr not found in pathMap (ptr=") + std::to_string(reinterpret_cast<size_t>(mesh)) + "). meshPathMap has " + std::to_string(meshPathMap.size()) + " entries.");
             return "";
         }
 
