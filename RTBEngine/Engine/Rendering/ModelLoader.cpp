@@ -83,7 +83,7 @@ namespace RTBEngine {
             ExtractMaterials(scene, result);
 
             // Process meshes and extract bones
-            ProcessNode(scene->mRootNode, scene, result.meshes, result.skeleton);
+            ProcessNode(scene->mRootNode, scene, result.meshes, result.meshNames, result.skeleton);
 
             // Build bone hierarchy from node tree
             BuildBoneHierarchy(scene->mRootNode, result.skeleton, -1);
@@ -134,15 +134,30 @@ namespace RTBEngine {
         }
 
         void ModelLoader::ProcessNode(const aiNode* node, const aiScene* scene,
-            std::vector<Mesh*>& meshes, std::shared_ptr<Animation::Skeleton>& skeleton)
+            std::vector<Mesh*>& meshes, std::vector<std::string>& meshNames,
+            std::shared_ptr<Animation::Skeleton>& skeleton)
         {
+            std::string nodeName = node->mName.length > 0 ? std::string(node->mName.C_Str()) : "";
+
             for (unsigned int i = 0; i < node->mNumMeshes; i++) {
                 aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
                 meshes.push_back(ProcessMesh(mesh, scene, skeleton));
+
+                // Prefer the FBX node name; fall back to the aiMesh name when the node
+                // hosts multiple meshes (use mesh name to disambiguate) or has no name.
+                std::string name;
+                if (node->mNumMeshes == 1 && !nodeName.empty()) {
+                    name = nodeName;
+                } else if (mesh->mName.length > 0) {
+                    name = std::string(mesh->mName.C_Str());
+                } else {
+                    name = nodeName;
+                }
+                meshNames.push_back(name);
             }
 
             for (unsigned int i = 0; i < node->mNumChildren; i++) {
-                ProcessNode(node->mChildren[i], scene, meshes, skeleton);
+                ProcessNode(node->mChildren[i], scene, meshes, meshNames, skeleton);
             }
         }
 

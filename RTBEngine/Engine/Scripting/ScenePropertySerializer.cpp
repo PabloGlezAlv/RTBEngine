@@ -71,7 +71,7 @@ namespace RTBEngine {
                     file << std::fixed << std::setprecision(2) << *(double*)data;
                     break;
                 case Reflection::PropertyType::String:
-                    file << FormatString(*(std::string*)data);
+                    file << FormatString(NormalizePath(*(std::string*)data));
                     break;
                 case Reflection::PropertyType::Vector2:
                     file << FormatVector2(*(Math::Vector2*)data);

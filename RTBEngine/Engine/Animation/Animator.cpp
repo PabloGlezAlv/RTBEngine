@@ -52,38 +52,6 @@ namespace RTBEngine {
                 for (const auto& clip : modelData.animations) {
                     AddClip(clip->GetName(), clip);
                 }
-
-                // Intentar sincronizar el MeshRenderer del mismo GameObject con los datos del FBX
-                ECS::GameObject* owner = GetOwner();
-                RTB_INFO(std::string("[ENSURE_MODEL] owner=") + (owner ? owner->GetName() : "null"));
-                if (owner) {
-                    ECS::MeshRenderer* meshRenderer = owner->GetComponent<ECS::MeshRenderer>();
-                    RTB_INFO(std::string("[ENSURE_MODEL] meshRenderer=") + (meshRenderer ? "found" : "null"));
-                    if (meshRenderer && !modelData.meshes.empty()) {
-                        meshRenderer->SetMeshes(modelData.meshes);
-                        RTB_INFO(std::string("[ENSURE_MODEL] SetMeshes called on MeshRenderer with ") + std::to_string(modelData.meshes.size()) + " meshes");
-
-                        if (!modelData.materials.empty()) {
-                            // Reutilizar la utilidad compartida de binding
-                            Rendering::FbxBindingContext ctx{ resources, modelRef, modelData };
-                            Rendering::FbxBindingResult bind = Rendering::BuildMeshesAndMaterials(ctx);
-
-                            // Aplicar shader actual del renderer o básico por defecto
-                            Rendering::Shader* shader =
-                                meshRenderer->GetMeshMaterial(0)
-                                    ? meshRenderer->GetMeshMaterial(0)->GetShader()
-                                    : resources.GetShader("basic");
-
-                            for (Rendering::Material* mat : bind.meshMaterials) {
-                                if (mat) {
-                                    mat->SetShader(shader);
-                                }
-                            }
-
-                            meshRenderer->SetMeshMaterials(bind.meshMaterials);
-                        }
-                    }
-                }
             }
         }
 

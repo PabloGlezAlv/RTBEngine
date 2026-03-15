@@ -7,6 +7,14 @@
 #include "../RTBEngine.h"
 #include <vector>
 #include <unordered_map>
+#include <string>
+
+namespace RTBEngine {
+    namespace ECS {
+        class Scene;
+        class GameObject;
+    }
+}
 
 namespace RTBEngine {
     namespace Rendering {
@@ -95,17 +103,20 @@ namespace RTBEngine {
 
                 if (!mat) {
                     mat = new Material(defaultShader);
-                    mat->SetDiffuseColor(loadedMat.diffuseColor);
+
+                    bool hasTexture = false;
 
                     if (loadedMat.embeddedTextureIndex >= 0 &&
                         loadedMat.embeddedTextureIndex < static_cast<int>(embeddedTextures.size()) &&
                         embeddedTextures[loadedMat.embeddedTextureIndex]) {
                         mat->SetTexture(embeddedTextures[loadedMat.embeddedTextureIndex]);
+                        hasTexture = true;
                     }
                     else if (!loadedMat.diffuseTexturePath.empty()) {
                         Texture* tex = ctx.resources.LoadTexture(loadedMat.diffuseTexturePath);
                         if (tex) {
                             mat->SetTexture(tex);
+                            hasTexture = true;
                         }
                         else {
                             RTB_WARN("[FbxBinding] Failed to load diffuse texture from FBX path: " +
@@ -115,6 +126,17 @@ namespace RTBEngine {
                     else {
                         RTB_WARN("[FbxBinding] FBX material '" + loadedMat.name +
                                  "' has no diffuse texture or embedded texture");
+                    }
+
+                    // When a diffuse texture is present, force diffuse color to white so
+                    // the FBX material color does not darken/tint the texture.
+                    // FBX exporters often store a non-white diffuse color alongside the
+                    // texture which causes muddy/dark rendering when multiplied in the shader.
+                    if (hasTexture) {
+                        mat->SetDiffuseColor(Math::Vector3(1.0f, 1.0f, 1.0f));
+                    }
+                    else {
+                        mat->SetDiffuseColor(loadedMat.diffuseColor);
                     }
 
                     if (!loadedMat.name.empty()) {
@@ -127,6 +149,16 @@ namespace RTBEngine {
 
             return result;
         }
+
+        // Build a root+children hierarchy in the scene from a multi-mesh ModelData.
+        // Root GameObject holds the Animator (if the FBX has animation data).
+        // Each mesh gets its own child GameObject with a MeshRenderer.
+        // Declared here; implemented in FbxBinding.cpp.
+        RTB_API ECS::GameObject* BuildFbxHierarchy(
+            ECS::Scene* scene,
+            const ModelData& modelData,
+            const std::string& fbxPath,
+            Core::ResourceManager& resources);
 
     }
 }

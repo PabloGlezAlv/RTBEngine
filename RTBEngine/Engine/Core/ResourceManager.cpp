@@ -86,6 +86,17 @@ namespace RTBEngine {
         }
 
 
+        void ResourceManager::RegisterTexture(const std::string& path, Rendering::Texture* texture)
+        {
+            if (!texture) return;
+            // Skip if already registered under this path
+            auto it = textures.find(path);
+            if (it != textures.end() && it->second.get() == texture) return;
+
+            textures[path] = std::unique_ptr<Rendering::Texture>(texture);
+            texturePathMap[texture] = path;
+        }
+
         Rendering::Mesh* ResourceManager::GetModel(const std::string& path)
         {
             auto it = modelMeshPtrs.find(path);

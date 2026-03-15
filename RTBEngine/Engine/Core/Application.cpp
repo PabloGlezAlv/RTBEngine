@@ -381,7 +381,7 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rende
 		auto* meshRenderer = go->GetComponent<ECS::MeshRenderer>();
 		if (!meshRenderer) continue;
 
-		Math::Matrix4 modelMatrix = go->GetTransform().GetModelMatrix();
+		Math::Matrix4 modelMatrix = go->GetWorldMatrix();
 		shader->SetMatrix4("uModel", modelMatrix);
 
 		auto* animator = go->GetComponent<Animation::Animator>();
@@ -396,7 +396,7 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rende
 			shader->SetBool("uHasAnimation", false);
 		}
 
-		for (auto* mesh : meshRenderer->GetMeshes()) {
+		if (auto* mesh = meshRenderer->GetMesh()) {
 			mesh->Draw();
 		}
 	}

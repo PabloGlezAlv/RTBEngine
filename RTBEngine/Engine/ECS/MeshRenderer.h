@@ -25,17 +25,14 @@ namespace RTBEngine {
             MeshRenderer();
             ~MeshRenderer() override;
 
+            MeshRenderer(const MeshRenderer&) = delete;
+            MeshRenderer& operator=(const MeshRenderer&) = delete;
+
             void SetMesh(Rendering::Mesh* mesh);
-            void SetMeshes(const std::vector<Rendering::Mesh*>& meshes);
+            Rendering::Mesh* GetMesh() const { return mesh; }
 
-            Rendering::Mesh* GetMesh() const { return meshes.empty() ? nullptr : meshes[0]; }
-            const std::vector<Rendering::Mesh*>& GetMeshes() const { return meshes; }
             Rendering::Material* GetMaterial() const { return material.get(); }
-
-            // Per-mesh materials (from model file)
-            void SetMeshMaterials(const std::vector<Rendering::Material*>& mats);
-            Rendering::Material* GetMeshMaterial(size_t meshIndex) const;
-            bool HasMeshMaterials() const { return !meshMaterials.empty(); }
+            void SetMaterial(Rendering::Material* mat);
 
             void SetTexture(Rendering::Texture* tex);
             void SetShader(Rendering::Shader* shader);
@@ -55,14 +52,14 @@ namespace RTBEngine {
             Rendering::Mesh* meshRef = nullptr;
             Rendering::Texture* textureRef = nullptr;
             Math::Vector4 colorRef = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+            int meshIndex = 0;
 
             RTB_COMPONENT(MeshRenderer)
 
         private:
-            std::vector<Rendering::Mesh*> meshes;
+            Rendering::Mesh* mesh = nullptr;
             std::unique_ptr<Rendering::Material> material;
-            std::vector<Rendering::Material*> meshMaterials;  // Per-mesh materials (not owned)
-            
+
             void SyncProperties();
 
             static uint32_t drawCallCount;

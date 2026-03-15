@@ -193,6 +193,7 @@ if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$
     <ClCompile Include="Engine\Rendering\Font.cpp" />
     <ClCompile Include="Engine\Rendering\Material.cpp" />
     <ClCompile Include="Engine\Rendering\ModelLoader.cpp" />
+    <ClCompile Include="Engine\Rendering\FbxBinding.cpp" />
     <ClCompile Include="Engine\ECS\GameObject.cpp" />
     <ClCompile Include="Engine\ECS\MeshRenderer.cpp" />
     <ClCompile Include="Engine\ECS\Scene.cpp" />
@@ -287,6 +288,7 @@ if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$
     <ClInclude Include="Engine\Rendering\Font.h" />
     <ClInclude Include="Engine\Rendering\Material.h" />
     <ClInclude Include="Engine\Rendering\ModelLoader.h" />
+    <ClInclude Include="Engine\Rendering\FbxBinding.h" />
     <ClInclude Include="Engine\ECS\GameObject.h" />
     <ClInclude Include="Engine\ECS\MeshRenderer.h" />
     <ClInclude Include="Engine\ECS\Scene.h" />

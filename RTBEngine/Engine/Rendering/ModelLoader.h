@@ -39,6 +39,7 @@ namespace RTBEngine {
         // Result of loading an animated model
         struct ModelData {
             std::vector<Mesh*> meshes;
+            std::vector<std::string> meshNames;  // Assimp node name per mesh (parallel to meshes)
             std::shared_ptr<Animation::Skeleton> skeleton;
             std::vector<std::shared_ptr<Animation::AnimationClip>> animations;
             std::vector<LoadedMaterial> materials;
@@ -67,7 +68,8 @@ namespace RTBEngine {
 
         private:
             static void ProcessNode(const aiNode* node, const aiScene* scene,
-                std::vector<Mesh*>& meshes, std::shared_ptr<Animation::Skeleton>& skeleton);
+                std::vector<Mesh*>& meshes, std::vector<std::string>& meshNames,
+                std::shared_ptr<Animation::Skeleton>& skeleton);
             static Mesh* ProcessMesh(aiMesh* mesh, const aiScene* scene,
                 std::shared_ptr<Animation::Skeleton>& skeleton);
 

@@ -112,28 +112,49 @@ namespace RTBEngine {
                     comp->SetShader(shader);
                 }
 
-                const std::string modelPath = ReadOptionalString(L, tableIndex, "model", "");
+                // "model" is the explicit field; when absent, derive from meshRef path
+                std::string modelPath = ReadOptionalString(L, tableIndex, "model", "");
+                if (modelPath.empty() && comp->meshRef) {
+                    modelPath = resources.GetMeshPath(comp->meshRef);
+                }
                 if (!modelPath.empty()) {
                     Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelPath);
 
                     if (!modelData.meshes.empty()) {
                         resources.RegisterMeshes(modelPath, modelData.meshes);
-                        comp->SetMeshes(modelData.meshes);
 
-                        if (!modelData.materials.empty() && shader) {
-                            Rendering::FbxBindingContext ctx{ resources, modelPath, modelData };
-                            Rendering::FbxBindingResult bind = Rendering::BuildMeshesAndMaterials(ctx);
+                        // Pick the mesh at the stored index (default 0 for single-mesh models)
+                        const int idx = comp->meshIndex;
+                        const int clampedIdx = (idx >= 0 && idx < static_cast<int>(modelData.meshes.size())) ? idx : 0;
+                        comp->SetMesh(modelData.meshes[clampedIdx]);
 
-                            // Apply shader to all materials
-                            for (Rendering::Material* mat : bind.meshMaterials) {
-                                if (mat) {
-                                    mat->SetShader(shader);
-                                }
-                            }
+                        Rendering::FbxBindingContext ctx{ resources, modelPath, modelData };
+                        Rendering::FbxBindingResult bind = Rendering::BuildMeshesAndMaterials(ctx);
 
-                            comp->SetMeshMaterials(bind.meshMaterials);
+                        // Embedded textures from BuildMeshesAndMaterials are loaded via
+                        // LoadFromCompressedMemory (no Y-flip, correct for FBX).
+                        // They are NOT registered in ResourceManager, so textureRef
+                        // serializes as nil. On reload, the model is re-loaded from the
+                        // FBX and textures are recreated automatically.
+
+                        Rendering::Material* mat = nullptr;
+                        if (clampedIdx < static_cast<int>(bind.meshMaterials.size()))
+                            mat = bind.meshMaterials[clampedIdx];
+
+                        if (mat) {
+                            if (shader) mat->SetShader(shader);
+                            comp->SetMaterial(mat);
                         }
                     }
+                }
+
+                // User-assigned texture overrides whatever the FBX material set.
+                // ApplyLuaTableToComponent already wrote textureRef from Lua but
+                // SetMaterial() above may have clobbered it — re-apply it now.
+                const std::string texturePath = ReadOptionalString(L, tableIndex, "textureRef", "");
+                if (!texturePath.empty()) {
+                    Rendering::Texture* tex = resources.LoadTexture(texturePath);
+                    if (tex) comp->SetTexture(tex);
                 }
             }
 
@@ -255,72 +276,6 @@ namespace RTBEngine {
                     if (!modelData.meshes.empty()) {
                         resources.RegisterMeshes(modelPath, modelData.meshes);
                         comp->SetMeshes(modelData.meshes);
-
-                        ECS::GameObject* owner = comp->GetOwner();
-                        if (owner) {
-                            ECS::MeshRenderer* meshRenderer = owner->GetComponent<ECS::MeshRenderer>();
-                            if (meshRenderer) {
-                                meshRenderer->SetMeshes(modelData.meshes);
-
-                                if (!modelData.materials.empty()) {
-                                    Rendering::Shader* shader = meshRenderer->GetMaterial()->GetShader();
-
-                                    std::vector<Rendering::Texture*> embeddedTextures;
-                                    embeddedTextures.reserve(modelData.embeddedTextures.size());
-                                    for (size_t i = 0; i < modelData.embeddedTextures.size(); i++) {
-                                        const Rendering::EmbeddedTexture& embTex = modelData.embeddedTextures[i];
-                                        Rendering::Texture* tex = new Rendering::Texture();
-                                        bool loaded = false;
-
-                                        if (embTex.isCompressed) {
-                                            loaded = tex->LoadFromCompressedMemory(embTex.data.data(), static_cast<int>(embTex.data.size()));
-                                        }
-                                        else {
-                                            loaded = tex->LoadFromMemory(embTex.data.data(), embTex.width, embTex.height, embTex.channels);
-                                        }
-
-                                        if (loaded) {
-                                            embeddedTextures.push_back(tex);
-                                        }
-                                        else {
-                                            embeddedTextures.push_back(nullptr);
-                                            delete tex;
-                                        }
-                                    }
-
-                                    std::vector<Rendering::Material*> meshMats;
-                                    meshMats.reserve(modelData.meshes.size());
-                                    for (Rendering::Mesh* mesh : modelData.meshes) {
-                                        const int matIdx = mesh->GetMaterialIndex();
-                                        if (matIdx >= 0 && matIdx < static_cast<int>(modelData.materials.size())) {
-                                            const Rendering::LoadedMaterial& loadedMat = modelData.materials[matIdx];
-
-                                            Rendering::Material* mat = new Rendering::Material(shader);
-                                            mat->SetDiffuseColor(loadedMat.diffuseColor);
-
-                                            if (loadedMat.embeddedTextureIndex >= 0 &&
-                                                loadedMat.embeddedTextureIndex < static_cast<int>(embeddedTextures.size()) &&
-                                                embeddedTextures[loadedMat.embeddedTextureIndex]) {
-                                                mat->SetTexture(embeddedTextures[loadedMat.embeddedTextureIndex]);
-                                            }
-                                            else if (!loadedMat.diffuseTexturePath.empty()) {
-                                                Rendering::Texture* tex = resources.LoadTexture(loadedMat.diffuseTexturePath);
-                                                if (tex) {
-                                                    mat->SetTexture(tex);
-                                                }
-                                            }
-
-                                            meshMats.push_back(mat);
-                                        }
-                                        else {
-                                            meshMats.push_back(nullptr);
-                                        }
-                                    }
-
-                                    meshRenderer->SetMeshMaterials(meshMats);
-                                }
-                            }
-                        }
                     }
 
                     for (const auto& clip : modelData.animations) {

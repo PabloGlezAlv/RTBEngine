@@ -88,7 +88,7 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 				"' active=" + (gameObject->IsActive() ? "true" : "false") +
 				" hasMeshRenderer=" + (renderer ? "true" : "false") +
 				(renderer ? std::string(" enabled=") + (renderer->IsEnabled() ? "true" : "false") +
-				" meshes=" + std::to_string(renderer->GetMeshes().size()) +
+				" mesh=" + (renderer->GetMesh() ? "valid" : "null") +
 				" meshRef=" + (renderer->meshRef ? "valid" : "null") : ""));
 		}
 		if (gameObject->IsActive()) {

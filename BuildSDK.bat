@@ -108,6 +108,7 @@ xcopy "%THIRD_PARTY_DIR%\fmod\api\core\inc\*.hpp" "%OUTPUT_DIR%\Include\" /s /y 
 xcopy "%THIRD_PARTY_DIR%\fmod\api\core\inc\*.h" "%OUTPUT_DIR%\Include\" /s /y /i >nul
 xcopy "%THIRD_PARTY_DIR%\assimp\include\assimp\*.h" "%OUTPUT_DIR%\Include\assimp\" /s /y /i >nul
 xcopy "%THIRD_PARTY_DIR%\assimp\include\assimp\*.hpp" "%OUTPUT_DIR%\Include\assimp\" /s /y /i >nul
+copy "%THIRD_PARTY_DIR%\stb\stb_image_write.h" "%OUTPUT_DIR%\Include\" >nul
 
 :: 4. Copy Compiled Library
 echo Copying RTBEngine.lib [Debug]...

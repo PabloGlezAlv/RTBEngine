@@ -81,6 +81,10 @@ namespace RTBEngine {
             ECS::Scene* LoadScene(const std::string& path);
             ECS::Scene* GetScene(const std::string& path);
 
+            // Register an externally-created texture under a path for serialization.
+            // ResourceManager takes ownership.
+            void RegisterTexture(const std::string& path, Rendering::Texture* texture);
+
             //Reverse
             std::string GetTexturePath(Rendering::Texture* texture) const;
             std::string GetAudioClipPath(Audio::AudioClip* clip) const;
