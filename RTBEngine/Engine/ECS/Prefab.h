@@ -29,6 +29,7 @@ namespace RTBEngine {
             Prefab& operator=(const Prefab&) = delete;
 
             void AddSnapshot(ComponentSnapshot&& snap) { componentSnapshots.push_back(std::move(snap)); }
+            void AddChildPrefab(std::unique_ptr<Prefab> child) { childPrefabs.push_back(std::move(child)); }
 
             //Hierarchy
             static std::unique_ptr<Prefab> CreateFromGameObject(const GameObject* source);

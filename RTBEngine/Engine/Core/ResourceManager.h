@@ -45,6 +45,7 @@ namespace RTBEngine {
             // Texture management
             Rendering::Texture* GetTexture(const std::string& path);
             Rendering::Texture* LoadTexture(const std::string& path, bool flipVertically = true);
+            Rendering::Texture* LoadTextureAsset(const std::string& textureFilePath);
 
 			// Model management (single mesh - backwards compatible)
             Rendering::Mesh* GetModel(const std::string& path);

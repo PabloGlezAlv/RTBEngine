@@ -76,7 +76,10 @@ namespace RTBEngine {
                 Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
                 const std::string texturePath = ReadOptionalString(L, tableIndex, "texture", "");
                 if (!texturePath.empty()) {
-                    Rendering::Texture* tex = resources.LoadTexture(texturePath);
+                    // .texture assets carry flip metadata; raw images use default flip
+                    Rendering::Texture* tex = (texturePath.size() > 8 && texturePath.substr(texturePath.size() - 8) == ".texture")
+                        ? resources.LoadTextureAsset(texturePath)
+                        : resources.LoadTexture(texturePath);
                     if (tex) comp->SetTexture(tex);
                 }
 
@@ -153,7 +156,10 @@ namespace RTBEngine {
                 // SetMaterial() above may have clobbered it — re-apply it now.
                 const std::string texturePath = ReadOptionalString(L, tableIndex, "textureRef", "");
                 if (!texturePath.empty()) {
-                    Rendering::Texture* tex = resources.LoadTexture(texturePath);
+                    // .texture assets carry flip metadata; raw images use default flip
+                    Rendering::Texture* tex = (texturePath.size() > 8 && texturePath.substr(texturePath.size() - 8) == ".texture")
+                        ? resources.LoadTextureAsset(texturePath)
+                        : resources.LoadTexture(texturePath);
                     if (tex) comp->SetTexture(tex);
                 }
             }

@@ -86,6 +86,68 @@ namespace RTBEngine {
         }
 
 
+        Rendering::Texture* ResourceManager::LoadTextureAsset(const std::string& textureFilePath)
+        {
+            // Check cache first (keyed by .texture file path)
+            auto existing = GetTexture(textureFilePath);
+            if (existing) {
+                return existing;
+            }
+
+            // Parse .texture file (key=value format)
+            std::ifstream file(textureFilePath);
+            if (!file.is_open()) {
+                RTB_ERROR("ResourceManager: Failed to open .texture file: " + textureFilePath);
+                return nullptr;
+            }
+
+            std::string imagePath;
+            bool flip = true;
+
+            std::string line;
+            while (std::getline(file, line)) {
+                if (line.empty() || line[0] == '#') continue;
+                auto sep = line.find('=');
+                if (sep == std::string::npos) continue;
+
+                std::string key = line.substr(0, sep);
+                std::string value = line.substr(sep + 1);
+
+                // Trim whitespace
+                auto trim = [](std::string& s) {
+                    size_t start = s.find_first_not_of(" \t\r\n");
+                    size_t end = s.find_last_not_of(" \t\r\n");
+                    s = (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
+                };
+                trim(key);
+                trim(value);
+
+                if (key == "image") {
+                    imagePath = value;
+                } else if (key == "flip") {
+                    flip = (value == "true" || value == "1");
+                }
+            }
+
+            if (imagePath.empty()) {
+                RTB_ERROR("ResourceManager: .texture file missing 'image' field: " + textureFilePath);
+                return nullptr;
+            }
+
+            // Load the actual image with the specified flip setting
+            auto texture = std::make_unique<Rendering::Texture>();
+            if (!texture->LoadFromFile(imagePath, flip)) {
+                RTB_ERROR("ResourceManager: Failed to load image from .texture asset: " + imagePath);
+                return nullptr;
+            }
+
+            // Cache under the .texture file path so serialization round-trips correctly
+            Rendering::Texture* texturePtr = texture.get();
+            textures[textureFilePath] = std::move(texture);
+            texturePathMap[texturePtr] = textureFilePath;
+            return texturePtr;
+        }
+
         void ResourceManager::RegisterTexture(const std::string& path, Rendering::Texture* texture)
         {
             if (!texture) return;
@@ -125,12 +187,10 @@ namespace RTBEngine {
         {
             auto it = modelMeshPtrs.find(path);
             if (it != modelMeshPtrs.end()) {
-                RTB_INFO(std::string("[LOAD_MODEL_MESHES] Cache hit for '") + path + "' returning " + std::to_string(it->second.size()) + " meshes");
-                return it->second;
+                    return it->second;
             }
 
             std::vector<Rendering::Mesh*> loadedMeshes = Rendering::ModelLoader::LoadModel(path);
-            RTB_INFO(std::string("[LOAD_MODEL_MESHES] Cache miss for '") + path + "'. ModelLoader::LoadModel returned " + std::to_string(loadedMeshes.size()) + " meshes");
 
             if (loadedMeshes.empty()) {
                 RTB_ERROR("ResourceManager: Failed to load model: " + path);
@@ -155,7 +215,6 @@ namespace RTBEngine {
 
         void ResourceManager::RegisterMeshes(const std::string& path, const std::vector<Rendering::Mesh*>& meshes)
         {
-            RTB_INFO(std::string("[REGISTER_MESHES] path='") + path + "' count=" + std::to_string(meshes.size()));
             if (meshes.empty()) return;
 
             // Always register each Mesh* in the reverse-lookup map
@@ -431,7 +490,6 @@ namespace RTBEngine {
             if (it != meshPathMap.end()) {
                 return it->second;
             }
-            RTB_WARN(std::string("[GET_MESH_PATH WARNING] Mesh ptr not found in pathMap (ptr=") + std::to_string(reinterpret_cast<size_t>(mesh)) + "). meshPathMap has " + std::to_string(meshPathMap.size()) + " entries.");
             return "";
         }
 

@@ -51,11 +51,6 @@ namespace RTBEngine {
                         reinterpret_cast<const char*>(comp) + offset);
                     if (mesh) {
                         std::string meshPath = resources.GetMeshPath(const_cast<Rendering::Mesh*>(mesh));
-                        if (meshPath.empty()) {
-                            RTB_WARN(std::string("[SNAPSHOT WARNING] MeshRef has no path in ResourceManager for component '") + snap.typeName + "' ptr=" + std::to_string(reinterpret_cast<size_t>(mesh)));
-                        } else {
-                            RTB_INFO(std::string("[SNAPSHOT] MeshRef path='") + meshPath + "' for component '" + snap.typeName + "'");
-                        }
                         snap.ptrPathData[offset] = meshPath;
                     }
                     continue;
@@ -137,14 +132,18 @@ namespace RTBEngine {
 
                 if (prop->type == Reflection::PropertyType::MeshRef)
                 {
-                    RTB_INFO(std::string("[APPLY_SNAPSHOT] Restoring MeshRef from path='") + path + "'");
                     Rendering::Mesh* mesh = path.empty() ? nullptr : resources.LoadModel(path);
-                    RTB_INFO(std::string("[APPLY_SNAPSHOT] LoadModel returned ") + (mesh ? std::string("valid ptr=") + std::to_string(reinterpret_cast<size_t>(mesh)) : "nullptr") + " for path='" + path + "'");
                     std::memcpy(dst, &mesh, sizeof(Rendering::Mesh*));
                 }
                 else if (prop->type == Reflection::PropertyType::TextureRef)
                 {
-                    Rendering::Texture* tex = path.empty() ? nullptr : resources.LoadTexture(path);
+                    // .texture assets carry flip metadata; raw images use default flip
+                    Rendering::Texture* tex = nullptr;
+                    if (!path.empty()) {
+                        tex = (path.size() > 8 && path.substr(path.size() - 8) == ".texture")
+                            ? resources.LoadTextureAsset(path)
+                            : resources.LoadTexture(path);
+                    }
                     std::memcpy(dst, &tex, sizeof(Rendering::Texture*));
                 }
                 else if (prop->type == Reflection::PropertyType::AudioClipRef)
@@ -179,23 +178,17 @@ namespace RTBEngine {
 
         GameObject* Prefab::Instantiate(GameObject* parent, std::vector<GameObject*>& outChildren) const
         {
-            RTB_INFO(std::string("[INSTANTIATE] Creating GO '") + name + "' with " + std::to_string(componentSnapshots.size()) + " components, " + std::to_string(childPrefabs.size()) + " children. Parent=" + (parent ? parent->GetName() : "null"));
-
             auto* go = new GameObject(name);
             go->SetPrefabName(name);
 
             for (const ComponentSnapshot& snap : componentSnapshots)
             {
                 Component* comp = Scripting::ComponentRegistry::GetInstance().CreateComponent(snap.typeName);
-                if (!comp) {
-                    RTB_WARN(std::string("[INSTANTIATE WARNING] Could not create component '") + snap.typeName + "' for GO '" + name + "'");
-                    continue;
-                }
+                if (!comp) continue;
 
                 ApplySnapshot(comp, snap);
                 go->AddComponent(comp);
                 comp->OnValidate();
-                RTB_INFO(std::string("[INSTANTIATE] OnValidate called on '") + snap.typeName + "' for GO '" + name + "'");
             }
 
             if (parent)
@@ -206,7 +199,6 @@ namespace RTBEngine {
             for (const auto& childPrefab : childPrefabs)
             {
                 if (!childPrefab) continue;
-                RTB_INFO(std::string("[INSTANTIATE] Recursing into child prefab '") + childPrefab->name + "' for parent GO '" + name + "'");
                 GameObject* child = childPrefab->Instantiate(go, outChildren);
                 if (child)
                     outChildren.push_back(child);

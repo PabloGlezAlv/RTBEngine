@@ -26,43 +26,17 @@
 namespace RTBEngine {
     namespace Scripting {
 
-        std::unique_ptr<ECS::Prefab> PrefabLoader::Load(const std::string& filePath)
+        //Internal helpers
+        static void LoadComponents(lua_State* L, int nodeTableIndex, ECS::Prefab& prefab)
         {
-            lua_State* L = luaL_newstate();
-            luaL_openlibs(L);
-            Scripting::SceneLuaBindings::SetupLuaBindings(L);
-
-            if (luaL_dofile(L, filePath.c_str()) != LUA_OK)
-            {
-                RTB_ERROR("PrefabLoader: Failed to load file '" + filePath + "': "
-                    + std::string(lua_tostring(L, -1)));
-                lua_close(L);
-                return nullptr;
-            }
-
+            lua_getfield(L, nodeTableIndex, "components");
             if (!lua_istable(L, -1))
             {
-                RTB_ERROR("PrefabLoader: File does not return a table: " + filePath);
-                lua_close(L);
-                return nullptr;
-            }
-
-            lua_getfield(L, -1, "name");
-            std::string prefabName = lua_isstring(L, -1) ? lua_tostring(L, -1) : "Prefab";
-            lua_pop(L, 1);
-
-            auto prefab = std::make_unique<ECS::Prefab>(prefabName);
-
-            lua_getfield(L, -1, "components");
-            if (!lua_istable(L, -1))
-            {
-                RTB_WARN("PrefabLoader: No components table in prefab: " + filePath);
                 lua_pop(L, 1);
-                lua_close(L);
-                return prefab;
+                return;
             }
 
-            int componentCount = luaL_len(L, -1);
+            int componentCount = static_cast<int>(luaL_len(L, -1));
             int componentsTableIndex = lua_gettop(L);
 
             for (int i = 1; i <= componentCount; i++)
@@ -110,15 +84,77 @@ namespace RTBEngine {
 
                 ECS::ComponentSnapshot snap;
                 ECS::Prefab::SnapshotComponent(snap, comp);
-                prefab->AddSnapshot(std::move(snap));
+                prefab.AddSnapshot(std::move(snap));
 
                 delete comp;
                 lua_pop(L, 1);
             }
 
+            // pop components table
             lua_pop(L, 1);
-            lua_close(L);
+        }
 
+        static std::unique_ptr<ECS::Prefab> LoadNode(lua_State* L, int nodeTableIndex)
+        {
+            lua_getfield(L, nodeTableIndex, "name");
+            std::string nodeName = lua_isstring(L, -1) ? lua_tostring(L, -1) : "Prefab";
+            lua_pop(L, 1);
+
+            auto prefab = std::make_unique<ECS::Prefab>(nodeName);
+
+            LoadComponents(L, nodeTableIndex, *prefab);
+
+            // Recursively load children if present
+            lua_getfield(L, nodeTableIndex, "children");
+            if (lua_istable(L, -1))
+            {
+                int childCount = static_cast<int>(luaL_len(L, -1));
+                int childrenTableIndex = lua_gettop(L);
+
+                for (int i = 1; i <= childCount; i++)
+                {
+                    lua_geti(L, childrenTableIndex, i);
+                    if (lua_istable(L, -1))
+                    {
+                        int childNodeIndex = lua_gettop(L);
+                        std::unique_ptr<ECS::Prefab> childPrefab = LoadNode(L, childNodeIndex);
+                        if (childPrefab)
+                            prefab->AddChildPrefab(std::move(childPrefab));
+                    }
+                    lua_pop(L, 1);
+                }
+            }
+            // pop children field (table or nil)
+            lua_pop(L, 1);
+
+            return prefab;
+        }
+
+        std::unique_ptr<ECS::Prefab> PrefabLoader::Load(const std::string& filePath)
+        {
+            lua_State* L = luaL_newstate();
+            luaL_openlibs(L);
+            Scripting::SceneLuaBindings::SetupLuaBindings(L);
+
+            if (luaL_dofile(L, filePath.c_str()) != LUA_OK)
+            {
+                RTB_ERROR("PrefabLoader: Failed to load file '" + filePath + "': "
+                    + std::string(lua_tostring(L, -1)));
+                lua_close(L);
+                return nullptr;
+            }
+
+            if (!lua_istable(L, -1))
+            {
+                RTB_ERROR("PrefabLoader: File does not return a table: " + filePath);
+                lua_close(L);
+                return nullptr;
+            }
+
+            int rootTableIndex = lua_gettop(L);
+            std::unique_ptr<ECS::Prefab> prefab = LoadNode(L, rootTableIndex);
+
+            lua_close(L);
             return prefab;
         }
 

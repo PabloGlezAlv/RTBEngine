@@ -116,7 +116,11 @@ namespace RTBEngine {
                         if (lua_isstring(L, -1)) {
                             const std::string path = lua_tostring(L, -1);
                             if (!path.empty()) {
-                                auto* tex = Core::ResourceManager::GetInstance().LoadTexture(path);
+                                // .texture assets carry flip metadata; raw images use default flip
+                                auto& rm = Core::ResourceManager::GetInstance();
+                                auto* tex = (path.size() > 8 && path.substr(path.size() - 8) == ".texture")
+                                    ? rm.LoadTextureAsset(path)
+                                    : rm.LoadTexture(path);
                                 WriteValue<void*>(dst, tex);
                             }
                         }
