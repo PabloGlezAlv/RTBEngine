@@ -59,11 +59,19 @@ namespace RTBEngine {
             void SetMainCamera(CameraComponent* camera);
             CameraComponent* GetMainCamera() const;
             Rendering::Camera* GetActiveCamera();
+
         private:
+            //Deferred command buffer
+            void FlushPendingCommands();
+
             std::string name;
             std::vector<std::unique_ptr<GameObject>> gameObjects;
             std::vector<Rendering::Light*> lights;
-            
+
+            std::vector<std::unique_ptr<GameObject>> pendingAdds;
+            std::vector<GameObject*> pendingRemoves;
+            int iterationDepth = 0;
+
             CameraComponent* mainCamera = nullptr;
 
             // Skybox settings
