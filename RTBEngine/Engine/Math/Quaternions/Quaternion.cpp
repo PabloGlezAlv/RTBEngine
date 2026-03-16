@@ -194,11 +194,11 @@ namespace RTBEngine {
             if (std::abs(r21) >= 0.9999f) {
                 // Gimbal lock case
                 euler.x = std::copysign(3.14159265358979323846f / 2.0f, r21);
-                euler.y = std::atan2(-r20, r22);
+                euler.y = -std::atan2(-r20, r22);
                 euler.z = 0.0f;
             } else {
                 euler.x = std::asin(r21);
-                euler.y = std::atan2(-r20, r22);
+                euler.y = -std::atan2(-r20, r22);
                 euler.z = std::atan2(-r01, r11);
             }
 
