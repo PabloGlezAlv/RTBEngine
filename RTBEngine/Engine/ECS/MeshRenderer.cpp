@@ -26,6 +26,7 @@ namespace RTBEngine {
             RTB_PROPERTY_TEXTURE(textureRef)
             RTB_PROPERTY_COLOR(colorRef)
             RTB_PROPERTY(meshIndex)
+            RTB_PROPERTY(multiMesh)
         RTB_END_REGISTER(MeshRenderer)
 
         MeshRenderer::MeshRenderer()
@@ -62,6 +63,9 @@ namespace RTBEngine {
         }
 
         void MeshRenderer::SyncProperties() {
+            // Multi-mesh mode does not use reflected proxies for mesh/texture sync
+            if (multiMesh) return;
+
             if (material && !material->GetShader()) {
                 Rendering::Shader* shader = Core::ResourceManager::GetInstance().GetShader("basic");
                 if (shader) material->SetShader(shader);
@@ -85,6 +89,44 @@ namespace RTBEngine {
         {
             mesh = newMesh;
             meshRef = newMesh;
+        }
+
+        void MeshRenderer::SetMeshes(const std::vector<Rendering::Mesh*>& meshList)
+        {
+            meshes = meshList;
+            multiMesh = meshList.size() > 1;
+
+            // Create a default material for each mesh
+            meshMaterials.clear();
+            Rendering::Shader* basicShader = Core::ResourceManager::GetInstance().GetShader("basic");
+            for (size_t i = 0; i < meshList.size(); i++) {
+                auto mat = std::make_unique<Rendering::Material>(basicShader);
+                meshMaterials.push_back(std::move(mat));
+            }
+
+            // Keep single-mesh state in sync for backward compat
+            if (!meshList.empty()) {
+                mesh = meshList[0];
+                meshRef = meshList[0];
+            }
+        }
+
+        void MeshRenderer::SetMaterialForMesh(int index, Rendering::Material* mat)
+        {
+            if (index < 0 || index >= static_cast<int>(meshMaterials.size())) return;
+            if (!mat) return;
+
+            meshMaterials[index]->SetShader(mat->GetShader());
+            meshMaterials[index]->SetTexture(mat->GetTexture());
+            meshMaterials[index]->SetColor(mat->GetColor());
+            meshMaterials[index]->SetShininess(mat->GetShininess());
+            meshMaterials[index]->SetDiffuseColor(mat->GetDiffuseColor());
+        }
+
+        Rendering::Material* MeshRenderer::GetMaterialForMesh(int index) const
+        {
+            if (index < 0 || index >= static_cast<int>(meshMaterials.size())) return nullptr;
+            return meshMaterials[index].get();
         }
 
         void MeshRenderer::SetMaterial(Rendering::Material* mat)
@@ -119,7 +161,15 @@ namespace RTBEngine {
             if (!isEnabled || !owner) {
                 return;
             }
+
+            if (multiMesh) {
+                RenderMultiMesh(camera, lights);
+                return;
+            }
+
+            //Single-mesh path (unchanged)
             if (!mesh) {
+                RTB_WARN(std::string("[RENDER] GO='") + owner->GetName() + "' has no mesh");
                 return;
             }
 
@@ -203,6 +253,104 @@ namespace RTBEngine {
             drawCallCount++;
             triangleCount += mesh->GetIndexCount() / 3;
             mat->Unbind();
+        }
+
+        void MeshRenderer::RenderMultiMesh(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights)
+        {
+            if (meshes.empty()) {
+                RTB_WARN(std::string("[RENDER] GO='") + owner->GetName() + "' multi-mesh has no meshes");
+                return;
+            }
+
+            // Find first valid shader from materials
+            Rendering::Shader* shader = nullptr;
+            for (auto& mat : meshMaterials) {
+                if (mat && mat->GetShader()) {
+                    shader = mat->GetShader();
+                    break;
+                }
+            }
+            if (!shader) {
+                RTB_WARN(std::string("[RENDER] GO='") + owner->GetName() + "' multi-mesh has no shader");
+                return;
+            }
+
+            // Setup shared uniforms once
+            Math::Matrix4 modelMatrix = owner->GetWorldMatrix();
+            shader->Bind();
+            shader->SetMatrix4("uModel", modelMatrix);
+            shader->SetMatrix4("uView", camera->GetViewMatrix());
+            shader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
+            shader->SetVector3("uViewPos", camera->GetPosition());
+
+            // Skeletal animation: Animator is on the same GO in multi-mesh mode
+            Animation::Animator* animator = owner->GetComponent<Animation::Animator>();
+
+            if (animator && animator->HasBones()) {
+                shader->SetBool("uHasAnimation", true);
+                const std::vector<Math::Matrix4>& boneTransforms = animator->GetBoneTransforms();
+                for (size_t j = 0; j < boneTransforms.size() && j < 100; j++) {
+                    shader->SetMatrix4("uBoneTransforms[" + std::to_string(j) + "]", boneTransforms[j]);
+                }
+            }
+            else {
+                shader->SetBool("uHasAnimation", false);
+            }
+
+            // Lighting (set once, shared across all sub-meshes)
+            int pointLightCount = 0;
+            int spotLightCount = 0;
+            bool directionalLightSet = false;
+
+            for (Rendering::Light* light : lights) {
+                if (!light) continue;
+
+                Rendering::LightType type = light->GetType();
+                if (type == Rendering::LightType::Directional) {
+                    if (!directionalLightSet) {
+                        light->ApplyToShader(shader);
+                        directionalLightSet = true;
+                    }
+                }
+                else if (type == Rendering::LightType::Point) {
+                    if (pointLightCount < 8) {
+                        auto* pl = static_cast<Rendering::PointLight*>(light);
+                        pl->ApplyToShader(shader, pointLightCount++);
+                    }
+                }
+                else if (type == Rendering::LightType::Spot) {
+                    if (spotLightCount < 8) {
+                        auto* sl = static_cast<Rendering::SpotLight*>(light);
+                        sl->ApplyToShader(shader, spotLightCount++);
+                    }
+                }
+            }
+
+            shader->SetInt("numPointLights", pointLightCount);
+            shader->SetInt("numSpotLights", spotLightCount);
+
+            if (!directionalLightSet) {
+                shader->SetVector3("dirLight.direction", Math::Vector3(0.0f, -1.0f, 0.0f));
+                shader->SetVector3("dirLight.color", Math::Vector3(0.0f, 0.0f, 0.0f));
+                shader->SetFloat("dirLight.intensity", 0.0f);
+            }
+
+            // Draw each sub-mesh with its own material
+            for (size_t i = 0; i < meshes.size(); i++) {
+                if (!meshes[i]) continue;
+
+                if (i < meshMaterials.size() && meshMaterials[i]) {
+                    meshMaterials[i]->Bind();
+                }
+
+                meshes[i]->Draw();
+                drawCallCount++;
+                triangleCount += meshes[i]->GetIndexCount() / 3;
+
+                if (i < meshMaterials.size() && meshMaterials[i]) {
+                    meshMaterials[i]->Unbind();
+                }
+            }
         }
 
     }

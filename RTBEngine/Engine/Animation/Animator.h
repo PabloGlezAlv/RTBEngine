@@ -13,6 +13,10 @@ namespace RTBEngine {
     namespace Rendering {
         class Mesh;
     }
+    namespace ECS {
+        class Scene;
+        class GameObject;
+    }
 }
 
 namespace RTBEngine {
@@ -64,6 +68,13 @@ namespace RTBEngine {
             const std::vector<Rendering::Mesh*>& GetMeshes() const { return meshes; }
             Rendering::Mesh* GetFirstMesh() const { return meshes.empty() ? nullptr : meshes[0]; }
 
+            //Bone GameObjects
+            void CreateBoneGameObjects(ECS::Scene* scene);
+            void SyncBoneGameObjects();
+            ECS::GameObject* GetBoneGameObject(const std::string& boneName) const;
+            ECS::GameObject* GetBoneGameObject(int boneIndex) const;
+            bool AreBoneGOsCreated() const { return boneGOsCreated; }
+
             // Reflected properties (Proxy)
             std::string modelRef;
             std::vector<std::string> additionalModels;
@@ -78,13 +89,18 @@ namespace RTBEngine {
         private:
             std::shared_ptr<Skeleton> skeleton;
             std::unordered_map<std::string, std::shared_ptr<AnimationClip>> clips;
-            
+
             AnimationClip* currentClip = nullptr;
             float currentTime = 0.0f;
             bool paused = false;
 
             std::vector<Math::Matrix4> finalBoneTransforms;
-            std::vector<Rendering::Mesh*> meshes;  // Meshes with bone data
+            std::vector<Rendering::Mesh*> meshes;
+
+            //Bone GO sync
+            std::vector<Math::Matrix4> currentLocalTransforms;
+            std::vector<ECS::GameObject*> boneGameObjects;
+            bool boneGOsCreated = false;
 
             void EnsureModelDataLoaded();
             void UpdateBoneTransforms();

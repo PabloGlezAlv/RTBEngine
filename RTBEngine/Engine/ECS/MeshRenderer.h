@@ -28,6 +28,7 @@ namespace RTBEngine {
             MeshRenderer(const MeshRenderer&) = delete;
             MeshRenderer& operator=(const MeshRenderer&) = delete;
 
+            //Single-mesh API
             void SetMesh(Rendering::Mesh* mesh);
             Rendering::Mesh* GetMesh() const { return mesh; }
 
@@ -36,6 +37,14 @@ namespace RTBEngine {
 
             void SetTexture(Rendering::Texture* tex);
             void SetShader(Rendering::Shader* shader);
+
+            //Multi-mesh API
+            void SetMeshes(const std::vector<Rendering::Mesh*>& meshList);
+            void SetMaterialForMesh(int index, Rendering::Material* mat);
+            const std::vector<Rendering::Mesh*>& GetMeshes() const { return meshes; }
+            int GetMeshCount() const { return static_cast<int>(meshes.size()); }
+            Rendering::Material* GetMaterialForMesh(int index) const;
+            bool IsMultiMesh() const { return multiMesh; }
 
             void Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights);
 
@@ -53,14 +62,21 @@ namespace RTBEngine {
             Rendering::Texture* textureRef = nullptr;
             Math::Vector4 colorRef = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
             int meshIndex = 0;
+            bool multiMesh = false;
 
             RTB_COMPONENT(MeshRenderer)
 
         private:
+            //Single-mesh state
             Rendering::Mesh* mesh = nullptr;
             std::unique_ptr<Rendering::Material> material;
 
+            //Multi-mesh state
+            std::vector<Rendering::Mesh*> meshes;
+            std::vector<std::unique_ptr<Rendering::Material>> meshMaterials;
+
             void SyncProperties();
+            void RenderMultiMesh(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights);
 
             static uint32_t drawCallCount;
             static uint32_t triangleCount;

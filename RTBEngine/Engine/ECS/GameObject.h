@@ -59,6 +59,9 @@ namespace RTBEngine {
             void SetActive(bool active);
             bool IsActive() const { return isActive; }
 
+            void SetTransient(bool t) { isTransient = t; }
+            bool IsTransient() const { return isTransient; }
+
             Math::Matrix4 GetWorldMatrix() const;
             Math::Vector3 GetWorldPosition() const;
             Math::Quaternion GetWorldRotation() const;
@@ -77,6 +80,7 @@ namespace RTBEngine {
             std::vector<ComponentPtr> components;
             bool isActive;
             bool started;
+            bool isTransient = false;
 
             GameObject* parent = nullptr;
             std::vector<GameObject*> children;

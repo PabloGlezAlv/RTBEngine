@@ -52,41 +52,36 @@ namespace RTBEngine {
                 }
                 animator->modelRef = fbxPath;
                 root->AddComponent(animator);
+
+                // Create bone GameObjects from skeleton hierarchy
+                animator->CreateBoneGameObjects(scene);
             }
 
-            // Create one child per mesh
-            for (size_t i = 0; i < modelData.meshes.size(); i++) {
-                Rendering::Mesh* mesh = modelData.meshes[i];
-                if (!mesh) continue;
+            // Create a single MeshRenderer on root for all meshes
+            auto* renderer = new ECS::MeshRenderer();
 
-                // Derive child name
-                std::string childName;
-                if (i < modelData.meshNames.size() && !modelData.meshNames[i].empty()) {
-                    childName = modelData.meshNames[i];
+            if (modelData.meshes.size() > 1) {
+                // Multi-mesh mode
+                renderer->SetMeshes(modelData.meshes);
+                for (size_t i = 0; i < binding.meshMaterials.size() && i < modelData.meshes.size(); i++) {
+                    if (binding.meshMaterials[i]) {
+                        renderer->SetMaterialForMesh(static_cast<int>(i), binding.meshMaterials[i]);
+                    }
                 }
-                else {
-                    RTB_WARN("[FbxBinding] Mesh node " + std::to_string(i) + " in '" + fbxPath + "' has no name, using fallback.");
-                    childName = stem + "_mesh_" + std::to_string(i);
-                }
-
-                ECS::GameObject* child = new ECS::GameObject(childName);
-                child->SetParent(root);
-                scene->AddGameObject(child);
-
-                auto* renderer = new ECS::MeshRenderer();
-                renderer->meshIndex = static_cast<int>(i);
-                renderer->SetMesh(mesh);
-
-                // Apply per-mesh material
-                if (i < binding.meshMaterials.size() && binding.meshMaterials[i]) {
-                    renderer->SetMaterial(binding.meshMaterials[i]);
+            }
+            else {
+                // Single-mesh mode
+                renderer->meshIndex = 0;
+                renderer->SetMesh(modelData.meshes[0]);
+                if (!binding.meshMaterials.empty() && binding.meshMaterials[0]) {
+                    renderer->SetMaterial(binding.meshMaterials[0]);
                 }
                 else if (basicShader) {
                     renderer->SetShader(basicShader);
                 }
-
-                child->AddComponent(renderer);
             }
+
+            root->AddComponent(renderer);
 
             return root;
         }

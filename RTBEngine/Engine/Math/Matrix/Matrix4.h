@@ -7,6 +7,8 @@
 namespace RTBEngine {
     namespace Math {
 
+        class Quaternion;
+
         class RTB_API Matrix4 {
         public:
             float m[16];
@@ -37,6 +39,8 @@ namespace RTBEngine {
 
             Matrix4 Transpose() const;
             Matrix4 Inverse() const;
+
+            void Decompose(Vector3& outPosition, Quaternion& outRotation, Vector3& outScale) const;
 
             const float* GetData() const { return m; }
             float* GetData() { return m; }

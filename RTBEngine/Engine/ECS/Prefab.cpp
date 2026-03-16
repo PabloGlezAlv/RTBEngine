@@ -3,12 +3,15 @@
 
 #include "GameObject.h"
 #include "Component.h"
+#include "MeshRenderer.h"
 #include "../Reflection/TypeInfo.h"
 #include "../Scripting/ComponentRegistry.h"
 #include "../Core/ResourceManager.h"
 #include "../Core/Logger.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Texture.h"
+#include "../Rendering/FbxBinding.h"
+#include "../Rendering/ModelLoader.h"
 #include "../Audio/AudioClip.h"
 
 namespace RTBEngine {
@@ -132,7 +135,72 @@ namespace RTBEngine {
 
                 if (prop->type == Reflection::PropertyType::MeshRef)
                 {
-                    Rendering::Mesh* mesh = path.empty() ? nullptr : resources.LoadModel(path);
+                    Rendering::Mesh* mesh = nullptr;
+                    if (!path.empty())
+                    {
+                        Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(path);
+
+                        if (!modelData.meshes.empty())
+                        {
+                            resources.RegisterMeshes(path, modelData.meshes);
+
+                            auto* meshRenderer = dynamic_cast<MeshRenderer*>(target);
+
+                            // Check if this is a multi-mesh MeshRenderer
+                            bool isMulti = false;
+                            const Reflection::PropertyInfo* multiProp = typeInfo->GetProperty("multiMesh");
+                            if (multiProp)
+                            {
+                                const char* multiSrc = reinterpret_cast<const char*>(target) + multiProp->offset;
+                                std::memcpy(&isMulti, multiSrc, sizeof(bool));
+                            }
+
+                            Rendering::FbxBindingContext ctx{ resources, path, modelData };
+                            Rendering::FbxBindingResult bind = Rendering::BuildMeshesAndMaterials(ctx);
+                            Rendering::Shader* shader = resources.GetShader("basic");
+
+                            if (isMulti && meshRenderer && modelData.meshes.size() > 1)
+                            {
+                                // Multi-mesh: set all meshes and per-mesh materials
+                                meshRenderer->SetMeshes(modelData.meshes);
+                                for (size_t i = 0; i < bind.meshMaterials.size() && i < modelData.meshes.size(); i++)
+                                {
+                                    if (bind.meshMaterials[i])
+                                    {
+                                        if (shader) bind.meshMaterials[i]->SetShader(shader);
+                                        meshRenderer->SetMaterialForMesh(static_cast<int>(i), bind.meshMaterials[i]);
+                                    }
+                                }
+                                mesh = modelData.meshes[0];
+                            }
+                            else
+                            {
+                                // Single-mesh: pick by meshIndex
+                                const Reflection::PropertyInfo* indexProp = typeInfo->GetProperty("meshIndex");
+                                int idx = 0;
+                                if (indexProp)
+                                {
+                                    const char* idxSrc = reinterpret_cast<const char*>(target) + indexProp->offset;
+                                    std::memcpy(&idx, idxSrc, sizeof(int));
+                                }
+                                int clampedIdx = (idx >= 0 && idx < static_cast<int>(modelData.meshes.size())) ? idx : 0;
+                                mesh = modelData.meshes[clampedIdx];
+
+                                if (meshRenderer)
+                                {
+                                    Rendering::Material* mat = nullptr;
+                                    if (clampedIdx < static_cast<int>(bind.meshMaterials.size()))
+                                        mat = bind.meshMaterials[clampedIdx];
+
+                                    if (mat)
+                                    {
+                                        if (shader) mat->SetShader(shader);
+                                        meshRenderer->SetMaterial(mat);
+                                    }
+                                }
+                            }
+                        }
+                    }
                     std::memcpy(dst, &mesh, sizeof(Rendering::Mesh*));
                 }
                 else if (prop->type == Reflection::PropertyType::TextureRef)
@@ -166,10 +234,10 @@ namespace RTBEngine {
                 prefab->componentSnapshots.push_back(std::move(snap));
             }
 
-            // Recursively snapshot all child GameObjects
+            // Recursively snapshot all child GameObjects (skip transient bone GOs)
             for (const auto* child : source->GetChildren())
             {
-                if (child)
+                if (child && !child->IsTransient())
                     prefab->childPrefabs.push_back(CreateFromGameObject(child));
             }
 

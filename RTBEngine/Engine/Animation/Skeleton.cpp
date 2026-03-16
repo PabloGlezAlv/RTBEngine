@@ -39,10 +39,14 @@ namespace RTBEngine {
 
         void Skeleton::CalculateBoneTransforms(
             const std::vector<Math::Matrix4>& localTransforms,
-            std::vector<Math::Matrix4>& outFinalTransforms) const
+            std::vector<Math::Matrix4>& outFinalTransforms,
+            std::vector<Math::Matrix4>* outGlobalTransforms) const
         {
             size_t boneCount = bones.size();
             outFinalTransforms.resize(boneCount);
+
+            if (outGlobalTransforms)
+                outGlobalTransforms->resize(boneCount);
 
             // Temporary storage for global transforms
             std::vector<Math::Matrix4> globalTransforms(boneCount);
@@ -73,6 +77,9 @@ namespace RTBEngine {
 
                     // Final transform = GlobalInverse * GlobalTransform * OffsetMatrix
                     outFinalTransforms[i] = globalInverseTransform * globalTransforms[i] * bone.offsetMatrix;
+
+                    if (outGlobalTransforms)
+                        (*outGlobalTransforms)[i] = globalTransforms[i];
 
                     processed[i] = true;
                     processedCount++;

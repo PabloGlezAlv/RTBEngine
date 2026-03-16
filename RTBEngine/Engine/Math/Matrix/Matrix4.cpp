@@ -1,4 +1,5 @@
 #include "Matrix4.h"
+#include "../Quaternions/Quaternion.h"
 #include <cstring>
 
 namespace RTBEngine {
@@ -257,6 +258,38 @@ namespace RTBEngine {
                 inv.m[i] *= det;
 
             return inv;
+        }
+
+        void Matrix4::Decompose(Vector3& outPosition, Quaternion& outRotation, Vector3& outScale) const {
+            // Extract translation from column 3
+            outPosition = Vector3(m[12], m[13], m[14]);
+
+            // Extract scale from column lengths
+            Vector3 col0(m[0], m[1], m[2]);
+            Vector3 col1(m[4], m[5], m[6]);
+            Vector3 col2(m[8], m[9], m[10]);
+
+            outScale = Vector3(col0.Length(), col1.Length(), col2.Length());
+
+            // Build rotation matrix with normalized columns
+            Matrix4 rot = Identity();
+            if (outScale.x > 0.0f) {
+                rot.m[0] = m[0] / outScale.x;
+                rot.m[1] = m[1] / outScale.x;
+                rot.m[2] = m[2] / outScale.x;
+            }
+            if (outScale.y > 0.0f) {
+                rot.m[4] = m[4] / outScale.y;
+                rot.m[5] = m[5] / outScale.y;
+                rot.m[6] = m[6] / outScale.y;
+            }
+            if (outScale.z > 0.0f) {
+                rot.m[8] = m[8] / outScale.z;
+                rot.m[9] = m[9] / outScale.z;
+                rot.m[10] = m[10] / outScale.z;
+            }
+
+            outRotation = Quaternion::FromMatrix(rot);
         }
 
     }

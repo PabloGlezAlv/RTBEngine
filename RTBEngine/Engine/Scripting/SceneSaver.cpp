@@ -78,6 +78,8 @@ namespace RTBEngine {
         }
 
         void SceneSaver::WriteGameObject(std::ofstream& file, const ECS::GameObject* go, int indent) {
+            if (go->IsTransient()) return;
+
             std::string ind = ScenePropertySerializer::Indent(indent);
 
             file << ind << "{\n";

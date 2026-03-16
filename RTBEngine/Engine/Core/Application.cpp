@@ -379,13 +379,16 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rende
 {
 	for (auto& go : scene->GetGameObjects()) {
 		auto* meshRenderer = go->GetComponent<ECS::MeshRenderer>();
-		if (!meshRenderer) continue;
+		if (!meshRenderer || !meshRenderer->IsEnabled()) continue;
 
 		Math::Matrix4 modelMatrix = go->GetWorldMatrix();
 		shader->SetMatrix4("uModel", modelMatrix);
 
 		auto* animator = go->GetComponent<Animation::Animator>();
-		if (animator) {
+		if (!animator && go->GetParent()) {
+			animator = go->GetParent()->GetComponent<Animation::Animator>();
+		}
+		if (animator && animator->HasBones()) {
 			shader->SetBool("uHasAnimation", true);
 			const auto& boneTransforms = animator->GetBoneTransforms();
 			for (size_t i = 0; i < boneTransforms.size() && i < 100; ++i) {
@@ -396,8 +399,15 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rende
 			shader->SetBool("uHasAnimation", false);
 		}
 
-		if (auto* mesh = meshRenderer->GetMesh()) {
-			mesh->Draw();
+		if (meshRenderer->IsMultiMesh()) {
+			for (auto* mesh : meshRenderer->GetMeshes()) {
+				if (mesh) mesh->Draw();
+			}
+		}
+		else {
+			if (auto* mesh = meshRenderer->GetMesh()) {
+				mesh->Draw();
+			}
 		}
 	}
 }

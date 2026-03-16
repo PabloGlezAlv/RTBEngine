@@ -237,6 +237,48 @@ namespace RTBEngine {
             return FromEulerAngles(euler.x, euler.y, euler.z);
         }
 
+        Quaternion Quaternion::FromMatrix(const Matrix4& mat) {
+            // Shepperd method: extract quaternion from upper-left 3x3 rotation matrix
+            // Column-major layout: m[col*4 + row]
+            float m00 = mat.m[0];  float m01 = mat.m[4];  float m02 = mat.m[8];
+            float m10 = mat.m[1];  float m11 = mat.m[5];  float m12 = mat.m[9];
+            float m20 = mat.m[2];  float m21 = mat.m[6];  float m22 = mat.m[10];
+
+            float trace = m00 + m11 + m22;
+            Quaternion q;
+
+            if (trace > 0.0f) {
+                float s = std::sqrt(trace + 1.0f) * 2.0f;
+                q.w = 0.25f * s;
+                q.x = (m21 - m12) / s;
+                q.y = (m02 - m20) / s;
+                q.z = (m10 - m01) / s;
+            }
+            else if (m00 > m11 && m00 > m22) {
+                float s = std::sqrt(1.0f + m00 - m11 - m22) * 2.0f;
+                q.w = (m21 - m12) / s;
+                q.x = 0.25f * s;
+                q.y = (m01 + m10) / s;
+                q.z = (m02 + m20) / s;
+            }
+            else if (m11 > m22) {
+                float s = std::sqrt(1.0f + m11 - m00 - m22) * 2.0f;
+                q.w = (m02 - m20) / s;
+                q.x = (m01 + m10) / s;
+                q.y = 0.25f * s;
+                q.z = (m12 + m21) / s;
+            }
+            else {
+                float s = std::sqrt(1.0f + m22 - m00 - m11) * 2.0f;
+                q.w = (m10 - m01) / s;
+                q.x = (m02 + m20) / s;
+                q.y = (m12 + m21) / s;
+                q.z = 0.25f * s;
+            }
+
+            return q.Normalized();
+        }
+
         Quaternion Quaternion::Slerp(const Quaternion& a, const Quaternion& b, float t) {
             Quaternion qb = b;
             float cosHalfTheta = a.Dot(b);

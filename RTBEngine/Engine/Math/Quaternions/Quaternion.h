@@ -46,6 +46,7 @@ namespace RTBEngine {
 
             static Quaternion FromEulerAngles(float pitch, float yaw, float roll);
             static Quaternion FromEulerAngles(const Vector3& euler);
+            static Quaternion FromMatrix(const Matrix4& mat);
             static Quaternion Slerp(const Quaternion& a, const Quaternion& b, float t);
             static Quaternion Lerp(const Quaternion& a, const Quaternion& b, float t);
         };

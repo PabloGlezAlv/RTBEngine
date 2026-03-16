@@ -26,7 +26,8 @@ namespace RTBEngine {
             // Calcular final matirx
             void CalculateBoneTransforms(
                 const std::vector<Math::Matrix4>& localTransforms,
-                std::vector<Math::Matrix4>& outFinalTransforms) const;
+                std::vector<Math::Matrix4>& outFinalTransforms,
+                std::vector<Math::Matrix4>* outGlobalTransforms = nullptr) const;
 
         private:
             std::vector<Bone> bones;

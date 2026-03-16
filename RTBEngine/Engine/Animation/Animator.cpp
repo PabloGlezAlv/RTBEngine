@@ -4,6 +4,10 @@
 #include "../Rendering/FbxBinding.h"
 #include "../Core/ResourceManager.h"
 #include "../ECS/MeshRenderer.h"
+#include "../ECS/GameObject.h"
+#include "../ECS/Scene.h"
+#include "../ECS/SceneManager.h"
+#include "../Math/Quaternions/Quaternion.h"
 #include <cmath>
 #include <algorithm>
 
@@ -31,14 +35,11 @@ namespace RTBEngine {
         void Animator::EnsureModelDataLoaded()
         {
             // Lazy-load model data (skeleton, meshes, clips, materials) if we have a modelRef
-            // but no runtime data yet (típico en duplicados por prefab snapshot).
+            // but no runtime data yet (typical for prefab snapshot duplicates).
             if (!modelRef.empty() && !skeleton && clips.empty()) {
                 auto& resources = Core::ResourceManager::GetInstance();
 
                 Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelRef);
-                RTB_INFO(std::string("[ENSURE_MODEL] LoadModelWithAnimations returned meshes=") + std::to_string(modelData.meshes.size()) +
-                    " anims=" + std::to_string(modelData.animations.size()) +
-                    " skeleton=" + (modelData.skeleton ? "valid" : "null"));
 
                 if (modelData.skeleton) {
                     SetSkeleton(modelData.skeleton);
@@ -63,6 +64,14 @@ namespace RTBEngine {
         void Animator::OnValidate()
         {
             EnsureModelDataLoaded();
+
+            // Create bone GOs in Edit mode too so the hierarchy is visible
+            if (skeleton && !boneGOsCreated) {
+                ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
+                if (scene) {
+                    CreateBoneGameObjects(scene);
+                }
+            }
         }
 
         void Animator::OnStart()
@@ -72,6 +81,14 @@ namespace RTBEngine {
             // Initialize bone transforms array
             if (skeleton) {
                 finalBoneTransforms.resize(skeleton->GetBoneCount(), Math::Matrix4());
+            }
+
+            // Create bone GameObjects if not already created
+            if (skeleton && !boneGOsCreated) {
+                ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
+                if (scene) {
+                    CreateBoneGameObjects(scene);
+                }
             }
 
             if (!defaultClip.empty() && GetClip(defaultClip) != nullptr) {
@@ -193,7 +210,7 @@ namespace RTBEngine {
             }
 
             size_t boneCount = skeleton->GetBoneCount();
-            std::vector<Math::Matrix4> localTransforms(boneCount);
+            currentLocalTransforms.resize(boneCount);
 
             // Get interpolated local transform for each bone
             for (size_t i = 0; i < boneCount; i++) {
@@ -202,16 +219,95 @@ namespace RTBEngine {
                     Math::Matrix4 transform;
                     // Pass localBindTransform to use its position when animation has no position data
                     if (currentClip->GetBoneTransform(bone->name, currentTime, transform, &bone->localBindTransform)) {
-                        localTransforms[i] = transform;
+                        currentLocalTransforms[i] = transform;
                     } else {
                         // Use bind pose local transform for bones without any animation data
-                        localTransforms[i] = bone->localBindTransform;
+                        currentLocalTransforms[i] = bone->localBindTransform;
                     }
                 }
             }
 
             // Calculate final transforms (with hierarchy and offset matrices)
-            skeleton->CalculateBoneTransforms(localTransforms, finalBoneTransforms);
+            skeleton->CalculateBoneTransforms(currentLocalTransforms, finalBoneTransforms);
+
+            // Sync bone GameObjects with current local transforms
+            SyncBoneGameObjects();
+        }
+
+        void Animator::CreateBoneGameObjects(ECS::Scene* scene)
+        {
+            if (!skeleton || !owner || boneGOsCreated) return;
+
+            size_t boneCount = skeleton->GetBoneCount();
+            boneGameObjects.resize(boneCount, nullptr);
+
+            for (size_t i = 0; i < boneCount; i++) {
+                const Bone* bone = skeleton->GetBone(static_cast<int>(i));
+                if (!bone) continue;
+
+                auto* boneGO = new ECS::GameObject(bone->name);
+                boneGO->SetTransient(true);
+
+                // Parent to owner (root bone) or to parent bone GO
+                if (bone->parentIndex < 0) {
+                    boneGO->SetParent(owner);
+                }
+                else if (bone->parentIndex < static_cast<int>(boneGameObjects.size()) && boneGameObjects[bone->parentIndex]) {
+                    boneGO->SetParent(boneGameObjects[bone->parentIndex]);
+                }
+                else {
+                    boneGO->SetParent(owner);
+                }
+
+                scene->AddGameObject(boneGO);
+
+                // Set initial transform from bind pose
+                Math::Vector3 pos;
+                Math::Quaternion rot;
+                Math::Vector3 scale;
+                bone->localBindTransform.Decompose(pos, rot, scale);
+                boneGO->GetTransform().SetPosition(pos);
+                boneGO->GetTransform().SetRotation(rot);
+                boneGO->GetTransform().SetScale(scale);
+
+                boneGameObjects[i] = boneGO;
+            }
+
+            boneGOsCreated = true;
+        }
+
+        void Animator::SyncBoneGameObjects()
+        {
+            if (!boneGOsCreated || boneGameObjects.empty()) return;
+
+            size_t count = std::min(currentLocalTransforms.size(), boneGameObjects.size());
+            for (size_t i = 0; i < count; i++) {
+                ECS::GameObject* boneGO = boneGameObjects[i];
+                if (!boneGO) continue;
+
+                Math::Vector3 pos;
+                Math::Quaternion rot;
+                Math::Vector3 scale;
+                currentLocalTransforms[i].Decompose(pos, rot, scale);
+
+                boneGO->GetTransform().SetPosition(pos);
+                boneGO->GetTransform().SetRotation(rot);
+                boneGO->GetTransform().SetScale(scale);
+            }
+        }
+
+        ECS::GameObject* Animator::GetBoneGameObject(const std::string& boneName) const
+        {
+            if (!skeleton) return nullptr;
+            int idx = skeleton->GetBoneIndex(boneName);
+            if (idx < 0 || idx >= static_cast<int>(boneGameObjects.size())) return nullptr;
+            return boneGameObjects[idx];
+        }
+
+        ECS::GameObject* Animator::GetBoneGameObject(int boneIndex) const
+        {
+            if (boneIndex < 0 || boneIndex >= static_cast<int>(boneGameObjects.size())) return nullptr;
+            return boneGameObjects[boneIndex];
         }
 
     }
