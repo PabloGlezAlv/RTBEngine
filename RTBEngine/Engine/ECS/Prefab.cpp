@@ -146,57 +146,31 @@ namespace RTBEngine {
 
                             auto* meshRenderer = dynamic_cast<MeshRenderer*>(target);
 
-                            // Check if this is a multi-mesh MeshRenderer
-                            bool isMulti = false;
-                            const Reflection::PropertyInfo* multiProp = typeInfo->GetProperty("multiMesh");
-                            if (multiProp)
-                            {
-                                const char* multiSrc = reinterpret_cast<const char*>(target) + multiProp->offset;
-                                std::memcpy(&isMulti, multiSrc, sizeof(bool));
-                            }
-
                             Rendering::FbxBindingContext ctx{ resources, path, modelData };
                             Rendering::FbxBindingResult bind = Rendering::BuildMeshesAndMaterials(ctx);
                             Rendering::Shader* shader = resources.GetShader("basic");
 
-                            if (isMulti && meshRenderer && modelData.meshes.size() > 1)
+                            // Pick mesh by meshIndex
+                            const Reflection::PropertyInfo* indexProp = typeInfo->GetProperty("meshIndex");
+                            int idx = 0;
+                            if (indexProp)
                             {
-                                // Multi-mesh: set all meshes and per-mesh materials
-                                meshRenderer->SetMeshes(modelData.meshes);
-                                for (size_t i = 0; i < bind.meshMaterials.size() && i < modelData.meshes.size(); i++)
-                                {
-                                    if (bind.meshMaterials[i])
-                                    {
-                                        if (shader) bind.meshMaterials[i]->SetShader(shader);
-                                        meshRenderer->SetMaterialForMesh(static_cast<int>(i), bind.meshMaterials[i]);
-                                    }
-                                }
-                                mesh = modelData.meshes[0];
+                                const char* idxSrc = reinterpret_cast<const char*>(target) + indexProp->offset;
+                                std::memcpy(&idx, idxSrc, sizeof(int));
                             }
-                            else
+                            int clampedIdx = (idx >= 0 && idx < static_cast<int>(modelData.meshes.size())) ? idx : 0;
+                            mesh = modelData.meshes[clampedIdx];
+
+                            if (meshRenderer)
                             {
-                                // Single-mesh: pick by meshIndex
-                                const Reflection::PropertyInfo* indexProp = typeInfo->GetProperty("meshIndex");
-                                int idx = 0;
-                                if (indexProp)
-                                {
-                                    const char* idxSrc = reinterpret_cast<const char*>(target) + indexProp->offset;
-                                    std::memcpy(&idx, idxSrc, sizeof(int));
-                                }
-                                int clampedIdx = (idx >= 0 && idx < static_cast<int>(modelData.meshes.size())) ? idx : 0;
-                                mesh = modelData.meshes[clampedIdx];
+                                Rendering::Material* mat = nullptr;
+                                if (clampedIdx < static_cast<int>(bind.meshMaterials.size()))
+                                    mat = bind.meshMaterials[clampedIdx];
 
-                                if (meshRenderer)
+                                if (mat)
                                 {
-                                    Rendering::Material* mat = nullptr;
-                                    if (clampedIdx < static_cast<int>(bind.meshMaterials.size()))
-                                        mat = bind.meshMaterials[clampedIdx];
-
-                                    if (mat)
-                                    {
-                                        if (shader) mat->SetShader(shader);
-                                        meshRenderer->SetMaterial(mat);
-                                    }
+                                    if (shader) mat->SetShader(shader);
+                                    meshRenderer->SetMaterial(mat);
                                 }
                             }
                         }

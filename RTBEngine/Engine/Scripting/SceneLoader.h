@@ -54,6 +54,8 @@ namespace RTBEngine {
 
             static void ResolveUUIDRefs(ECS::Scene* scene,
                 const std::vector<UUIDRefRequest>& uuidRefRequests);
+
+            static void RebuildFbxHierarchies(ECS::Scene* scene);
         };
 
     }

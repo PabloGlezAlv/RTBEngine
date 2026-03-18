@@ -82,8 +82,8 @@ namespace RTBEngine {
             // Extract materials
             ExtractMaterials(scene, result);
 
-            // Process meshes and extract bones
-            ProcessNode(scene->mRootNode, scene, result.meshes, result.meshNames, result.skeleton);
+            // Process meshes, extract bones, and capture node hierarchy
+            result.rootNode = ProcessNode(scene->mRootNode, scene, result.meshes, result.meshNames, result.skeleton);
 
             // Build bone hierarchy from node tree
             BuildBoneHierarchy(scene->mRootNode, result.skeleton, -1);
@@ -133,32 +133,36 @@ namespace RTBEngine {
             return desc;
         }
 
-        void ModelLoader::ProcessNode(const aiNode* node, const aiScene* scene,
+        std::unique_ptr<NodeData> ModelLoader::ProcessNode(const aiNode* node, const aiScene* scene,
             std::vector<Mesh*>& meshes, std::vector<std::string>& meshNames,
             std::shared_ptr<Animation::Skeleton>& skeleton)
         {
-            std::string nodeName = node->mName.length > 0 ? std::string(node->mName.C_Str()) : "";
+            auto nodeData = std::make_unique<NodeData>();
+            nodeData->name = node->mName.length > 0 ? std::string(node->mName.C_Str()) : "";
 
             for (unsigned int i = 0; i < node->mNumMeshes; i++) {
+                int meshIndex = static_cast<int>(meshes.size());
                 aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
                 meshes.push_back(ProcessMesh(mesh, scene, skeleton));
 
-                // Prefer the FBX node name; fall back to the aiMesh name when the node
-                // hosts multiple meshes (use mesh name to disambiguate) or has no name.
                 std::string name;
-                if (node->mNumMeshes == 1 && !nodeName.empty()) {
-                    name = nodeName;
+                if (node->mNumMeshes == 1 && !nodeData->name.empty()) {
+                    name = nodeData->name;
                 } else if (mesh->mName.length > 0) {
                     name = std::string(mesh->mName.C_Str());
                 } else {
-                    name = nodeName;
+                    name = nodeData->name;
                 }
                 meshNames.push_back(name);
+                nodeData->meshIndices.push_back(meshIndex);
             }
 
             for (unsigned int i = 0; i < node->mNumChildren; i++) {
-                ProcessNode(node->mChildren[i], scene, meshes, meshNames, skeleton);
+                nodeData->children.push_back(
+                    ProcessNode(node->mChildren[i], scene, meshes, meshNames, skeleton));
             }
+
+            return nodeData;
         }
 
         Mesh* ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene,

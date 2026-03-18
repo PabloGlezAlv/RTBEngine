@@ -36,6 +36,13 @@ namespace RTBEngine {
             float opacity = 1.0f;
         };
 
+        //Node hierarchy captured from Assimp scene
+        struct NodeData {
+            std::string name;
+            std::vector<int> meshIndices;
+            std::vector<std::unique_ptr<NodeData>> children;
+        };
+
         // Result of loading an animated model
         struct ModelData {
             std::vector<Mesh*> meshes;
@@ -45,6 +52,7 @@ namespace RTBEngine {
             std::vector<LoadedMaterial> materials;
             std::vector<EmbeddedTexture> embeddedTextures;
             std::string modelDirectory;
+            std::unique_ptr<NodeData> rootNode;
         };
 
         // Descriptor summarizing FBX asset data for ECS instantiation
@@ -67,7 +75,7 @@ namespace RTBEngine {
             static std::vector<Mesh*> LoadModel(const std::string& path);
 
         private:
-            static void ProcessNode(const aiNode* node, const aiScene* scene,
+            static std::unique_ptr<NodeData> ProcessNode(const aiNode* node, const aiScene* scene,
                 std::vector<Mesh*>& meshes, std::vector<std::string>& meshNames,
                 std::shared_ptr<Animation::Skeleton>& skeleton);
             static Mesh* ProcessMesh(aiMesh* mesh, const aiScene* scene,

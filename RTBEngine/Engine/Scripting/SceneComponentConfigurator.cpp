@@ -129,30 +129,18 @@ namespace RTBEngine {
                         Rendering::FbxBindingContext ctx{ resources, modelPath, modelData };
                         Rendering::FbxBindingResult bind = Rendering::BuildMeshesAndMaterials(ctx);
 
-                        if (comp->multiMesh && modelData.meshes.size() > 1) {
-                            // Multi-mesh mode: set all meshes and per-mesh materials
-                            comp->SetMeshes(modelData.meshes);
-                            for (size_t i = 0; i < bind.meshMaterials.size() && i < modelData.meshes.size(); i++) {
-                                if (bind.meshMaterials[i]) {
-                                    if (shader) bind.meshMaterials[i]->SetShader(shader);
-                                    comp->SetMaterialForMesh(static_cast<int>(i), bind.meshMaterials[i]);
-                                }
-                            }
-                        }
-                        else {
-                            // Single-mesh mode: pick mesh by index
-                            const int idx = comp->meshIndex;
-                            const int clampedIdx = (idx >= 0 && idx < static_cast<int>(modelData.meshes.size())) ? idx : 0;
-                            comp->SetMesh(modelData.meshes[clampedIdx]);
+                        // Pick mesh by index
+                        const int idx = comp->meshIndex;
+                        const int clampedIdx = (idx >= 0 && idx < static_cast<int>(modelData.meshes.size())) ? idx : 0;
+                        comp->SetMesh(modelData.meshes[clampedIdx]);
 
-                            Rendering::Material* mat = nullptr;
-                            if (clampedIdx < static_cast<int>(bind.meshMaterials.size()))
-                                mat = bind.meshMaterials[clampedIdx];
+                        Rendering::Material* mat = nullptr;
+                        if (clampedIdx < static_cast<int>(bind.meshMaterials.size()))
+                            mat = bind.meshMaterials[clampedIdx];
 
-                            if (mat) {
-                                if (shader) mat->SetShader(shader);
-                                comp->SetMaterial(mat);
-                            }
+                        if (mat) {
+                            if (shader) mat->SetShader(shader);
+                            comp->SetMaterial(mat);
                         }
                     }
                 }
@@ -160,14 +148,12 @@ namespace RTBEngine {
                 // User-assigned texture overrides whatever the FBX material set.
                 // ApplyLuaTableToComponent already wrote textureRef from Lua but
                 // SetMaterial() above may have clobbered it — re-apply it now.
-                if (!comp->multiMesh) {
-                    const std::string texturePath = ReadOptionalString(L, tableIndex, "textureRef", "");
-                    if (!texturePath.empty()) {
-                        Rendering::Texture* tex = (texturePath.size() > 8 && texturePath.substr(texturePath.size() - 8) == ".texture")
-                            ? resources.LoadTextureAsset(texturePath)
-                            : resources.LoadTexture(texturePath);
-                        if (tex) comp->SetTexture(tex);
-                    }
+                const std::string texturePath = ReadOptionalString(L, tableIndex, "textureRef", "");
+                if (!texturePath.empty()) {
+                    Rendering::Texture* tex = (texturePath.size() > 8 && texturePath.substr(texturePath.size() - 8) == ".texture")
+                        ? resources.LoadTextureAsset(texturePath)
+                        : resources.LoadTexture(texturePath);
+                    if (tex) comp->SetTexture(tex);
                 }
             }
 
