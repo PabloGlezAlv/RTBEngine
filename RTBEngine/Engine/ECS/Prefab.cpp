@@ -201,6 +201,11 @@ namespace RTBEngine {
         {
             auto prefab = std::make_unique<Prefab>(source->GetName());
 
+            const auto& transform = source->GetTransform();
+            prefab->position = transform.GetPosition();
+            prefab->rotation = transform.GetRotation();
+            prefab->scale = transform.GetScale();
+
             for (const auto& comp : source->GetComponents())
             {
                 ComponentSnapshot snap;
@@ -222,6 +227,10 @@ namespace RTBEngine {
         {
             auto* go = new GameObject(name);
             go->SetPrefabName(name);
+
+            go->GetTransform().SetPosition(position);
+            go->GetTransform().SetRotation(rotation);
+            go->GetTransform().SetScale(scale);
 
             for (const ComponentSnapshot& snap : componentSnapshots)
             {

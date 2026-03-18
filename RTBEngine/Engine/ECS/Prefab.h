@@ -1,5 +1,6 @@
 #pragma once
 #include "../RTBEngineAPI.h"
+#include "../Math/Math.h"
 #include <string>
 #include <vector>
 #include <memory>
@@ -44,11 +45,22 @@ namespace RTBEngine {
             const std::vector<ComponentSnapshot>& GetSnapshots() const { return componentSnapshots; }
             const std::vector<std::unique_ptr<Prefab>>& GetChildPrefabs() const { return childPrefabs; }
 
+            //Transform
+            void SetPosition(const Math::Vector3& pos) { position = pos; }
+            void SetRotation(const Math::Quaternion& rot) { rotation = rot; }
+            void SetScale(const Math::Vector3& scl) { scale = scl; }
+            const Math::Vector3& GetPosition() const { return position; }
+            const Math::Quaternion& GetRotation() const { return rotation; }
+            const Math::Vector3& GetScale() const { return scale; }
+
             static void ApplySnapshot(Component* target, const ComponentSnapshot& snap);
 
             static void SnapshotComponent(ComponentSnapshot& snap, const Component* comp);
         private:
             std::string name;
+            Math::Vector3 position;
+            Math::Quaternion rotation;
+            Math::Vector3 scale = Math::Vector3(1.0f, 1.0f, 1.0f);
             std::vector<ComponentSnapshot> componentSnapshots;
             std::vector<std::unique_ptr<Prefab>> childPrefabs;
         };

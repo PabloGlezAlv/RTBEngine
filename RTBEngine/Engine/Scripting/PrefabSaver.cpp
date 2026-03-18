@@ -3,6 +3,7 @@
 #include "../ECS/Component.h"
 #include "ComponentRegistry.h"
 #include "ScenePropertySerializer.h"
+#include "../Math/Math.h"
 #include "../RTBEngine.h"
 #include <fstream>
 #include <filesystem>
@@ -16,12 +17,30 @@ namespace RTBEngine {
             return std::string(static_cast<size_t>(depth) * 4, ' ');
         }
 
+        static void WriteTransform(std::ofstream& file, const ECS::Prefab& prefab, int depth)
+        {
+            std::string ind = Indent(depth);
+            Math::Vector3 pos = prefab.GetPosition();
+            Math::Vector3 rot = prefab.GetRotation().ToEulerAngles();
+            Math::Vector3 scale = prefab.GetScale();
+
+            if (pos.x != 0.0f || pos.y != 0.0f || pos.z != 0.0f)
+                file << ind << "position = " << ScenePropertySerializer::FormatVector3(pos) << ",\n";
+
+            if (rot.x != 0.0f || rot.y != 0.0f || rot.z != 0.0f)
+                file << ind << "rotation = " << ScenePropertySerializer::FormatQuaternion(prefab.GetRotation()) << ",\n";
+
+            if (scale.x != 1.0f || scale.y != 1.0f || scale.z != 1.0f)
+                file << ind << "scale = " << ScenePropertySerializer::FormatVector3(scale) << ",\n";
+        }
+
         static void WriteNode(std::ofstream& file, const ECS::Prefab& prefab, int depth)
         {
             std::string ind = Indent(depth);
 
             file << ind << "{\n";
             file << ind << "    name = \"" << prefab.GetName() << "\",\n";
+            WriteTransform(file, prefab, depth + 1);
             file << ind << "    components = {\n";
 
             for (const ECS::ComponentSnapshot& snap : prefab.GetSnapshots())
@@ -68,6 +87,7 @@ namespace RTBEngine {
             try {
                 file << "return {\n";
                 file << "    name = \"" << prefab.GetName() << "\",\n";
+                WriteTransform(file, prefab, 1);
                 file << "    components = {\n";
 
                 for (const ECS::ComponentSnapshot& snap : prefab.GetSnapshots())

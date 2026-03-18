@@ -94,6 +94,30 @@ namespace RTBEngine {
             lua_pop(L, 1);
         }
 
+        static void LoadTransform(lua_State* L, int nodeTableIndex, ECS::Prefab& prefab)
+        {
+            lua_getfield(L, nodeTableIndex, "position");
+            if (lua_isuserdata(L, -1)) {
+                auto result = luabridge::Stack<Math::Vector3>::get(L, -1);
+                if (result) prefab.SetPosition(result.value());
+            }
+            lua_pop(L, 1);
+
+            lua_getfield(L, nodeTableIndex, "rotation");
+            if (lua_isuserdata(L, -1)) {
+                auto result = luabridge::Stack<Math::Quaternion>::get(L, -1);
+                if (result) prefab.SetRotation(result.value());
+            }
+            lua_pop(L, 1);
+
+            lua_getfield(L, nodeTableIndex, "scale");
+            if (lua_isuserdata(L, -1)) {
+                auto result = luabridge::Stack<Math::Vector3>::get(L, -1);
+                if (result) prefab.SetScale(result.value());
+            }
+            lua_pop(L, 1);
+        }
+
         static std::unique_ptr<ECS::Prefab> LoadNode(lua_State* L, int nodeTableIndex)
         {
             lua_getfield(L, nodeTableIndex, "name");
@@ -102,6 +126,7 @@ namespace RTBEngine {
 
             auto prefab = std::make_unique<ECS::Prefab>(nodeName);
 
+            LoadTransform(L, nodeTableIndex, *prefab);
             LoadComponents(L, nodeTableIndex, *prefab);
 
             // Recursively load children if present
