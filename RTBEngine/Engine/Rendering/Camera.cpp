@@ -20,6 +20,7 @@ namespace RTBEngine {
             , projectionType(ProjectionType::Perspective)
             , viewDirty(true)
             , projectionDirty(true)
+            , frustumDirty(true)
         {
             UpdateVectors();
         }
@@ -47,6 +48,7 @@ namespace RTBEngine {
         void Camera::SetPosition(const Math::Vector3& position) {
             this->position = position;
             viewDirty = true;
+            frustumDirty = true;
         }
 
         void Camera::SetRotation(float pitch, float yaw) {
@@ -58,6 +60,7 @@ namespace RTBEngine {
 
             UpdateVectors();
             viewDirty = true;
+            frustumDirty = true;
         }
 
         void Camera::SetDirectionVectors(const Math::Vector3& forward, const Math::Vector3& right, const Math::Vector3& up) {
@@ -70,31 +73,37 @@ namespace RTBEngine {
         void Camera::SetFOV(float fov) {
             this->fov = fov;
             projectionDirty = true;
+            frustumDirty = true;
         }
 
         void Camera::SetAspectRatio(float aspectRatio) {
             this->aspectRatio = aspectRatio;
             projectionDirty = true;
+            frustumDirty = true;
         }
 
         void Camera::SetNearPlane(float nearPlane) {
             this->nearPlane = nearPlane;
             projectionDirty = true;
+            frustumDirty = true;
         }
 
         void Camera::SetFarPlane(float farPlane) {
             this->farPlane = farPlane;
             projectionDirty = true;
+            frustumDirty = true;
         }
 
         void Camera::SetProjectionType(ProjectionType type) {
             this->projectionType = type;
             projectionDirty = true;
+            frustumDirty = true;
         }
 
         void Camera::SetOrthographicSize(float size) {
             this->orthographicSize = size;
             projectionDirty = true;
+            frustumDirty = true;
         }
 
         Math::Vector3 Camera::GetForward() const {
@@ -129,24 +138,37 @@ namespace RTBEngine {
             return GetProjectionMatrix() * GetViewMatrix();
         }
 
+        const Rendering::Frustum& Camera::GetFrustum() {
+            if (frustumDirty) {
+                frustum.ExtractPlanes(GetViewProjectionMatrix());
+                frustumDirty = false;
+            }
+            return frustum;
+        }
+
+
         void Camera::Move(const Math::Vector3& offset) {
             position += offset;
             viewDirty = true;
+            frustumDirty = true;
         }
 
         void Camera::MoveForward(float amount) {
             position += forward * amount;
             viewDirty = true;
+            frustumDirty = true;
         }
 
         void Camera::MoveRight(float amount) {
             position += right * amount;
             viewDirty = true;
+            frustumDirty = true;
         }
 
         void Camera::MoveUp(float amount) {
             position += worldUp * amount;
             viewDirty = true;
+            frustumDirty = true;
         }
 
         void Camera::Rotate(float pitchDelta, float yawDelta) {
@@ -158,6 +180,7 @@ namespace RTBEngine {
 
             UpdateVectors();
             viewDirty = true;
+            frustumDirty = true;
         }
 
         void Camera::UpdateVectors() {

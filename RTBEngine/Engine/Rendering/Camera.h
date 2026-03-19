@@ -1,5 +1,6 @@
 #pragma once
 #include "../RTBEngineAPI.h"
+#include "Frustum.h"
 #include "../Math/Math.h"
 
 namespace RTBEngine {
@@ -43,6 +44,8 @@ namespace RTBEngine {
             const Math::Matrix4& GetProjectionMatrix();
             Math::Matrix4 GetViewProjectionMatrix();
 
+            const Rendering::Frustum& GetFrustum();
+
             void Move(const Math::Vector3& offset);
             void MoveForward(float amount);
             void MoveRight(float amount);
@@ -74,6 +77,9 @@ namespace RTBEngine {
 
             Math::Matrix4 viewMatrix;
             Math::Matrix4 projectionMatrix;
+
+            Frustum frustum;
+            bool frustumDirty;
 
             bool viewDirty;
             bool projectionDirty;
