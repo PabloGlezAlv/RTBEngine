@@ -14,10 +14,12 @@ namespace RTBEngine {
 
         uint32_t MeshRenderer::drawCallCount = 0;
         uint32_t MeshRenderer::triangleCount = 0;
+        uint32_t MeshRenderer::culledObjectCount = 0;
 
         void MeshRenderer::ResetRenderStats() {
             drawCallCount = 0;
             triangleCount = 0;
+            culledObjectCount = 0;
         }
 
         using ThisClass = MeshRenderer;
@@ -128,6 +130,37 @@ namespace RTBEngine {
             if (index < 0 || index >= static_cast<int>(meshMaterials.size())) return nullptr;
             return meshMaterials[index].get();
         }
+
+        void MeshRenderer::GetCombinedAABB(Math::Vector3& outMin, Math::Vector3& outMax) const {
+            if (multiMesh) {
+                if (meshes.empty()) {
+                    outMin = outMax = Math::Vector3::Zero();
+                    return;
+                }
+                outMin = meshes[0]->GetAABBMin();
+                outMax = meshes[0]->GetAABBMax();
+                for (size_t i = 1; i < meshes.size(); i++) {
+                    if (!meshes[i]) continue;
+                    Math::Vector3 mn = meshes[i]->GetAABBMin();
+                    Math::Vector3 mx = meshes[i]->GetAABBMax();
+                    outMin.x = std::min(outMin.x, mn.x);
+                    outMin.y = std::min(outMin.y, mn.y);
+                    outMin.z = std::min(outMin.z, mn.z);
+                    outMax.x = std::max(outMax.x, mx.x);
+                    outMax.y = std::max(outMax.y, mx.y);
+                    outMax.z = std::max(outMax.z, mx.z);
+                }
+            }
+            else {
+                if (!mesh) {
+                    outMin = outMax = Math::Vector3::Zero();
+                    return;
+                }
+                outMin = mesh->GetAABBMin();
+                outMax = mesh->GetAABBMax();
+            }
+        }
+
 
         void MeshRenderer::SetMaterial(Rendering::Material* mat)
         {

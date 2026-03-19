@@ -20,6 +20,7 @@
 #include "../ECS/SceneManager.h"
 #include "../Rendering/Skybox.h"
 #include "../Rendering/Cubemap.h"
+#include "../Rendering/Frustum.h"
 
 #include <imgui.h>
 #include <backends/imgui_impl_sdl2.h>
@@ -366,7 +367,11 @@ void RTBEngine::Core::Application::RenderShadowPass(ECS::Scene* scene)
 
 		// Disable culling to render all faces (fixes shadow issues with single-sided geometry)
 		glDisable(GL_CULL_FACE);
-		RenderSceneDepthOnly(scene, shadowShader);
+		// Frustum for lighning
+		Rendering::Frustum shadowFrustum;
+		shadowFrustum.ExtractPlanes(lightSpaceMatrix);
+		RenderSceneDepthOnly(scene, shadowShader, shadowFrustum);
+
 		glEnable(GL_CULL_FACE);
 
 		shadowMap->Unbind();
@@ -375,11 +380,20 @@ void RTBEngine::Core::Application::RenderShadowPass(ECS::Scene* scene)
 	glViewport(0, 0, window->GetWidth(), window->GetHeight());
 }
 
-void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader)
+void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader, const Rendering::Frustum& frustum)
 {
 	for (auto& go : scene->GetGameObjects()) {
 		auto* meshRenderer = go->GetComponent<ECS::MeshRenderer>();
 		if (!meshRenderer || !meshRenderer->IsEnabled()) continue;
+
+		// Frustum culling
+		Math::Vector3 localMin, localMax;
+		meshRenderer->GetCombinedAABB(localMin, localMax);
+		if (localMin != localMax) {
+			Math::Vector3 worldMin, worldMax;
+			Rendering::Frustum::TransformAABB(go->GetWorldMatrix(), localMin, localMax, worldMin, worldMax);
+			if (!frustum.IsAABBVisible(worldMin, worldMax)) continue;
+		}
 
 		Math::Matrix4 modelMatrix = go->GetWorldMatrix();
 		shader->SetMatrix4("uModel", modelMatrix);
@@ -411,6 +425,7 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rende
 		}
 	}
 }
+
 
 void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Rendering::Camera* camera)
 {

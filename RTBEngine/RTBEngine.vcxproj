@@ -179,6 +179,7 @@ if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$
     <ClCompile Include="Engine\Rendering\Lighting\DirectionalLight.cpp" />
     <ClCompile Include="Engine\ECS\Component.cpp" />
     <ClCompile Include="Engine\Rendering\Camera.cpp" />
+    <ClCompile Include="Engine\Rendering\Frustum.cpp" />
     <ClCompile Include="Engine\Core\Application.cpp" />
     <ClCompile Include="Engine\Core\Window.cpp" />
     <ClCompile Include="Engine\Math\Vectors\Vector3.cpp" />
@@ -267,6 +268,7 @@ if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$
     <ClInclude Include="Engine\Rendering\Lighting\DirectionalLight.h" />
     <ClInclude Include="Engine\ECS\Component.h" />
     <ClInclude Include="Engine\Rendering\Camera.h" />
+    <ClInclude Include="Engine\Rendering\Frustum.h" />
     <ClInclude Include="Engine\Core\Application.h" />
     <ClInclude Include="Engine\Core\Window.h" />
     <ClInclude Include="Engine\Input\Input.h" />

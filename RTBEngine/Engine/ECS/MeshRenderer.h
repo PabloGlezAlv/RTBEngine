@@ -45,6 +45,7 @@ namespace RTBEngine {
             int GetMeshCount() const { return static_cast<int>(meshes.size()); }
             Rendering::Material* GetMaterialForMesh(int index) const;
             bool IsMultiMesh() const { return multiMesh; }
+            void GetCombinedAABB(Math::Vector3& outMin, Math::Vector3& outMax) const;
 
             void Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights);
 
@@ -52,6 +53,9 @@ namespace RTBEngine {
             static void ResetRenderStats();
             static uint32_t GetDrawCallCount() { return drawCallCount; }
             static uint32_t GetTriangleCount() { return triangleCount; }
+
+            static uint32_t GetCulledObjectCount() { return culledObjectCount; }
+            static void IncrementCulledCount() { culledObjectCount++; }
 
             virtual void OnAwake() override;
             virtual void OnUpdate(float deltaTime) override;
@@ -79,6 +83,7 @@ namespace RTBEngine {
             void RenderMultiMesh(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights);
 
             static uint32_t drawCallCount;
+            static uint32_t culledObjectCount;
             static uint32_t triangleCount;
         };
 #pragma warning(pop)

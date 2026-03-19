@@ -15,6 +15,7 @@ namespace RTBEngine {
 		class Camera;
 		class Shader;
 		class Skybox;
+		class Frustum;
 	}
 
 	namespace Physics {
@@ -57,7 +58,7 @@ namespace RTBEngine {
 		private:
 			bool InitializeImGui();
 			void ShutdownImGui();
-			void RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader);
+			void RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader, const Rendering::Frustum& frustum);
 			void OnWindowResized(int width, int height);
 			ApplicationConfig config;
 

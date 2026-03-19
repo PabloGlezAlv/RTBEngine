@@ -113,11 +113,29 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 
 	CollectLights();
 
+	const Rendering::Frustum& frustum = camera->GetFrustum();
+
 	++iterationDepth;
 	for (auto& gameObject : gameObjects) {
 		if (gameObject && gameObject->IsActive()) {
 			MeshRenderer* renderer = gameObject->GetComponent<MeshRenderer>();
 			if (renderer && renderer->IsEnabled()) {
+				// Frustum culling
+				Math::Vector3 localMin, localMax;
+				renderer->GetCombinedAABB(localMin, localMax);
+
+				// Skip culling if no mesh (let renderer handle it)
+				if (localMin != localMax) {
+					Math::Vector3 worldMin, worldMax;
+					Rendering::Frustum::TransformAABB(
+						gameObject->GetWorldMatrix(), localMin, localMax, worldMin, worldMax);
+
+					if (!frustum.IsAABBVisible(worldMin, worldMax)) {
+						MeshRenderer::IncrementCulledCount();
+						continue;
+					}
+				}
+
 				renderer->Render(camera, lights);
 			}
 		}
