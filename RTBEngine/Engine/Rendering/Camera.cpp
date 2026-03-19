@@ -41,6 +41,7 @@ namespace RTBEngine {
             , projectionType(ProjectionType::Perspective)
             , viewDirty(true)
             , projectionDirty(true)
+            , frustumDirty(true)
         {
             UpdateVectors();
         }

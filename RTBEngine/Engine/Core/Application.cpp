@@ -306,7 +306,6 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 	ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
 	if (scene) {
 		scene->Update(deltaTime);
-		physicsSystem->Update(scene, config.physics.timeStep);
 	}
 
 }

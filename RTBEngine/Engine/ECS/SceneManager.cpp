@@ -65,10 +65,15 @@ namespace RTBEngine {
 
         GameObject* SceneManager::Instantiate(const std::string& name, GameObject* parent)
         {
+            Scene* scene = GetActiveScene();
+            if (!scene) {
+                RTB_ERROR("SceneManager::Instantiate - No active scene");
+                return nullptr;
+            }
             auto* go = new GameObject(name);
             if (parent)
                 go->SetParent(parent);
-            GetActiveScene()->AddGameObject(go);
+            scene->AddGameObject(go);
             return go;
         }
 
