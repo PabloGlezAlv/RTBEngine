@@ -43,7 +43,6 @@ namespace RTBEngine {
 			Window* GetWindow() { return window.get(); }
 			void* GetImGuiContext();
 
-			//Quit interception — if set, SDL_QUIT calls this instead of closing immediately
 			void SetOnQuitRequested(std::function<void()> callback) { onQuitRequested = callback; }
 			const ApplicationConfig& GetConfig() const { return config; }
 
@@ -68,7 +67,6 @@ namespace RTBEngine {
 
 			bool isRunning = false;
 		bool isShutdown = false;
-		std::function<void()> onQuitRequested;
 			Uint32 lastTime = 0;
 			float deltaTime = 0.0f;
 
@@ -80,6 +78,8 @@ namespace RTBEngine {
 			float physicsAccumulator = 0.0f;
 
 			Rendering::Skybox* skybox = nullptr;
+
+			std::function<void()> onQuitRequested;
 
 			Application(const Application&) = delete;
 			Application& operator=(const Application&) = delete;

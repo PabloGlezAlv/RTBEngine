@@ -26,6 +26,7 @@
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <iostream>
+#include <filesystem>
 #include "Logger.h"
 
 
@@ -102,6 +103,15 @@ bool RTBEngine::Core::Application::Initialize()
 	lastTime = SDL_GetTicks();
 
 	Scripting::ComponentRegistry::GetInstance().RegisterBuiltInComponents();
+
+	// Load user scripts DLL if present next to the executable
+	if (!Scripting::ScriptManager::GetInstance().IsLoaded()) {
+		namespace fs = std::filesystem;
+		fs::path scriptsDll = fs::current_path() / "GameScripts.dll";
+		if (fs::exists(scriptsDll)) {
+			Scripting::ScriptManager::GetInstance().LoadScripts(scriptsDll.string());
+		}
+	}
 
 	ResourceManager& resources = ResourceManager::GetInstance();
 
