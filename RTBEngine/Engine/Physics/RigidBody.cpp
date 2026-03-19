@@ -31,6 +31,7 @@ namespace RTBEngine {
                 else { // Dynamic
                     bulletRigidBody->setCollisionFlags(bulletRigidBody->getCollisionFlags() & ~btCollisionObject::CF_STATIC_OBJECT);
                     bulletRigidBody->setCollisionFlags(bulletRigidBody->getCollisionFlags() & ~btCollisionObject::CF_KINEMATIC_OBJECT);
+                    bulletRigidBody->activate(true);
                 }
             }
         }

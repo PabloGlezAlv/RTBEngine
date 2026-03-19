@@ -41,9 +41,8 @@ namespace RTBEngine {
             SyncProperties();
         }
 
-        void RigidBodyComponent::OnUpdate(float deltaTime)
+        void RigidBodyComponent::OnUpdate(float /*deltaTime*/)
         {
-            SyncProperties();
         }
 
         void RigidBodyComponent::OnDestroy()

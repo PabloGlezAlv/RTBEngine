@@ -55,7 +55,7 @@ namespace RTBEngine {
 
         void PhysicsWorld::Cleanup()
         {
-            // Remove all rigid bodies from the world
+            // Remove all rigid bodies and collision objects from the world
             if (dynamicsWorld)
             {
                 for (int i = dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
@@ -63,9 +63,9 @@ namespace RTBEngine {
                     btCollisionObject* obj = dynamicsWorld->getCollisionObjectArray()[i];
                     btRigidBody* body = btRigidBody::upcast(obj);
                     if (body)
-                    {
                         dynamicsWorld->removeRigidBody(body);
-                    }
+                    else
+                        dynamicsWorld->removeCollisionObject(obj);
                 }
             }
 

@@ -222,18 +222,6 @@ void RTBEngine::Core::Application::Run()
 
 		Audio::AudioSystem::GetInstance().Update();
 
-		// Fixed timestep physics update
-		physicsAccumulator += deltaTime;
-		ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
-		if (scene) {
-			while (physicsAccumulator >= config.physics.timeStep) {
-                scene->FixedUpdate(config.physics.timeStep);
-				physicsSystem->Update(scene, config.physics.timeStep);
-				physicsAccumulator -= config.physics.timeStep;
-			}
-
-		}
-
 
 		Render();
 	}
@@ -304,10 +292,17 @@ void RTBEngine::Core::Application::ProcessInput()
 void RTBEngine::Core::Application::Update(float deltaTime)
 {
 	ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
-	if (scene) {
-		scene->Update(deltaTime);
-	}
+	if (!scene) return;
 
+	scene->Update(deltaTime);
+
+	// Fixed timestep physics update
+	physicsAccumulator += deltaTime;
+	while (physicsAccumulator >= config.physics.timeStep) {
+		scene->FixedUpdate(config.physics.timeStep);
+		physicsSystem->Update(scene, config.physics.timeStep);
+		physicsAccumulator -= config.physics.timeStep;
+	}
 }
 
 void RTBEngine::Core::Application::Render()
