@@ -2,6 +2,7 @@
 #include "../RTBEngineAPI.h"
 #include <SDL.h>
 #include <memory>
+#include <functional>
 #include "Window.h"
 #include "ApplicationConfig.h"
 
@@ -41,6 +42,9 @@ namespace RTBEngine {
 			void RequestExit() { isRunning = false; }
 			Window* GetWindow() { return window.get(); }
 			void* GetImGuiContext();
+
+			//Quit interception — if set, SDL_QUIT calls this instead of closing immediately
+			void SetOnQuitRequested(std::function<void()> callback) { onQuitRequested = callback; }
 			const ApplicationConfig& GetConfig() const { return config; }
 
 			void ProcessInput();
@@ -64,6 +68,7 @@ namespace RTBEngine {
 
 			bool isRunning = false;
 		bool isShutdown = false;
+		std::function<void()> onQuitRequested;
 			Uint32 lastTime = 0;
 			float deltaTime = 0.0f;
 

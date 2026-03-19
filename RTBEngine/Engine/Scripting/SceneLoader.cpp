@@ -110,9 +110,7 @@ namespace RTBEngine {
             ResolveParenting(scene, parentingRequests);
             ResolveUUIDRefs(scene, uuidRefRequests);
 
-            RTB_INFO("[SceneLoader] About to call RebuildFbxHierarchies");
             RebuildFbxHierarchies(scene);
-            RTB_INFO("[SceneLoader] RebuildFbxHierarchies completed");
 
             lua_close(L);
             return scene;

@@ -279,8 +279,12 @@ void RTBEngine::Core::Application::ProcessInput()
 			}
 		}
 
-		if (event.type == SDL_QUIT)
-			isRunning = false;
+		if (event.type == SDL_QUIT) {
+			if (onQuitRequested)
+				onQuitRequested();
+			else
+				isRunning = false;
+		}
 	}
 
 	if (input.IsKeyJustPressed(Input::KeyCode::Escape))
