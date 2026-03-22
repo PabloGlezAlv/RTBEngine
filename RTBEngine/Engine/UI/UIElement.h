@@ -40,6 +40,7 @@ namespace RTBEngine {
 			Math::Vector2 pivot = Math::Vector2(0.5f, 0.5f);
 			Math::Vector2 anchoredPosition = Math::Vector2(0.0f, 0.0f);
 			Math::Vector2 sizeDelta = Math::Vector2(100.0f, 100.0f);
+			float rotation = 0.0f;
 
 		protected:
 			std::unique_ptr<RectTransform> rectTransform;

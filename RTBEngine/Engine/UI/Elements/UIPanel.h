@@ -1,7 +1,10 @@
-#pragma once
+﻿#pragma once
 #include "../UIElement.h"
 #include "../../Math/Vectors/Vector4.h"
 #include "../../Reflection/PropertyMacros.h"
+#include <functional>
+
+struct ImDrawList;
 
 namespace RTBEngine {
 	namespace UI {
@@ -10,6 +13,9 @@ namespace RTBEngine {
 		public:
 			UIPanel();
 			virtual ~UIPanel();
+
+			UIPanel(const UIPanel&) = delete;
+			UIPanel& operator=(const UIPanel&) = delete;
 
 			void SetBackgroundColor(const Math::Vector4& color);
 			Math::Vector4 GetBackgroundColor() const { return backgroundColor; }
@@ -26,7 +32,14 @@ namespace RTBEngine {
 			float borderThickness = 1.0f;
 			bool hasBorder = false;
 
+			// Animation support
+			std::function<void(ImDrawList*, float, float, float, float)> onRenderDecorations;
+
 			RTB_COMPONENT(UIPanel)
+
+		private:
+			void DrawRotatedRect(ImDrawList* drawList, float cx, float cy,
+				float halfW, float halfH, float angleDeg, unsigned int color, bool filled);
 		};
 
 	}

@@ -1,6 +1,7 @@
 ﻿#include "UIPanel.h"
 #include "../UIRenderContext.h"
 #include <imgui.h>
+#include <cmath>
 
 namespace RTBEngine {
 	namespace UI {
@@ -43,6 +44,30 @@ namespace RTBEngine {
 			hasBorder = border;
 		}
 
+		void UIPanel::DrawRotatedRect(ImDrawList* drawList, float cx, float cy,
+			float halfW, float halfH, float angleDeg, unsigned int color, bool filled)
+		{
+			float angle = angleDeg * 3.14159265f / 180.0f;
+			float cosA = std::cos(angle);
+			float sinA = std::sin(angle);
+
+			// Corners relative to center before rotation: TL, TR, BR, BL
+			float cornersX[4] = { -halfW,  halfW,  halfW, -halfW };
+			float cornersY[4] = { -halfH, -halfH,  halfH,  halfH };
+
+			ImVec2 pts[4];
+			for (int i = 0; i < 4; ++i) {
+				pts[i].x = cornersX[i] * cosA - cornersY[i] * sinA + cx;
+				pts[i].y = cornersX[i] * sinA + cornersY[i] * cosA + cy;
+			}
+
+			if (filled) {
+				drawList->AddQuadFilled(pts[0], pts[1], pts[2], pts[3], color);
+			} else {
+				drawList->AddQuad(pts[0], pts[1], pts[2], pts[3], color, borderThickness);
+			}
+		}
+
 		void UIPanel::Render() {
 			if (!isVisible) return;
 
@@ -51,8 +76,18 @@ namespace RTBEngine {
 			ImDrawList* drawList = UIRenderContext::GetDrawList();
 			Math::Vector2 offset = UIRenderContext::Offset;
 
-			ImVec2 min(screenRect.x + offset.x, screenRect.y + offset.y);
-			ImVec2 max(screenRect.x + screenRect.z + offset.x, screenRect.y + screenRect.w + offset.y);
+			float rx = screenRect.x + offset.x;
+			float ry = screenRect.y + offset.y;
+			float rw = screenRect.z;
+			float rh = screenRect.w;
+
+			ImVec2 min(rx, ry);
+			ImVec2 max(rx + rw, ry + rh);
+
+			float cx = rx + rw * 0.5f;
+			float cy = ry + rh * 0.5f;
+			float halfW = rw * 0.5f;
+			float halfH = rh * 0.5f;
 
 			ImU32 bgColor = IM_COL32(
 				static_cast<int>(backgroundColor.x * 255),
@@ -61,7 +96,16 @@ namespace RTBEngine {
 				static_cast<int>(backgroundColor.w * 255)
 			);
 
-			drawList->AddRectFilled(min, max, bgColor);
+			float rot = rectTransform->GetRotation();
+			if (rot > 0.01f || rot < -0.01f) {
+				DrawRotatedRect(drawList, cx, cy, halfW, halfH, rot, bgColor, true);
+			} else {
+				drawList->AddRectFilled(min, max, bgColor);
+			}
+
+			if (onRenderDecorations) {
+				onRenderDecorations(drawList, rx, ry, rx + rw, ry + rh);
+			}
 
 			if (hasBorder) {
 				ImU32 bColor = IM_COL32(
@@ -71,7 +115,11 @@ namespace RTBEngine {
 					static_cast<int>(borderColor.w * 255)
 				);
 
-				drawList->AddRect(min, max, bColor, 0.0f, 0, borderThickness);
+				if (rot > 0.01f || rot < -0.01f) {
+					DrawRotatedRect(drawList, cx, cy, halfW, halfH, rot, bColor, false);
+				} else {
+					drawList->AddRect(min, max, bColor, 0.0f, 0, borderThickness);
+				}
 			}
 		}
 
