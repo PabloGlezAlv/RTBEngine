@@ -66,8 +66,13 @@ namespace RTBEngine {
                 comp->SetColor(ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(1, 1, 1, 1)));
                 comp->SetFontSize(ReadOptionalFloat(L, tableIndex, "fontSize", 14.0f));
 
-                const int align = static_cast<int>(ReadOptionalFloat(L, tableIndex, "alignment", 0.0f));
-                comp->SetAlignment(static_cast<UI::TextAlignment>(align));
+                const std::string alignStr = ReadOptionalString(L, tableIndex, "alignment", "Left");
+                if (alignStr == "Center")
+                    comp->SetAlignment(UI::TextAlignment::Center);
+                else if (alignStr == "Right")
+                    comp->SetAlignment(UI::TextAlignment::Right);
+                else
+                    comp->SetAlignment(UI::TextAlignment::Left);
 
                 SyncUIElementProxies(L, tableIndex, comp);
             }
@@ -103,7 +108,8 @@ namespace RTBEngine {
                 comp->SetHoveredColor(ReadOptionalVector4(L, tableIndex, "hoveredColor", Math::Vector4(0.9f, 0.9f, 0.9f, 1)));
                 comp->SetPressedColor(ReadOptionalVector4(L, tableIndex, "pressedColor", Math::Vector4(0.7f, 0.7f, 0.7f, 1)));
                 comp->SetDisabledColor(ReadOptionalVector4(L, tableIndex, "disabledColor", Math::Vector4(0.5f, 0.5f, 0.5f, 1)));
-                comp->SetInteractable(ReadOptionalBool(L, tableIndex, "interactable", true));
+                // Assign directly to avoid UpdateVisuals() side-effect during scene load
+                comp->interactable = ReadOptionalBool(L, tableIndex, "interactable", true);
             }
 
             void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp) {
