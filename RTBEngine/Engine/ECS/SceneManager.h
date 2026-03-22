@@ -29,6 +29,7 @@ namespace RTBEngine {
 
             Scene* GetActiveScene() const { return activeScene.get(); }
             const std::string& GetActiveScenePath() const { return activeScenePath; }
+            void SetActiveScenePath(const std::string& path) { activeScenePath = path; }
             bool HasActiveScene() const { return activeScene != nullptr; }
 
             void SetOnSceneLoaded(std::function<void(Scene*)> callback);

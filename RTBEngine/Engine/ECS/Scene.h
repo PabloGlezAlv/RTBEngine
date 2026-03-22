@@ -51,6 +51,7 @@ namespace RTBEngine {
             uint32_t GetActiveComponentCount() const;
 
             const std::string& GetName() const { return name; }
+            void SetName(const std::string& newName) { name = newName; }
             void CollectLights();
             const std::vector<Rendering::Light*>& GetLights() const { return lights; }
             const std::vector<std::unique_ptr<GameObject>>& GetGameObjects() const { return gameObjects; }
