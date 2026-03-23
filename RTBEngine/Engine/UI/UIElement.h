@@ -41,6 +41,7 @@ namespace RTBEngine {
 			Math::Vector2 anchoredPosition = Math::Vector2(0.0f, 0.0f);
 			Math::Vector2 sizeDelta = Math::Vector2(100.0f, 100.0f);
 			float rotation = 0.0f;
+			Math::Vector2 scale = Math::Vector2(1.0f, 1.0f);
 
 		protected:
 			std::unique_ptr<RectTransform> rectTransform;

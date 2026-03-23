@@ -24,6 +24,8 @@ This document covers every subsystem in depth — public API, internal design, d
    - 6.3 [GameObject](#63-gameobject)
    - 6.4 [Scene](#64-scene)
    - 6.5 [SceneManager](#65-scenemanager)
+   - 6.6 [Prefab](#66-prefab)
+   - 6.7 [PrefabRegistry](#67-prefabregistry)
 7. [Built-in Components](#7-built-in-components)
    - 7.1 [MeshRenderer](#71-meshrenderer)
    - 7.2 [CameraComponent](#72-cameracomponent)
@@ -32,6 +34,7 @@ This document covers every subsystem in depth — public API, internal design, d
    - 7.5 [BoxColliderComponent](#75-boxcollidercomponent)
    - 7.6 [AudioSourceComponent](#76-audiosourcecomponent)
    - 7.7 [FreeLookCamera](#77-freelookcamera)
+   - 7.8 [SphereColliderComponent](#78-spherecollidercomponent)
 8. [Rendering Subsystem](#8-rendering-subsystem)
    - 8.1 [Camera](#81-camera)
    - 8.2 [Shader](#82-shader)
@@ -46,6 +49,8 @@ This document covers every subsystem in depth — public API, internal design, d
    - 8.11 [Lighting — PointLight](#811-lighting--pointlight)
    - 8.12 [Lighting — SpotLight](#812-lighting--spotlight)
    - 8.13 [Rendering Pipeline](#813-rendering-pipeline)
+   - 8.14 [Frustum](#814-frustum)
+   - 8.15 [FbxBinding](#815-fbxbinding)
 9. [Physics Subsystem](#9-physics-subsystem)
    - 9.1 [PhysicsWorld](#91-physicsworld)
    - 9.2 [RigidBody](#92-rigidbody)
@@ -53,6 +58,7 @@ This document covers every subsystem in depth — public API, internal design, d
    - 9.4 [PhysicsSystem](#94-physicssystem)
    - 9.5 [CollisionInfo](#95-collisioninfo)
    - 9.6 [Physics Lifecycle](#96-physics-lifecycle)
+   - 9.7 [PhysicsUtils](#97-physicsutils)
 10. [Audio Subsystem](#10-audio-subsystem)
     - 10.1 [AudioSystem](#101-audiosystem)
     - 10.2 [AudioClip](#102-audioclip)
@@ -71,6 +77,7 @@ This document covers every subsystem in depth — public API, internal design, d
     - 13.3 [Vector4](#133-vector4)
     - 13.4 [Quaternion](#134-quaternion)
     - 13.5 [Matrix4](#135-matrix4)
+    - 13.6 [Color](#136-color)
 14. [Reflection System](#14-reflection-system)
     - 14.1 [PropertyType and PropertyFlags](#141-propertytype-and-propertyflags)
     - 14.2 [PropertyInfo](#142-propertyinfo)
@@ -78,10 +85,15 @@ This document covers every subsystem in depth — public API, internal design, d
     - 14.4 [TypeRegistry](#144-typeregistry)
     - 14.5 [PropertyMacros](#145-propertymacros)
     - 14.6 [Writing a Reflectable Component](#146-writing-a-reflectable-component)
+    - 14.7 [TypeInfoBuilder](#147-typeinfobuilder)
 15. [Scripting and Serialization](#15-scripting-and-serialization)
     - 15.1 [ComponentRegistry](#151-componentregistry)
     - 15.2 [SceneLoader](#152-sceneloader)
     - 15.3 [SceneSaver](#153-scenesaver)
+    - 15.4 [ScriptManager](#154-scriptmanager)
+    - 15.5 [PrefabLoader](#155-prefabloader)
+    - 15.6 [PrefabSaver](#156-prefabsaver)
+    - 15.7 [Scene Serialization Infrastructure](#157-scene-serialization-infrastructure)
 16. [UI Subsystem](#16-ui-subsystem)
     - 16.1 [RectTransform](#161-recttransform)
     - 16.2 [UIElement](#162-uielement)
@@ -91,6 +103,9 @@ This document covers every subsystem in depth — public API, internal design, d
     - 16.6 [UIText](#166-uitext)
     - 16.7 [UIImage](#167-uiimage)
     - 16.8 [UIPanel](#168-uipanel)
+    - 16.9 [UIContainer](#169-uicontainer)
+    - 16.10 [UIRenderContext](#1610-uirendercontext)
+    - 16.11 [EventSystem](#1611-eventsystem)
 17. [DLL Boundary Safety](#17-dll-boundary-safety)
 18. [Code Conventions](#18-code-conventions)
 
@@ -129,7 +144,10 @@ RTBEngine/
 │   │   │   ├── BoxColliderComponent.h / .cpp
 │   │   │   ├── AudioSourceComponent.h / .cpp
 │   │   │   ├── FreeLookCamera.h / .cpp
-│   │   │   └── MissingComponent.h
+│   │   │   ├── MissingComponent.h
+│   │   │   ├── Prefab.h / .cpp
+│   │   │   ├── PrefabRegistry.h / .cpp
+│   │   │   └── SphereColliderComponent.h / .cpp
 │   │   │
 │   │   ├── Rendering/
 │   │   │   ├── Camera.h / .cpp
@@ -144,6 +162,8 @@ RTBEngine/
 │   │   │   ├── Vertex.h
 │   │   │   ├── Font.h / .cpp
 │   │   │   ├── Cubemap.h / .cpp
+│   │   │   ├── Frustum.h / .cpp
+│   │   │   ├── FbxBinding.h / .cpp
 │   │   │   └── Lighting/
 │   │   │       ├── Light.h
 │   │   │       ├── DirectionalLight.h / .cpp
@@ -157,7 +177,8 @@ RTBEngine/
 │   │   │   ├── Collider.h
 │   │   │   ├── BoxCollider.h / .cpp
 │   │   │   ├── SphereCollider.h / .cpp
-│   │   │   └── CollisionInfo.h
+│   │   │   ├── CollisionInfo.h
+│   │   │   └── PhysicsUtils.h
 │   │   │
 │   │   ├── Audio/
 │   │   │   ├── AudioSystem.h / .cpp
@@ -183,6 +204,8 @@ RTBEngine/
 │   │   │   │   └── Quaternion.h
 │   │   │   └── Matrix/
 │   │   │       └── Matrix4.h
+│   │   │   ├── Color.h
+│   │   │   └── Math.h
 │   │   │
 │   │   ├── UI/
 │   │   │   ├── Canvas.h / .cpp
@@ -195,15 +218,33 @@ RTBEngine/
 │   │   │       ├── UIImage.h / .cpp
 │   │   │       ├── UIPanel.h / .cpp
 │   │   │       └── UIContainer.h / .cpp
+│   │   │   ├── UIRenderContext.h / .cpp
+│   │   │   └── EventSystem/
+│   │   │       ├── IEventSystemHandler.h
+│   │   │       ├── PointerEventData.h
+│   │   │       ├── IPointerClickHandler.h
+│   │   │       ├── IPointerDownHandler.h
+│   │   │       ├── IPointerUpHandler.h
+│   │   │       ├── IPointerEnterHandler.h
+│   │   │       └── IPointerExitHandler.h
 │   │   │
 │   │   ├── Scripting/
 │   │   │   ├── ComponentRegistry.h / .cpp
 │   │   │   ├── SceneLoader.h / .cpp
-│   │   │   └── SceneSaver.h / .cpp
+│   │   │   ├── SceneSaver.h / .cpp
+│   │   │   ├── ScriptManager.h / .cpp
+│   │   │   ├── PrefabLoader.h / .cpp
+│   │   │   ├── PrefabSaver.h / .cpp
+│   │   │   ├── SceneComponentConfigurator.h / .cpp
+│   │   │   ├── SceneParsingUtils.h / .cpp
+│   │   │   ├── ScenePropertySerializer.h / .cpp
+│   │   │   ├── SceneReflectionUtils.h / .cpp
+│   │   │   └── SceneLuaBindings.h / .cpp
 │   │   │
 │   │   └── Reflection/
 │   │       ├── TypeInfo.h / .cpp
-│   │       └── PropertyMacros.h
+│   │       ├── PropertyMacros.h
+│   │       └── TypeInfoBuilder.h
 │   │
 │   ├── Assets/                    Runtime assets (audio, fonts, models, scenes, textures)
 │   └── Default/                   Built-in engine assets (shaders, fonts, models, textures)
@@ -813,6 +854,23 @@ bool IsActive() const;
 
 An inactive `GameObject` does not receive `Update`, `FixedUpdate`, or `Render` calls. Its children are also effectively deactivated.
 
+**Prefab support:**
+
+```cpp
+const std::string& GetPrefabName() const;
+void SetPrefabName(const std::string& name);
+bool IsPrefabInstance() const;   // Returns true when prefabName is non-empty
+```
+
+**Transient flag:**
+
+```cpp
+void SetTransient(bool transient);
+bool IsTransient() const;
+```
+
+Transient GameObjects are excluded from scene serialization. Used for editor-only objects (e.g., gizmo handles).
+
 **Lifecycle (called by Scene):**
 
 ```cpp
@@ -926,6 +984,80 @@ bool IsSceneDirty() const;
 ```
 
 Dirty state is automatically set when scene content is modified through the editor Inspector or Hierarchy panels, and cleared on save.
+
+**Instantiation:**
+
+```cpp
+GameObject* Instantiate(const std::string& name = "GameObject", GameObject* parent = nullptr);
+GameObject* Instantiate(const ECS::Prefab& prefab, GameObject* parent = nullptr);
+```
+
+`Instantiate` creates a new `GameObject` in the active scene. The second overload uses a `Prefab` to create a fully configured copy with all component snapshots applied.
+
+### 6.6 Prefab
+
+`Engine/ECS/Prefab.h` — Captures a snapshot of a `GameObject` and its component data. Can instantiate independent copies with the same configuration.
+
+**ComponentSnapshot:**
+
+```cpp
+struct ComponentSnapshot {
+    std::string typeName;                                 // Component class name
+    std::vector<uint8_t> rawData;                         // POD property bytes
+    std::unordered_map<size_t, std::string> stringData;   // String properties by offset
+    std::unordered_map<size_t, std::string> ptrPathData;  // Asset/GO ref paths by offset
+};
+```
+
+**Creation and instantiation:**
+
+```cpp
+static std::unique_ptr<Prefab> CreateFromGameObject(const GameObject* source);
+
+GameObject* Instantiate(GameObject* parent,
+                        std::vector<GameObject*>& outChildren) const;
+GameObject* Instantiate(GameObject* parent = nullptr) const;
+```
+
+`CreateFromGameObject` recursively snapshots the source's transform, all components (via `SnapshotComponent`), and all children as child prefabs. `Instantiate` creates new `GameObject` instances and applies the snapshots via `ApplySnapshot`.
+
+**Transform:**
+
+```cpp
+void SetPosition(const Math::Vector3& pos);
+void SetRotation(const Math::Quaternion& rot);
+void SetScale(const Math::Vector3& scl);
+const Math::Vector3&    GetPosition() const;
+const Math::Quaternion& GetRotation() const;
+const Math::Vector3&    GetScale()    const;
+```
+
+**Static helpers:**
+
+```cpp
+static void SnapshotComponent(ComponentSnapshot& snap, const Component* comp);
+static void ApplySnapshot(Component* target, const ComponentSnapshot& snap);
+```
+
+### 6.7 PrefabRegistry
+
+`Engine/ECS/PrefabRegistry.h` — Singleton that manages loading, caching, and hot-reloading of prefab assets.
+
+```cpp
+static PrefabRegistry& GetInstance();
+
+void LoadAll(const std::string& directory);   // Load all .prefab files in directory
+void Register(const std::string& filePath);   // Load and register a single prefab
+void Unload(const std::string& name);
+void Reload(const std::string& name);         // Re-read from disk
+void Clear();
+
+Prefab* Get(const std::string& name) const;
+Prefab* GetByPath(const std::string& filePath) const;
+bool    Has(const std::string& name) const;
+
+std::function<void(const std::string&)> onPrefabChanged;   // Notification callback
+```
 
 ---
 
@@ -1222,6 +1354,49 @@ bool        playOnStartRef= false;
 
 Reads `KeyCode::W/A/S/D/E/Q` for movement and the mouse delta for look. Speed and sensitivity are configurable. Internally drives the owner `GameObject`'s `Transform` directly.
 
+### 7.8 SphereColliderComponent
+
+`Engine/ECS/SphereColliderComponent.h` — Defines a sphere-shaped collision volume. Counterpart to `BoxColliderComponent`.
+
+**Size:**
+
+```cpp
+void  SetRadius(float r);
+float GetRadius() const;
+```
+
+**Offset:**
+
+```cpp
+void          SetCenterOffset(const Math::Vector3& offset);
+Math::Vector3 GetCenterOffset() const;
+```
+
+**Trigger mode:**
+
+```cpp
+void SetIsTrigger(bool trigger);
+bool IsTrigger() const;
+```
+
+When `isTrigger` is true, the collider generates trigger events (`OnTriggerEnter/Stay/Exit`) instead of physical collisions.
+
+**Internal (used by PhysicsSystem):**
+
+```cpp
+Physics::SphereCollider* GetSphereCollider() const;
+void SetBulletCollisionObject(btCollisionObject* obj);
+btCollisionObject* GetBulletCollisionObject() const;
+```
+
+**Reflected properties (Proxy):**
+
+```cpp
+float         radius       = 0.5f;
+Math::Vector3 centerOffset = {0, 0, 0};
+bool          isTrigger    = false;
+```
+
 ---
 
 ## 8. Rendering Subsystem
@@ -1283,6 +1458,14 @@ Math::Vector3 GetForward() const;
 Math::Vector3 GetRight()   const;
 Math::Vector3 GetUp()      const;
 ```
+
+**Frustum culling:**
+
+```cpp
+const Rendering::Frustum& GetFrustum();
+```
+
+Returns the camera's view frustum, lazily recomputed when the view or projection matrix changes. Used by the rendering pipeline to skip objects outside the camera's view.
 
 ### 8.2 Shader
 
@@ -1702,6 +1885,73 @@ The full render pipeline executed each frame by `Application::Render()`:
 8. Window::SwapBuffers()
 ```
 
+### 8.14 Frustum
+
+`Engine/Rendering/Frustum.h` — View frustum culling. Extracts the six clipping planes from a view-projection matrix and tests axis-aligned bounding boxes for visibility.
+
+```cpp
+struct Plane {
+    Math::Vector3 normal;
+    float         distance = 0.0f;
+};
+
+void ExtractPlanes(const Math::Matrix4& viewProjection);
+bool IsAABBVisible(const Math::Vector3& aabbMin, const Math::Vector3& aabbMax) const;
+```
+
+`ExtractPlanes` decomposes the combined view-projection matrix into Left, Right, Bottom, Top, Near, and Far planes. `IsAABBVisible` returns `true` if the AABB is at least partially inside all six planes.
+
+**Static utility:**
+
+```cpp
+static void TransformAABB(const Math::Matrix4& worldMatrix,
+                          const Math::Vector3& localMin,
+                          const Math::Vector3& localMax,
+                          Math::Vector3& outWorldMin,
+                          Math::Vector3& outWorldMax);
+```
+
+Transforms a local-space AABB to world space, computing the enclosing axis-aligned bounding box of the transformed corners.
+
+### 8.15 FbxBinding
+
+`Engine/Rendering/FbxBinding.h` — Utility for building per-mesh materials and GameObject hierarchies from `ModelData` loaded by `ModelLoader`.
+
+**Context and result:**
+
+```cpp
+struct FbxBindingContext {
+    Core::ResourceManager& resources;
+    std::string            modelPath;
+    const ModelData&       modelData;
+};
+
+struct FbxBindingResult {
+    std::vector<Mesh*>     meshes;
+    std::vector<Material*> meshMaterials;           // Per-mesh materials
+    std::vector<Texture*>  embeddedTextureObjects;  // Textures from embedded data
+};
+```
+
+**Material builder:**
+
+```cpp
+inline FbxBindingResult BuildMeshesAndMaterials(const FbxBindingContext& ctx);
+```
+
+For each mesh in `modelData`, creates or reuses a `Material` based on the FBX material name. Texture resolution follows a priority chain: `.texture` asset file on disk → `.png`/`.jpg` asset → embedded texture data from the FBX file. When a diffuse texture is present, the diffuse color is forced to white to prevent FBX-exported tint colors from darkening the texture.
+
+**Hierarchy builder:**
+
+```cpp
+ECS::GameObject* BuildFbxHierarchy(ECS::Scene* scene,
+                                    const ModelData& modelData,
+                                    const std::string& fbxPath,
+                                    Core::ResourceManager& resources);
+```
+
+Creates a root `GameObject` (named after the FBX file) with an `Animator` if the model has animation data, then creates child `GameObject` instances for each mesh with a `MeshRenderer` configured with the appropriate material.
+
 ---
 
 ## 9. Physics Subsystem
@@ -1940,6 +2190,22 @@ The correct order of physics operations across a scene reload:
 ```
 
 **Critical**: steps 2 and 3 must happen in that order. If `activeScene.reset()` runs before `ResetPhysics()`, the `btDiscreteDynamicsWorld` will access freed broadphase proxies in its internal structures when the bodies are removed, causing an access violation (`0xC0000005`).
+
+### 9.7 PhysicsUtils
+
+`Engine/Physics/PhysicsUtils.h` — Inline conversion functions between RTBEngine math types and Bullet Physics types. Used internally by `PhysicsSystem` and `RigidBody`.
+
+```cpp
+namespace RTBEngine::Physics::PhysicsUtils {
+
+    inline btVector3    ToBullet(const Math::Vector3& v);
+    inline btQuaternion ToBullet(const Math::Quaternion& q);
+
+    inline Math::Vector3    FromBullet(const btVector3& v);
+    inline Math::Quaternion FromBullet(const btQuaternion& q);
+
+}
+```
 
 ---
 
@@ -2204,6 +2470,32 @@ void SetMeshes(const std::vector<Rendering::Mesh*>& meshes);
 const std::vector<Rendering::Mesh*>& GetMeshes() const;
 ```
 
+**Clip management:**
+
+```cpp
+std::vector<std::string> GetClipNames() const;
+Rendering::Mesh* GetFirstMesh() const;
+```
+
+**Bone GameObjects** (creates a visual hierarchy of empty GameObjects that mirror the skeleton):
+
+```cpp
+void CreateBoneGameObjects(ECS::Scene* scene, ECS::GameObject* parent);
+void SyncBoneGameObjects();
+ECS::GameObject* GetBoneGameObject(const std::string& boneName) const;
+ECS::GameObject* GetBoneGameObject(int boneIndex) const;
+bool AreBoneGOsCreated() const;
+```
+
+Bone GameObjects are created once (usually by the editor or scene loader) and synced each frame by `SyncBoneGameObjects()`, which updates each bone GO's transform to match the current animation pose.
+
+**Additional reflected properties:**
+
+```cpp
+std::string additionalModels;   // Semicolon-separated paths to additional FBX models
+std::string defaultClip;        // Clip to play on start (alternative to currentClipName)
+```
+
 **Reflected properties (Proxy):**
 
 ```cpp
@@ -2354,6 +2646,29 @@ static Matrix4 LookAt(const Vector3& eye, const Vector3& center, const Vector3& 
 static Matrix4 Perspective(float fovDeg, float aspect, float nearZ, float farZ);
 static Matrix4 Orthographic(float left, float right, float bottom, float top,
                              float nearZ, float farZ);
+```
+
+### 13.6 Color
+
+`Engine/Math/Color.h` — RGBA color struct with implicit `Vector4` conversion. Provides predefined color constants.
+
+```cpp
+struct Color {
+    float r, g, b, a;
+
+    Color();                                       // Default: white (1,1,1,1)
+    Color(float r, float g, float b, float a = 1.0f);
+    explicit Color(float value);                   // Grayscale (value, value, value, 1)
+    Color(const Vector4& v);                       // Implicit from Vector4
+    operator Vector4() const;                      // Implicit to Vector4
+
+    static Color White();    // {1, 1, 1, 1}
+    static Color Black();    // {0, 0, 0, 1}
+    static Color Red();      // {1, 0, 0, 1}
+    static Color Green();    // {0, 1, 0, 1}
+    static Color Blue();     // {0, 0, 1, 1}
+    static Color Clear();    // {0, 0, 0, 0}
+};
 ```
 
 ---
@@ -2612,6 +2927,61 @@ void Seeker::OnFixedUpdate(float fixedDeltaTime) {}
 void Seeker::OnDestroy() {}
 ```
 
+### 14.7 TypeInfoBuilder
+
+`Engine/Reflection/TypeInfoBuilder.h` — Template class providing a fluent API for constructing `TypeInfo` instances programmatically, as an alternative to the property macros.
+
+```cpp
+template<typename T>
+class TypeInfoBuilder {
+public:
+    explicit TypeInfoBuilder(const char* typeName);
+
+    template<typename PropType>
+    TypeInfoBuilder& Property(const char* name, PropType T::* member,
+                              PropertyFlags flags = PropertyFlags::None);
+
+    template<typename PropType>
+    TypeInfoBuilder& PropertyWithRange(const char* name, PropType T::* member,
+                                       float min, float max,
+                                       PropertyFlags flags = PropertyFlags::None);
+
+    template<typename PropType>
+    TypeInfoBuilder& PropertyWithTooltip(const char* name, PropType T::* member,
+                                         const char* tooltip,
+                                         PropertyFlags flags = PropertyFlags::None);
+
+    template<typename EnumType>
+    TypeInfoBuilder& PropertyEnum(const char* name, EnumType T::* member,
+                                   std::initializer_list<const char*> enumNames,
+                                   PropertyFlags flags = PropertyFlags::None);
+
+    template<typename AssetType>
+    TypeInfoBuilder& PropertyAsset(const char* name, AssetType* T::* member,
+                                    const char* assetTypeName,
+                                    PropertyFlags flags = PropertyFlags::None);
+
+    TypeInfoBuilder& Category(const char* categoryName);
+
+    TypeInfo  Build();
+    TypeInfo& GetInfo();
+};
+```
+
+**Usage example:**
+
+```cpp
+TypeInfoBuilder<MyComponent> builder("MyComponent");
+builder
+    .Property("enabled", &MyComponent::enabledRef)
+    .PropertyWithRange("speed", &MyComponent::speedRef, 0.0f, 100.0f)
+    .PropertyEnum("mode", &MyComponent::modeRef, {"Auto", "Manual", "Custom"})
+    .PropertyAsset("texture", &MyComponent::texturePtr, "Texture");
+TypeInfo info = builder.Build();
+```
+
+Template specializations for `MakePropertyInfo` are provided for `Vector2`, `Vector3`, `Vector4`, and `Quaternion` to ensure correct `PropertyType` mapping.
+
 ---
 
 ## 15. Scripting and Serialization
@@ -2696,6 +3066,63 @@ return {
 For each `GameObject`, iterates its components. For each component, calls `TypeInfo::GetSerializableProperties()` and reads each proxy member value via its `offset`, then formats it as Lua table syntax.
 
 `GameObjectRef` properties are serialized as the target `GameObject`'s UUID (an integer), not a pointer. On load, `SceneLoader` performs UUID-to-pointer resolution after all objects are created.
+
+### 15.4 ScriptManager
+
+`Engine/Scripting/ScriptManager.h` — Singleton that loads and unloads `GameScripts.dll` at runtime, triggering component type registration.
+
+```cpp
+static ScriptManager& GetInstance();
+
+bool LoadScripts(const std::string& dllPath);   // Loads DLL, calls RTBScripts_RegisterAll
+void UnloadScripts();                            // Unloads DLL, unregisters script types
+bool IsLoaded() const;
+const std::string& GetLoadedPath() const;
+```
+
+When `LoadScripts` is called, it loads the DLL and invokes the exported `RTBScripts_RegisterAll` function, which bridges each script component's type information across the DLL boundary using POD structs (no STL crossing). Each type is registered with both `TypeRegistry` and `ComponentRegistry`.
+
+### 15.5 PrefabLoader
+
+`Engine/Scripting/PrefabLoader.h` — Static utility for loading prefab files.
+
+```cpp
+class PrefabLoader {
+public:
+    PrefabLoader() = delete;
+    static std::unique_ptr<ECS::Prefab> Load(const std::string& filePath);
+};
+```
+
+Reads a `.lua` prefab file and constructs a `Prefab` with all component snapshots and child prefabs.
+
+### 15.6 PrefabSaver
+
+`Engine/Scripting/PrefabSaver.h` — Static utility for saving prefab files.
+
+```cpp
+class PrefabSaver {
+public:
+    PrefabSaver() = delete;
+    static bool Save(const ECS::Prefab& prefab, const std::string& filePath);
+};
+```
+
+Serializes a `Prefab` to a `.lua` file in the same format used by `SceneLoader` for individual `GameObject` entries.
+
+### 15.7 Scene Serialization Infrastructure
+
+The scene loading and saving pipeline relies on several specialized utility classes:
+
+**SceneComponentConfigurator** (`Engine/Scripting/SceneComponentConfigurator.h`) — Contains per-component-type configuration functions called during scene loading. Handles built-in components that require special setup beyond reflection (e.g., `ConfigureMeshRenderer` loads mesh and texture assets, `ConfigureAnimator` loads the FBX model and clips).
+
+**SceneParsingUtils** (`Engine/Scripting/SceneParsingUtils.h`) — Lua table reading helpers: `ReadOptionalString`, `ReadOptionalInt`, `ReadOptionalFloat`, `ReadOptionalBool`, `ReadOptionalVector2/3/4`, `ReadOptionalQuaternion`. Also provides `ValidateSceneTable` for structural validation.
+
+**ScenePropertySerializer** (`Engine/Scripting/ScenePropertySerializer.h`) — Functions for writing component properties to Lua scene files: `WriteComponent`, `WriteProperty`. Includes format helpers for all math types and utility functions for path normalization.
+
+**SceneReflectionUtils** (`Engine/Scripting/SceneReflectionUtils.h`) — `ApplyLuaTableToComponent(L, tableIndex, component)` — fills component proxy properties from a Lua table using `TypeInfo` reflection metadata. Handles type dispatch for all `PropertyType` variants.
+
+**SceneLuaBindings** (`Engine/Scripting/SceneLuaBindings.h`) — `SetupLuaBindings(L)` — registers C++ engine types with the Lua state so scene files can reference engine constants and functions.
 
 ---
 
@@ -2889,6 +3316,56 @@ Math::Vector4 colorRef = {1,1,1,1};
 void SetColor(const Math::Vector4& color);
 void SetTexture(Rendering::Texture* texture);   // Optional background texture
 ```
+
+### 16.9 UIContainer
+
+`Engine/UI/Elements/UIContainer.h` — A layout-only UI element. Extends `UIElement` with an empty `Render()` implementation. Used to group child elements without drawing anything itself.
+
+### 16.10 UIRenderContext
+
+`Engine/UI/UIRenderContext.h` — Static rendering context that controls where UI elements draw to. Enables rendering UI into off-screen framebuffers (e.g., the editor's Game View panel).
+
+```cpp
+struct UIRenderContext {
+    static ImDrawList*   CurrentDrawList;   // Target draw list (nullptr = BackgroundDrawList)
+    static Math::Vector2 Offset;            // Position offset for all UI drawing
+    static bool          IsValid;           // Whether context is active
+
+    static void Begin(ImDrawList* drawList, const Math::Vector2& offset);
+    static void End();
+    static ImDrawList* GetDrawList();   // Returns CurrentDrawList or fallback
+};
+```
+
+Before rendering canvases to a framebuffer, call `Begin()` with the framebuffer's draw list and position offset. After rendering, call `End()`. All `UIElement::Render()` calls use `GetDrawList()` to obtain the correct target.
+
+### 16.11 EventSystem
+
+`Engine/UI/EventSystem/` — Interface-based pointer event system for UI elements. Components implement these interfaces to receive input events from `CanvasSystem`.
+
+**PointerEventData** (`PointerEventData.h`):
+
+```cpp
+struct PointerEventData {
+    Math::Vector2    position;       // Current pointer screen position
+    Math::Vector2    delta;          // Movement since last event
+    ECS::GameObject* pointerEnter;   // Object currently under pointer
+    ECS::GameObject* pointerPress;   // Object that received the press event
+    int              button = 0;     // Mouse button index
+};
+```
+
+**Handler interfaces** (each extends `IEventSystemHandler`):
+
+| Interface | Method | Fires when |
+|-----------|--------|------------|
+| `IPointerClickHandler` | `OnPointerClick(const PointerEventData&)` | Pointer pressed and released on same element |
+| `IPointerDownHandler` | `OnPointerDown(const PointerEventData&)` | Pointer button pressed on element |
+| `IPointerUpHandler` | `OnPointerUp(const PointerEventData&)` | Pointer button released on element |
+| `IPointerEnterHandler` | `OnPointerEnter(const PointerEventData&)` | Pointer enters element bounds |
+| `IPointerExitHandler` | `OnPointerExit(const PointerEventData&)` | Pointer leaves element bounds |
+
+`CanvasSystem` performs hit-testing via `PrepareForHitTest()`, walking the element tree in reverse render order to find the front-most `raycastTarget` element under the pointer. It then dispatches the appropriate events by `dynamic_cast`-ing each component on the hit `GameObject` to the handler interfaces.
 
 ---
 

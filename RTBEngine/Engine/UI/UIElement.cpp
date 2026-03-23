@@ -19,6 +19,7 @@ namespace RTBEngine {
 			rectTransform->SetAnchoredPosition(anchoredPosition);
 			rectTransform->SetSize(sizeDelta);
 			rectTransform->SetRotation(rotation);
+			rectTransform->SetScale(scale);
 		}
 
 		void UIElement::OnAwake() {
