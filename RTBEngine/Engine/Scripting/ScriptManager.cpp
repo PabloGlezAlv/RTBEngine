@@ -1,6 +1,10 @@
 #include "ScriptManager.h"
+#include "ScriptBridgeABI.h"
 #include "../Core/Logger.h"
 #include "../ECS/SceneManager.h"
+#include <sstream>
+#include <iomanip>
+#include <cstdint>
 
 // --- Windows DLL loading API ---
 //
@@ -47,24 +51,40 @@ namespace RTBEngine {
             UnloadScripts();
         }
 
-        // ABI-safe property descriptor — mirrors the struct in dllmain.cpp.
-        // Only POD, no STL, safe to pass between /MT modules.
-        struct RTBPropertyDesc {
-            const char* name;
-            const char* displayName;
-            int         type;
-            size_t      offset;
-            size_t      size;
-            int         flags;
-            float       rangeMin;
-            float       rangeMax;
-            int         hasRange;
-            const char* componentTypeName;
-        };
-
         // State shared between the three bridge callbacks during a single type registration.
         static RTBEngine::Reflection::TypeInfo* s_pendingInfo = nullptr;
+        static std::string                       s_pendingTypeName;
+        static size_t                            s_pendingPropIndex = 0;
         static std::vector<std::string>         s_pendingTypes;
+
+        static std::string PtrToHex(const void* ptr)
+        {
+            std::ostringstream oss;
+            oss << "0x" << std::hex << std::uppercase << reinterpret_cast<std::uintptr_t>(ptr);
+            return oss.str();
+        }
+
+        static std::string SafeCString(const char* value, const char* fieldName)
+        {
+            if (!value) {
+                return "";
+            }
+
+            const std::uintptr_t rawPtr = reinterpret_cast<std::uintptr_t>(value);
+            // Guard against obviously invalid addresses:
+            // - null-adjacent garbage
+            // - very low 32-bit-like pointers seen during corrupted bridge descriptors
+            if (rawPtr < 0x10000u || rawPtr < 0x0000010000000000ull) {
+                RTB_WARN(
+                    "ScriptManager: Invalid C-string for field '" +
+                    std::string(fieldName ? fieldName : "unknown") + "' in type '" +
+                    s_pendingTypeName + "', property index " + std::to_string(s_pendingPropIndex) +
+                    " ptr=" + PtrToHex(value));
+                return "";
+            }
+
+            return std::string(value);
+        }
 
         static void BridgeBeginType(const char* typeName, void* factory)
         {
@@ -73,6 +93,8 @@ namespace RTBEngine {
             if (existing) {
                 // Type already registered (e.g. engine built-ins) — skip.
                 s_pendingInfo = nullptr;
+                s_pendingTypeName.clear();
+                s_pendingPropIndex = 0;
                 return;
             }
             // Register the new script type in the EXE's registry.
@@ -96,30 +118,60 @@ namespace RTBEngine {
             }
             reg.RegisterType(typeName, newInfo);
             s_pendingInfo = const_cast<RTBEngine::Reflection::TypeInfo*>(reg.GetTypeInfo(typeName));
+            s_pendingTypeName = typeName ? typeName : "";
+            s_pendingPropIndex = 0;
             s_pendingTypes.push_back(typeName);
         }
 
         static void BridgePropCallback(const RTBPropertyDesc* desc)
         {
             if (!s_pendingInfo || !desc) return;
+            constexpr size_t kMaxBridgedPropsPerType = 128;
+            if (s_pendingPropIndex >= kMaxBridgedPropsPerType) {
+                RTB_WARN(
+                    "ScriptManager: Reached property safety limit (" + std::to_string(kMaxBridgedPropsPerType) +
+                    ") while bridging type '" + s_pendingTypeName + "'. Remaining properties are ignored.");
+                return;
+            }
+
+            RTB_INFO(
+                "ScriptManager: Bridge property idx=" + std::to_string(s_pendingPropIndex) +
+                " type='" + s_pendingTypeName +
+                "' namePtr=" + PtrToHex(desc->name) +
+                " displayPtr=" + PtrToHex(desc->displayName) +
+                " componentPtr=" + PtrToHex(desc->componentTypeName));
 
             RTBEngine::Reflection::PropertyInfo prop;
-            prop.name              = desc->name;
-            prop.displayName       = desc->displayName;
+            prop.name              = SafeCString(desc->name, "name");
+            prop.displayName       = SafeCString(desc->displayName, "displayName");
             prop.type              = static_cast<RTBEngine::Reflection::PropertyType>(desc->type);
             prop.offset            = desc->offset;
             prop.size              = desc->size;
             prop.flags             = static_cast<RTBEngine::Reflection::PropertyFlags>(desc->flags);
-            prop.componentTypeName = desc->componentTypeName ? desc->componentTypeName : "";
+            if (prop.type == RTBEngine::Reflection::PropertyType::ComponentRef) {
+                prop.componentTypeName = SafeCString(desc->componentTypeName, "componentTypeName");
+            }
             if (desc->hasRange) {
                 prop.range = RTBEngine::Reflection::Range(desc->rangeMin, desc->rangeMax);
             }
+
+            if (prop.name.empty()) {
+                RTB_WARN(
+                    "ScriptManager: Skipping bridged property with empty name in type '" +
+                    s_pendingTypeName + "', property index " + std::to_string(s_pendingPropIndex));
+                ++s_pendingPropIndex;
+                return;
+            }
+
             s_pendingInfo->AddProperty(prop);
+            ++s_pendingPropIndex;
         }
 
         static void BridgeEndType()
         {
             s_pendingInfo = nullptr;
+            s_pendingTypeName.clear();
+            s_pendingPropIndex = 0;
         }
 
         void ScriptManager::ScriptTypeReceiver(const char* /*name*/, const RTBEngine::Reflection::TypeInfo& /*info*/)
