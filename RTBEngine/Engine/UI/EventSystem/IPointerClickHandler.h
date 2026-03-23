@@ -1,11 +1,12 @@
 #pragma once
+#include "../../RTBEngineAPI.h"
 #include "IEventSystemHandler.h"
 #include "PointerEventData.h"
 
 namespace RTBEngine {
 	namespace UI {
 
-		class IPointerClickHandler : public virtual IEventSystemHandler {
+		class RTB_API IPointerClickHandler : public virtual IEventSystemHandler {
 		public:
 			virtual void OnPointerClick(const PointerEventData& eventData) = 0;
 		};

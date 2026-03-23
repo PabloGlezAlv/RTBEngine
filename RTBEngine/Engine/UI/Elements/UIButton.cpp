@@ -14,6 +14,7 @@ namespace RTBEngine {
 			RTB_PROPERTY_COLOR(pressedColor)
 			RTB_PROPERTY_COLOR(disabledColor)
 			RTB_PROPERTY(interactable)
+			RTB_PROPERTY(enableDefaultHoverVisuals)
 		RTB_END_REGISTER(UIButton)
 
 		UIButton::UIButton()
@@ -79,6 +80,7 @@ namespace RTBEngine {
 
 		void UIButton::OnPointerEnter(const PointerEventData& eventData) {
 			if (!interactable) return;
+			if (!enableDefaultHoverVisuals) return;
 			if (state == ButtonState::Normal) {
 				state = ButtonState::Hovered;
 				UpdateVisuals();
@@ -87,18 +89,21 @@ namespace RTBEngine {
 
 		void UIButton::OnPointerExit(const PointerEventData& eventData) {
 			if (!interactable) return;
+			if (!enableDefaultHoverVisuals) return;
 			state = ButtonState::Normal;
 			UpdateVisuals();
 		}
 
 		void UIButton::OnPointerDown(const PointerEventData& eventData) {
 			if (!interactable) return;
+			if (!enableDefaultHoverVisuals) return;
 			state = ButtonState::Pressed;
 			UpdateVisuals();
 		}
 
 		void UIButton::OnPointerUp(const PointerEventData& eventData) {
 			if (!interactable) return;
+			if (!enableDefaultHoverVisuals) return;
 			state = ButtonState::Hovered;
 			UpdateVisuals();
 		}

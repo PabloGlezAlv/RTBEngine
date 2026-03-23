@@ -63,6 +63,7 @@ namespace RTBEngine {
 			Math::Vector4 pressedColor = Math::Vector4(0.7f, 0.7f, 0.7f, 1.0f);
 			Math::Vector4 disabledColor = Math::Vector4(0.5f, 0.5f, 0.5f, 0.5f);
 			bool interactable = true;
+			bool enableDefaultHoverVisuals = true;
 
 			RTB_COMPONENT(UIButton)
 
