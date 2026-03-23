@@ -53,7 +53,7 @@ namespace RTBEngine {
                 const Reflection::PropertyInfo& prop, int indent)
             {
                 std::string ind = Indent(indent);
-                void* data = (char*)comp + prop.offset;
+                void* data = (char*)comp->GetActualObject() + prop.offset;
 
                 file << ind << prop.name << " = ";
 

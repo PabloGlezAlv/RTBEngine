@@ -52,6 +52,10 @@ namespace RTBEngine {
 
             virtual const char* GetTypeName() const = 0;
 
+            // Multiple inheritance reflection fix
+            virtual void* GetActualObject() { return this; }
+            virtual const void* GetActualObject() const { return this; }
+
             // Returns type info for inspector. Components using RTB_COMPONENT override this.
             virtual const Reflection::TypeInfo* GetTypeInfo() const { return nullptr; }
 

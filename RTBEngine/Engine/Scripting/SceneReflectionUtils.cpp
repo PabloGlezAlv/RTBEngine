@@ -36,7 +36,7 @@ namespace RTBEngine {
                         continue;
                     }
 
-                    void* dst = reinterpret_cast<char*>(component) + prop->offset;
+                    void* dst = reinterpret_cast<char*>(component->GetActualObject()) + prop->offset;
 
                     switch (prop->type) {
                     case PropertyType::Bool:
