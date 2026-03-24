@@ -200,8 +200,7 @@ namespace RTBEngine {
 
                     if (prop->type == Reflection::PropertyType::String)
                     {
-                        const std::string* liveStr = reinterpret_cast<const std::string*>(
-                            reinterpret_cast<const char*>(comp.get()) + offset);
+                        const std::string* liveStr = static_cast<const std::string*>(prop->GetData(comp.get()));
 
                         auto it = snap->stringData.find(offset);
                         if (it == snap->stringData.end() || it->second != *liveStr)
@@ -222,7 +221,7 @@ namespace RTBEngine {
                         raw += rawSize;
                     }
 
-                    const char* liveBytes = reinterpret_cast<const char*>(comp.get()) + offset;
+                    const char* liveBytes = static_cast<const char*>(prop->GetData(comp.get()));
 
                     if (!snapBytes || std::memcmp(liveBytes, snapBytes, size) != 0)
                         overrideProps.push_back(prop);

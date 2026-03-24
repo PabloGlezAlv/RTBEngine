@@ -36,7 +36,7 @@ namespace RTBEngine {
                         continue;
                     }
 
-                    void* dst = reinterpret_cast<char*>(component->GetActualObject()) + prop->offset;
+                    void* dst = prop->GetMutableData(component);
 
                     switch (prop->type) {
                     case PropertyType::Bool:

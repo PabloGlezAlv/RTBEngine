@@ -20,14 +20,14 @@ namespace RTBEngine {
 
             template<typename PropType>
             TypeInfoBuilder& Property(const char* name, PropType T::* member, PropertyFlags flags = PropertyFlags::None) {
-                PropertyInfo prop = MakePropertyInfo<PropType>(name, GetMemberOffset(member), flags);
+                PropertyInfo prop = MakePropertyInfo<PropType>(name, RTBEngine::Reflection::GetMemberOffset<T, T>(member), flags);
                 info.AddProperty(prop);
                 return *this;
             }
 
             template<typename PropType>
             TypeInfoBuilder& PropertyWithRange(const char* name, PropType T::* member, float min, float max, PropertyFlags flags = PropertyFlags::None) {
-                PropertyInfo prop = MakePropertyInfo<PropType>(name, GetMemberOffset(member), flags);
+                PropertyInfo prop = MakePropertyInfo<PropType>(name, RTBEngine::Reflection::GetMemberOffset<T, T>(member), flags);
                 prop.range = Range(min, max);
                 info.AddProperty(prop);
                 return *this;
@@ -35,7 +35,7 @@ namespace RTBEngine {
 
             template<typename PropType>
             TypeInfoBuilder& PropertyWithTooltip(const char* name, PropType T::* member, const char* tooltip, PropertyFlags flags = PropertyFlags::None) {
-                PropertyInfo prop = MakePropertyInfo<PropType>(name, GetMemberOffset(member), flags);
+                PropertyInfo prop = MakePropertyInfo<PropType>(name, RTBEngine::Reflection::GetMemberOffset<T, T>(member), flags);
                 prop.tooltip = tooltip;
                 info.AddProperty(prop);
                 return *this;
@@ -46,7 +46,7 @@ namespace RTBEngine {
                 PropertyInfo prop;
                 prop.name = name;
                 prop.displayName = name;
-                prop.offset = GetMemberOffset(member);
+                prop.offset = RTBEngine::Reflection::GetMemberOffset<T, T>(member);
                 prop.size = sizeof(EnumType);
                 prop.flags = flags;
                 prop.type = PropertyType::Enum;
@@ -62,7 +62,7 @@ namespace RTBEngine {
                 PropertyInfo prop;
                 prop.name = name;
                 prop.displayName = name;
-                prop.offset = GetMemberOffset(member);
+                prop.offset = RTBEngine::Reflection::GetMemberOffset<T, T>(member);
                 prop.size = sizeof(AssetType*);
                 prop.flags = flags;
                 prop.type = PropertyType::AssetRef;
@@ -82,11 +82,6 @@ namespace RTBEngine {
         private:
             TypeInfo info;
             std::string currentCategory;
-
-            template<typename PropType>
-            static size_t GetMemberOffset(PropType T::* member) {
-                return reinterpret_cast<size_t>(&(static_cast<T*>(nullptr)->*member));
-            }
         };
 
         // Math type specializations

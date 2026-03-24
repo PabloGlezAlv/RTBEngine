@@ -53,37 +53,37 @@ namespace RTBEngine {
                 const Reflection::PropertyInfo& prop, int indent)
             {
                 std::string ind = Indent(indent);
-                void* data = (char*)comp->GetActualObject() + prop.offset;
+                const void* data = prop.GetData(comp);
 
                 file << ind << prop.name << " = ";
 
                 switch (prop.type) {
                 case Reflection::PropertyType::Bool:
-                    file << FormatBool(*(bool*)data);
+                    file << FormatBool(*static_cast<const bool*>(data));
                     break;
                 case Reflection::PropertyType::Int:
-                    file << *(int*)data;
+                    file << *static_cast<const int*>(data);
                     break;
                 case Reflection::PropertyType::Float:
-                    file << std::fixed << std::setprecision(2) << *(float*)data;
+                    file << std::fixed << std::setprecision(2) << *static_cast<const float*>(data);
                     break;
                 case Reflection::PropertyType::Double:
-                    file << std::fixed << std::setprecision(2) << *(double*)data;
+                    file << std::fixed << std::setprecision(2) << *static_cast<const double*>(data);
                     break;
                 case Reflection::PropertyType::String:
-                    file << FormatString(NormalizePath(*(std::string*)data));
+                    file << FormatString(NormalizePath(*static_cast<const std::string*>(data)));
                     break;
                 case Reflection::PropertyType::Vector2:
-                    file << FormatVector2(*(Math::Vector2*)data);
+                    file << FormatVector2(*static_cast<const Math::Vector2*>(data));
                     break;
                 case Reflection::PropertyType::Vector3:
-                    file << FormatVector3(*(Math::Vector3*)data);
+                    file << FormatVector3(*static_cast<const Math::Vector3*>(data));
                     break;
                 case Reflection::PropertyType::Vector4:
-                    file << FormatVector4(*(Math::Vector4*)data);
+                    file << FormatVector4(*static_cast<const Math::Vector4*>(data));
                     break;
                 case Reflection::PropertyType::Color: {
-                    const Math::Color& c = *(Math::Color*)data;
+                    const Math::Color& c = *static_cast<const Math::Color*>(data);
                     std::ostringstream oss;
                     oss << std::fixed << std::setprecision(2);
                     oss << "Color(" << c.r << ", " << c.g << ", " << c.b << ", " << c.a << ")";
@@ -91,14 +91,14 @@ namespace RTBEngine {
                     break;
                 }
                 case Reflection::PropertyType::Quaternion:
-                    file << FormatQuaternion(*(Math::Quaternion*)data);
+                    file << FormatQuaternion(*static_cast<const Math::Quaternion*>(data));
                     break;
                 case Reflection::PropertyType::TextureRef:
                 case Reflection::PropertyType::AudioClipRef:
                 case Reflection::PropertyType::MeshRef:
                 case Reflection::PropertyType::FontRef:
                 case Reflection::PropertyType::AssetRef: {
-                    void* resourcePtr = *(void**)data;
+                    void* resourcePtr = *static_cast<void* const*>(data);
                     if (!resourcePtr) { file << "nil"; break; }
                     bool isFontRef = (prop.type == Reflection::PropertyType::FontRef);
                     std::string path = GetResourcePath(resourcePtr, isFontRef);
@@ -106,7 +106,7 @@ namespace RTBEngine {
                     break;
                 }
                 case Reflection::PropertyType::Enum: {
-                    int idx = *(int*)data;
+                    int idx = *static_cast<const int*>(data);
                     if (!prop.enumNames.empty() && idx >= 0 && idx < (int)prop.enumNames.size())
                         file << FormatString(prop.enumNames[idx]);
                     else
@@ -114,12 +114,12 @@ namespace RTBEngine {
                     break;
                 }
                 case Reflection::PropertyType::GameObjectRef: {
-                    ECS::GameObject* target = *(ECS::GameObject**)data;
+                    ECS::GameObject* target = *static_cast<ECS::GameObject* const*>(data);
                     file << (target ? FormatString(target->GetUUID()) : "nil");
                     break;
                 }
                 case Reflection::PropertyType::ComponentRef: {
-                    ECS::Component* target = *(ECS::Component**)data;
+                    ECS::Component* target = *static_cast<ECS::Component* const*>(data);
                     if (target && target->GetOwner()) {
                         std::string ref = target->GetOwner()->GetUUID()
                             + "/" + std::string(target->GetTypeName());

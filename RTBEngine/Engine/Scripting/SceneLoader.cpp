@@ -248,7 +248,7 @@ namespace RTBEngine {
                 if (req.prop->type == Reflection::PropertyType::GameObjectRef) {
                     ECS::GameObject* target = scene->FindGameObjectByUUID(uuidStr);
                     if (target) {
-                        void* data = (char*)req.component + req.prop->offset;
+                        void* data = req.prop->GetMutableData(req.component);
                         *(ECS::GameObject**)data = target;
                     } else {
                         RTB_WARN("SceneLoader: GameObjectRef UUID not found: " + uuidStr);
@@ -263,7 +263,7 @@ namespace RTBEngine {
                         if (targetGO) {
                             for (const auto& comp : targetGO->GetComponents()) {
                                 if (std::string(comp->GetTypeName()) == type) {
-                                    void* data = (char*)req.component + req.prop->offset;
+                                    void* data = req.prop->GetMutableData(req.component);
                                     *(ECS::Component**)data = comp.get();
                                     break;
                                 }

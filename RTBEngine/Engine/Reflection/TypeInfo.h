@@ -1,10 +1,14 @@
 #pragma once
 #include "../RTBEngineAPI.h"
+#include "../ECS/Component.h"
 #include <string>
 #include <vector>
 #include <optional>
 #include <functional>
 #include <cstddef>
+#include <cstdint>
+#include <new>
+#include <type_traits>
 #include <unordered_map>
 
 namespace RTBEngine {
@@ -105,7 +109,35 @@ namespace RTBEngine {
             bool IsSerializable() const { return HasFlag(flags, PropertyFlags::Serialize) || !HasFlag(flags, PropertyFlags::HideInInspector); }
             bool IsVisibleInInspector() const { return !HasFlag(flags, PropertyFlags::HideInInspector); }
             bool IsReadOnly() const { return HasFlag(flags, PropertyFlags::ReadOnly); }
+
+            void* GetMutableData(void* objectBase) const {
+                return objectBase ? static_cast<void*>(static_cast<char*>(objectBase) + offset) : nullptr;
+            }
+
+            const void* GetData(const void* objectBase) const {
+                return objectBase ? static_cast<const void*>(static_cast<const char*>(objectBase) + offset) : nullptr;
+            }
+
+            void* GetMutableData(ECS::Component* component) const;
+            const void* GetData(const ECS::Component* component) const;
         };
+
+        // Uses a real temporary instance instead of a fake probe address because
+        // MSVC may dereference vbtable data when applying a member pointer on types
+        // with multiple inheritance / virtual bases (for example UI event handlers).
+        template<typename OwnerClass, typename DeclaringClass, typename MemberType>
+        inline size_t GetMemberOffset(MemberType DeclaringClass::* member) {
+            static_assert(std::is_default_constructible_v<OwnerClass>,
+                "Reflected component types must be default constructible.");
+
+            alignas(OwnerClass) unsigned char storage[sizeof(OwnerClass)];
+            auto* ownerPtr = new (storage) OwnerClass();
+            auto* declaringPtr = static_cast<DeclaringClass*>(ownerPtr);
+            auto* memberPtr = &(declaringPtr->*member);
+            const auto offset = reinterpret_cast<const char*>(memberPtr) - reinterpret_cast<const char*>(ownerPtr);
+            ownerPtr->~OwnerClass();
+            return static_cast<size_t>(offset);
+        }
 
         class RTB_API TypeInfo {
         public:

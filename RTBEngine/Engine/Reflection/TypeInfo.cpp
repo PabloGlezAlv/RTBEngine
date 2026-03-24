@@ -19,6 +19,14 @@ namespace RTBEngine {
             return nullptr;
         }
 
+        void* PropertyInfo::GetMutableData(ECS::Component* component) const {
+            return component ? GetMutableData(component->GetActualObject()) : nullptr;
+        }
+
+        const void* PropertyInfo::GetData(const ECS::Component* component) const {
+            return component ? GetData(component->GetActualObject()) : nullptr;
+        }
+
         std::vector<const PropertyInfo*> TypeInfo::GetInspectorProperties() const {
             std::vector<const PropertyInfo*> result;
             for (const auto& prop : properties) {

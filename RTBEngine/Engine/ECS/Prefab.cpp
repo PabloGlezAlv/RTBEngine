@@ -42,16 +42,14 @@ namespace RTBEngine {
 
                 if (prop->type == Reflection::PropertyType::String)
                 {
-                    const std::string* strPtr = reinterpret_cast<const std::string*>(
-                        reinterpret_cast<const char*>(comp) + offset);
+                    const std::string* strPtr = static_cast<const std::string*>(prop->GetData(comp));
                     snap.stringData[offset] = *strPtr;
                     continue;
                 }
 
                 if (prop->type == Reflection::PropertyType::MeshRef)
                 {
-                    const Rendering::Mesh* mesh = *reinterpret_cast<Rendering::Mesh* const*>(
-                        reinterpret_cast<const char*>(comp) + offset);
+                    const Rendering::Mesh* mesh = *static_cast<Rendering::Mesh* const*>(prop->GetData(comp));
                     if (mesh) {
                         std::string meshPath = resources.GetMeshPath(const_cast<Rendering::Mesh*>(mesh));
                         snap.ptrPathData[offset] = meshPath;
@@ -61,8 +59,7 @@ namespace RTBEngine {
 
                 if (prop->type == Reflection::PropertyType::TextureRef)
                 {
-                    const Rendering::Texture* tex = *reinterpret_cast<Rendering::Texture* const*>(
-                        reinterpret_cast<const char*>(comp) + offset);
+                    const Rendering::Texture* tex = *static_cast<Rendering::Texture* const*>(prop->GetData(comp));
                     if (tex)
                         snap.ptrPathData[offset] = resources.GetTexturePath(const_cast<Rendering::Texture*>(tex));
                     continue;
@@ -70,14 +67,13 @@ namespace RTBEngine {
 
                 if (prop->type == Reflection::PropertyType::AudioClipRef)
                 {
-                    const Audio::AudioClip* clip = *reinterpret_cast<Audio::AudioClip* const*>(
-                        reinterpret_cast<const char*>(comp) + offset);
+                    const Audio::AudioClip* clip = *static_cast<Audio::AudioClip* const*>(prop->GetData(comp));
                     if (clip)
                         snap.ptrPathData[offset] = resources.GetAudioClipPath(const_cast<Audio::AudioClip*>(clip));
                     continue;
                 }
 
-                const char* src = reinterpret_cast<const char*>(comp) + offset;
+                const char* src = static_cast<const char*>(prop->GetData(comp));
 
                 snap.rawData.insert(snap.rawData.end(),
                     reinterpret_cast<const uint8_t*>(&offset),
@@ -96,6 +92,7 @@ namespace RTBEngine {
 
         void Prefab::ApplySnapshot(Component* target, const ComponentSnapshot& snap)
         {
+            char* actualObject = static_cast<char*>(target ? target->GetActualObject() : nullptr);
             const uint8_t* ptr = snap.rawData.data();
             const uint8_t* end = ptr + snap.rawData.size();
 
@@ -107,15 +104,14 @@ namespace RTBEngine {
                 size_t size = *reinterpret_cast<const size_t*>(ptr);
                 ptr += sizeof(size_t);
 
-                char* dst = reinterpret_cast<char*>(target) + offset;
+                char* dst = actualObject + offset;
                 std::memcpy(dst, ptr, size);
                 ptr += size;
             }
 
             for (const auto& [offset, str] : snap.stringData)
             {
-                std::string* dst = reinterpret_cast<std::string*>(
-                    reinterpret_cast<char*>(target) + offset);
+                std::string* dst = reinterpret_cast<std::string*>(actualObject + offset);
                 *dst = str;
             }
 
@@ -131,7 +127,7 @@ namespace RTBEngine {
                 if (it == snap.ptrPathData.end()) continue;
 
                 const std::string& path = it->second;
-                char* dst = reinterpret_cast<char*>(target) + prop->offset;
+                char* dst = static_cast<char*>(prop->GetMutableData(target));
 
                 if (prop->type == Reflection::PropertyType::MeshRef)
                 {
@@ -155,7 +151,7 @@ namespace RTBEngine {
                             int idx = 0;
                             if (indexProp)
                             {
-                                const char* idxSrc = reinterpret_cast<const char*>(target) + indexProp->offset;
+                                const char* idxSrc = static_cast<const char*>(indexProp->GetData(target));
                                 std::memcpy(&idx, idxSrc, sizeof(int));
                             }
                             int clampedIdx = (idx >= 0 && idx < static_cast<int>(modelData.meshes.size())) ? idx : 0;
