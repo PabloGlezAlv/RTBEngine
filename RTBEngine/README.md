@@ -2715,54 +2715,73 @@ enum class PropertyFlags : uint32_t {
 
 ```cpp
 struct PropertyInfo {
-    std::string  name;           // C++ member name (e.g., "speedRef")
-    std::string  displayName;    // Human-readable label (e.g., "Speed")
+    std::string name;
+    std::string displayName;
     PropertyType type;
-    size_t       offset;         // offsetof(ClassName, memberRef)
-    size_t       size;           // sizeof(memberType)
+    size_t offset;               // Byte offset from the start of the actual reflected object
+    size_t size;
     PropertyFlags flags;
 
-    // For ranged floats/ints:
-    float rangeMin = 0.0f;
-    float rangeMax = 1.0f;
-
-    // For enums:
+    std::optional<Range> range;
+    std::optional<std::string> tooltip;
+    std::optional<std::string> category;
     std::vector<std::string> enumNames;
-
-    // For asset references (TextureRef, MeshRef, etc.):
     std::string assetType;
-
-    // For ComponentRef:
     std::string componentTypeName;
 
-    // Tooltip text shown on hover in Inspector:
-    std::string tooltip;
+    void* GetMutableData(void* objectBase) const;
+    const void* GetData(const void* objectBase) const;
 
-    // Category / group label:
-    std::string category;
+    void* GetMutableData(ECS::Component* component) const;
+    const void* GetData(const ECS::Component* component) const;
 };
 ```
 
-The Inspector uses `PropertyInfo::offset` to compute `(char*)componentPtr + offset` and cast it to the appropriate type for reading/writing.
+`PropertyInfo::offset` is still the core piece of metadata, but it is no longer applied directly to `Component*`.
+
+The runtime now resolves property addresses through `PropertyInfo::GetData(...)` / `GetMutableData(...)`, which:
+
+1. Ask the component for its real dynamic object via `GetActualObject()`
+2. Apply the offset relative to that actual object
+
+This is what makes reflected properties safe for components that participate in multiple inheritance, such as UI controls implementing pointer-handler interfaces.
+
+The offset itself is computed by `GetMemberOffset<OwnerClass, DeclaringClass>(...)`, which supports inherited properties by distinguishing:
+
+- `OwnerClass`: the final reflected type being registered
+- `DeclaringClass`: the class where the member is declared
+
+Example:
+
+```cpp
+GetMemberOffset<UIText, UIElement>(&UIElement::anchorMin)
+```
+
+This computes the offset of `UIElement::anchorMin` inside a full `UIText` object.
 
 ### 14.3 TypeInfo
 
 ```cpp
 class TypeInfo {
 public:
-    using FactoryFn  = std::function<ECS::Component*()>;
-    using DestroyerFn= std::function<void(ECS::Component*)>;
+    using FactoryFunc = ECS::Component*(*)(void* context);
+    using DestroyFunc = void(*)(ECS::Component*, void* context);
 
-    TypeInfo(const std::string& typeName,
-             FactoryFn factory,
-             DestroyerFn destroyer);
+    TypeInfo() = default;
+    TypeInfo(const char* typeName, FactoryFunc factory = nullptr);
 
     // Component creation/destruction (ABI-safe across DLL boundaries):
-    ECS::Component* Create()                    const;
-    void            Destroy(ECS::Component* c)  const;
+    ECS::Component* Create() const;
+    void Destroy(ECS::Component* c) const;
+    void SetFactory(FactoryFunc fn, void* ctx);
+    void SetDestroyer(DestroyFunc fn, void* ctx);
 
     // Property registry:
     void AddProperty(const PropertyInfo& prop);
+    void AddPropertyPOD(const char* name, PropertyType type, size_t offset, size_t size, PropertyFlags flags);
+    void AddPropertyPODRange(const char* name, PropertyType type, size_t offset, size_t size, PropertyFlags flags, float rangeMin, float rangeMax);
+    void AddPropertyPODEnum(const char* name, size_t offset, size_t size, PropertyFlags flags, const char* const* enumNames, int enumCount);
+    void AddPropertyPODTyped(const char* name, PropertyType type, size_t offset, size_t size, PropertyFlags flags, const char* extraTypeName);
     const std::vector<PropertyInfo>& GetProperties() const;
     const PropertyInfo* GetProperty(const std::string& name) const;
 
@@ -2772,7 +2791,7 @@ public:
 };
 ```
 
-The factory and destroyer lambdas capture `new T()` and `delete static_cast<T*>(c)` respectively. By keeping these captures inside the DLL that owns the type, destruction is always performed by the same CRT that allocated the object — avoiding cross-DLL heap corruption.
+The runtime stores factory and destroy callbacks as raw function pointers plus opaque context instead of `std::function`. This keeps the reflection metadata POD-friendly across module boundaries and avoids allocator / CRT ownership issues when types come from `GameScripts.dll`.
 
 ### 14.4 TypeRegistry
 
@@ -2781,12 +2800,14 @@ Singleton that maps type name strings to `TypeInfo` objects.
 ```cpp
 static TypeRegistry& GetInstance();
 
-void            RegisterType(const std::string& name, std::unique_ptr<TypeInfo> info);
-bool            HasType(const std::string& name)      const;
-const TypeInfo* GetTypeInfo(const std::string& name)  const;
+void RegisterType(const std::string& typeName, const TypeInfo& info);
+void UnregisterType(const std::string& typeName);
+bool HasType(const std::string& typeName) const;
+const TypeInfo* GetTypeInfo(const std::string& typeName) const;
 ECS::Component* CreateComponent(const std::string& name) const;
 
-const std::unordered_map<std::string, std::unique_ptr<TypeInfo>>& GetRegisteredTypes() const;
+std::vector<std::string> GetRegisteredTypes() const;
+void ForEachType(void(*callback)(const char* typeName, const TypeInfo* info, void* userData), void* userData) const;
 ```
 
 All engine built-in components are registered at startup. Script components (from `GameScripts.dll`) register themselves via `RTB_REGISTER_COMPONENT` which runs as a static initializer when the DLL is loaded.
@@ -2809,9 +2830,11 @@ RTB_COMPONENT(MyComponent)
 ```cpp
 // Generated inside the class:
 virtual const char* GetTypeName() const override { return "MyComponent"; }
+virtual void* GetActualObject() override { return this; }
+virtual const void* GetActualObject() const override { return this; }
 virtual const Reflection::TypeInfo* GetTypeInfo() const override;
-static  const Reflection::TypeInfo* StaticTypeInfo();
-static  void RegisterType();   // Called by RTB_REGISTER_COMPONENT
+static const Reflection::TypeInfo& StaticTypeInfo();
+static Reflection::TypeInfo& MutableTypeInfo();
 ```
 
 **In the .cpp implementation file:**
@@ -2825,7 +2848,48 @@ RTB_REGISTER_COMPONENT(MyComponent)
 RTB_END_REGISTER(MyComponent)
 ```
 
-`RTB_REGISTER_COMPONENT(ClassName)` opens a static registration block that creates a `TypeInfo`, registers factory/destroyer, and begins the property list. `RTB_END_REGISTER(ClassName)` closes the block and registers the type with `TypeRegistry`.
+`RTB_REGISTER_COMPONENT(ClassName)` defines a static registrar object. Its constructor:
+
+1. Retrieves the type's `MutableTypeInfo()`
+2. Sets factory and destroy callbacks for the owning module
+3. Registers each reflected property
+4. Registers the final `TypeInfo` in `TypeRegistry`
+
+Inside that registrar:
+
+- `RTBCurrentClass` is the final reflected type being registered
+- `ThisClass` is the class that declares the property currently being added
+
+For regular properties both are the same type:
+
+```cpp
+using ThisClass = MyComponent;
+
+RTB_REGISTER_COMPONENT(MyComponent)
+    RTB_PROPERTY(speedRef) // GetMemberOffset<MyComponent, MyComponent>(&MyComponent::speedRef)
+RTB_END_REGISTER(MyComponent)
+```
+
+For inherited properties, rebind `ThisClass` inside a scoped block:
+
+```cpp
+using ThisClass = UIText;
+
+RTB_REGISTER_COMPONENT(UIText)
+    RTB_PROPERTY(text)
+    { using ThisClass = UIElement; RTB_PROPERTY(anchorMin) }
+    { using ThisClass = UIElement; RTB_PROPERTY(anchorMax) }
+RTB_END_REGISTER(UIText)
+```
+
+That expands conceptually to:
+
+```cpp
+GetMemberOffset<UIText, UIElement>(&UIElement::anchorMin)
+GetMemberOffset<UIText, UIElement>(&UIElement::anchorMax)
+```
+
+This pattern works across deeper inheritance chains as long as `OwnerClass*` can be converted to `DeclaringClass*`.
 
 **Full property macro reference:**
 
@@ -2847,85 +2911,48 @@ RTB_END_REGISTER(MyComponent)
 
 ### 14.6 Writing a Reflectable Component
 
-Complete example — a component that has a speed float, a target `GameObject` reference, and a light color:
+Complete example: a reflected UI component with its own properties plus inherited reflected layout properties.
 
-**Header** (`Assets/Scripts/Seeker.h`):
+**Header** (`Engine/UI/Elements/UIText.h`):
 
 ```cpp
 #pragma once
-#include <RTBEngine/ECS/Component.h>
-#include <RTBEngine/Reflection/PropertyMacros.h>
+#include "UIElement.h"
 
-class Seeker : public RTBEngine::ECS::Component {
+class UIText : public UIElement {
 public:
-    Seeker();
-    ~Seeker() override;
+    std::string text;
+    Math::Vector4 color = Math::Vector4(1, 1, 1, 1);
+    float fontSize = 16.0f;
 
-    Seeker(const Seeker&) = delete;
-    Seeker& operator=(const Seeker&) = delete;
-
-    //Loop methods
-    void OnAwake() override;
-    void OnStart() override;
-    void OnUpdate(float deltaTime) override;
-    void OnFixedUpdate(float fixedDeltaTime) override;
-    void OnDestroy() override;
-
-    // Reflected properties (Proxy)
-    float                     speedRef  = 3.0f;
-    RTBEngine::ECS::GameObject* targetRef = nullptr;
-
-    RTB_COMPONENT(Seeker)
-
-private:
-    float speed  = 3.0f;
+    RTB_COMPONENT(UIText)
 };
 ```
 
-**Implementation** (`Assets/Scripts/Seeker.cpp`):
+**Implementation** (`Engine/UI/Elements/UIText.cpp`):
 
 ```cpp
-#include "Seeker.h"
-#include <RTBEngine/Core/Logger.h>
-#include <RTBEngine/ECS/GameObject.h>
-#include <RTBEngine/ECS/Transform.h>
+#include "UIText.h"
 
-using ThisClass = Seeker;
+using ThisClass = UIText;
 
-RTB_REGISTER_COMPONENT(Seeker)
-    RTB_PROPERTY_RANGE(speedRef, 0.0f, 20.0f)
-    RTB_PROPERTY_GAMEOBJECT(targetRef)
-RTB_END_REGISTER(Seeker)
-
-Seeker::Seeker() {}
-Seeker::~Seeker() {}
-
-void Seeker::OnAwake() {}
-
-void Seeker::OnStart()
-{
-    speed = speedRef;    // Sync proxy to private member
-
-    if (!targetRef) {
-        RTB_WARN("Seeker: no target assigned.");
-    }
-}
-
-void Seeker::OnUpdate(float deltaTime)
-{
-    if (!targetRef) return;
-
-    auto& myPos     = GetOwner()->GetTransform().GetPosition();
-    auto  targetPos = targetRef->GetTransform().GetPosition();
-
-    auto  dir    = (targetPos - myPos).Normalized();
-    auto  newPos = myPos + dir * speed * deltaTime;
-    GetOwner()->GetTransform().SetPosition(newPos);
-}
-
-void Seeker::OnFixedUpdate(float fixedDeltaTime) {}
-void Seeker::OnDestroy() {}
+RTB_REGISTER_COMPONENT(UIText)
+    RTB_PROPERTY(text)
+    RTB_PROPERTY_COLOR(color)
+    RTB_PROPERTY(fontSize)
+    { using ThisClass = UIElement; RTB_PROPERTY(isVisible) }
+    { using ThisClass = UIElement; RTB_PROPERTY(anchorMin) }
+    { using ThisClass = UIElement; RTB_PROPERTY(anchorMax) }
+    { using ThisClass = UIElement; RTB_PROPERTY(anchoredPosition) }
+    { using ThisClass = UIElement; RTB_PROPERTY(sizeDelta) }
+RTB_END_REGISTER(UIText)
 ```
+
+This is the recommended pattern for inherited reflection:
+
+- keep `using ThisClass = UIText;` for properties declared in `UIText`
+- temporarily switch to `using ThisClass = UIElement;` for inherited members
+- let `RTBCurrentClass` remain `UIText` throughout the whole registration
 
 ### 14.7 TypeInfoBuilder
 
@@ -2978,6 +3005,14 @@ builder
     .PropertyEnum("mode", &MyComponent::modeRef, {"Auto", "Manual", "Custom"})
     .PropertyAsset("texture", &MyComponent::texturePtr, "Texture");
 TypeInfo info = builder.Build();
+```
+
+`TypeInfoBuilder` currently uses `GetMemberOffset<T, T>(member)`, so it is ideal when the property is declared directly on `T`.
+
+For inherited members where the declaring type differs from the owning reflected type, the macro-based registration style is usually clearer because it can express:
+
+```cpp
+GetMemberOffset<OwnerClass, DeclaringClass>(&DeclaringClass::member)
 ```
 
 Template specializations for `MakePropertyInfo` are provided for `Vector2`, `Vector3`, `Vector4`, and `Quaternion` to ensure correct `PropertyType` mapping.
@@ -3050,11 +3085,11 @@ return {
       i.  ComponentRegistry::CreateComponent(type)
       ii. scene.AddComponent(component)
       iii. SceneReflectionUtils::ApplyProperties(component, properties)
-           (writes each property value to the proxy member via offset)
+           (writes each property value through PropertyInfo::GetMutableData(component))
       iv. component.OnValidate()
 4. Deferred UUID resolution:
    For each GameObjectRef property:
-     Resolve UUID → GameObject* and write directly to the proxy pointer offset
+      Resolve UUID -> GameObject* and write through the reflected property accessor
 5. Set parent-child relationships from hierarchy
 6. SceneManager stores the new scene as active
 ```
@@ -3528,7 +3563,7 @@ void OnDestroy() override;
 ### Reflected Proxy Convention
 
 - Reflected proxy members always have the `Ref` suffix: `speedRef`, `targetRef`, `colorRef`.
-- They are declared `public` (the Inspector writes to them via pointer offset).
+- They are declared `public` (the Inspector and serializer access them through reflection metadata).
 - They are grouped under the comment `// Reflected properties (Proxy)`.
 - `RTB_COMPONENT(ClassName)` macro is placed last in the public section.
 - Private non-reflected copies of the same data (if needed) use the plain name: `speed`, `target`.
