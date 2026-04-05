@@ -7,6 +7,7 @@ namespace RTBEngine {
         Component::Component()
             : owner(nullptr)
             , isEnabled(true)
+            , updateTickEnabled(true)
         {
         }
 
@@ -22,6 +23,11 @@ namespace RTBEngine {
         void Component::SetEnabled(bool enabled)
         {
             this->isEnabled = enabled;
+        }
+
+        void Component::SetUpdateTickEnabled(bool enabled)
+        {
+            this->updateTickEnabled = enabled;
         }
 
     }

@@ -129,7 +129,7 @@ namespace RTBEngine {
             }
 
             for (auto& comp : components) {
-                if (comp->IsEnabled()) {
+                if (comp->IsEnabled() && comp->IsUpdateTickEnabled()) {
                     comp->OnUpdate(deltaTime);
                 }
             }

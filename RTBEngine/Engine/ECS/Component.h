@@ -49,6 +49,8 @@ namespace RTBEngine {
 
             void SetEnabled(bool enabled);
             bool IsEnabled() const { return isEnabled; }
+            void SetUpdateTickEnabled(bool enabled);
+            bool IsUpdateTickEnabled() const { return updateTickEnabled; }
 
             virtual const char* GetTypeName() const = 0;
 
@@ -62,6 +64,7 @@ namespace RTBEngine {
         protected:
             GameObject* owner;
             bool isEnabled;
+            bool updateTickEnabled;
         };
 
     }

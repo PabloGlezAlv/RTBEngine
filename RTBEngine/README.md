@@ -91,9 +91,10 @@ This document covers every subsystem in depth — public API, internal design, d
     - 15.2 [SceneLoader](#152-sceneloader)
     - 15.3 [SceneSaver](#153-scenesaver)
     - 15.4 [ScriptManager](#154-scriptmanager)
-    - 15.5 [PrefabLoader](#155-prefabloader)
-    - 15.6 [PrefabSaver](#156-prefabsaver)
-    - 15.7 [Scene Serialization Infrastructure](#157-scene-serialization-infrastructure)
+    - 15.5 [Latent Actions](#155-latent-actions)
+    - 15.6 [PrefabLoader](#156-prefabloader)
+    - 15.7 [PrefabSaver](#157-prefabsaver)
+    - 15.8 [Scene Serialization Infrastructure](#158-scene-serialization-infrastructure)
 16. [UI Subsystem](#16-ui-subsystem)
     - 16.1 [RectTransform](#161-recttransform)
     - 16.2 [UIElement](#162-uielement)
@@ -418,6 +419,8 @@ void Update(float deltaTime);   // Advances scene, physics, and audio
 2. `PhysicsSystem::Update(scene, deltaTime)` — syncs transforms to Bullet bodies, steps the simulation, dispatches collision callbacks.
 3. `AudioSystem::Update()` — advances the FMOD system (required each frame).
 
+`Scene::Update` actually has two passes at the component level: it calls `OnStart()` once for enabled components on the first frame, and then it calls `OnUpdate()` only on components that are both enabled and have `SetUpdateTickEnabled(true)`. This is the mechanism that lets event-driven scripts stay alive while opting out of idle per-frame work.
+
 **Rendering:**
 
 ```cpp
@@ -728,9 +731,19 @@ ECS::GameObject* GetOwner() const;
 
 void SetEnabled(bool enabled);
 bool IsEnabled() const;
+
+void SetUpdateTickEnabled(bool enabled);
+bool IsUpdateTickEnabled() const;
 ```
 
 A component does not receive `OnUpdate` or `OnFixedUpdate` when disabled. `OnDestroy` is still called even on disabled components when the owner is destroyed.
+
+`SetUpdateTickEnabled(false)` is a lighter-weight switch than `SetEnabled(false)`:
+
+- `SetEnabled(false)` disables the component as a whole. In the current engine implementation it blocks `OnUpdate`, `OnFixedUpdate`, and also prevents `OnStart` from being called during the owning `GameObject`'s first update pass.
+- `SetUpdateTickEnabled(false)` only suppresses `OnUpdate`. The component remains enabled and can still participate in other systems that address it directly, such as editor validation, fixed-step logic, or UI/physics event dispatch.
+
+This split exists for event-driven scripts. A component such as a UI animation controller can stay "alive" for pointer events, but keep its per-frame cost at zero while idle. When work starts, it re-enables its update tick; when the work finishes, it disables the tick again.
 
 > **Critical**: `OnAwake` fires inside `AddComponent()`, **before** `SceneReflectionUtils` assigns reflected property values from the scene file. Never read reflected `GameObjectRef` or asset references in `OnAwake`. Use `OnStart` instead.
 
@@ -874,11 +887,18 @@ Transient GameObjects are excluded from scene serialization. Used for editor-onl
 **Lifecycle (called by Scene):**
 
 ```cpp
-void Update(float deltaTime);    // Calls OnUpdate on all enabled components
+void Update(float deltaTime);    // Calls OnStart once, then OnUpdate on enabled components with update tick enabled
 void FixedUpdate();              // Calls OnFixedUpdate on all enabled components
 void Render(Rendering::Camera* camera);  // Calls MeshRenderer / Animator / etc.
 void Start();                    // Calls OnStart on all components (once, at first Update)
 ```
+
+`GameObject::Update` now has two distinct gates:
+
+1. The one-time start phase checks `IsEnabled()` only. This preserves the existing rule that update-tick sleeping does not suppress initialization.
+2. The per-frame phase checks both `IsEnabled()` and `IsUpdateTickEnabled()`. A component can therefore remain enabled for events and ownership/lifecycle purposes while opting out of steady-state frame work.
+
+`FixedUpdate` is unchanged in this iteration and still depends only on `IsEnabled()`.
 
 ### 6.4 Scene
 
@@ -3117,7 +3137,122 @@ const std::string& GetLoadedPath() const;
 
 When `LoadScripts` is called, it loads the DLL and invokes the exported `RTBScripts_RegisterAll` function, which bridges each script component's type information across the DLL boundary using POD structs (no STL crossing). Each type is registered with both `TypeRegistry` and `ComponentRegistry`.
 
-### 15.5 PrefabLoader
+### 15.5 Latent Actions
+
+`Engine/Scripting/LatentActions.h` — Header-only, frame-driven latent action system for component-owned coroutine-style flows in C++17.
+
+This API exists to replace "always do a little work in `OnUpdate`" patterns with explicit short-lived sequences. It is intentionally not C++20 coroutines and intentionally not a global scheduler.
+
+**Public API:**
+
+```cpp
+struct LatentActionHandle {
+    std::uint64_t id = 0;
+    bool IsValid() const;
+    explicit operator bool() const;
+};
+
+class LatentSequence {
+public:
+    LatentSequence& Call(std::function<void()> callback);
+    LatentSequence& Wait(float seconds);
+    LatentSequence& Tween(float durationSec,
+                          std::function<void(float)> onUpdate,
+                          std::function<void()> onComplete = {});
+};
+
+class LatentActionRunner {
+public:
+    LatentActionHandle Play(LatentSequence sequence);
+    void Stop(LatentActionHandle handle);
+    void StopAll();
+    bool HasActiveActions() const;
+    void Tick(float deltaTime);
+};
+```
+
+**Why it is header-only:**
+
+- No new engine `.cpp` file or Visual Studio project change is required.
+- The full implementation is visible to both the engine and `GameScripts.dll`.
+- Most importantly, the runner can live entirely inside the component that owns the work, which keeps captured callbacks in the same module that created them.
+
+**Why there is no global scheduler in the engine DLL:**
+
+`LatentSequence` stores callbacks as `std::function`. For script components, those callbacks usually capture `this` and other script-owned state. If a global engine-side scheduler owned those `std::function` objects, allocation/destruction and captured callable types would cross the `GameScripts.dll` boundary. That is exactly the kind of ownership pattern the engine avoids for ABI safety.
+
+The intended pattern is:
+
+1. A component owns a `LatentActionRunner` as a normal member.
+2. The component builds sequences locally.
+3. The component ticks its own runner from `OnUpdate`.
+4. When the runner becomes idle, the component disables its own update tick.
+
+This keeps lifetime, allocation, callback destruction, and captured state in one module.
+
+**Execution model:**
+
+- `Play(sequence)` returns a `LatentActionHandle`. Invalid handle `0` means the sequence was empty.
+- `Tick(deltaTime)` clamps negative delta to `0`.
+- The runner advances each active action step by step.
+- If a step finishes early and there is leftover time in the current frame, that remaining time is immediately applied to the next step.
+- Multiple zero-duration steps can therefore complete in one frame.
+- New actions started while the runner is already ticking are stored in `pendingAdds` and flushed after the current iteration.
+- `Stop(handle)` and `StopAll()` mark actions as stopped instead of erasing them immediately. Cleanup is deferred until it is safe.
+- A safety limit (`kMaxStepAdvancesPerTick`) stops pathological infinite loops caused by sequences made only of instant-complete steps.
+
+**Step semantics:**
+
+- `Call(callback)` executes immediately, then advances to the next step in the same tick.
+- `Wait(seconds)` accumulates elapsed time and advances once the requested duration has been reached.
+- `Tween(duration, onUpdate, onComplete)` computes normalized progress in the `[0, 1]` range, calls `onUpdate(progress)` each tick, then calls `onComplete()` exactly once when the duration finishes.
+- `Wait(0)` and `Tween(0, ...)` complete immediately. `Tween(0, ...)` still emits `onUpdate(1.0f)` before `onComplete()`.
+
+**Recommended ownership pattern for scripts:**
+
+```cpp
+class MyComponent : public RTBEngine::ECS::Component {
+public:
+    void OnUpdate(float deltaTime) override
+    {
+        latentRunner.Tick(deltaTime);
+        if (!latentRunner.HasActiveActions()) {
+            SetUpdateTickEnabled(false);
+        }
+    }
+
+    void StartAnimation()
+    {
+        activeHandle = latentRunner.Play(
+            RTBEngine::Scripting::LatentSequence()
+                .Call([this]() { /* setup */ })
+                .Tween(0.2f, [this](float t) { /* animate */ })
+                .Call([this]() { /* finalize */ }));
+
+        SetUpdateTickEnabled(activeHandle.IsValid());
+    }
+
+private:
+    RTBEngine::Scripting::LatentActionRunner latentRunner;
+    RTBEngine::Scripting::LatentActionHandle activeHandle;
+};
+```
+
+This is the professional event-driven pattern used by `ButtonStyle`: pointer events start or replace a transition, `OnUpdate` exists only to tick the active transition, and idle buttons do not consume steady-state update work.
+
+**Concrete flow used by `ButtonStyle`:**
+
+1. `OnAwake()` initializes the cached visual state and disables the update tick.
+2. `OnStart()` and `OnValidate()` refresh references, capture the base transform, force the normal visual state, apply it immediately, and keep the component asleep.
+3. Pointer handlers such as `OnPointerEnter()` and `OnPointerDown()` call `StartTransition(nextState)`.
+4. `StartTransition()` snapshots the current visual state, resolves the exact target for the new state, stops the previous latent action, and starts a new `Tween`.
+5. `OnUpdate()` does not contain button logic anymore; it only calls `latentRunner.Tick(deltaTime)`.
+6. When the runner becomes idle, `ButtonStyle` disables its own update tick again.
+7. `OnDestroy()` stops any in-flight transition so no latent callback can outlive the component instance.
+
+This is what removes the old "every frame, keep lerping toward a target forever" behavior. The button now does work only while a transition actually exists, and every transition finishes on an exact final value instead of asymptotically approaching it.
+
+### 15.6 PrefabLoader
 
 `Engine/Scripting/PrefabLoader.h` — Static utility for loading prefab files.
 
@@ -3131,7 +3266,7 @@ public:
 
 Reads a `.lua` prefab file and constructs a `Prefab` with all component snapshots and child prefabs.
 
-### 15.6 PrefabSaver
+### 15.7 PrefabSaver
 
 `Engine/Scripting/PrefabSaver.h` — Static utility for saving prefab files.
 
@@ -3145,7 +3280,7 @@ public:
 
 Serializes a `Prefab` to a `.lua` file in the same format used by `SceneLoader` for individual `GameObject` entries.
 
-### 15.7 Scene Serialization Infrastructure
+### 15.8 Scene Serialization Infrastructure
 
 The scene loading and saving pipeline relies on several specialized utility classes:
 
@@ -3402,6 +3537,8 @@ struct PointerEventData {
 
 `CanvasSystem` performs hit-testing via `PrepareForHitTest()`, walking the element tree in reverse render order to find the front-most `raycastTarget` element under the pointer. It then dispatches the appropriate events by `dynamic_cast`-ing each component on the hit `GameObject` to the handler interfaces.
 
+Pointer-event dispatch is independent from `SetUpdateTickEnabled()`. This is important for event-driven UI scripts: a component can keep its update tick disabled while idle and still receive `OnPointerEnter`, `OnPointerExit`, `OnPointerDown`, `OnPointerUp`, and `OnPointerClick`. That distinction is what makes low-overhead animated controls such as `ButtonStyle` possible.
+
 ---
 
 ## 17. DLL Boundary Safety
@@ -3457,6 +3594,8 @@ These overloads convert to `std::string` inside the engine's CRT — safe becaus
 | Raw pointers (`T*`) | `std::shared_ptr<T>` |
 | `Math::Vector2/3/4` (all-float structs) | `std::function<>` with captures |
 | `Math::Matrix4` | Any STL container |
+
+`LatentActionRunner` follows this rule by design: it is meant to be owned by the same module that creates the callbacks. Script components store their own runner, so captured lambdas are not transferred to an engine-global queue.
 
 ### C4251 Warning Suppression
 
