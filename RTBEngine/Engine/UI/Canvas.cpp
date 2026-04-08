@@ -89,8 +89,8 @@ namespace RTBEngine {
 				if (parentObj && parentObj != owner) {
 					UIElement* parentUI = parentObj->GetComponent<UIElement>();
 					if (parentUI && parentUI->GetRectTransform()) {
-						parentPos = parentUI->GetRectTransform()->GetScreenPosition();
-						parentSize = parentUI->GetRectTransform()->GetScreenSize();
+						parentPos = parentUI->GetRectTransform()->GetLayoutPosition();
+						parentSize = parentUI->GetRectTransform()->GetLayoutSize();
 					}
 				}
 

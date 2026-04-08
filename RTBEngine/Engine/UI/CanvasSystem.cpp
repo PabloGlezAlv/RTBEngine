@@ -147,14 +147,17 @@ namespace RTBEngine {
 			}
 
 			if (input.IsMouseButtonJustReleased(Input::MouseButton::Left)) {
-				if (currentGO) {
-					ExecuteEvents<IPointerUpHandler>(currentGO, eventData,
-						[](IPointerUpHandler* h, const PointerEventData& e) { h->OnPointerUp(e); });
+				eventData.pointerPress = pressedGameObject;
 
-					if (pressedGameObject == currentGO) {
-						ExecuteEvents<IPointerClickHandler>(currentGO, eventData,
-							[](IPointerClickHandler* h, const PointerEventData& e) { h->OnPointerClick(e); });
-					}
+				ECS::GameObject* releaseTarget = pressedGameObject ? pressedGameObject : currentGO;
+				if (releaseTarget) {
+					ExecuteEvents<IPointerUpHandler>(releaseTarget, eventData,
+						[](IPointerUpHandler* h, const PointerEventData& e) { h->OnPointerUp(e); });
+				}
+
+				if (pressedGameObject && pressedGameObject == currentGO) {
+					ExecuteEvents<IPointerClickHandler>(pressedGameObject, eventData,
+						[](IPointerClickHandler* h, const PointerEventData& e) { h->OnPointerClick(e); });
 				}
 				pressedGameObject = nullptr;
 			}

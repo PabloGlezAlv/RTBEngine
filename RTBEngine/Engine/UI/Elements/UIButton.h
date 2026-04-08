@@ -72,6 +72,8 @@ namespace RTBEngine {
 			UIPanel* targetPanel = nullptr;
 
 			ButtonState state = ButtonState::Normal;
+			bool isPointerOver = false;
+			bool isPressed = false;
 
 			std::function<void()> onClick;
 

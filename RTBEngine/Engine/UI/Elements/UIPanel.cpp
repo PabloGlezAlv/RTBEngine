@@ -44,6 +44,26 @@ namespace RTBEngine {
 			hasBorder = border;
 		}
 
+		void UIPanel::SetVisualScale(const Math::Vector2& scale) {
+			visualScale = scale;
+		}
+
+		void UIPanel::SetVisualScale(float x, float y) {
+			visualScale = Math::Vector2(x, y);
+		}
+
+		Math::Vector2 UIPanel::GetVisualScale() const {
+			return visualScale;
+		}
+
+		void UIPanel::SetVisualRotationOffset(float degrees) {
+			visualRotationOffset = degrees;
+		}
+
+		float UIPanel::GetVisualRotationOffset() const {
+			return visualRotationOffset;
+		}
+
 		void UIPanel::DrawRotatedRect(ImDrawList* drawList, float cx, float cy,
 			float halfW, float halfH, float angleDeg, unsigned int color, bool filled)
 		{
@@ -78,8 +98,12 @@ namespace RTBEngine {
 
 			float rx = screenRect.x + offset.x;
 			float ry = screenRect.y + offset.y;
-			float rw = screenRect.z;
-			float rh = screenRect.w;
+			float rw = screenRect.z * visualScale.x;
+			float rh = screenRect.w * visualScale.y;
+
+			const Math::Vector2 pivot = rectTransform->GetPivot();
+			rx += (screenRect.z - rw) * pivot.x;
+			ry += (screenRect.w - rh) * pivot.y;
 
 			ImVec2 min(rx, ry);
 			ImVec2 max(rx + rw, ry + rh);
@@ -96,7 +120,7 @@ namespace RTBEngine {
 				static_cast<int>(backgroundColor.w * 255)
 			);
 
-			float rot = rectTransform->GetRotation();
+			float rot = rectTransform->GetRotation() + visualRotationOffset;
 			if (rot > 0.01f || rot < -0.01f) {
 				DrawRotatedRect(drawList, cx, cy, halfW, halfH, rot, bgColor, true);
 			} else {

@@ -53,6 +53,9 @@ namespace RTBEngine {
             void CalculateScreenRect(const RTBEngine::Math::Vector2& parentPos,
                 const RTBEngine::Math::Vector2& parentSize);
 
+            RTBEngine::Math::Vector2 GetLayoutPosition() const { return layoutPosition; }
+            RTBEngine::Math::Vector2 GetLayoutSize() const { return layoutSize; }
+            RTBEngine::Math::Vector4 GetLayoutRect() const { return RTBEngine::Math::Vector4(layoutPosition.x, layoutPosition.y, layoutSize.x, layoutSize.y); }
             RTBEngine::Math::Vector2 GetScreenPosition() const { return screenPosition; }
             RTBEngine::Math::Vector2 GetScreenSize() const { return screenSize; }
             RTBEngine::Math::Vector4 GetScreenRect() const { return RTBEngine::Math::Vector4(screenPosition.x, screenPosition.y, screenSize.x, screenSize.y); }
@@ -67,6 +70,8 @@ namespace RTBEngine {
 
             float rotation = 0.0f;
 
+            RTBEngine::Math::Vector2 layoutPosition{ 0.0f, 0.0f };
+            RTBEngine::Math::Vector2 layoutSize{ 0.0f, 0.0f };
             RTBEngine::Math::Vector2 screenPosition{ 0.0f, 0.0f };
             RTBEngine::Math::Vector2 screenSize{ 0.0f, 0.0f };
         };

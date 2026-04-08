@@ -70,6 +70,8 @@ namespace RTBEngine {
 		void UIButton::SetInteractable(bool value) {
 			interactable = value;
 			if (!interactable) {
+				isPointerOver = false;
+				isPressed = false;
 				state = ButtonState::Disabled;
 			}
 			else if (state == ButtonState::Disabled) {
@@ -80,32 +82,39 @@ namespace RTBEngine {
 
 		void UIButton::OnPointerEnter(const PointerEventData& eventData) {
 			if (!interactable) return;
-			if (!enableDefaultHoverVisuals) return;
-			if (state == ButtonState::Normal) {
-				state = ButtonState::Hovered;
+			isPointerOver = true;
+			state = isPressed ? ButtonState::Pressed : ButtonState::Hovered;
+			if (enableDefaultHoverVisuals) {
 				UpdateVisuals();
 			}
 		}
 
 		void UIButton::OnPointerExit(const PointerEventData& eventData) {
 			if (!interactable) return;
-			if (!enableDefaultHoverVisuals) return;
+			isPointerOver = false;
 			state = ButtonState::Normal;
-			UpdateVisuals();
+			if (enableDefaultHoverVisuals) {
+				UpdateVisuals();
+			}
 		}
 
 		void UIButton::OnPointerDown(const PointerEventData& eventData) {
 			if (!interactable) return;
-			if (!enableDefaultHoverVisuals) return;
+			isPointerOver = true;
+			isPressed = true;
 			state = ButtonState::Pressed;
-			UpdateVisuals();
+			if (enableDefaultHoverVisuals) {
+				UpdateVisuals();
+			}
 		}
 
 		void UIButton::OnPointerUp(const PointerEventData& eventData) {
 			if (!interactable) return;
-			if (!enableDefaultHoverVisuals) return;
-			state = ButtonState::Hovered;
-			UpdateVisuals();
+			isPressed = false;
+			state = isPointerOver ? ButtonState::Hovered : ButtonState::Normal;
+			if (enableDefaultHoverVisuals) {
+				UpdateVisuals();
+			}
 		}
 
 		void UIButton::OnPointerClick(const PointerEventData& eventData) {

@@ -60,14 +60,20 @@ namespace RTBEngine {
             );
 
             if (anchorMin.x == anchorMax.x && anchorMin.y == anchorMax.y) {
+                layoutSize = sizeDelta;
+                layoutPosition = RTBEngine::Math::Vector2(
+                    anchorMinPos.x + anchoredPosition.x - (layoutSize.x * pivot.x),
+                    anchorMinPos.y - anchoredPosition.y - (layoutSize.y * pivot.y)
+                );
+
                 screenSize = RTBEngine::Math::Vector2(
-                    sizeDelta.x * scale.x,
-                    sizeDelta.y * scale.y
+                    layoutSize.x * scale.x,
+                    layoutSize.y * scale.y
                 );
 
                 screenPosition = RTBEngine::Math::Vector2(
-                    anchorMinPos.x + anchoredPosition.x - (screenSize.x * pivot.x),
-                    anchorMinPos.y - anchoredPosition.y - (screenSize.y * pivot.y)
+                    layoutPosition.x + (layoutSize.x - screenSize.x) * pivot.x,
+                    layoutPosition.y + (layoutSize.y - screenSize.y) * pivot.y
                 );
             }
             else {
@@ -80,15 +86,22 @@ namespace RTBEngine {
                     anchorBottom - anchorTop
                 );
 
-                screenSize = RTBEngine::Math::Vector2(
-                    (anchorSize.x + sizeDelta.x) * scale.x,
-                    (anchorSize.y + sizeDelta.y) * scale.y
+                layoutSize = RTBEngine::Math::Vector2(
+                    anchorSize.x + sizeDelta.x,
+                    anchorSize.y + sizeDelta.y
                 );
 
-                screenPosition = RTBEngine::Math::Vector2(
+                layoutPosition = RTBEngine::Math::Vector2(
                     anchorMinPos.x + anchoredPosition.x,
                     anchorTop      - anchoredPosition.y
                 );
+
+                screenSize = RTBEngine::Math::Vector2(
+                    layoutSize.x * scale.x,
+                    layoutSize.y * scale.y
+                );
+
+                screenPosition = layoutPosition;
             }
         }
 

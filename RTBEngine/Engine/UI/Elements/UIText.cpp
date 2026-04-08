@@ -2,7 +2,9 @@
 #include "../../Rendering/Font.h"
 #include "../../Core/ResourceManager.h"
 #include "../UIRenderContext.h"
+#include "../../Core/Logger.h"
 #include <imgui.h>
+#include <algorithm>
 
 namespace RTBEngine {
 	namespace UI {

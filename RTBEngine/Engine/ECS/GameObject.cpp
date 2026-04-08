@@ -1,5 +1,6 @@
 #include "GameObject.h"
 #include "../Reflection/TypeInfo.h"
+#include "../Core/Logger.h"
 #include <objbase.h>
 #include <cstdio>
 
@@ -57,6 +58,7 @@ namespace RTBEngine {
                 component->SetOwner(this);
                 auto deleter = MakeComponentDeleter(component);
                 components.push_back(std::unique_ptr<Component, std::function<void(Component*)>>(component, std::move(deleter)));
+                D
                 component->OnAwake();
             }
         }
@@ -120,9 +122,16 @@ namespace RTBEngine {
             if (!isActive) return;
 
             if (!started) {
-                for (auto& comp : components) {
-                    if (comp->IsEnabled()) {
-                        comp->OnStart();
+                for (size_t i = 0; i < components.size(); ++i) {
+                    Component* component = components[i].get();
+
+                    if (!component) {
+                        RTB_WARN("GameObject::Update encountered null component during OnStart.");
+                        continue;
+                    }
+
+                    if (component->IsEnabled()) {
+                        component->OnStart();
                     }
                 }
                 started = true;

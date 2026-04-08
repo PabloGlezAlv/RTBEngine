@@ -23,6 +23,11 @@ namespace RTBEngine {
 			void SetBorderColor(const Math::Vector4& color);
 			void SetBorderThickness(float thickness);
 			void SetHasBorder(bool hasBorder);
+			void SetVisualScale(const Math::Vector2& scale);
+			void SetVisualScale(float x, float y);
+			Math::Vector2 GetVisualScale() const;
+			void SetVisualRotationOffset(float degrees);
+			float GetVisualRotationOffset() const;
 
 			virtual void Render() override;
 
@@ -33,6 +38,8 @@ namespace RTBEngine {
 			bool hasBorder = false;
 
 			// Animation support
+			Math::Vector2 visualScale = Math::Vector2(1.0f, 1.0f);
+			float visualRotationOffset = 0.0f;
 			std::function<void(ImDrawList*, float, float, float, float)> onRenderDecorations;
 
 			RTB_COMPONENT(UIPanel)
