@@ -124,6 +124,26 @@ private:
                     nullptr                                                             \
                 );
 
+#define RTB_PROPERTY_SERIALIZED_HIDDEN(PropName)                                        \
+                info.AddPropertyPOD(                                                    \
+                    #PropName,                                                          \
+                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
+                    RTB_MEMBER_OFFSET(PropName),                                        \
+                    sizeof(std::declval<ThisClass>().PropName),                         \
+                    RTBEngine::Reflection::PropertyFlags::Serialize | RTBEngine::Reflection::PropertyFlags::HideInInspector \
+                );                                                                      \
+                RTB__BRIDGE_PROP(                                                       \
+                    #PropName,                                                          \
+                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
+                    RTB_MEMBER_OFFSET(PropName),                                        \
+                    sizeof(std::declval<ThisClass>().PropName),                         \
+                    RTBEngine::Reflection::PropertyFlags::Serialize | RTBEngine::Reflection::PropertyFlags::HideInInspector, \
+                    0.0f,                                                               \
+                    0.0f,                                                               \
+                    0,                                                                  \
+                    nullptr                                                             \
+                );
+
 // Registers a property with range for sliders
 #define RTB_PROPERTY_RANGE(PropName, Min, Max)                                          \
                 info.AddPropertyPODRange(                                               \

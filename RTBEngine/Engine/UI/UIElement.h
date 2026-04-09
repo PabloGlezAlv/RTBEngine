@@ -6,6 +6,10 @@
 #include <memory>
 
 namespace RTBEngine {
+	namespace ECS {
+		class GameObject;
+	}
+
 	namespace UI {
 
 #pragma warning(push)
@@ -18,6 +22,7 @@ namespace RTBEngine {
 			RectTransform* GetRectTransform() const { return rectTransform.get(); }
 
 			void SyncRectTransform();
+			void PropagateDirtyToChildren();
 
 			void SetVisible(bool visible) { isVisible = visible; }
 			bool IsVisible() const { return isVisible; }
@@ -45,6 +50,9 @@ namespace RTBEngine {
 
 		protected:
 			std::unique_ptr<RectTransform> rectTransform;
+
+			// Track parent changes to mark transform dirty when reparented
+			ECS::GameObject* lastParent = nullptr;
 		};
 #pragma warning(pop)
 

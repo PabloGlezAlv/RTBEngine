@@ -45,28 +45,46 @@ namespace RTBEngine {
                 rect->SetPivot(ReadOptionalVector2(L, tableIndex, "pivot", rect->GetPivot()));
                 rect->SetAnchoredPosition(ReadOptionalVector2(L, tableIndex, "anchoredPosition", rect->GetAnchoredPosition()));
                 rect->SetSize(ReadOptionalVector2(L, tableIndex, "sizeDelta", rect->GetSize()));
+                rect->SetRotation(ReadOptionalFloat(L, tableIndex, "rotation", rect->GetRotation()));
+                rect->SetScale(ReadOptionalVector2(L, tableIndex, "scale", rect->GetScale()));
             }
 
             void ConfigureCanvas(lua_State* L, int tableIndex, UI::Canvas* comp) {
-                comp->SetSortOrder(static_cast<int>(ReadOptionalFloat(L, tableIndex, "sortOrder", 0.0f)));
+                comp->SetSortOrder(static_cast<int>(ReadOptionalFloat(L, tableIndex, "sortOrder", comp->GetSortOrder())));
             }
 
             void SyncUIElementProxies(lua_State* L, int tableIndex, UI::UIElement* comp) {
-                comp->isVisible        = ReadOptionalBool(L, tableIndex, "isVisible", true);
-                comp->anchorMin        = ReadOptionalVector2(L, tableIndex, "anchorMin", Math::Vector2(0.0f, 0.0f));
-                comp->anchorMax        = ReadOptionalVector2(L, tableIndex, "anchorMax", Math::Vector2(0.0f, 0.0f));
-                comp->pivot            = ReadOptionalVector2(L, tableIndex, "pivot", Math::Vector2(0.5f, 0.5f));
-                comp->anchoredPosition = ReadOptionalVector2(L, tableIndex, "anchoredPosition", Math::Vector2(0.0f, 0.0f));
-                comp->sizeDelta        = ReadOptionalVector2(L, tableIndex, "sizeDelta", Math::Vector2(100.0f, 100.0f));
+                comp->isVisible        = ReadOptionalBool(L, tableIndex, "isVisible", comp->isVisible);
+                comp->anchorMin        = ReadOptionalVector2(L, tableIndex, "anchorMin", comp->anchorMin);
+                comp->anchorMax        = ReadOptionalVector2(L, tableIndex, "anchorMax", comp->anchorMax);
+                comp->pivot            = ReadOptionalVector2(L, tableIndex, "pivot", comp->pivot);
+                comp->anchoredPosition = ReadOptionalVector2(L, tableIndex, "anchoredPosition", comp->anchoredPosition);
+                comp->sizeDelta        = ReadOptionalVector2(L, tableIndex, "sizeDelta", comp->sizeDelta);
+                comp->rotation         = ReadOptionalFloat(L, tableIndex, "rotation", comp->rotation);
+                comp->scale            = ReadOptionalVector2(L, tableIndex, "scale", comp->scale);
                 comp->SyncRectTransform();
             }
 
             void ConfigureUIText(lua_State* L, int tableIndex, UI::UIText* comp) {
-                comp->SetText(ReadOptionalString(L, tableIndex, "text", "New Text"));
-                comp->SetColor(ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(1, 1, 1, 1)));
-                comp->SetFontSize(ReadOptionalFloat(L, tableIndex, "fontSize", 14.0f));
+                comp->SetText(ReadOptionalString(L, tableIndex, "text", comp->GetText()));
+                comp->SetColor(ReadOptionalVector4(L, tableIndex, "color", comp->GetColor()));
+                comp->SetFontSize(ReadOptionalFloat(L, tableIndex, "fontSize", comp->GetFontSize()));
 
-                const std::string alignStr = ReadOptionalString(L, tableIndex, "alignment", "Left");
+                const char* currentAlignment = "Left";
+                switch (comp->GetAlignment()) {
+                case UI::TextAlignment::Center:
+                    currentAlignment = "Center";
+                    break;
+                case UI::TextAlignment::Right:
+                    currentAlignment = "Right";
+                    break;
+                case UI::TextAlignment::Left:
+                default:
+                    currentAlignment = "Left";
+                    break;
+                }
+
+                const std::string alignStr = ReadOptionalString(L, tableIndex, "alignment", currentAlignment);
                 if (alignStr == "Center")
                     comp->SetAlignment(UI::TextAlignment::Center);
                 else if (alignStr == "Right")
@@ -88,28 +106,28 @@ namespace RTBEngine {
                     if (tex) comp->SetTexture(tex);
                 }
 
-                comp->SetTint(ReadOptionalVector4(L, tableIndex, "tintColor", Math::Vector4(1, 1, 1, 1)));
-                comp->SetPreserveAspect(ReadOptionalBool(L, tableIndex, "preserveAspect", false));
+                comp->SetTint(ReadOptionalVector4(L, tableIndex, "tintColor", comp->GetTint()));
+                comp->SetPreserveAspect(ReadOptionalBool(L, tableIndex, "preserveAspect", comp->GetPreserveAspect()));
 
                 SyncUIElementProxies(L, tableIndex, comp);
             }
 
             void ConfigureUIPanel(lua_State* L, int tableIndex, UI::UIPanel* comp) {
-                comp->SetBackgroundColor(ReadOptionalVector4(L, tableIndex, "backgroundColor", Math::Vector4(1, 1, 1, 1)));
-                comp->SetBorderColor(ReadOptionalVector4(L, tableIndex, "borderColor", Math::Vector4(1, 1, 1, 1)));
-                comp->SetBorderThickness(ReadOptionalFloat(L, tableIndex, "borderThickness", 0.0f));
-                comp->SetHasBorder(ReadOptionalBool(L, tableIndex, "hasBorder", false));
+                comp->SetBackgroundColor(ReadOptionalVector4(L, tableIndex, "backgroundColor", comp->GetBackgroundColor()));
+                comp->SetBorderColor(ReadOptionalVector4(L, tableIndex, "borderColor", comp->borderColor));
+                comp->SetBorderThickness(ReadOptionalFloat(L, tableIndex, "borderThickness", comp->borderThickness));
+                comp->SetHasBorder(ReadOptionalBool(L, tableIndex, "hasBorder", comp->hasBorder));
 
                 SyncUIElementProxies(L, tableIndex, comp);
             }
 
             void ConfigureUIButton(lua_State* L, int tableIndex, UI::UIButton* comp) {
-                comp->SetNormalColor(ReadOptionalVector4(L, tableIndex, "normalColor", Math::Vector4(1, 1, 1, 1)));
-                comp->SetHoveredColor(ReadOptionalVector4(L, tableIndex, "hoveredColor", Math::Vector4(0.9f, 0.9f, 0.9f, 1)));
-                comp->SetPressedColor(ReadOptionalVector4(L, tableIndex, "pressedColor", Math::Vector4(0.7f, 0.7f, 0.7f, 1)));
-                comp->SetDisabledColor(ReadOptionalVector4(L, tableIndex, "disabledColor", Math::Vector4(0.5f, 0.5f, 0.5f, 1)));
+                comp->SetNormalColor(ReadOptionalVector4(L, tableIndex, "normalColor", comp->normalColor));
+                comp->SetHoveredColor(ReadOptionalVector4(L, tableIndex, "hoveredColor", comp->hoveredColor));
+                comp->SetPressedColor(ReadOptionalVector4(L, tableIndex, "pressedColor", comp->pressedColor));
+                comp->SetDisabledColor(ReadOptionalVector4(L, tableIndex, "disabledColor", comp->disabledColor));
                 // Assign directly to avoid UpdateVisuals() side-effect during scene load
-                comp->interactable = ReadOptionalBool(L, tableIndex, "interactable", true);
+                comp->interactable = ReadOptionalBool(L, tableIndex, "interactable", comp->interactable);
             }
 
             void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp) {

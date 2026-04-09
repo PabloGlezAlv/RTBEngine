@@ -58,7 +58,6 @@ namespace RTBEngine {
                 component->SetOwner(this);
                 auto deleter = MakeComponentDeleter(component);
                 components.push_back(std::unique_ptr<Component, std::function<void(Component*)>>(component, std::move(deleter)));
-                D
                 component->OnAwake();
             }
         }

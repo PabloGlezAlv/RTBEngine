@@ -2,6 +2,7 @@
 #include "UIElement.h"
 #include "../ECS/GameObject.h"
 #include <functional>
+#include <algorithm>
 
 namespace RTBEngine {
 	namespace UI {
@@ -75,7 +76,24 @@ namespace RTBEngine {
 			collectRecursive(owner);
 		}
 
+		// Helper to get hierarchy depth for a GameObject
+		static int GetHierarchyDepth(ECS::GameObject* obj) {
+			int depth = 0;
+			ECS::GameObject* parent = obj->GetParent();
+			while (parent) {
+				depth++;
+				parent = parent->GetParent();
+			}
+			return depth;
+		}
+
 		void Canvas::UpdateRectTransforms(const Math::Vector2& screenSize) {
+			// Sort elements by hierarchy depth to ensure parents are processed before children
+			std::sort(cachedUIElements.begin(), cachedUIElements.end(),
+				[](UIElement* a, UIElement* b) {
+					return GetHierarchyDepth(a->GetOwner()) < GetHierarchyDepth(b->GetOwner());
+				});
+
 			for (UIElement* element : cachedUIElements) {
 				if (!element) continue;
 
@@ -83,18 +101,25 @@ namespace RTBEngine {
 				if (!rt) continue;
 
 				ECS::GameObject* parentObj = element->GetOwner()->GetParent();
-				Math::Vector2 parentPos(0.0f, 0.0f);
-				Math::Vector2 parentSize = screenSize;
+
+				// Default: canvas is the "root" parent with scale 1.0
+				Math::Vector2 parentWorldPos(0.0f, 0.0f);
+				Math::Vector2 parentWorldSize = screenSize;
+				Math::Vector2 parentLossyScale(1.0f, 1.0f);
 
 				if (parentObj && parentObj != owner) {
 					UIElement* parentUI = parentObj->GetComponent<UIElement>();
 					if (parentUI && parentUI->GetRectTransform()) {
-						parentPos = parentUI->GetRectTransform()->GetLayoutPosition();
-						parentSize = parentUI->GetRectTransform()->GetLayoutSize();
+						RectTransform* parentRT = parentUI->GetRectTransform();
+						// KEY FIX: Use parent's WORLD values (scaled) not layout values (unscaled)
+						parentWorldPos = parentRT->GetWorldPosition();
+						parentWorldSize = parentRT->GetWorldSize();
+						parentLossyScale = parentRT->GetLossyScale();
 					}
 				}
 
-				rt->CalculateScreenRect(parentPos, parentSize);
+				// Calculate this element's world transform using parent's world values
+				rt->CalculateWorldTransform(parentWorldPos, parentWorldSize, parentLossyScale);
 			}
 		}
 

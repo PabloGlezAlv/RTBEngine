@@ -14,10 +14,13 @@ namespace RTBEngine {
 			RTB_PROPERTY(hasBorder)
 			{ using ThisClass = UIElement; RTB_PROPERTY(isVisible) }
 			{ using ThisClass = UIElement; RTB_PROPERTY(raycastTarget) }
-			{ using ThisClass = UIElement; RTB_PROPERTY(anchorMin) }
-			{ using ThisClass = UIElement; RTB_PROPERTY(anchorMax) }
-			{ using ThisClass = UIElement; RTB_PROPERTY(anchoredPosition) }
-			{ using ThisClass = UIElement; RTB_PROPERTY(sizeDelta) }
+			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(anchorMin) }
+			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(anchorMax) }
+			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(pivot) }
+			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(anchoredPosition) }
+			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(sizeDelta) }
+			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(rotation) }
+			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(scale) }
 		RTB_END_REGISTER(UIPanel)
 
 		UIPanel::UIPanel()
@@ -42,26 +45,6 @@ namespace RTBEngine {
 
 		void UIPanel::SetHasBorder(bool border) {
 			hasBorder = border;
-		}
-
-		void UIPanel::SetVisualScale(const Math::Vector2& scale) {
-			visualScale = scale;
-		}
-
-		void UIPanel::SetVisualScale(float x, float y) {
-			visualScale = Math::Vector2(x, y);
-		}
-
-		Math::Vector2 UIPanel::GetVisualScale() const {
-			return visualScale;
-		}
-
-		void UIPanel::SetVisualRotationOffset(float degrees) {
-			visualRotationOffset = degrees;
-		}
-
-		float UIPanel::GetVisualRotationOffset() const {
-			return visualRotationOffset;
 		}
 
 		void UIPanel::DrawRotatedRect(ImDrawList* drawList, float cx, float cy,
@@ -98,12 +81,8 @@ namespace RTBEngine {
 
 			float rx = screenRect.x + offset.x;
 			float ry = screenRect.y + offset.y;
-			float rw = screenRect.z * visualScale.x;
-			float rh = screenRect.w * visualScale.y;
-
-			const Math::Vector2 pivot = rectTransform->GetPivot();
-			rx += (screenRect.z - rw) * pivot.x;
-			ry += (screenRect.w - rh) * pivot.y;
+			float rw = screenRect.z;
+			float rh = screenRect.w;
 
 			ImVec2 min(rx, ry);
 			ImVec2 max(rx + rw, ry + rh);
@@ -120,7 +99,7 @@ namespace RTBEngine {
 				static_cast<int>(backgroundColor.w * 255)
 			);
 
-			float rot = rectTransform->GetRotation() + visualRotationOffset;
+			float rot = rectTransform->GetRotation();
 			if (rot > 0.01f || rot < -0.01f) {
 				DrawRotatedRect(drawList, cx, cy, halfW, halfH, rot, bgColor, true);
 			} else {

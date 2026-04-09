@@ -5,6 +5,7 @@
 #include "../../Core/Logger.h"
 #include <imgui.h>
 #include <algorithm>
+#include <cmath>
 
 namespace RTBEngine {
 	namespace UI {
@@ -18,10 +19,13 @@ namespace RTBEngine {
 			RTB_PROPERTY_FONT(font)
 			{ using ThisClass = UIElement; RTB_PROPERTY(isVisible) }
 			{ using ThisClass = UIElement; RTB_PROPERTY(raycastTarget) }
-			{ using ThisClass = UIElement; RTB_PROPERTY(anchorMin) }
-			{ using ThisClass = UIElement; RTB_PROPERTY(anchorMax) }
-			{ using ThisClass = UIElement; RTB_PROPERTY(anchoredPosition) }
-			{ using ThisClass = UIElement; RTB_PROPERTY(sizeDelta) }
+			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(anchorMin) }
+			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(anchorMax) }
+			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(pivot) }
+			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(anchoredPosition) }
+			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(sizeDelta) }
+			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(rotation) }
+			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(scale) }
 		RTB_END_REGISTER(UIText)
 
 		UIText::UIText()
@@ -58,6 +62,15 @@ namespace RTBEngine {
 			Math::Vector4 screenRect = rectTransform->GetScreenRect();
 			ImDrawList* drawList = UIRenderContext::GetDrawList();
 			Math::Vector2 offset = UIRenderContext::Offset;
+			Math::Vector2 lossyScale = rectTransform->GetLossyScale();
+			float effectiveScale = (std::abs(lossyScale.x) + std::abs(lossyScale.y)) * 0.5f;
+			if (effectiveScale < 0.01f) {
+				effectiveScale = 0.01f;
+			}
+			float effectiveFontSize = fontSize * effectiveScale;
+			if (effectiveFontSize < 1.0f) {
+				effectiveFontSize = 1.0f;
+			}
 
 			Rendering::Font* activeFont = font;
 			if (!activeFont) {
@@ -66,14 +79,14 @@ namespace RTBEngine {
 
 			ImFont* imFont = nullptr;
 			if (activeFont) {
-				imFont = activeFont->GetImFont(fontSize);
+				imFont = activeFont->GetImFont(effectiveFontSize);
 			}
 
 			if (!imFont) {
 				imFont = ImGui::GetFont();
 			}
 
-			ImVec2 textSize = imFont->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, text.c_str());
+			ImVec2 textSize = imFont->CalcTextSizeA(effectiveFontSize, FLT_MAX, 0.0f, text.c_str());
 
 			ImVec2 textPos(screenRect.x + offset.x, screenRect.y + offset.y);
 
@@ -99,7 +112,7 @@ namespace RTBEngine {
 				static_cast<int>(color.w * 255)
 			);
 
-			drawList->AddText(imFont, fontSize, textPos, textColor, text.c_str());
+			drawList->AddText(imFont, effectiveFontSize, textPos, textColor, text.c_str());
 		}
 
 	}
