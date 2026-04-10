@@ -5,24 +5,9 @@ namespace RTBEngine {
 	namespace UI {
 
 		UIElement::UIElement() {
-			rectTransform = std::make_unique<RectTransform>();
 		}
 
 		UIElement::~UIElement() {
-
-		}
-
-		void UIElement::SyncRectTransform() {
-			if (!rectTransform) return;
-			rectTransform->SetAnchorMin(anchorMin);
-			rectTransform->SetAnchorMax(anchorMax);
-			rectTransform->SetPivot(pivot);
-			rectTransform->SetAnchoredPosition(anchoredPosition);
-			rectTransform->SetSize(sizeDelta);
-			rectTransform->SetRotation(rotation);
-			rectTransform->SetScale(scale);
-
-			PropagateDirtyToChildren();
 		}
 
 		void UIElement::PropagateDirtyToChildren() {
@@ -33,67 +18,58 @@ namespace RTBEngine {
 
 				UIElement* childUI = child->GetComponent<UIElement>();
 				if (childUI) {
-					if (childUI->GetRectTransform()) {
-						childUI->GetRectTransform()->SetDirty();
-					}
+					RectTransform* childRT = childUI->GetRectTransform();
+					if (childRT->IsDirty()) continue;
+					childRT->SetDirty();
 					childUI->PropagateDirtyToChildren();
 				}
 			}
 		}
 
 		void UIElement::SetAnchorMin(const Math::Vector2& value) {
-			anchorMin = value;
-			if (rectTransform) { rectTransform->SetAnchorMin(value); }
+			rectTransform.SetAnchorMin(value);
 			PropagateDirtyToChildren();
 		}
 
 		void UIElement::SetAnchorMax(const Math::Vector2& value) {
-			anchorMax = value;
-			if (rectTransform) { rectTransform->SetAnchorMax(value); }
+			rectTransform.SetAnchorMax(value);
 			PropagateDirtyToChildren();
 		}
 
 		void UIElement::SetPivot(const Math::Vector2& value) {
-			pivot = value;
-			if (rectTransform) { rectTransform->SetPivot(value); }
+			rectTransform.SetPivot(value);
 			PropagateDirtyToChildren();
 		}
 
 		void UIElement::SetAnchoredPosition(const Math::Vector2& value) {
-			anchoredPosition = value;
-			if (rectTransform) { rectTransform->SetAnchoredPosition(value); }
+			rectTransform.SetAnchoredPosition(value);
 			PropagateDirtyToChildren();
 		}
 
 		void UIElement::SetSizeDelta(const Math::Vector2& value) {
-			sizeDelta = value;
-			if (rectTransform) { rectTransform->SetSize(value); }
+			rectTransform.SetSize(value);
 			PropagateDirtyToChildren();
 		}
 
 		void UIElement::SetRotation(float degrees) {
-			rotation = degrees;
-			if (rectTransform) { rectTransform->SetRotation(degrees); }
+			rectTransform.SetRotation(degrees);
 			PropagateDirtyToChildren();
 		}
 
 		void UIElement::SetScale(const Math::Vector2& value) {
-			scale = value;
-			if (rectTransform) { rectTransform->SetScale(value); }
+			rectTransform.SetScale(value);
 			PropagateDirtyToChildren();
 		}
 
 		void UIElement::OnAwake() {
-			SyncRectTransform();
+			rectTransform.SetDirty();
 		}
 
 		void UIElement::OnParentChanged(ECS::GameObject* oldParent, ECS::GameObject* newParent) {
 			(void)oldParent;
 			(void)newParent;
 
-			if (rectTransform) {
-				rectTransform->SetDirty();
-			}
+			rectTransform.SetDirty();
 			PropagateDirtyToChildren();
 		}
 

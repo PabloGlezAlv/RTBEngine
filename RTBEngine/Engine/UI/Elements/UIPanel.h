@@ -2,7 +2,6 @@
 #include "../UIElement.h"
 #include "../../Math/Vectors/Vector4.h"
 #include "../../Reflection/PropertyMacros.h"
-#include <functional>
 
 struct ImDrawList;
 
@@ -31,9 +30,10 @@ namespace RTBEngine {
 			Math::Vector4 borderColor = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 			float borderThickness = 1.0f;
 			bool hasBorder = false;
-			std::function<void(ImDrawList*, float, float, float, float)> onRenderDecorations;
-
 			RTB_COMPONENT(UIPanel)
+
+		protected:
+			virtual void OnRenderDecorations(ImDrawList* drawList, float minX, float minY, float maxX, float maxY) {}
 
 		private:
 			void DrawRotatedRect(ImDrawList* drawList, float cx, float cy,

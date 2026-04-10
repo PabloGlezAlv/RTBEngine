@@ -36,6 +36,9 @@ namespace RTBEngine {
             template<typename T>
             bool HasComponent();
 
+            template<typename T>
+            T* GetComponentInChildren(int maxDepth = -1);
+
             using ComponentPtr = std::unique_ptr<Component, std::function<void(Component*)>>;
             const std::vector<ComponentPtr>& GetComponents() const { return components; }
 
@@ -60,6 +63,8 @@ namespace RTBEngine {
             void RemoveChild(GameObject* child);
             const std::vector<GameObject*>& GetChildren() const { return children; }
 
+            // Incremented on every AddChild/RemoveChild.
+            static uint32_t GetHierarchyVersion();
 
             void SetActive(bool active);
             bool IsActive() const { return isActive; }
@@ -108,6 +113,23 @@ namespace RTBEngine {
         bool GameObject::HasComponent()
         {
             return GetComponent<T>() != nullptr;
+        }
+
+        template<typename T>
+        T* GameObject::GetComponentInChildren(int maxDepth)
+        {
+            T* result = GetComponent<T>();
+            if (result) return result;
+
+            if (maxDepth == 0) return nullptr;
+
+            const int childDepth = (maxDepth > 0) ? maxDepth - 1 : -1;
+            for (GameObject* child : children) {
+                if (!child) continue;
+                result = child->GetComponentInChildren<T>(childDepth);
+                if (result) return result;
+            }
+            return nullptr;
         }
 
     }

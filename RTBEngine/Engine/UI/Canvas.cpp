@@ -2,6 +2,7 @@
 #include "UIElement.h"
 #include "../ECS/GameObject.h"
 #include <functional>
+#include <cstdint>
 
 namespace RTBEngine {
 	namespace UI {
@@ -22,15 +23,12 @@ namespace RTBEngine {
 
 		void Canvas::OnAwake() {
 			isInitialized = true;
+			SetUpdateTickEnabled(false);
 		}
 
 		void Canvas::OnStart() {
-			CollectUIElements();
-		}
-
-		void Canvas::OnUpdate(float deltaTime) {
-			// Recollect UI elements (in case children were added/removed)
-			CollectUIElements();
+			hierarchyDirty = true;
+			CollectUIElementsIfNeeded();
 		}
 
 		void Canvas::OnDestroy() {
@@ -41,12 +39,7 @@ namespace RTBEngine {
 		void Canvas::PrepareForHitTest(const Math::Vector2& screenSize) {
 			if (!owner) return;
 
-			CollectUIElements();
-
-			for (UIElement* element : cachedUIElements) {
-				if (element) element->SyncRectTransform();
-			}
-
+			CollectUIElementsIfNeeded();
 			UpdateRectTransforms(screenSize);
 		}
 
@@ -62,7 +55,12 @@ namespace RTBEngine {
 			}
 		}
 
-		void Canvas::CollectUIElements() {
+		void Canvas::CollectUIElementsIfNeeded() {
+			uint32_t currentVersion = ECS::GameObject::GetHierarchyVersion();
+			if (!hierarchyDirty && lastHierarchyVersion == currentVersion) return;
+			hierarchyDirty = false;
+			lastHierarchyVersion = currentVersion;
+
 			cachedUIElements.clear();
 
 			if (!owner) return;
@@ -108,8 +106,10 @@ namespace RTBEngine {
 					}
 				}
 
-				// Calculate this element's world transform using parent's world values
-				rt->CalculateWorldTransform(parentWorldPos, parentWorldSize, parentLossyScale);
+				// Only recalculate if this element's transform data has changed
+				if (rt->IsDirty()) {
+					rt->CalculateWorldTransform(parentWorldPos, parentWorldSize, parentLossyScale);
+				}
 			}
 		}
 

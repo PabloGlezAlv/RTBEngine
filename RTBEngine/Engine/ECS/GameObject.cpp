@@ -51,6 +51,10 @@ namespace RTBEngine {
             return [](Component* c) { delete c; };
         }
 
+        static uint32_t s_globalHierarchyVersion = 0;
+
+        uint32_t GameObject::GetHierarchyVersion() { return s_globalHierarchyVersion; }
+
         GameObject::~GameObject()
         {
             for (auto& comp : components) {
@@ -202,6 +206,7 @@ namespace RTBEngine {
             auto it = std::find(children.begin(), children.end(), child);
             if (it == children.end()) {
                 children.push_back(child);
+                ++s_globalHierarchyVersion;
             }
         }
 
@@ -212,6 +217,7 @@ namespace RTBEngine {
             auto it = std::find(children.begin(), children.end(), child);
             if (it != children.end()) {
                 children.erase(it);
+                ++s_globalHierarchyVersion;
             }
         }
 

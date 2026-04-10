@@ -72,17 +72,15 @@ namespace RTBEngine {
             RTBEngine::Math::Vector2 GetWorldSize() const { return worldSize; }
             RTBEngine::Math::Vector4 GetWorldRect() const { return RTBEngine::Math::Vector4(worldPosition.x, worldPosition.y, worldSize.x, worldSize.y); }
 
-
-        private:
-            // Local properties
             RTBEngine::Math::Vector2 anchorMin{ 0.0f, 0.0f };
-            RTBEngine::Math::Vector2 anchorMax{ 1.0f, 1.0f };
+            RTBEngine::Math::Vector2 anchorMax{ 0.0f, 0.0f };
             RTBEngine::Math::Vector2 pivot{ 0.5f, 0.5f };
             RTBEngine::Math::Vector2 anchoredPosition{ 0.0f, 0.0f };
             RTBEngine::Math::Vector2 sizeDelta{ 100.0f, 100.0f };
             RTBEngine::Math::Vector2 scale{ 1.0f, 1.0f };
             float rotation = 0.0f;
 
+        private:
             // Layout values (calculated from anchors, before scale)
             RTBEngine::Math::Vector2 layoutPosition{ 0.0f, 0.0f };
             RTBEngine::Math::Vector2 layoutSize{ 0.0f, 0.0f };

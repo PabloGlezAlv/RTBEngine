@@ -38,17 +38,6 @@ namespace RTBEngine {
         namespace SceneComponentConfigurator {
             using namespace SceneParsingUtils;
 
-            static void ConfigureRectTransform(lua_State* L, int tableIndex, UI::RectTransform* rect) {
-                if (!rect) return;
-                rect->SetAnchorMin(ReadOptionalVector2(L, tableIndex, "anchorMin", rect->GetAnchorMin()));
-                rect->SetAnchorMax(ReadOptionalVector2(L, tableIndex, "anchorMax", rect->GetAnchorMax()));
-                rect->SetPivot(ReadOptionalVector2(L, tableIndex, "pivot", rect->GetPivot()));
-                rect->SetAnchoredPosition(ReadOptionalVector2(L, tableIndex, "anchoredPosition", rect->GetAnchoredPosition()));
-                rect->SetSize(ReadOptionalVector2(L, tableIndex, "sizeDelta", rect->GetSize()));
-                rect->SetRotation(ReadOptionalFloat(L, tableIndex, "rotation", rect->GetRotation()));
-                rect->SetScale(ReadOptionalVector2(L, tableIndex, "scale", rect->GetScale()));
-            }
-
             void ConfigureCanvas(lua_State* L, int tableIndex, UI::Canvas* comp) {
                 comp->SetSortOrder(static_cast<int>(ReadOptionalFloat(L, tableIndex, "sortOrder", comp->GetSortOrder())));
             }

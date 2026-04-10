@@ -81,89 +81,90 @@ private:
             constexpr const char* RTBCurrentTypeName = #ClassName;                      \
             (void)info;
 
-// Registers a public property
-#define RTB_PROPERTY(PropName)                                                          \
+// ─── Internal helpers ───
+
+// RTB__PROP_POD: POD property + bridge
+#define RTB__PROP_POD(PropName, TypeExpr, SizeExpr, FlagsExpr)                          \
                 info.AddPropertyPOD(                                                    \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(std::declval<ThisClass>().PropName),                          \
-                    RTBEngine::Reflection::PropertyFlags::None                           \
+                    #PropName, TypeExpr, RTB_MEMBER_OFFSET(PropName),                   \
+                    SizeExpr, FlagsExpr                                                 \
                 );                                                                      \
                 RTB__BRIDGE_PROP(                                                       \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(std::declval<ThisClass>().PropName),                         \
-                    RTBEngine::Reflection::PropertyFlags::None,                         \
-                    0.0f,                                                               \
-                    0.0f,                                                               \
-                    0,                                                                  \
-                    nullptr                                                             \
+                    #PropName, TypeExpr, RTB_MEMBER_OFFSET(PropName),                   \
+                    SizeExpr, FlagsExpr, 0.0f, 0.0f, 0, nullptr                         \
                 );
+
+// RTB__PROP_REF: pointer-sized reference property
+#define RTB__PROP_REF(PropName, TypeVal)                                                \
+                RTB__PROP_POD(PropName, TypeVal, sizeof(void*),                         \
+                    RTBEngine::Reflection::PropertyFlags::None)
+
+// ─── Auto-deduced type & size ───
+#define RTB__AUTO_TYPE(PropName)                                                        \
+    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>()
+#define RTB__AUTO_SIZE(PropName) sizeof(std::declval<ThisClass>().PropName)
+
+// Registers a Serialize+HideInInspector field on an inline sub-object
+#define RTB_PROPERTY_NESTED_HIDDEN(OuterProp, InnerType, InnerProp)                     \
+                {                                                                       \
+                    InnerType _rtb_probe;                                                \
+                    const size_t _rtb_inner_off =                                       \
+                        reinterpret_cast<const char*>(&_rtb_probe.InnerProp)             \
+                        - reinterpret_cast<const char*>(&_rtb_probe);                    \
+                    const size_t _rtb_off = RTB_MEMBER_OFFSET(OuterProp) + _rtb_inner_off; \
+                    info.AddPropertyPOD(                                                 \
+                        #InnerProp,                                                      \
+                        RTBEngine::Reflection::DeducePropertyType<                       \
+                            decltype(std::declval<InnerType>().InnerProp)>(),             \
+                        _rtb_off,                                                        \
+                        sizeof(std::declval<InnerType>().InnerProp),                     \
+                        RTBEngine::Reflection::PropertyFlags::Serialize |                 \
+                        RTBEngine::Reflection::PropertyFlags::HideInInspector             \
+                    );                                                                   \
+                    RTB__BRIDGE_PROP(                                                    \
+                        #InnerProp,                                                      \
+                        RTBEngine::Reflection::DeducePropertyType<                       \
+                            decltype(std::declval<InnerType>().InnerProp)>(),             \
+                        _rtb_off,                                                        \
+                        sizeof(std::declval<InnerType>().InnerProp),                     \
+                        RTBEngine::Reflection::PropertyFlags::Serialize |                 \
+                        RTBEngine::Reflection::PropertyFlags::HideInInspector,            \
+                        0.0f, 0.0f, 0, nullptr                                          \
+                    );                                                                   \
+                }
+
+// ─── Public property macros ─────────────────────────────────────────────────
+
+// Registers a public property
+#define RTB_PROPERTY(PropName)                                                          \
+                RTB__PROP_POD(PropName, RTB__AUTO_TYPE(PropName),                       \
+                    RTB__AUTO_SIZE(PropName),                                            \
+                    RTBEngine::Reflection::PropertyFlags::None)
 
 // Registers a private property marked with RTB_SERIALIZE
 #define RTB_PROPERTY_SERIALIZED(PropName)                                               \
-                info.AddPropertyPOD(                                                    \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(std::declval<ThisClass>().PropName),                          \
-                    RTBEngine::Reflection::PropertyFlags::Serialize                      \
-                );                                                                      \
-                RTB__BRIDGE_PROP(                                                       \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(std::declval<ThisClass>().PropName),                         \
-                    RTBEngine::Reflection::PropertyFlags::Serialize,                    \
-                    0.0f,                                                               \
-                    0.0f,                                                               \
-                    0,                                                                  \
-                    nullptr                                                             \
-                );
+                RTB__PROP_POD(PropName, RTB__AUTO_TYPE(PropName),                       \
+                    RTB__AUTO_SIZE(PropName),                                            \
+                    RTBEngine::Reflection::PropertyFlags::Serialize)
 
 #define RTB_PROPERTY_SERIALIZED_HIDDEN(PropName)                                        \
-                info.AddPropertyPOD(                                                    \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(std::declval<ThisClass>().PropName),                         \
-                    RTBEngine::Reflection::PropertyFlags::Serialize | RTBEngine::Reflection::PropertyFlags::HideInInspector \
-                );                                                                      \
-                RTB__BRIDGE_PROP(                                                       \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(std::declval<ThisClass>().PropName),                         \
-                    RTBEngine::Reflection::PropertyFlags::Serialize | RTBEngine::Reflection::PropertyFlags::HideInInspector, \
-                    0.0f,                                                               \
-                    0.0f,                                                               \
-                    0,                                                                  \
-                    nullptr                                                             \
-                );
+                RTB__PROP_POD(PropName, RTB__AUTO_TYPE(PropName),                       \
+                    RTB__AUTO_SIZE(PropName),                                            \
+                    RTBEngine::Reflection::PropertyFlags::Serialize | RTBEngine::Reflection::PropertyFlags::HideInInspector)
 
 // Registers a property with range for sliders
 #define RTB_PROPERTY_RANGE(PropName, Min, Max)                                          \
                 info.AddPropertyPODRange(                                               \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(std::declval<ThisClass>().PropName),                          \
+                    #PropName, RTB__AUTO_TYPE(PropName),                                \
+                    RTB_MEMBER_OFFSET(PropName), RTB__AUTO_SIZE(PropName),               \
                     RTBEngine::Reflection::PropertyFlags::None,                          \
-                    static_cast<float>(Min),                                             \
-                    static_cast<float>(Max)                                              \
+                    static_cast<float>(Min), static_cast<float>(Max)                     \
                 );                                                                      \
                 RTB__BRIDGE_PROP(                                                       \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(std::declval<ThisClass>().PropName),                         \
+                    #PropName, RTB__AUTO_TYPE(PropName),                                \
+                    RTB_MEMBER_OFFSET(PropName), RTB__AUTO_SIZE(PropName),               \
                     RTBEngine::Reflection::PropertyFlags::None,                         \
-                    static_cast<float>(Min),                                            \
-                    static_cast<float>(Max),                                            \
-                    1,                                                                  \
-                    nullptr                                                             \
+                    static_cast<float>(Min), static_cast<float>(Max), 1, nullptr         \
                 );
 
 // Registers an enum property
@@ -171,214 +172,70 @@ private:
                 {                                                                       \
                     const char* _rtb_enum_names[] = { __VA_ARGS__ };                    \
                     info.AddPropertyPODEnum(                                             \
-                        #PropName,                                                      \
-                        RTB_MEMBER_OFFSET(PropName),                                    \
-                        sizeof(std::declval<ThisClass>().PropName),                      \
+                        #PropName, RTB_MEMBER_OFFSET(PropName),                         \
+                        RTB__AUTO_SIZE(PropName),                                        \
                         RTBEngine::Reflection::PropertyFlags::None,                      \
                         _rtb_enum_names,                                                 \
                         static_cast<int>(sizeof(_rtb_enum_names) / sizeof(_rtb_enum_names[0])) \
                     );                                                                  \
                     RTB__BRIDGE_PROP(                                                   \
-                        #PropName,                                                      \
-                        RTBEngine::Reflection::PropertyType::Enum,                       \
-                        RTB_MEMBER_OFFSET(PropName),                                    \
-                        sizeof(std::declval<ThisClass>().PropName),                     \
+                        #PropName, RTBEngine::Reflection::PropertyType::Enum,            \
+                        RTB_MEMBER_OFFSET(PropName), RTB__AUTO_SIZE(PropName),           \
                         RTBEngine::Reflection::PropertyFlags::None,                     \
-                        0.0f,                                                           \
-                        0.0f,                                                           \
-                        0,                                                              \
-                        nullptr                                                         \
+                        0.0f, 0.0f, 0, nullptr                                          \
                     );                                                                  \
                 }
 
 // Registers a color property
 #define RTB_PROPERTY_COLOR(PropName)                                                    \
-                info.AddPropertyPOD(                                                    \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::PropertyType::Color,                          \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(std::declval<ThisClass>().PropName),                          \
-                    RTBEngine::Reflection::PropertyFlags::None                           \
-                );                                                                      \
-                RTB__BRIDGE_PROP(                                                       \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::PropertyType::Color,                         \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(std::declval<ThisClass>().PropName),                         \
-                    RTBEngine::Reflection::PropertyFlags::None,                         \
-                    0.0f,                                                               \
-                    0.0f,                                                               \
-                    0,                                                                  \
-                    nullptr                                                             \
-                );
+                RTB__PROP_POD(PropName, RTBEngine::Reflection::PropertyType::Color,     \
+                    RTB__AUTO_SIZE(PropName),                                            \
+                    RTBEngine::Reflection::PropertyFlags::None)
 
 // Registers a property hidden from inspector
 #define RTB_PROPERTY_HIDDEN(PropName)                                                   \
-                info.AddPropertyPOD(                                                    \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(std::declval<ThisClass>().PropName),                          \
-                    RTBEngine::Reflection::PropertyFlags::HideInInspector                \
-                );                                                                      \
-                RTB__BRIDGE_PROP(                                                       \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(std::declval<ThisClass>().PropName),                         \
-                    RTBEngine::Reflection::PropertyFlags::HideInInspector,              \
-                    0.0f,                                                               \
-                    0.0f,                                                               \
-                    0,                                                                  \
-                    nullptr                                                             \
-                );
+                RTB__PROP_POD(PropName, RTB__AUTO_TYPE(PropName),                       \
+                    RTB__AUTO_SIZE(PropName),                                            \
+                    RTBEngine::Reflection::PropertyFlags::HideInInspector)
 
 // Registers a read-only property
 #define RTB_PROPERTY_READONLY(PropName)                                                 \
-                info.AddPropertyPOD(                                                    \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(std::declval<ThisClass>().PropName),                          \
-                    RTBEngine::Reflection::PropertyFlags::ReadOnly                       \
-                );                                                                      \
-                RTB__BRIDGE_PROP(                                                       \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::DeducePropertyType<decltype(std::declval<ThisClass>().PropName)>(), \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(std::declval<ThisClass>().PropName),                         \
-                    RTBEngine::Reflection::PropertyFlags::ReadOnly,                     \
-                    0.0f,                                                               \
-                    0.0f,                                                               \
-                    0,                                                                  \
-                    nullptr                                                             \
-                );
+                RTB__PROP_POD(PropName, RTB__AUTO_TYPE(PropName),                       \
+                    RTB__AUTO_SIZE(PropName),                                            \
+                    RTBEngine::Reflection::PropertyFlags::ReadOnly)
 
 // Registers a Texture* property
 #define RTB_PROPERTY_TEXTURE(PropName)                                                  \
-                info.AddPropertyPOD(                                                    \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::PropertyType::TextureRef,                     \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(void*),                                                       \
-                    RTBEngine::Reflection::PropertyFlags::None                           \
-                );                                                                      \
-                RTB__BRIDGE_PROP(                                                       \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::PropertyType::TextureRef,                    \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(void*),                                                      \
-                    RTBEngine::Reflection::PropertyFlags::None,                         \
-                    0.0f,                                                               \
-                    0.0f,                                                               \
-                    0,                                                                  \
-                    nullptr                                                             \
-                );
+                RTB__PROP_REF(PropName, RTBEngine::Reflection::PropertyType::TextureRef)
 
 // Registers an AudioClip* property
 #define RTB_PROPERTY_AUDIOCLIP(PropName)                                                \
-                info.AddPropertyPOD(                                                    \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::PropertyType::AudioClipRef,                   \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(void*),                                                       \
-                    RTBEngine::Reflection::PropertyFlags::None                           \
-                );                                                                      \
-                RTB__BRIDGE_PROP(                                                       \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::PropertyType::AudioClipRef,                  \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(void*),                                                      \
-                    RTBEngine::Reflection::PropertyFlags::None,                         \
-                    0.0f,                                                               \
-                    0.0f,                                                               \
-                    0,                                                                  \
-                    nullptr                                                             \
-                );
+                RTB__PROP_REF(PropName, RTBEngine::Reflection::PropertyType::AudioClipRef)
 
 // Registers a Mesh* property
 #define RTB_PROPERTY_MESH(PropName)                                                     \
-                info.AddPropertyPOD(                                                    \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::PropertyType::MeshRef,                        \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(void*),                                                       \
-                    RTBEngine::Reflection::PropertyFlags::None                           \
-                );                                                                      \
-                RTB__BRIDGE_PROP(                                                       \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::PropertyType::MeshRef,                       \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(void*),                                                      \
-                    RTBEngine::Reflection::PropertyFlags::None,                         \
-                    0.0f,                                                               \
-                    0.0f,                                                               \
-                    0,                                                                  \
-                    nullptr                                                             \
-                );
+                RTB__PROP_REF(PropName, RTBEngine::Reflection::PropertyType::MeshRef)
 
 // Registers a Font* property
 #define RTB_PROPERTY_FONT(PropName)                                                     \
-                info.AddPropertyPOD(                                                    \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::PropertyType::FontRef,                        \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(void*),                                                       \
-                    RTBEngine::Reflection::PropertyFlags::None                           \
-                );                                                                      \
-                RTB__BRIDGE_PROP(                                                       \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::PropertyType::FontRef,                       \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(void*),                                                      \
-                    RTBEngine::Reflection::PropertyFlags::None,                         \
-                    0.0f,                                                               \
-                    0.0f,                                                               \
-                    0,                                                                  \
-                    nullptr                                                             \
-                );
+                RTB__PROP_REF(PropName, RTBEngine::Reflection::PropertyType::FontRef)
 
 // Registers a GameObject* property
 #define RTB_PROPERTY_GAMEOBJECT(PropName)                                               \
-                info.AddPropertyPOD(                                                    \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::PropertyType::GameObjectRef,                  \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(void*),                                                       \
-                    RTBEngine::Reflection::PropertyFlags::None                           \
-                );                                                                      \
-                RTB__BRIDGE_PROP(                                                       \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::PropertyType::GameObjectRef,                 \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(void*),                                                      \
-                    RTBEngine::Reflection::PropertyFlags::None,                         \
-                    0.0f,                                                               \
-                    0.0f,                                                               \
-                    0,                                                                  \
-                    nullptr                                                             \
-                );
+                RTB__PROP_REF(PropName, RTBEngine::Reflection::PropertyType::GameObjectRef)
 
 // Registers a Component* property with target type filtering
 #define RTB_PROPERTY_COMPONENT(PropName, ComponentType)                                 \
                 info.AddPropertyPODTyped(                                               \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::PropertyType::ComponentRef,                   \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(void*),                                                       \
-                    RTBEngine::Reflection::PropertyFlags::None,                          \
-                    #ComponentType                                                       \
+                    #PropName, RTBEngine::Reflection::PropertyType::ComponentRef,        \
+                    RTB_MEMBER_OFFSET(PropName), sizeof(void*),                         \
+                    RTBEngine::Reflection::PropertyFlags::None, #ComponentType           \
                 );                                                                      \
                 RTB__BRIDGE_PROP(                                                       \
-                    #PropName,                                                          \
-                    RTBEngine::Reflection::PropertyType::ComponentRef,                  \
-                    RTB_MEMBER_OFFSET(PropName),                                        \
-                    sizeof(void*),                                                      \
+                    #PropName, RTBEngine::Reflection::PropertyType::ComponentRef,        \
+                    RTB_MEMBER_OFFSET(PropName), sizeof(void*),                         \
                     RTBEngine::Reflection::PropertyFlags::None,                         \
-                    0.0f,                                                               \
-                    0.0f,                                                               \
-                    0,                                                                  \
-                    #ComponentType                                                      \
+                    0.0f, 0.0f, 0, #ComponentType                                       \
                 );
 
 // Forward declaration visible to all script .cpp files when building GameScripts.dll.

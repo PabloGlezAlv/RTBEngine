@@ -12,13 +12,13 @@ namespace RTBEngine {
 			RTB_PROPERTY(preserveAspect)
 			{ using ThisClass = UIElement; RTB_PROPERTY(isVisible) }
 			{ using ThisClass = UIElement; RTB_PROPERTY(raycastTarget) }
-			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(anchorMin) }
-			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(anchorMax) }
-			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(pivot) }
-			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(anchoredPosition) }
-			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(sizeDelta) }
-			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(rotation) }
-			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(scale) }
+			RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, anchorMin)
+			RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, anchorMax)
+			RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, pivot)
+			RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, anchoredPosition)
+			RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, sizeDelta)
+			RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, rotation)
+			RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, scale)
 		RTB_END_REGISTER(UIImage)
 
 		UIImage::UIImage()
@@ -44,7 +44,7 @@ namespace RTBEngine {
 			if (!isVisible) return;
 			if (!texture) return;
 
-			Math::Vector4 screenRect = rectTransform->GetWorldRect();
+			Math::Vector4 screenRect = rectTransform.GetWorldRect();
 
 			ImDrawList* drawList = UIRenderContext::GetDrawList();
 			Math::Vector2 offset = UIRenderContext::Offset;

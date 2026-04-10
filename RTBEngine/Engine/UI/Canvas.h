@@ -5,6 +5,7 @@
 #include "../Reflection/PropertyMacros.h"
 #include "UIElement.h"
 #include <vector>
+#include <cstdint>
 
 namespace RTBEngine {
 	namespace UI {
@@ -38,13 +39,15 @@ namespace RTBEngine {
 
 			virtual void OnAwake() override;
 			virtual void OnStart() override;
-			virtual void OnUpdate(float deltaTime) override;
 			virtual void OnDestroy() override;
 
 			RTB_COMPONENT(Canvas)
 
+		public:
+			void MarkHierarchyDirty() { hierarchyDirty = true; }
+
 		private:
-			void CollectUIElements();
+			void CollectUIElementsIfNeeded();
 			void UpdateRectTransforms(const Math::Vector2& screenSize);
 
 			RenderMode renderMode = RenderMode::ScreenSpaceOverlay;
@@ -52,6 +55,8 @@ namespace RTBEngine {
 			int sortOrder = 0;
 			std::vector<UIElement*> cachedUIElements;
 			bool isInitialized = false;
+			bool hierarchyDirty = true;
+			uint32_t lastHierarchyVersion = 0;
 
 			friend struct Canvas_TypeRegistrar;
 		};

@@ -14,13 +14,13 @@ namespace RTBEngine {
 			RTB_PROPERTY(hasBorder)
 			{ using ThisClass = UIElement; RTB_PROPERTY(isVisible) }
 			{ using ThisClass = UIElement; RTB_PROPERTY(raycastTarget) }
-			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(anchorMin) }
-			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(anchorMax) }
-			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(pivot) }
-			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(anchoredPosition) }
-			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(sizeDelta) }
-			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(rotation) }
-			{ using ThisClass = UIElement; RTB_PROPERTY_SERIALIZED_HIDDEN(scale) }
+			RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, anchorMin)
+			RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, anchorMax)
+			RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, pivot)
+			RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, anchoredPosition)
+			RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, sizeDelta)
+			RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, rotation)
+			RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, scale)
 		RTB_END_REGISTER(UIPanel)
 
 		UIPanel::UIPanel()
@@ -74,7 +74,7 @@ namespace RTBEngine {
 		void UIPanel::Render() {
 			if (!isVisible) return;
 
-			Math::Vector4 screenRect = rectTransform->GetWorldRect();
+			Math::Vector4 screenRect = rectTransform.GetWorldRect();
 
 			ImDrawList* drawList = UIRenderContext::GetDrawList();
 			Math::Vector2 offset = UIRenderContext::Offset;
@@ -98,16 +98,14 @@ namespace RTBEngine {
 				static_cast<int>(backgroundColor.w * 255)
 			);
 
-			float rot = rectTransform->GetRotation();
+			float rot = rectTransform.GetRotation();
 			if (rot > 0.01f || rot < -0.01f) {
 				DrawRotatedRect(drawList, cx, cy, halfW, halfH, rot, bgColor, true);
 			} else {
 				drawList->AddRectFilled(min, max, bgColor);
 			}
 
-			if (onRenderDecorations) {
-				onRenderDecorations(drawList, rx, ry, rx + rw, ry + rh);
-			}
+			OnRenderDecorations(drawList, rx, ry, rx + rw, ry + rh);
 
 			if (hasBorder) {
 				ImU32 bColor = IM_COL32(
