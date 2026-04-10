@@ -22,14 +22,12 @@ namespace RTBEngine {
 			rectTransform->SetRotation(rotation);
 			rectTransform->SetScale(scale);
 
-			// Propagate dirty to children since our transform changed
 			PropagateDirtyToChildren();
 		}
 
 		void UIElement::PropagateDirtyToChildren() {
 			if (!GetOwner()) return;
 
-			// Recursively mark all child UIElement RectTransforms as dirty
 			for (ECS::GameObject* child : GetOwner()->GetChildren()) {
 				if (!child) continue;
 
@@ -38,34 +36,65 @@ namespace RTBEngine {
 					if (childUI->GetRectTransform()) {
 						childUI->GetRectTransform()->SetDirty();
 					}
-					// Recurse into grandchildren
 					childUI->PropagateDirtyToChildren();
 				}
 			}
 		}
 
-		void UIElement::OnAwake() {
-			SyncRectTransform();
-			// Initialize lastParent
-			if (GetOwner()) {
-				lastParent = GetOwner()->GetParent();
-			}
+		void UIElement::SetAnchorMin(const Math::Vector2& value) {
+			anchorMin = value;
+			if (rectTransform) { rectTransform->SetAnchorMin(value); }
+			PropagateDirtyToChildren();
 		}
 
-		void UIElement::OnUpdate(float deltaTime) {
-			SyncRectTransform();
+		void UIElement::SetAnchorMax(const Math::Vector2& value) {
+			anchorMax = value;
+			if (rectTransform) { rectTransform->SetAnchorMax(value); }
+			PropagateDirtyToChildren();
+		}
 
-			// Detect parent changes and mark transform dirty
-			if (GetOwner()) {
-				ECS::GameObject* currentParent = GetOwner()->GetParent();
-				if (currentParent != lastParent) {
-					// Parent changed - mark transform as dirty so it recalculates
-					if (rectTransform) {
-						rectTransform->SetDirty();
-					}
-					lastParent = currentParent;
-				}
+		void UIElement::SetPivot(const Math::Vector2& value) {
+			pivot = value;
+			if (rectTransform) { rectTransform->SetPivot(value); }
+			PropagateDirtyToChildren();
+		}
+
+		void UIElement::SetAnchoredPosition(const Math::Vector2& value) {
+			anchoredPosition = value;
+			if (rectTransform) { rectTransform->SetAnchoredPosition(value); }
+			PropagateDirtyToChildren();
+		}
+
+		void UIElement::SetSizeDelta(const Math::Vector2& value) {
+			sizeDelta = value;
+			if (rectTransform) { rectTransform->SetSize(value); }
+			PropagateDirtyToChildren();
+		}
+
+		void UIElement::SetRotation(float degrees) {
+			rotation = degrees;
+			if (rectTransform) { rectTransform->SetRotation(degrees); }
+			PropagateDirtyToChildren();
+		}
+
+		void UIElement::SetScale(const Math::Vector2& value) {
+			scale = value;
+			if (rectTransform) { rectTransform->SetScale(value); }
+			PropagateDirtyToChildren();
+		}
+
+		void UIElement::OnAwake() {
+			SyncRectTransform();
+		}
+
+		void UIElement::OnParentChanged(ECS::GameObject* oldParent, ECS::GameObject* newParent) {
+			(void)oldParent;
+			(void)newParent;
+
+			if (rectTransform) {
+				rectTransform->SetDirty();
 			}
+			PropagateDirtyToChildren();
 		}
 
 	}

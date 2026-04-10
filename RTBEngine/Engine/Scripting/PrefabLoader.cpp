@@ -55,7 +55,7 @@ namespace RTBEngine {
                 ECS::Component* comp = Scripting::ComponentRegistry::GetInstance().CreateComponent(typeName);
                 if (!comp) { lua_pop(L, 1); continue; }
 
-                Scripting::SceneReflectionUtils::ApplyLuaTableToComponent(L, compTableIndex, comp);
+                Scripting::SceneReflectionUtils::ApplyLuaTableToComponent(L, compTableIndex, typeName.c_str(), comp);
 
                 if (typeName == "MeshRenderer")
                     Scripting::SceneComponentConfigurator::ConfigureMeshRenderer(L, compTableIndex, static_cast<ECS::MeshRenderer*>(comp));
@@ -86,7 +86,7 @@ namespace RTBEngine {
                 ECS::Prefab::SnapshotComponent(snap, comp);
                 prefab.AddSnapshot(std::move(snap));
 
-                delete comp;
+                ComponentRegistry::GetInstance().DestroyComponent(typeName, comp);
                 lua_pop(L, 1);
             }
 

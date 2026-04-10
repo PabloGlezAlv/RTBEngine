@@ -10,6 +10,10 @@
 #include <typeinfo>
 
 namespace RTBEngine {
+    namespace Reflection {
+        class TypeInfo;
+    }
+
     namespace ECS {
 
         #pragma warning(push)
@@ -23,6 +27,7 @@ namespace RTBEngine {
             GameObject& operator=(const GameObject&) = delete;
 
             void AddComponent(Component* component);
+            void AddComponent(Component* component, const Reflection::TypeInfo* typeInfoOverride);
             void RemoveComponent(Component* component);
 
             template<typename T>

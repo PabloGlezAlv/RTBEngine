@@ -299,6 +299,9 @@ namespace RTBEngine {
                 std::string componentType = lua_tostring(L, -1);
                 lua_pop(L, 1);
 
+                const Reflection::TypeInfo* registeredTypeInfo =
+                    ComponentRegistry::GetInstance().GetComponentTypeInfo(componentType);
+
                 ECS::Component* comp = ComponentRegistry::GetInstance().CreateComponent(componentType);
                 if (!comp) {
                     RTB_ERROR("SceneLoader: Component type '" + componentType + "' not found — inserting MissingComponent placeholder");
@@ -317,13 +320,13 @@ namespace RTBEngine {
                 }
 
                 if (existing) {
-                    delete comp;
+                    ComponentRegistry::GetInstance().DestroyComponent(componentType, comp);
                     comp = existing;
                 } else {
-                    gameObject->AddComponent(comp);
+                    gameObject->AddComponent(comp, registeredTypeInfo);
                 }
 
-                SceneReflectionUtils::ApplyLuaTableToComponent(L, componentTableIndex, comp);
+                SceneReflectionUtils::ApplyLuaTableToComponent(L, componentTableIndex, componentType.c_str(), comp);
 
                 if (componentType == "MeshRenderer")
                     SceneComponentConfigurator::ConfigureMeshRenderer(L, componentTableIndex, static_cast<ECS::MeshRenderer*>(comp));
@@ -356,7 +359,10 @@ namespace RTBEngine {
 
                 comp->OnValidate();
 
-                const Reflection::TypeInfo* typeInfo = comp->GetTypeInfo();
+                const Reflection::TypeInfo* typeInfo = registeredTypeInfo;
+                if (!typeInfo) {
+                    typeInfo = comp->GetTypeInfo();
+                }
                 if (typeInfo) {
                     for (const auto* prop : typeInfo->GetSerializableProperties()) {
                         if (prop->type == Reflection::PropertyType::GameObjectRef ||

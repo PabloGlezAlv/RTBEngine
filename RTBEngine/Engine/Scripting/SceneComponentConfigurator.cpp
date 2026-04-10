@@ -54,15 +54,14 @@ namespace RTBEngine {
             }
 
             void SyncUIElementProxies(lua_State* L, int tableIndex, UI::UIElement* comp) {
-                comp->isVisible        = ReadOptionalBool(L, tableIndex, "isVisible", comp->isVisible);
-                comp->anchorMin        = ReadOptionalVector2(L, tableIndex, "anchorMin", comp->anchorMin);
-                comp->anchorMax        = ReadOptionalVector2(L, tableIndex, "anchorMax", comp->anchorMax);
-                comp->pivot            = ReadOptionalVector2(L, tableIndex, "pivot", comp->pivot);
-                comp->anchoredPosition = ReadOptionalVector2(L, tableIndex, "anchoredPosition", comp->anchoredPosition);
-                comp->sizeDelta        = ReadOptionalVector2(L, tableIndex, "sizeDelta", comp->sizeDelta);
-                comp->rotation         = ReadOptionalFloat(L, tableIndex, "rotation", comp->rotation);
-                comp->scale            = ReadOptionalVector2(L, tableIndex, "scale", comp->scale);
-                comp->SyncRectTransform();
+                comp->SetVisible(ReadOptionalBool(L, tableIndex, "isVisible", comp->IsVisible()));
+                comp->SetAnchorMin(ReadOptionalVector2(L, tableIndex, "anchorMin", comp->GetAnchorMin()));
+                comp->SetAnchorMax(ReadOptionalVector2(L, tableIndex, "anchorMax", comp->GetAnchorMax()));
+                comp->SetPivot(ReadOptionalVector2(L, tableIndex, "pivot", comp->GetPivot()));
+                comp->SetAnchoredPosition(ReadOptionalVector2(L, tableIndex, "anchoredPosition", comp->GetAnchoredPosition()));
+                comp->SetSizeDelta(ReadOptionalVector2(L, tableIndex, "sizeDelta", comp->GetSizeDelta()));
+                comp->SetRotation(ReadOptionalFloat(L, tableIndex, "rotation", comp->GetRotation()));
+                comp->SetScale(ReadOptionalVector2(L, tableIndex, "scale", comp->GetScale()));
             }
 
             void ConfigureUIText(lua_State* L, int tableIndex, UI::UIText* comp) {

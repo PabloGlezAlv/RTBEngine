@@ -6,10 +6,6 @@
 #include <memory>
 
 namespace RTBEngine {
-	namespace ECS {
-		class GameObject;
-	}
-
 	namespace UI {
 
 #pragma warning(push)
@@ -30,16 +26,40 @@ namespace RTBEngine {
 			void SetRaycastTarget(bool value) { raycastTarget = value; }
 			bool IsRaycastTarget() const { return raycastTarget; }
 
+			// Transform proxy setters auto-sync into RectTransform and propagate dirty.
+			void SetAnchorMin(const Math::Vector2& value);
+			void SetAnchorMax(const Math::Vector2& value);
+			void SetPivot(const Math::Vector2& value);
+			void SetAnchoredPosition(const Math::Vector2& value);
+			void SetSizeDelta(const Math::Vector2& value);
+			void SetRotation(float degrees);
+			void SetScale(const Math::Vector2& value);
+
+			Math::Vector2 GetAnchorMin() const { return anchorMin; }
+			Math::Vector2 GetAnchorMax() const { return anchorMax; }
+			Math::Vector2 GetPivot() const { return pivot; }
+			Math::Vector2 GetAnchoredPosition() const { return anchoredPosition; }
+			Math::Vector2 GetSizeDelta() const { return sizeDelta; }
+			float GetRotation() const { return rotation; }
+			Math::Vector2 GetScale() const { return scale; }
+
 			virtual void OnAwake() override;
-			virtual void OnUpdate(float deltaTime) override;
+			virtual void OnParentChanged(ECS::GameObject* oldParent, ECS::GameObject* newParent) override;
 
 			virtual const char* GetTypeName() const override = 0;
 
 			virtual void Render() = 0;
 
-			// Reflected properties (Proxy)
+			// Reflected properties that are intentionally editable at runtime.
 			bool isVisible = true;
 			bool raycastTarget = true;
+
+		protected:
+			std::unique_ptr<RectTransform> rectTransform;
+
+		private:
+			// Runtime transform state is synchronized through setters and parent-change hooks,
+			// so it no longer needs a per-frame OnUpdate repair path.
 			Math::Vector2 anchorMin = Math::Vector2(0.0f, 0.0f);
 			Math::Vector2 anchorMax = Math::Vector2(0.0f, 0.0f);
 			Math::Vector2 pivot = Math::Vector2(0.5f, 0.5f);
@@ -48,11 +68,10 @@ namespace RTBEngine {
 			float rotation = 0.0f;
 			Math::Vector2 scale = Math::Vector2(1.0f, 1.0f);
 
-		protected:
-			std::unique_ptr<RectTransform> rectTransform;
-
-			// Track parent changes to mark transform dirty when reparented
-			ECS::GameObject* lastParent = nullptr;
+			friend struct UIContainer_TypeRegistrar;
+			friend struct UIImage_TypeRegistrar;
+			friend struct UIPanel_TypeRegistrar;
+			friend struct UIText_TypeRegistrar;
 		};
 #pragma warning(pop)
 

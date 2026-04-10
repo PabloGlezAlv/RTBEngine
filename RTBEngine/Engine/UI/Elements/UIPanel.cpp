@@ -74,11 +74,10 @@ namespace RTBEngine {
 		void UIPanel::Render() {
 			if (!isVisible) return;
 
-			Math::Vector4 screenRect = rectTransform->GetScreenRect();
+			Math::Vector4 screenRect = rectTransform->GetWorldRect();
 
 			ImDrawList* drawList = UIRenderContext::GetDrawList();
 			Math::Vector2 offset = UIRenderContext::Offset;
-
 			float rx = screenRect.x + offset.x;
 			float ry = screenRect.y + offset.y;
 			float rw = screenRect.z;

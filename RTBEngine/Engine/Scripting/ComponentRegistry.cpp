@@ -17,6 +17,7 @@
 #include "../UI/Elements/UIImage.h"
 #include "../UI/Elements/UIPanel.h"
 #include "../UI/Elements/UIButton.h"
+#include "../UI/Elements/UIContainer.h"
 
 namespace RTBEngine {
     namespace Scripting {
@@ -38,13 +39,31 @@ namespace RTBEngine {
             }
 
             // Fall back to TypeRegistry for script components registered via ScriptManager.
-            const Reflection::TypeInfo* ti = Reflection::TypeRegistry::GetInstance().GetTypeInfo(typeName);
+            const Reflection::TypeInfo* ti = GetComponentTypeInfo(typeName);
             if (ti) {
                 return ti->Create();
             }
 
             RTB_ERROR("ComponentRegistry: Component type '" + typeName + "' not registered!");
             return nullptr;
+        }
+
+        const Reflection::TypeInfo* ComponentRegistry::GetComponentTypeInfo(const std::string& typeName) const {
+            return Reflection::TypeRegistry::GetInstance().GetTypeInfo(typeName);
+        }
+
+        void ComponentRegistry::DestroyComponent(const std::string& typeName, ECS::Component* component) const {
+            if (!component) {
+                return;
+            }
+
+            const Reflection::TypeInfo* ti = GetComponentTypeInfo(typeName);
+            if (ti) {
+                ti->Destroy(component);
+                return;
+            }
+
+            delete component;
         }
 
         bool ComponentRegistry::HasComponent(const std::string& typeName) const {
@@ -67,6 +86,7 @@ namespace RTBEngine {
             RegisterComponent("UIImage", []() { return new UI::UIImage(); });
             RegisterComponent("UIPanel", []() { return new UI::UIPanel(); });
             RegisterComponent("UIButton", []() { return new UI::UIButton(); });
+            RegisterComponent("UIContainer", []() { return new UI::UIContainer(); });
         }
 
     }

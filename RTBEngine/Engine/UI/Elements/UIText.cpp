@@ -59,7 +59,7 @@ namespace RTBEngine {
 		void UIText::Render() {
 			if (!isVisible || text.empty()) return;
 
-			Math::Vector4 screenRect = rectTransform->GetScreenRect();
+			Math::Vector4 screenRect = rectTransform->GetWorldRect();
 			ImDrawList* drawList = UIRenderContext::GetDrawList();
 			Math::Vector2 offset = UIRenderContext::Offset;
 			Math::Vector2 lossyScale = rectTransform->GetLossyScale();

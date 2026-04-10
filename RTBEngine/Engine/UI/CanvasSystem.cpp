@@ -68,7 +68,7 @@ namespace RTBEngine {
 			for (Canvas* canvas : activeCanvases) {
 				for (UIElement* element : canvas->GetUIElements()) {
 					if (element->GetOwner() == gameObject && element->IsRaycastTarget()) {
-						rects.push_back(element->GetRectTransform()->GetScreenRect());
+						rects.push_back(element->GetRectTransform()->GetWorldRect());
 					}
 				}
 			}
@@ -89,7 +89,7 @@ namespace RTBEngine {
 					UIElement* element = *elemIt;
 					if (!element->IsVisible() || !element->IsEnabled() || !element->IsRaycastTarget()) continue;
 
-					Math::Vector4 screenRect = element->GetRectTransform()->GetScreenRect();
+					Math::Vector4 screenRect = element->GetRectTransform()->GetWorldRect();
 					if (IsPointInRect(mousePos, screenRect)) {
 						return element;
 					}

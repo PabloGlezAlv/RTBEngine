@@ -233,8 +233,11 @@ namespace RTBEngine {
                 Component* comp = Scripting::ComponentRegistry::GetInstance().CreateComponent(snap.typeName);
                 if (!comp) continue;
 
+                const Reflection::TypeInfo* registeredTypeInfo =
+                    Scripting::ComponentRegistry::GetInstance().GetComponentTypeInfo(snap.typeName);
+
                 ApplySnapshot(comp, snap);
-                go->AddComponent(comp);
+                go->AddComponent(comp, registeredTypeInfo);
                 comp->OnValidate();
             }
 

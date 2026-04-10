@@ -33,6 +33,11 @@ namespace RTBEngine {
             // Editor methods
             virtual void OnValidate() {}
 
+            // Called after the owning GameObject changes parent in the hierarchy.
+            // Default implementation is a no-op; components override when they need
+            // to react to hierarchy changes without coupling ECS to higher layers.
+            virtual void OnParentChanged(GameObject* oldParent, GameObject* newParent) {}
+
             //Collision methods
             // Collision callbacks
             virtual void OnCollisionEnter(const Physics::CollisionInfo& collision) {}

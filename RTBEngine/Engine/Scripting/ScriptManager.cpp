@@ -134,13 +134,6 @@ namespace RTBEngine {
                 return;
             }
 
-            RTB_INFO(
-                "ScriptManager: Bridge property idx=" + std::to_string(s_pendingPropIndex) +
-                " type='" + s_pendingTypeName +
-                "' namePtr=" + PtrToHex(desc->name) +
-                " displayPtr=" + PtrToHex(desc->displayName) +
-                " componentPtr=" + PtrToHex(desc->componentTypeName));
-
             RTBEngine::Reflection::PropertyInfo prop;
             prop.name              = SafeCString(desc->name, "name");
             prop.displayName       = SafeCString(desc->displayName, "displayName");

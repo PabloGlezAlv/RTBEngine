@@ -5,10 +5,6 @@
 #include "../RTBEngineAPI.h"
 
 namespace RTBEngine {
-    namespace ECS {
-        class GameObject;
-    }
-
     namespace UI {
 
         class RTB_API RectTransform {
@@ -61,11 +57,7 @@ namespace RTBEngine {
             // World/accumulated scale (lossyScale = parentScale * localScale)
             RTBEngine::Math::Vector2 GetLossyScale() const { return lossyScale; }
 
-            // Calculate final screen rect based on parent (legacy, for compatibility)
-            void CalculateScreenRect(const RTBEngine::Math::Vector2& parentPos,
-                const RTBEngine::Math::Vector2& parentSize);
-
-            // New hierarchy-aware calculation with world transform propagation
+            // Calculate world transform with hierarchy-aware scale propagation
             void CalculateWorldTransform(const RTBEngine::Math::Vector2& parentWorldPos,
                 const RTBEngine::Math::Vector2& parentWorldSize,
                 const RTBEngine::Math::Vector2& parentLossyScale);
@@ -80,10 +72,6 @@ namespace RTBEngine {
             RTBEngine::Math::Vector2 GetWorldSize() const { return worldSize; }
             RTBEngine::Math::Vector4 GetWorldRect() const { return RTBEngine::Math::Vector4(worldPosition.x, worldPosition.y, worldSize.x, worldSize.y); }
 
-            // Legacy getters (alias to world values for compatibility)
-            RTBEngine::Math::Vector2 GetScreenPosition() const { return worldPosition; }
-            RTBEngine::Math::Vector2 GetScreenSize() const { return worldSize; }
-            RTBEngine::Math::Vector4 GetScreenRect() const { return GetWorldRect(); }
 
         private:
             // Local properties
@@ -106,10 +94,6 @@ namespace RTBEngine {
 
             // Dirty flag - indicates world values need recalculation
             bool isDirty = true;
-
-            // Legacy screen values (kept for backward compatibility during transition)
-            RTBEngine::Math::Vector2 screenPosition{ 0.0f, 0.0f };
-            RTBEngine::Math::Vector2 screenSize{ 0.0f, 0.0f };
         };
 
     } 

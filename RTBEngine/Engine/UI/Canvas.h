@@ -2,6 +2,7 @@
 #include "../RTBEngineAPI.h"
 #include "../ECS/Component.h"
 #include "../Math/Vectors/Vector2.h"
+#include "../Reflection/PropertyMacros.h"
 #include "UIElement.h"
 #include <vector>
 
@@ -35,12 +36,12 @@ namespace RTBEngine {
 
 			const std::vector<UIElement*>& GetUIElements() const { return cachedUIElements; }
 
-			virtual const char* GetTypeName() const override { return "Canvas"; }
-
 			virtual void OnAwake() override;
 			virtual void OnStart() override;
 			virtual void OnUpdate(float deltaTime) override;
 			virtual void OnDestroy() override;
+
+			RTB_COMPONENT(Canvas)
 
 		private:
 			void CollectUIElements();
@@ -51,6 +52,8 @@ namespace RTBEngine {
 			int sortOrder = 0;
 			std::vector<UIElement*> cachedUIElements;
 			bool isInitialized = false;
+
+			friend struct Canvas_TypeRegistrar;
 		};
 #pragma warning(pop)
 

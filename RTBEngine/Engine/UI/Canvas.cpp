@@ -2,10 +2,16 @@
 #include "UIElement.h"
 #include "../ECS/GameObject.h"
 #include <functional>
-#include <algorithm>
 
 namespace RTBEngine {
 	namespace UI {
+
+        using ThisClass = Canvas;
+        RTB_REGISTER_COMPONENT(Canvas)
+            RTB_PROPERTY_ENUM(renderMode, "ScreenSpaceOverlay", "ScreenSpaceCamera", "WorldSpace")
+            RTB_PROPERTY(canvasSize)
+            RTB_PROPERTY(sortOrder)
+        RTB_END_REGISTER(Canvas)
 
 		Canvas::Canvas() {
 			canvasSize = Math::Vector2(1920.0f, 1080.0f);
@@ -76,23 +82,7 @@ namespace RTBEngine {
 			collectRecursive(owner);
 		}
 
-		// Helper to get hierarchy depth for a GameObject
-		static int GetHierarchyDepth(ECS::GameObject* obj) {
-			int depth = 0;
-			ECS::GameObject* parent = obj->GetParent();
-			while (parent) {
-				depth++;
-				parent = parent->GetParent();
-			}
-			return depth;
-		}
-
 		void Canvas::UpdateRectTransforms(const Math::Vector2& screenSize) {
-			// Sort elements by hierarchy depth to ensure parents are processed before children
-			std::sort(cachedUIElements.begin(), cachedUIElements.end(),
-				[](UIElement* a, UIElement* b) {
-					return GetHierarchyDepth(a->GetOwner()) < GetHierarchyDepth(b->GetOwner());
-				});
 
 			for (UIElement* element : cachedUIElements) {
 				if (!element) continue;

@@ -74,13 +74,12 @@ private:
 
 // Starts property registration in cpp file
 #define RTB_REGISTER_COMPONENT(ClassName)                                               \
-    namespace {                                                                         \
-        struct ClassName##_TypeRegistrar {                                              \
-            ClassName##_TypeRegistrar() {                                               \
-                RTBEngine::Reflection::TypeInfo& info = ClassName::MutableTypeInfo();   \
-                using RTBCurrentClass = ClassName;                                      \
-                constexpr const char* RTBCurrentTypeName = #ClassName;                  \
-                (void)info;
+    struct ClassName##_TypeRegistrar {                                                  \
+        ClassName##_TypeRegistrar() {                                                   \
+            RTBEngine::Reflection::TypeInfo& info = ClassName::MutableTypeInfo();       \
+            using RTBCurrentClass = ClassName;                                          \
+            constexpr const char* RTBCurrentTypeName = #ClassName;                      \
+            (void)info;
 
 // Registers a public property
 #define RTB_PROPERTY(PropName)                                                          \
@@ -392,9 +391,9 @@ extern "C" void RTBScripts_RegisterLocalProperty(const char* ownerType, const RT
 // When compiling GameScripts.dll, register into the local POD list (no STL across boundary).
 // Otherwise register directly into the engine TypeRegistry.
 #ifdef GAMESCRIPTS_EXPORTS
-#define RTB_END_REGISTER(ClassName)                                                                     RTBScripts_RegisterLocalType(#ClassName, &ClassName::StaticTypeInfo());             }                                                                                   };                                                                                      static ClassName##_TypeRegistrar _##ClassName##_registrar;                          }
+#define RTB_END_REGISTER(ClassName)                                                                     RTBScripts_RegisterLocalType(#ClassName, &ClassName::StaticTypeInfo());             }                                                                                   };                                                                                   namespace { static ClassName##_TypeRegistrar _##ClassName##_registrar; }
 #else
-#define RTB_END_REGISTER(ClassName)                                                                     RTBEngine::Reflection::TypeRegistry::GetInstance().RegisterType(                             #ClassName, ClassName::MutableTypeInfo());                                        }                                                                                   };                                                                                      static ClassName##_TypeRegistrar _##ClassName##_registrar;                          }
+#define RTB_END_REGISTER(ClassName)                                                                     RTBEngine::Reflection::TypeRegistry::GetInstance().RegisterType(                             #ClassName, ClassName::MutableTypeInfo());                                        }                                                                                   };                                                                                   namespace { static ClassName##_TypeRegistrar _##ClassName##_registrar; }
 #endif
 
 namespace RTBEngine {

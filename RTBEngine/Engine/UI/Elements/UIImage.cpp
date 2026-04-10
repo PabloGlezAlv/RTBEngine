@@ -44,7 +44,7 @@ namespace RTBEngine {
 			if (!isVisible) return;
 			if (!texture) return;
 
-			Math::Vector4 screenRect = rectTransform->GetScreenRect();
+			Math::Vector4 screenRect = rectTransform->GetWorldRect();
 
 			ImDrawList* drawList = UIRenderContext::GetDrawList();
 			Math::Vector2 offset = UIRenderContext::Offset;

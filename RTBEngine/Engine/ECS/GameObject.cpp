@@ -34,10 +34,17 @@ namespace RTBEngine {
         // Returns a deleter that destroys the component through its TypeInfo if available.
         // This ensures delete runs in the same module (heap) that called new,
         // which is required when GameScripts.dll uses a separate /MT CRT heap.
-        static std::function<void(Component*)> MakeComponentDeleter(Component* component)
+        static std::function<void(Component*)> MakeComponentDeleter(
+            Component* component,
+            const RTBEngine::Reflection::TypeInfo* typeInfoOverride)
         {
             if (!component) return [](Component* c) { delete c; };
-            const RTBEngine::Reflection::TypeInfo* ti = component->GetTypeInfo();
+
+            const RTBEngine::Reflection::TypeInfo* ti = typeInfoOverride;
+            if (!ti) {
+                ti = component->GetTypeInfo();
+            }
+
             if (ti) {
                 return [ti](Component* c) { ti->Destroy(c); };
             }
@@ -54,9 +61,14 @@ namespace RTBEngine {
 
         void GameObject::AddComponent(Component* component)
         {
+            AddComponent(component, nullptr);
+        }
+
+        void GameObject::AddComponent(Component* component, const RTBEngine::Reflection::TypeInfo* typeInfoOverride)
+        {
             if (component) {
                 component->SetOwner(this);
-                auto deleter = MakeComponentDeleter(component);
+                auto deleter = MakeComponentDeleter(component, typeInfoOverride);
                 components.push_back(std::unique_ptr<Component, std::function<void(Component*)>>(component, std::move(deleter)));
                 component->OnAwake();
             }
@@ -161,6 +173,10 @@ namespace RTBEngine {
 
         void GameObject::SetParent(GameObject* newParent)
         {
+            if (newParent == parent) return;
+
+            GameObject* oldParent = parent;
+
             if (parent) {
                 parent->RemoveChild(this);
             }
@@ -169,6 +185,13 @@ namespace RTBEngine {
 
             if (parent) {
                 parent->AddChild(this);
+            }
+
+            for (auto& comp : components) {
+                Component* component = comp.get();
+                if (component) {
+                    component->OnParentChanged(oldParent, parent);
+                }
             }
         }
 

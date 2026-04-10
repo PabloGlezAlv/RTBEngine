@@ -5,6 +5,10 @@
 #include <functional>
 
 namespace RTBEngine {
+    namespace Reflection {
+        class TypeInfo;
+    }
+
     namespace ECS {
         class Component;
     }
@@ -27,6 +31,12 @@ namespace RTBEngine {
 
             // Create a component by type name
             ECS::Component* CreateComponent(const std::string& typeName);
+
+            // Resolve the registered reflection metadata for a component type name.
+            const Reflection::TypeInfo* GetComponentTypeInfo(const std::string& typeName) const;
+
+            // Destroy a component using the correct module/heap for its registered type.
+            void DestroyComponent(const std::string& typeName, ECS::Component* component) const;
 
             // Check if a component type is registered
             bool HasComponent(const std::string& typeName) const;

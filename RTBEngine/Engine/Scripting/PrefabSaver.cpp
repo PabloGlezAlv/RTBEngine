@@ -52,7 +52,7 @@ namespace RTBEngine {
                 ECS::Prefab::ApplySnapshot(temp, snap);
                 // depth + 2: one extra level for the components array, one for the component table
                 Scripting::ScenePropertySerializer::WriteComponent(file, temp, depth + 2);
-                delete temp;
+                Scripting::ComponentRegistry::GetInstance().DestroyComponent(snap.typeName, temp);
             }
 
             file << ind << "    },\n";
@@ -98,7 +98,7 @@ namespace RTBEngine {
 
                     ECS::Prefab::ApplySnapshot(temp, snap);
                     Scripting::ScenePropertySerializer::WriteComponent(file, temp, 2);
-                    delete temp;
+                    Scripting::ComponentRegistry::GetInstance().DestroyComponent(snap.typeName, temp);
                 }
 
                 file << "    },\n";
