@@ -691,6 +691,7 @@ virtual void OnStart();                          // Fired on first Update() afte
 virtual void OnUpdate(float deltaTime);          // Every frame while active and owner is active
 virtual void OnFixedUpdate(float fixedDelta);    // Fixed physics timestep
 virtual void OnDestroy();                        // Owner removed or scene unloaded
+virtual void OnParentChanged(GameObject* oldParent, GameObject* newParent); // Fired by SetParent()
 ```
 
 **Collision callbacks** (fired by `PhysicsSystem` when rigid bodies interact):
@@ -851,11 +852,18 @@ const std::vector<std::unique_ptr<Component>>& GetComponents() const;
 **Hierarchy:**
 
 ```cpp
-void             SetParent(GameObject* parent);
+void             SetParent(GameObject* parent);   // Calls OnParentChanged on all components
 void             AddChild(GameObject* child);
 void             RemoveChild(GameObject* child);
 GameObject*      GetParent() const;
 const std::vector<GameObject*>& GetChildren() const;
+
+// Global counter incremented on every AddChild/RemoveChild:
+static uint32_t  GetHierarchyVersion();
+
+// Depth-first component search (checks self first, then descendants):
+template<typename T>
+T* GetComponentInChildren(int maxDepth = -1);   // -1 = unlimited depth
 ```
 
 **Activation:**
@@ -2839,7 +2847,6 @@ All engine built-in components are registered at startup. Script components (fro
 **In the class header:**
 
 ```cpp
-// Reflected properties (Proxy)
 float speedRef = 5.0f;
 
 RTB_COMPONENT(MyComponent)
@@ -2890,23 +2897,24 @@ RTB_REGISTER_COMPONENT(MyComponent)
 RTB_END_REGISTER(MyComponent)
 ```
 
-For inherited properties, rebind `ThisClass` inside a scoped block:
+For inherited properties, rebind `ThisClass` inside a scoped block. Alternatively, use `RTB_PROPERTY_NESTED_HIDDEN` for fields that live inside an inline sub-object (e.g. `UIElement::rectTransform.anchorMin`):
 
 ```cpp
-using ThisClass = UIText;
-
-RTB_REGISTER_COMPONENT(UIText)
-    RTB_PROPERTY(text)
-    { using ThisClass = UIElement; RTB_PROPERTY(anchorMin) }
-    { using ThisClass = UIElement; RTB_PROPERTY(anchorMax) }
-RTB_END_REGISTER(UIText)
+// Registers a Serialize+HideInInspector field inside an inline sub-object.
+// Computes the combined offset at registration time using a stack probe.
+RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, anchorMin)
+RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, sizeDelta)
 ```
 
-That expands conceptually to:
+For properties inherited from a base class that declares them directly, rebind `ThisClass` inside a scoped block:
 
 ```cpp
-GetMemberOffset<UIText, UIElement>(&UIElement::anchorMin)
-GetMemberOffset<UIText, UIElement>(&UIElement::anchorMax)
+using ThisClass = UIButton;
+
+RTB_REGISTER_COMPONENT(UIButton)
+    RTB_PROPERTY(label)
+    { using ThisClass = UIElement; RTB_PROPERTY(isVisible) }
+RTB_END_REGISTER(UIButton)
 ```
 
 This pattern works across deeper inheritance chains as long as `OwnerClass*` can be converted to `DeclaringClass*`.
@@ -2928,6 +2936,7 @@ This pattern works across deeper inheritance chains as long as `OwnerClass*` can
 | `RTB_PROPERTY_HIDDEN(name)` | (any) | Not shown, but serialized |
 | `RTB_PROPERTY_READONLY(name)` | (any) | Shown, greyed out |
 | `RTB_PROPERTY_SERIALIZED(name)` | (any) | Serialized, not shown |
+| `RTB_PROPERTY_NESTED_HIDDEN(outer, InnerType, inner)` | Auto-detected from inner field | Serialized, hidden — for inline sub-objects |
 
 ### 14.6 Writing a Reflectable Component
 
@@ -2961,18 +2970,20 @@ RTB_REGISTER_COMPONENT(UIText)
     RTB_PROPERTY_COLOR(color)
     RTB_PROPERTY(fontSize)
     { using ThisClass = UIElement; RTB_PROPERTY(isVisible) }
-    { using ThisClass = UIElement; RTB_PROPERTY(anchorMin) }
-    { using ThisClass = UIElement; RTB_PROPERTY(anchorMax) }
-    { using ThisClass = UIElement; RTB_PROPERTY(anchoredPosition) }
-    { using ThisClass = UIElement; RTB_PROPERTY(sizeDelta) }
+    RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, anchorMin)
+    RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, anchorMax)
+    RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, anchoredPosition)
+    RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, sizeDelta)
+    RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, rotation)
+    RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, scale)
 RTB_END_REGISTER(UIText)
 ```
 
-This is the recommended pattern for inherited reflection:
+Recommended registration pattern for UI components:
 
-- keep `using ThisClass = UIText;` for properties declared in `UIText`
-- temporarily switch to `using ThisClass = UIElement;` for inherited members
-- let `RTBCurrentClass` remain `UIText` throughout the whole registration
+- `using ThisClass = UIText` for properties declared directly on the subclass
+- `{ using ThisClass = UIElement; ... }` for properties declared on `UIElement` itself (e.g. `isVisible`)
+- `RTB_PROPERTY_NESTED_HIDDEN` for all transform fields — they live inside the inline `rectTransform` member, not directly on `UIElement`
 
 ### 14.7 TypeInfoBuilder
 
@@ -3053,8 +3064,17 @@ void             RegisterComponent(const std::string& typeName,
 ECS::Component*  CreateComponent(const std::string& typeName) const;
 bool             HasComponent(const std::string& typeName) const;
 
+// Resolve the registered TypeInfo for a type name (queries TypeRegistry):
+const Reflection::TypeInfo* GetComponentTypeInfo(const std::string& typeName) const;
+
+// Destroy a component through its registered TypeInfo Destroy function.
+// Use instead of raw delete to keep allocation/deallocation in the same module:
+void DestroyComponent(const std::string& typeName, ECS::Component* component) const;
+
 void RegisterBuiltInComponents();   // Called by Application::Initialize()
 ```
+
+Built-in types registered: `MeshRenderer`, `CameraComponent`, `LightComponent`, `RigidBodyComponent`, `BoxColliderComponent`, `SphereColliderComponent`, `AudioSourceComponent`, `FreeLookCamera`, `Canvas`, `UIText`, `UIImage`, `UIPanel`, `UIButton`, `UIContainer`.
 
 Script DLLs typically register through `RTB_REGISTER_COMPONENT` static initializers, which call both `ComponentRegistry::RegisterComponent` and `TypeRegistry::RegisterType`.
 
@@ -3102,11 +3122,12 @@ return {
    b. Set UUID, active flag
    c. Apply transform (position, rotation, scale)
    d. For each component entry:
-      i.  ComponentRegistry::CreateComponent(type)
-      ii. scene.AddComponent(component)
-      iii. SceneReflectionUtils::ApplyProperties(component, properties)
-           (writes each property value through PropertyInfo::GetMutableData(component))
-      iv. component.OnValidate()
+      i.  registeredTypeInfo = ComponentRegistry::GetComponentTypeInfo(type)
+      ii. ComponentRegistry::CreateComponent(type)
+      iii. gameObject.AddComponent(component, registeredTypeInfo)
+      iv. SceneReflectionUtils::ApplyLuaTableToComponent(L, tableIndex, type, component)
+      v.  component.OnValidate()
+      vi. Duplicates destroyed via ComponentRegistry::DestroyComponent (never raw delete)
 4. Deferred UUID resolution:
    For each GameObjectRef property:
       Resolve UUID -> GameObject* and write through the reflected property accessor
@@ -3290,7 +3311,9 @@ The scene loading and saving pipeline relies on several specialized utility clas
 
 **ScenePropertySerializer** (`Engine/Scripting/ScenePropertySerializer.h`) — Functions for writing component properties to Lua scene files: `WriteComponent`, `WriteProperty`. Includes format helpers for all math types and utility functions for path normalization.
 
-**SceneReflectionUtils** (`Engine/Scripting/SceneReflectionUtils.h`) — `ApplyLuaTableToComponent(L, tableIndex, component)` — fills component proxy properties from a Lua table using `TypeInfo` reflection metadata. Handles type dispatch for all `PropertyType` variants.
+**SceneReflectionUtils** (`Engine/Scripting/SceneReflectionUtils.h`) — Two overloads:
+- `ApplyLuaTableToComponent(L, tableIndex, componentTypeName, component)` — preferred; uses the registered type name to look up TypeInfo, ensuring script components from `GameScripts.dll` use their registered metadata rather than the virtual method result.
+- `ApplyLuaTableToComponent(L, tableIndex, component)` — convenience wrapper; forwards to the above using `component->GetTypeName()`.
 
 **SceneLuaBindings** (`Engine/Scripting/SceneLuaBindings.h`) — `SetupLuaBindings(L)` — registers C++ engine types with the Lua state so scene files can reference engine constants and functions.
 
@@ -3302,54 +3325,80 @@ The UI subsystem provides a component-based 2D UI framework that runs on top of 
 
 ### 16.1 RectTransform
 
-`Engine/UI/RectTransform.h` — 2D layout component analogous to `Transform` for 3D objects.
+`Engine/UI/RectTransform.h` — 2D layout component. Owns all transform data for a UI element and is the single source of truth — `UIElement` delegates to it directly.
+
+**Public serializable fields** (use `Set*()` methods at runtime to also trigger `SetDirty()`):
 
 ```cpp
-// Anchor defines which corner/side of the parent the element is anchored to.
-// Values in normalized [0,1] range: (0,0) = bottom-left, (1,1) = top-right.
-Math::Vector2 anchorMin = {0.5f, 0.5f};
-Math::Vector2 anchorMax = {0.5f, 0.5f};
-
-// Pivot: the origin point of this element. (0.5, 0.5) = center.
-Math::Vector2 pivot = {0.5f, 0.5f};
-
-// Position offset from the anchor point (pixels):
-Math::Vector2 anchoredPosition = {0, 0};
-
-// Width and height of the element in pixels:
-Math::Vector2 sizeDelta = {100, 30};
+Math::Vector2 anchorMin        = {0.0f, 0.0f};  // (0,0) = bottom-left, (1,1) = top-right
+Math::Vector2 anchorMax        = {0.0f, 0.0f};
+Math::Vector2 pivot            = {0.5f, 0.5f};  // (0.5, 0.5) = center
+Math::Vector2 anchoredPosition = {0.0f, 0.0f};
+Math::Vector2 sizeDelta        = {100.0f, 100.0f};
+Math::Vector2 scale            = {1.0f, 1.0f};
+float         rotation         = 0.0f;
 ```
 
-`RectTransform::GetWorldRect(canvasSize)` computes the final screen-space rectangle by resolving anchors against the canvas size.
+**Dirty flag** — marks for world transform recalculation:
+
+```cpp
+void SetDirty();
+bool IsDirty() const;
+void ClearDirty();
+```
+
+**World transform** (calculated by `Canvas::UpdateRectTransforms` only when dirty):
+
+```cpp
+void CalculateWorldTransform(const Math::Vector2& parentWorldPos,
+                              const Math::Vector2& parentWorldSize,
+                              const Math::Vector2& parentLossyScale);
+
+Math::Vector2 GetWorldPosition() const;
+Math::Vector2 GetWorldSize()     const;
+Math::Vector4 GetWorldRect()     const;   // (x, y, width, height) in screen pixels
+Math::Vector2 GetLossyScale()    const;
+```
 
 ### 16.2 UIElement
 
-`Engine/UI/UIElement.h` — Base class for all UI components. Extends `Component`.
+`Engine/UI/UIElement.h` — Base class for all UI components. Extends `Component`. Owns a `RectTransform` as an inline member.
 
 ```cpp
-virtual void Render() = 0;         // Draw the element to screen
+virtual void Render() = 0;
 
-bool IsVisible()        const;
+bool IsVisible()       const;
 void SetVisible(bool v);
 
-bool IsRaycastTarget()  const;
-void SetRaycastTarget(bool t);     // Whether this element receives click events
+bool IsRaycastTarget() const;
+void SetRaycastTarget(bool t);
 
-RectTransform& GetRectTransform();
-void           SyncRectTransform();  // Sync proxy values to RectTransform
+RectTransform*       GetRectTransform();
+const RectTransform* GetRectTransform() const;
 ```
 
-**Reflected properties (Proxy) — common to all elements:**
+**Transform accessors** — delegate to the inline `RectTransform`:
 
 ```cpp
-bool          isVisible     = true;
-bool          raycastTarget = true;
-Math::Vector2 anchorMin;
-Math::Vector2 anchorMax;
-Math::Vector2 pivot;
-Math::Vector2 anchoredPosition;
-Math::Vector2 sizeDelta;
+Math::Vector2 GetAnchorMin() / SetAnchorMin(const Math::Vector2&)
+Math::Vector2 GetAnchorMax() / SetAnchorMax(const Math::Vector2&)
+Math::Vector2 GetPivot()     / SetPivot(const Math::Vector2&)
+Math::Vector2 GetAnchoredPosition() / SetAnchoredPosition(const Math::Vector2&)
+Math::Vector2 GetSizeDelta() / SetSizeDelta(const Math::Vector2&)
+float         GetRotation()  / SetRotation(float degrees)
+Math::Vector2 GetScale()     / SetScale(const Math::Vector2&)
 ```
+
+Each setter delegates to `rectTransform.Set*()` then calls `PropagateDirtyToChildren()`.
+
+**Public reflected fields:**
+
+```cpp
+bool isVisible     = true;
+bool raycastTarget = true;
+```
+
+Transform fields are serialized through the inline `rectTransform` member using `RTB_PROPERTY_NESTED_HIDDEN` in each subclass registration — there are no proxy transform fields on `UIElement` itself.
 
 ### 16.3 Canvas
 
@@ -3401,7 +3450,7 @@ void PrepareForHitTest(const Math::Vector2& screenSize);
 const std::vector<UIElement*>& GetUIElements() const;
 ```
 
-Returns a cached list of all `UIElement` descendants. Refreshed each frame.
+Returns a cached list of all `UIElement` descendants. Rebuilt only when `GameObject::GetHierarchyVersion()` changes — zero cost on frames where the hierarchy is unchanged.
 
 ### 16.4 CanvasSystem
 
