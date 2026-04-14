@@ -27,39 +27,103 @@ namespace RTBEngine {
         }
 
         bool SceneManager::LoadScene(const std::string& path) {
-            // Unload current scene first
-            if (activeScene) {
-                if (onSceneUnloading) {
-                    onSceneUnloading(activeScene.get());
-                }
-                activeScene.reset();
-            }
+            ClearPendingSceneLoad();
 
-            // Load new scene
-            Scene* newScene = Scripting::SceneLoader::LoadScene(path);
-            if (!newScene) {
-                RTB_ERROR("SceneManager: Failed to load scene '" + path + "'");
+            if (path.empty()) {
+                RTB_WARN("SceneManager: Ignoring empty scene path");
                 return false;
             }
 
+            if (isSceneTransitioning) {
+                RTB_WARN("SceneManager: Ignoring LoadScene while another scene transition is active");
+                return false;
+            }
+
+            isSceneTransitioning = true;
+
+            std::unique_ptr<Scene> previousScene = std::move(activeScene);
+            const std::string previousScenePath = activeScenePath;
+            const bool previousSceneDirty = sceneDirty;
+
+            activeScenePath.clear();
+            sceneDirty = false;
+
+            Scene* newScene = Scripting::SceneLoader::LoadScene(path);
+            if (!newScene) {
+                RTB_ERROR("SceneManager: Failed to load scene '" + path + "'");
+                activeScene = std::move(previousScene);
+                activeScenePath = previousScenePath;
+                sceneDirty = previousSceneDirty;
+                isSceneTransitioning = false;
+                return false;
+            }
+
+            if (previousScene && onSceneUnloading) {
+                onSceneUnloading(previousScene.get());
+            }
+
+            previousScene.reset();
             activeScene.reset(newScene);
             activeScenePath = path;
+            sceneDirty = false;
 
-            // Notify listeners
             if (onSceneLoaded) {
                 onSceneLoaded(activeScene.get());
             }
 
+            isSceneTransitioning = false;
             return true;
         }
 
+        bool SceneManager::RequestSceneLoad(const char* path) {
+            if (!path || path[0] == '\0') {
+                RTB_WARN("SceneManager: Ignoring empty requested scene path");
+                return false;
+            }
+
+            if (isSceneTransitioning) {
+                RTB_WARN("SceneManager: Ignoring requested scene load during active scene transition");
+                return false;
+            }
+
+            pendingScenePath = path;
+            hasPendingSceneLoad = true;
+            return true;
+        }
+
+        bool SceneManager::ProcessPendingSceneLoad() {
+            if (!hasPendingSceneLoad) {
+                return false;
+            }
+
+            const std::string requestedPath = pendingScenePath;
+            ClearPendingSceneLoad();
+
+            return LoadScene(requestedPath);
+        }
+
+        void SceneManager::ClearPendingSceneLoad() {
+            pendingScenePath.clear();
+            hasPendingSceneLoad = false;
+        }
+
         void SceneManager::UnloadCurrentScene() {
+            ClearPendingSceneLoad();
+
+            if (isSceneTransitioning) {
+                RTB_WARN("SceneManager: Ignoring UnloadCurrentScene while another scene transition is active");
+                return;
+            }
+
             if (activeScene) {
+                isSceneTransitioning = true;
                 if (onSceneUnloading) {
                     onSceneUnloading(activeScene.get());
                 }
                 activeScene.reset();
                 activeScenePath.clear();
+                sceneDirty = false;
+                isSceneTransitioning = false;
             }
         }
 

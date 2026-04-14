@@ -25,6 +25,9 @@ namespace RTBEngine {
             void Shutdown();
 
             bool LoadScene(const std::string& path);
+            bool RequestSceneLoad(const char* path);
+            bool ProcessPendingSceneLoad();
+            void ClearPendingSceneLoad();
             void UnloadCurrentScene();
 
             Scene* GetActiveScene() const { return activeScene.get(); }
@@ -49,7 +52,10 @@ namespace RTBEngine {
 
             std::unique_ptr<Scene> activeScene;
             std::string activeScenePath;
+            std::string pendingScenePath;
             bool sceneDirty = false;
+            bool hasPendingSceneLoad = false;
+            bool isSceneTransitioning = false;
 
             std::function<void(Scene*)> onSceneLoaded;
             std::function<void(Scene*)> onSceneUnloading;

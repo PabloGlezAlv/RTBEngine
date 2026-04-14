@@ -217,13 +217,16 @@ namespace RTBEngine {
 
         void ScriptManager::UnloadScripts()
         {
+            auto& sceneManager = RTBEngine::ECS::SceneManager::GetInstance();
+            sceneManager.ClearPendingSceneLoad();
+
             if (dllHandle == nullptr) {
                 return;
             }
 
             // Unload the current scene first so all script components are destroyed
             // while the DLL is still mapped. FreeLibrary invalidates their vtables.
-            RTBEngine::ECS::SceneManager::GetInstance().UnloadCurrentScene();
+            sceneManager.UnloadCurrentScene();
 
             // Remove all types that came from this DLL before freeing it.
             // Component factories inside the DLL become dangling pointers after FreeLibrary.

@@ -176,6 +176,7 @@ bool RTBEngine::Core::Application::Initialize()
 	sceneMgr.Initialize();
 
 	sceneMgr.SetOnSceneUnloading([this](ECS::Scene* /*scene*/) {
+		UI::CanvasSystem::GetInstance().ClearState();
 		// Remove all Bullet objects from the world BEFORE GameObjects are destroyed.
 		// This prevents btDbvtBroadphase::destroyProxy from accessing a freed proxy
 		// when ~BoxColliderComponent() deletes the raw btCollisionObject.
@@ -291,10 +292,20 @@ void RTBEngine::Core::Application::ProcessInput()
 
 void RTBEngine::Core::Application::Update(float deltaTime)
 {
-	ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
+	ECS::SceneManager& sceneMgr = ECS::SceneManager::GetInstance();
+	sceneMgr.ProcessPendingSceneLoad();
+
+	ECS::Scene* scene = sceneMgr.GetActiveScene();
 	if (!scene) return;
 
 	scene->Update(deltaTime);
+
+	if (sceneMgr.ProcessPendingSceneLoad()) {
+		return;
+	}
+
+	scene = sceneMgr.GetActiveScene();
+	if (!scene) return;
 
 	// Fixed timestep physics update
 	physicsAccumulator += deltaTime;

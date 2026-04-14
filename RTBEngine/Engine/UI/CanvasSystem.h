@@ -33,6 +33,7 @@ namespace RTBEngine {
 			void UpdateAllRectTransforms(const Math::Vector2& screenSize);
 			void ProcessInput(const Math::Vector2& mousePos);
 			void RenderToDrawList(ImDrawList* drawList, const Math::Vector2& screenSize, const Math::Vector2& offset);
+			void ClearState();
 
 			Math::Vector2 GetScreenSize() const { return screenSize; }
 			std::vector<Math::Vector4> GetRaycastRectsForGameObject(ECS::GameObject* gameObject) const;

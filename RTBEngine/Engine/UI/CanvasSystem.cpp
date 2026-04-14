@@ -54,6 +54,13 @@ namespace RTBEngine {
 			UIRenderContext::End();
 		}
 
+		void CanvasSystem::ClearState() {
+			activeCanvases.clear();
+			activeScene = nullptr;
+			hoveredGameObject = nullptr;
+			pressedGameObject = nullptr;
+		}
+
 		bool CanvasSystem::IsGameObjectAlive(ECS::GameObject* gameObject) const {
 			if (!activeScene || !gameObject) return false;
 			for (const auto& obj : activeScene->GetGameObjects()) {
