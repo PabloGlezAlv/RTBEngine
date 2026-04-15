@@ -1,4 +1,5 @@
 #include "Application.h"
+#include "Window.h"
 #include "../Input/Input.h"
 #include "../Rendering/Rendering.h"
 #include "../ECS/Scene.h"
@@ -27,7 +28,12 @@
 #include <backends/imgui_impl_opengl3.h>
 #include <iostream>
 #include <filesystem>
+#include <atomic>
 #include "Logger.h"
+
+namespace {
+	std::atomic_bool g_quitRequested{ false };
+}
 
 
 RTBEngine::Core::Application::Application(const ApplicationConfig& cfg)
@@ -39,6 +45,26 @@ RTBEngine::Core::Application::Application(const ApplicationConfig& cfg)
 RTBEngine::Core::Application::~Application()
 {
 	Shutdown();
+}
+
+void RTBEngine::Core::Application::RequestQuit()
+{
+	g_quitRequested.store(true, std::memory_order_release);
+}
+
+bool RTBEngine::Core::Application::IsQuitRequested()
+{
+	return g_quitRequested.load(std::memory_order_acquire);
+}
+
+bool RTBEngine::Core::Application::ConsumeQuitRequest()
+{
+	return g_quitRequested.exchange(false, std::memory_order_acq_rel);
+}
+
+void RTBEngine::Core::Application::ClearQuitRequest()
+{
+	g_quitRequested.store(false, std::memory_order_release);
 }
 
 bool RTBEngine::Core::Application::InitializeImGui()
@@ -88,6 +114,8 @@ void RTBEngine::Core::Application::ShutdownImGui()
 
 bool RTBEngine::Core::Application::Initialize()
 {
+	ClearQuitRequest();
+
 	window = std::make_unique<Window>(config.window.title, config.window.width, config.window.height, config.window.fullscreen, config.window.maximized);
 	if (!window->Initialize()) {
 		RTB_ERROR("Failed to initialize Window");
@@ -211,9 +239,19 @@ void RTBEngine::Core::Application::Run()
 
 	while (isRunning)
 	{
+		if (ConsumeQuitRequest()) {
+			isRunning = false;
+			break;
+		}
+
 		Input::InputManager::GetInstance().Update();
 
 		ProcessInput();
+
+		if (ConsumeQuitRequest()) {
+			isRunning = false;
+			break;
+		}
 
 		Uint32 currentTime = SDL_GetTicks();
 		float deltaTime = (currentTime - lastTime) / 1000.0f;
@@ -221,10 +259,20 @@ void RTBEngine::Core::Application::Run()
 
 		Update(deltaTime);
 
+		if (ConsumeQuitRequest()) {
+			isRunning = false;
+			break;
+		}
+
 		Audio::AudioSystem::GetInstance().Update();
 
 
 		Render();
+
+		if (ConsumeQuitRequest()) {
+			isRunning = false;
+			break;
+		}
 	}
 }
 
@@ -233,6 +281,7 @@ void RTBEngine::Core::Application::Shutdown()
 	if (isShutdown) return;
 	isShutdown = true;
 	isRunning = false;
+	ClearQuitRequest();
 
 	ShutdownImGui();
 
@@ -292,15 +341,31 @@ void RTBEngine::Core::Application::ProcessInput()
 
 void RTBEngine::Core::Application::Update(float deltaTime)
 {
+	if (IsQuitRequested()) {
+		return;
+	}
+
 	ECS::SceneManager& sceneMgr = ECS::SceneManager::GetInstance();
 	sceneMgr.ProcessPendingSceneLoad();
+
+	if (IsQuitRequested()) {
+		return;
+	}
 
 	ECS::Scene* scene = sceneMgr.GetActiveScene();
 	if (!scene) return;
 
 	scene->Update(deltaTime);
 
+	if (IsQuitRequested()) {
+		return;
+	}
+
 	if (sceneMgr.ProcessPendingSceneLoad()) {
+		return;
+	}
+
+	if (IsQuitRequested()) {
 		return;
 	}
 

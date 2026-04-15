@@ -1,4 +1,5 @@
 #include "InputManager.h"
+#include <SDL.h>
 
 namespace RTBEngine {
     namespace Input {
@@ -133,7 +134,7 @@ namespace RTBEngine {
             SDL_WarpMouseInWindow(nullptr, x, y);
         }
 
-        KeyCode InputManager::SDLKeyToKeyCode(SDL_Keycode sdlKey) const {
+        KeyCode InputManager::SDLKeyToKeyCode(int sdlKey) const {
             switch (sdlKey) {
             case SDLK_a: return KeyCode::A;
             case SDLK_b: return KeyCode::B;

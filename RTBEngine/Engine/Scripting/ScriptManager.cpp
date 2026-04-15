@@ -86,7 +86,7 @@ namespace RTBEngine {
             return std::string(value);
         }
 
-        static void BridgeBeginType(const char* typeName, void* factory)
+        static void BridgeBeginType(const char* typeName, void* scriptTypeDesc)
         {
             auto& reg = RTBEngine::Reflection::TypeRegistry::GetInstance();
             const RTBEngine::Reflection::TypeInfo* existing = reg.GetTypeInfo(typeName);
@@ -98,23 +98,30 @@ namespace RTBEngine {
                 return;
             }
             // Register the new script type in the EXE's registry.
-            // The factory and destroyer delegate back into the DLL-side TypeInfo via raw fn ptrs.
+            // The factory and destroyer delegate back into the DLL via raw function pointers.
             // No STL types cross the module boundary — all POD.
             RTBEngine::Reflection::TypeInfo newInfo(typeName);
-            auto* dllTypeInfo = static_cast<RTBEngine::Reflection::TypeInfo*>(factory);
-            if (dllTypeInfo) {
+            auto* desc = static_cast<RTBScriptTypeDesc*>(scriptTypeDesc);
+            if (desc) {
                 newInfo.SetFactory(
-                [](void* ctx) -> RTBEngine::ECS::Component* {
-                    return static_cast<RTBEngine::Reflection::TypeInfo*>(ctx)->Create();
-                },
-                static_cast<void*>(dllTypeInfo));
+                    [](void* ctx) -> RTBEngine::ECS::Component* {
+                        auto* scriptDesc = static_cast<RTBScriptTypeDesc*>(ctx);
+                        if (!scriptDesc || !scriptDesc->createComponent) {
+                            return nullptr;
+                        }
+                        return static_cast<RTBEngine::ECS::Component*>(scriptDesc->createComponent());
+                    },
+                    static_cast<void*>(desc));
                 // The destroyer must run inside GameScripts.dll so that delete uses
-                // the same /MT heap that new used. Copy the lambda from the DLL TypeInfo.
+                // the same module/runtime that new used.
                 newInfo.SetDestroyer(
                     [](RTBEngine::ECS::Component* c, void* ctx) {
-                        static_cast<RTBEngine::Reflection::TypeInfo*>(ctx)->Destroy(c);
+                        auto* scriptDesc = static_cast<RTBScriptTypeDesc*>(ctx);
+                        if (scriptDesc && scriptDesc->destroyComponent) {
+                            scriptDesc->destroyComponent(static_cast<void*>(c));
+                        }
                     },
-                    static_cast<void*>(dllTypeInfo));
+                    static_cast<void*>(desc));
             }
             reg.RegisterType(typeName, newInfo);
             s_pendingInfo = const_cast<RTBEngine::Reflection::TypeInfo*>(reg.GetTypeInfo(typeName));

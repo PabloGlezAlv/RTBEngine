@@ -1,9 +1,10 @@
 #pragma once
 #include "../RTBEngineAPI.h"
-#include <SDL.h>
 #include <unordered_map>
 #include "KeyCode.h"
 #include "MouseButton.h"
+
+union SDL_Event;
 
 namespace RTBEngine {
     namespace Input {
@@ -41,7 +42,7 @@ namespace RTBEngine {
             InputManager(const InputManager&) = delete;
             InputManager& operator=(const InputManager&) = delete;
 
-            KeyCode SDLKeyToKeyCode(SDL_Keycode sdlKey) const;
+            KeyCode SDLKeyToKeyCode(int sdlKey) const;
 
             std::unordered_map<KeyCode, bool> currentKeys;
             std::unordered_map<KeyCode, bool> previousKeys;

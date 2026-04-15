@@ -16,3 +16,9 @@ struct RTBPropertyDesc {
     const char* componentTypeName;
 };
 
+struct RTBScriptTypeDesc {
+    const char* typeName;
+    void*       (*createComponent)();
+    void        (*destroyComponent)(void* component);
+};
+

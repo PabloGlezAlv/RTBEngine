@@ -120,6 +120,10 @@ namespace RTBEngine {
             return nullptr;
         }
 
+        const TypeInfo* TypeRegistry::GetTypeInfo(const char* typeName) const {
+            return typeName ? GetTypeInfo(std::string(typeName)) : nullptr;
+        }
+
         bool TypeRegistry::HasType(const std::string& typeName) const {
             return types.find(typeName) != types.end();
         }

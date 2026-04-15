@@ -189,6 +189,7 @@ namespace RTBEngine {
             void RegisterType(const std::string& typeName, const TypeInfo& info);
             void UnregisterType(const std::string& typeName);
             const TypeInfo* GetTypeInfo(const std::string& typeName) const;
+            const TypeInfo* GetTypeInfo(const char* typeName) const;
             bool HasType(const std::string& typeName) const;
             std::vector<std::string> GetRegisteredTypes() const;
             void ForEachType(void(*callback)(const char* typeName, const TypeInfo* info, void* userData), void* userData) const;

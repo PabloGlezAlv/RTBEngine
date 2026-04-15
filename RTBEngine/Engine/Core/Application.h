@@ -1,9 +1,8 @@
 #pragma once
 #include "../RTBEngineAPI.h"
-#include <SDL.h>
+#include <cstdint>
 #include <memory>
 #include <functional>
-#include "Window.h"
 #include "ApplicationConfig.h"
 
 namespace RTBEngine {
@@ -29,6 +28,8 @@ namespace RTBEngine {
 	namespace Core {
 #pragma warning(push)
 #pragma warning(disable: 4251)
+		class Window;
+
 		class RTB_API Application {
 		public:
 			explicit Application(const ApplicationConfig& config);
@@ -40,6 +41,10 @@ namespace RTBEngine {
 
 			bool IsRunning() const { return isRunning; }
 			void RequestExit() { isRunning = false; }
+			static void RequestQuit();
+			static bool IsQuitRequested();
+			static bool ConsumeQuitRequest();
+			static void ClearQuitRequest();
 			Window* GetWindow() { return window.get(); }
 			void* GetImGuiContext();
 
@@ -67,7 +72,7 @@ namespace RTBEngine {
 
 			bool isRunning = false;
 		bool isShutdown = false;
-			Uint32 lastTime = 0;
+			std::uint32_t lastTime = 0;
 			float deltaTime = 0.0f;
 
 			std::unique_ptr<Window> window;

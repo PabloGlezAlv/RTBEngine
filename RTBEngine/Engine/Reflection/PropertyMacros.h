@@ -49,6 +49,17 @@
 #endif
 
 // Required at end of component class - generates GetTypeName() and GetTypeInfo()
+#ifdef GAMESCRIPTS_EXPORTS
+#define RTB_COMPONENT(ClassName)                                                        \
+public:                                                                                 \
+    virtual const char* GetTypeName() const override { return #ClassName; }             \
+    virtual void* GetActualObject() override { return this; }                           \
+    virtual const void* GetActualObject() const override { return this; }               \
+    virtual const RTBEngine::Reflection::TypeInfo* GetTypeInfo() const override {       \
+        return RTBEngine::Reflection::TypeRegistry::GetInstance().GetTypeInfo(#ClassName); \
+    }                                                                                   \
+private:
+#else
 #define RTB_COMPONENT(ClassName)                                                        \
 public:                                                                                 \
     virtual const char* GetTypeName() const override { return #ClassName; }             \
@@ -71,8 +82,16 @@ public:                                                                         
         return info;                                                                    \
     }                                                                                   \
 private:
+#endif
 
 // Starts property registration in cpp file
+#ifdef GAMESCRIPTS_EXPORTS
+#define RTB_REGISTER_COMPONENT(ClassName)                                               \
+    struct ClassName##_TypeRegistrar {                                                  \
+        ClassName##_TypeRegistrar() {                                                   \
+            using RTBCurrentClass = ClassName;                                          \
+            constexpr const char* RTBCurrentTypeName = #ClassName;
+#else
 #define RTB_REGISTER_COMPONENT(ClassName)                                               \
     struct ClassName##_TypeRegistrar {                                                  \
         ClassName##_TypeRegistrar() {                                                   \
@@ -80,10 +99,18 @@ private:
             using RTBCurrentClass = ClassName;                                          \
             constexpr const char* RTBCurrentTypeName = #ClassName;                      \
             (void)info;
+#endif
 
 // ─── Internal helpers ───
 
 // RTB__PROP_POD: POD property + bridge
+#ifdef GAMESCRIPTS_EXPORTS
+#define RTB__PROP_POD(PropName, TypeExpr, SizeExpr, FlagsExpr)                          \
+                RTB__BRIDGE_PROP(                                                       \
+                    #PropName, TypeExpr, RTB_MEMBER_OFFSET(PropName),                   \
+                    SizeExpr, FlagsExpr, 0.0f, 0.0f, 0, nullptr                         \
+                );
+#else
 #define RTB__PROP_POD(PropName, TypeExpr, SizeExpr, FlagsExpr)                          \
                 info.AddPropertyPOD(                                                    \
                     #PropName, TypeExpr, RTB_MEMBER_OFFSET(PropName),                   \
@@ -93,6 +120,7 @@ private:
                     #PropName, TypeExpr, RTB_MEMBER_OFFSET(PropName),                   \
                     SizeExpr, FlagsExpr, 0.0f, 0.0f, 0, nullptr                         \
                 );
+#endif
 
 // RTB__PROP_REF: pointer-sized reference property
 #define RTB__PROP_REF(PropName, TypeVal)                                                \
@@ -105,6 +133,26 @@ private:
 #define RTB__AUTO_SIZE(PropName) sizeof(std::declval<ThisClass>().PropName)
 
 // Registers a Serialize+HideInInspector field on an inline sub-object
+#ifdef GAMESCRIPTS_EXPORTS
+#define RTB_PROPERTY_NESTED_HIDDEN(OuterProp, InnerType, InnerProp)                     \
+                {                                                                       \
+                    InnerType _rtb_probe;                                                \
+                    const size_t _rtb_inner_off =                                       \
+                        reinterpret_cast<const char*>(&_rtb_probe.InnerProp)             \
+                        - reinterpret_cast<const char*>(&_rtb_probe);                    \
+                    const size_t _rtb_off = RTB_MEMBER_OFFSET(OuterProp) + _rtb_inner_off; \
+                    RTB__BRIDGE_PROP(                                                    \
+                        #InnerProp,                                                      \
+                        RTBEngine::Reflection::DeducePropertyType<                       \
+                            decltype(std::declval<InnerType>().InnerProp)>(),             \
+                        _rtb_off,                                                        \
+                        sizeof(std::declval<InnerType>().InnerProp),                     \
+                        RTBEngine::Reflection::PropertyFlags::Serialize |                 \
+                        RTBEngine::Reflection::PropertyFlags::HideInInspector,            \
+                        0.0f, 0.0f, 0, nullptr                                          \
+                    );                                                                   \
+                }
+#else
 #define RTB_PROPERTY_NESTED_HIDDEN(OuterProp, InnerType, InnerProp)                     \
                 {                                                                       \
                     InnerType _rtb_probe;                                                \
@@ -132,6 +180,7 @@ private:
                         0.0f, 0.0f, 0, nullptr                                          \
                     );                                                                   \
                 }
+#endif
 
 // ─── Public property macros ─────────────────────────────────────────────────
 
@@ -153,6 +202,15 @@ private:
                     RTBEngine::Reflection::PropertyFlags::Serialize | RTBEngine::Reflection::PropertyFlags::HideInInspector)
 
 // Registers a property with range for sliders
+#ifdef GAMESCRIPTS_EXPORTS
+#define RTB_PROPERTY_RANGE(PropName, Min, Max)                                          \
+                RTB__BRIDGE_PROP(                                                       \
+                    #PropName, RTB__AUTO_TYPE(PropName),                                \
+                    RTB_MEMBER_OFFSET(PropName), RTB__AUTO_SIZE(PropName),               \
+                    RTBEngine::Reflection::PropertyFlags::None,                         \
+                    static_cast<float>(Min), static_cast<float>(Max), 1, nullptr         \
+                );
+#else
 #define RTB_PROPERTY_RANGE(PropName, Min, Max)                                          \
                 info.AddPropertyPODRange(                                               \
                     #PropName, RTB__AUTO_TYPE(PropName),                                \
@@ -166,8 +224,18 @@ private:
                     RTBEngine::Reflection::PropertyFlags::None,                         \
                     static_cast<float>(Min), static_cast<float>(Max), 1, nullptr         \
                 );
+#endif
 
 // Registers an enum property
+#ifdef GAMESCRIPTS_EXPORTS
+#define RTB_PROPERTY_ENUM(PropName, ...)                                                \
+                RTB__BRIDGE_PROP(                                                       \
+                    #PropName, RTBEngine::Reflection::PropertyType::Enum,                \
+                    RTB_MEMBER_OFFSET(PropName), RTB__AUTO_SIZE(PropName),               \
+                    RTBEngine::Reflection::PropertyFlags::None,                         \
+                    0.0f, 0.0f, 0, nullptr                                              \
+                );
+#else
 #define RTB_PROPERTY_ENUM(PropName, ...)                                                \
                 {                                                                       \
                     const char* _rtb_enum_names[] = { __VA_ARGS__ };                    \
@@ -185,6 +253,7 @@ private:
                         0.0f, 0.0f, 0, nullptr                                          \
                     );                                                                  \
                 }
+#endif
 
 // Registers a color property
 #define RTB_PROPERTY_COLOR(PropName)                                                    \
@@ -225,6 +294,15 @@ private:
                 RTB__PROP_REF(PropName, RTBEngine::Reflection::PropertyType::GameObjectRef)
 
 // Registers a Component* property with target type filtering
+#ifdef GAMESCRIPTS_EXPORTS
+#define RTB_PROPERTY_COMPONENT(PropName, ComponentType)                                 \
+                RTB__BRIDGE_PROP(                                                       \
+                    #PropName, RTBEngine::Reflection::PropertyType::ComponentRef,        \
+                    RTB_MEMBER_OFFSET(PropName), sizeof(void*),                         \
+                    RTBEngine::Reflection::PropertyFlags::None,                         \
+                    0.0f, 0.0f, 0, #ComponentType                                       \
+                );
+#else
 #define RTB_PROPERTY_COMPONENT(PropName, ComponentType)                                 \
                 info.AddPropertyPODTyped(                                               \
                     #PropName, RTBEngine::Reflection::PropertyType::ComponentRef,        \
@@ -237,10 +315,11 @@ private:
                     RTBEngine::Reflection::PropertyFlags::None,                         \
                     0.0f, 0.0f, 0, #ComponentType                                       \
                 );
+#endif
 
 // Forward declaration visible to all script .cpp files when building GameScripts.dll.
 #ifdef GAMESCRIPTS_EXPORTS
-extern "C" void RTBScripts_RegisterLocalType(const char* typeName, const RTBEngine::Reflection::TypeInfo* info);
+extern "C" void RTBScripts_RegisterLocalType(const RTBScriptTypeDesc* desc);
 extern "C" void RTBScripts_RegisterLocalProperty(const char* ownerType, const RTBPropertyDesc* desc);
 #endif
 
@@ -248,7 +327,19 @@ extern "C" void RTBScripts_RegisterLocalProperty(const char* ownerType, const RT
 // When compiling GameScripts.dll, register into the local POD list (no STL across boundary).
 // Otherwise register directly into the engine TypeRegistry.
 #ifdef GAMESCRIPTS_EXPORTS
-#define RTB_END_REGISTER(ClassName)                                                                     RTBScripts_RegisterLocalType(#ClassName, &ClassName::StaticTypeInfo());             }                                                                                   };                                                                                   namespace { static ClassName##_TypeRegistrar _##ClassName##_registrar; }
+#define RTB_END_REGISTER(ClassName)                                                          \
+            RTBScriptTypeDesc _rtb_type_desc{};                                              \
+            _rtb_type_desc.typeName = #ClassName;                                            \
+            _rtb_type_desc.createComponent = []() -> void* {                                  \
+                return static_cast<RTBEngine::ECS::Component*>(new ClassName());              \
+            };                                                                                \
+            _rtb_type_desc.destroyComponent = [](void* component) {                           \
+                delete static_cast<ClassName*>(static_cast<RTBEngine::ECS::Component*>(component)); \
+            };                                                                                \
+            RTBScripts_RegisterLocalType(&_rtb_type_desc);                                    \
+        }                                                                                     \
+    };                                                                                        \
+    namespace { static ClassName##_TypeRegistrar _##ClassName##_registrar; }
 #else
 #define RTB_END_REGISTER(ClassName)                                                                     RTBEngine::Reflection::TypeRegistry::GetInstance().RegisterType(                             #ClassName, ClassName::MutableTypeInfo());                                        }                                                                                   };                                                                                   namespace { static ClassName##_TypeRegistrar _##ClassName##_registrar; }
 #endif
