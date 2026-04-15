@@ -42,7 +42,7 @@ namespace RTBEngine {
 
 			//Internal - used by PhysicsSystem
 			Physics::SphereCollider* GetSphereCollider() const { return sphereCollider.get(); }
-			void SetBulletCollisionObject(btCollisionObject* obj) { bulletObject = obj; }
+			void SetBulletCollisionObject(btCollisionObject* obj, bool takeOwnership = false);
 			btCollisionObject* GetBulletCollisionObject() const { return bulletObject; }
 
 			// Reflected properties (Proxy)
@@ -54,7 +54,8 @@ namespace RTBEngine {
 
 		private:
 			std::unique_ptr<Physics::SphereCollider> sphereCollider;
-			btCollisionObject* bulletObject = nullptr; // Owned by PhysicsWorld
+			btCollisionObject* bulletObject = nullptr;
+			bool ownsBulletObject = false;
 		};
 #pragma warning(pop)
 

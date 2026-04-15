@@ -19,9 +19,7 @@ namespace RTBEngine {
 
 		BoxColliderComponent::~BoxColliderComponent()
 		{
-			// Only delete if this is a static collision object (not owned by RigidBody).
-			// Dynamic btRigidBody is owned by RigidBody::bulletRigidBody (unique_ptr).
-			if (bulletObject && !btRigidBody::upcast(bulletObject))
+			if (ownsBulletObject && bulletObject)
 				delete bulletObject;
 		}
 
@@ -33,8 +31,20 @@ namespace RTBEngine {
 				RigidBodyComponent* rb = owner->GetComponent<RigidBodyComponent>();
 				if (rb && rb->HasRigidBody()) {
 					rb->GetRigidBody()->ClearBulletRigidBody();
+					bulletObject = nullptr;
+					ownsBulletObject = false;
 				}
 			}
+		}
+
+		void BoxColliderComponent::SetBulletCollisionObject(btCollisionObject* obj, bool takeOwnership)
+		{
+			if (ownsBulletObject && bulletObject && bulletObject != obj) {
+				delete bulletObject;
+			}
+
+			bulletObject = obj;
+			ownsBulletObject = takeOwnership;
 		}
 
 		void BoxColliderComponent::SetSize(const Math::Vector3& size)

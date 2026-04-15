@@ -84,7 +84,7 @@ namespace RTBEngine {
             }
 
             physicsWorld->AddCollisionObject(collisionObj);
-            boxCollider->SetBulletCollisionObject(collisionObj);
+            boxCollider->SetBulletCollisionObject(collisionObj, true);
         }
 
         void PhysicsSystem::InitializeDynamicBody(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider, ECS::RigidBodyComponent* rbComp)
@@ -367,7 +367,7 @@ namespace RTBEngine {
             collisionObj->setCollisionFlags(collisionObj->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
 
             physicsWorld->AddCollisionObject(collisionObj);
-            sphereCollider->SetBulletCollisionObject(collisionObj);
+            sphereCollider->SetBulletCollisionObject(collisionObj, true);
         }
 
         void PhysicsSystem::InitializeDynamicBody(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider, ECS::RigidBodyComponent* rbComp)
