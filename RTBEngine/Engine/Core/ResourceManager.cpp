@@ -4,6 +4,8 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <array>
+#include <filesystem>
 #include "../RTBEngine.h"
 
 namespace RTBEngine {
@@ -22,6 +24,62 @@ namespace RTBEngine {
         ResourceManager::~ResourceManager()
         {
             Clear();
+        }
+
+        bool ResourceManager::IsAssetReferencePath(const std::filesystem::path& path, const std::string& assetDirectoryName)
+        {
+            if (assetDirectoryName.empty()) {
+                return false;
+            }
+
+            const std::string normalized = path.generic_string();
+            return normalized == assetDirectoryName ||
+                normalized.rfind(assetDirectoryName + "/", 0) == 0;
+        }
+
+        void ResourceManager::SetAssetRootPath(const std::filesystem::path& path)
+        {
+            if (path.empty()) {
+                assetRootPath.clear();
+                return;
+            }
+
+            std::error_code ec;
+            std::filesystem::path absolutePath = path;
+            if (!absolutePath.is_absolute()) {
+                absolutePath = std::filesystem::absolute(absolutePath, ec);
+                if (ec) {
+                    absolutePath = path;
+                }
+            }
+
+            assetRootPath = absolutePath.lexically_normal();
+        }
+
+        std::string ResourceManager::ResolvePathForRead(const std::string& path) const
+        {
+            if (path.empty()) {
+                return path;
+            }
+
+            std::filesystem::path fsPath(path);
+            if (fsPath.is_absolute()) {
+                return fsPath.lexically_normal().string();
+            }
+
+            if (!assetRootPath.empty()) {
+                const std::string assetDirectoryName = assetRootPath.filename().generic_string();
+                if (IsAssetReferencePath(fsPath, assetDirectoryName)) {
+                    std::filesystem::path resolvedPath = assetRootPath;
+                    const std::string normalized = fsPath.generic_string();
+                    if (normalized.size() > assetDirectoryName.size()) {
+                        resolvedPath /= normalized.substr(assetDirectoryName.size() + 1);
+                    }
+                    return resolvedPath.lexically_normal().string();
+                }
+            }
+
+            return fsPath.lexically_normal().string();
         }
 
 
@@ -73,7 +131,8 @@ namespace RTBEngine {
 
             // Create new texture
             auto texture = std::make_unique<Rendering::Texture>();
-            if (!texture->LoadFromFile(path, flipVertically)) {
+            const std::string resolvedPath = ResolvePathForRead(path);
+            if (!texture->LoadFromFile(resolvedPath, flipVertically)) {
                 RTB_ERROR("Failed to load texture: " + path);
                 return nullptr;
             }
@@ -95,7 +154,8 @@ namespace RTBEngine {
             }
 
             // Parse .texture file (key=value format)
-            std::ifstream file(textureFilePath);
+            const std::string resolvedTextureFilePath = ResolvePathForRead(textureFilePath);
+            std::ifstream file(resolvedTextureFilePath);
             if (!file.is_open()) {
                 RTB_ERROR("ResourceManager: Failed to open .texture file: " + textureFilePath);
                 return nullptr;
@@ -136,7 +196,8 @@ namespace RTBEngine {
 
             // Load the actual image with the specified flip setting
             auto texture = std::make_unique<Rendering::Texture>();
-            if (!texture->LoadFromFile(imagePath, flip)) {
+            const std::string resolvedImagePath = ResolvePathForRead(imagePath);
+            if (!texture->LoadFromFile(resolvedImagePath, flip)) {
                 RTB_ERROR("ResourceManager: Failed to load image from .texture asset: " + imagePath);
                 return nullptr;
             }
@@ -190,7 +251,8 @@ namespace RTBEngine {
                     return it->second;
             }
 
-            std::vector<Rendering::Mesh*> loadedMeshes = Rendering::ModelLoader::LoadModel(path);
+            const std::string resolvedPath = ResolvePathForRead(path);
+            std::vector<Rendering::Mesh*> loadedMeshes = Rendering::ModelLoader::LoadModel(resolvedPath);
 
             if (loadedMeshes.empty()) {
                 RTB_ERROR("ResourceManager: Failed to load model: " + path);
@@ -269,7 +331,8 @@ namespace RTBEngine {
             }
 
             auto clip = std::make_unique<Audio::AudioClip>();
-            if (!clip->LoadFromFile(path, stream)) {
+            const std::string resolvedPath = ResolvePathForRead(path);
+            if (!clip->LoadFromFile(resolvedPath, stream)) {
                 RTB_ERROR("ResourceManager: Failed to load audio clip: " + path);
                 return nullptr;
             }
@@ -297,7 +360,8 @@ namespace RTBEngine {
 			}
 
 			auto font = std::make_unique<Rendering::Font>();
-			if (!font->LoadFromFile(path, sizes, numSizes)) {
+            const std::string resolvedPath = ResolvePathForRead(path);
+			if (!font->LoadFromFile(resolvedPath, sizes, numSizes)) {
 				RTB_ERROR("ResourceManager: Failed to load font: " + path);
 				return nullptr;
 			}
@@ -334,7 +398,8 @@ namespace RTBEngine {
 
             // Parse .cubemap file — key=value pairs, one per line
             // Expected keys: right, left, top, bottom, front, back
-            std::ifstream file(cubemapFilePath);
+            const std::string resolvedCubemapFilePath = ResolvePathForRead(cubemapFilePath);
+            std::ifstream file(resolvedCubemapFilePath);
             if (!file.is_open()) {
                 RTB_ERROR("ResourceManager: Failed to open .cubemap file: " + cubemapFilePath);
                 return nullptr;
@@ -363,7 +428,7 @@ namespace RTBEngine {
 
                 for (int i = 0; i < 6; ++i) {
                     if (key == faceKeys[i]) {
-                        faces[i] = value;
+                        faces[i] = ResolvePathForRead(value);
                         break;
                     }
                 }
@@ -447,7 +512,8 @@ namespace RTBEngine {
                 return it->second.get();
             }
 
-            ECS::Scene* scene = Scripting::SceneLoader::LoadScene(path);
+            const std::string resolvedPath = ResolvePathForRead(path);
+            ECS::Scene* scene = Scripting::SceneLoader::LoadScene(resolvedPath);
             if (scene) {
                 scenes[path] = std::unique_ptr<ECS::Scene>(scene);
             }

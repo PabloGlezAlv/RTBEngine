@@ -1,5 +1,6 @@
 #include "SceneSaver.h"
 #include <sstream>
+#include <filesystem>
 
 #include "ScenePropertySerializer.h"
 #include "../ECS/Scene.h"
@@ -23,7 +24,19 @@ namespace RTBEngine {
                 return false;
             }
 
-            std::ofstream file(filePath);
+            const std::string resolvedFilePath = Core::ResourceManager::GetInstance().ResolvePathForRead(filePath);
+            const std::filesystem::path outputPath(resolvedFilePath);
+            std::error_code ec;
+            const std::filesystem::path parentPath = outputPath.parent_path();
+            if (!parentPath.empty()) {
+                std::filesystem::create_directories(parentPath, ec);
+                if (ec) {
+                    RTB_ERROR("SceneSaver: Failed to create parent directory for: " + filePath);
+                    return false;
+                }
+            }
+
+            std::ofstream file(outputPath);
             if (!file.is_open()) {
                 RTB_ERROR("SceneSaver: Failed to open file for writing: " + filePath);
                 return false;

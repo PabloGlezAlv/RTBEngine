@@ -3,6 +3,7 @@
 #include "Mesh.h"
 #include "../Animation/Skeleton.h"
 #include "../Animation/AnimationClip.h"
+#include "../Math/Matrix/Matrix4.h"
 #include "../Math/Vectors/Vector3.h"
 #include <assimp/matrix4x4.h>
 #include <string>
@@ -39,6 +40,7 @@ namespace RTBEngine {
         //Node hierarchy captured from Assimp scene
         struct NodeData {
             std::string name;
+            Math::Matrix4 localTransform = Math::Matrix4::Identity();
             std::vector<int> meshIndices;
             std::vector<std::unique_ptr<NodeData>> children;
         };

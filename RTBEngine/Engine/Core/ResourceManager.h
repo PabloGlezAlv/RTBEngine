@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <string>
 #include <memory>
+#include <filesystem>
 
 namespace RTBEngine {
     namespace ECS {
@@ -46,6 +47,8 @@ namespace RTBEngine {
             Rendering::Texture* GetTexture(const std::string& path);
             Rendering::Texture* LoadTexture(const std::string& path, bool flipVertically = true);
             Rendering::Texture* LoadTextureAsset(const std::string& textureFilePath);
+            void SetAssetRootPath(const std::filesystem::path& path);
+            std::string ResolvePathForRead(const std::string& path) const;
 
 			// Model management (single mesh - backwards compatible)
             Rendering::Mesh* GetModel(const std::string& path);
@@ -98,6 +101,7 @@ namespace RTBEngine {
         private:
             ResourceManager();
             ~ResourceManager();
+            static bool IsAssetReferencePath(const std::filesystem::path& path, const std::string& assetDirectoryName);
 
             std::unordered_map<std::string, std::unique_ptr<Rendering::Shader>> shaders;
             std::unordered_map<std::string, std::unique_ptr<Rendering::Texture>> textures;
@@ -121,6 +125,7 @@ namespace RTBEngine {
 
 
             std::unique_ptr<Rendering::Skybox> defaultSkybox;
+            std::filesystem::path assetRootPath;
         };
         #pragma warning(pop)
 

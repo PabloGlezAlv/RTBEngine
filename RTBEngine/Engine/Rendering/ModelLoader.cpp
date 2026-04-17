@@ -8,6 +8,7 @@
 #include <cfloat>
 #include <algorithm>
 #include <unordered_map>
+#include "../Core/ResourceManager.h"
 #include "../RTBEngine.h"
 
 namespace RTBEngine {
@@ -45,11 +46,12 @@ namespace RTBEngine {
         {
             ModelData result;
             result.skeleton = std::make_shared<Animation::Skeleton>();
+            const std::string resolvedPath = Core::ResourceManager::GetInstance().ResolvePathForRead(path);
 
             // Extract model directory for texture path resolution
-            size_t lastSlash = path.find_last_of("/\\");
+            size_t lastSlash = resolvedPath.find_last_of("/\\");
             if (lastSlash != std::string::npos) {
-                result.modelDirectory = path.substr(0, lastSlash);
+                result.modelDirectory = resolvedPath.substr(0, lastSlash);
             }
 
             // Use Assimp C++ API to set import properties
@@ -60,7 +62,7 @@ namespace RTBEngine {
             // which cause animation/skeleton mismatch issues
             importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
 
-            const aiScene* scene = importer.ReadFile(path,
+            const aiScene* scene = importer.ReadFile(resolvedPath,
                 aiProcess_Triangulate |
                 aiProcess_FlipUVs |
                 aiProcess_CalcTangentSpace |
@@ -139,6 +141,7 @@ namespace RTBEngine {
         {
             auto nodeData = std::make_unique<NodeData>();
             nodeData->name = node->mName.length > 0 ? std::string(node->mName.C_Str()) : "";
+            nodeData->localTransform = ConvertMatrix(node->mTransformation);
 
             for (unsigned int i = 0; i < node->mNumMeshes; i++) {
                 int meshIndex = static_cast<int>(meshes.size());

@@ -9,6 +9,22 @@
 namespace RTBEngine {
     namespace Rendering {
 
+        static void ApplyNodeTransform(ECS::GameObject* go, const NodeData* node)
+        {
+            if (!go || !node) {
+                return;
+            }
+
+            Math::Vector3 position;
+            Math::Quaternion rotation;
+            Math::Vector3 scale;
+            node->localTransform.Decompose(position, rotation, scale);
+
+            go->GetTransform().SetPosition(position);
+            go->GetTransform().SetRotation(rotation);
+            go->GetTransform().SetScale(scale);
+        }
+
         static void AddMeshRendererToGO(
             ECS::GameObject* go,
             int meshIdx,
@@ -48,6 +64,7 @@ namespace RTBEngine {
                 auto* childGO = new ECS::GameObject(childName);
                 scene->AddGameObject(childGO);
                 childGO->SetParent(parentGO);
+                ApplyNodeTransform(childGO, child.get());
 
                 // Add MeshRenderer for the first mesh on this node
                 if (!child->meshIndices.empty()) {
@@ -96,6 +113,9 @@ namespace RTBEngine {
             //Root GameObject
             ECS::GameObject* root = new ECS::GameObject(stem);
             scene->AddGameObject(root);
+            if (modelData.rootNode) {
+                ApplyNodeTransform(root, modelData.rootNode.get());
+            }
 
             //Animator on root
             if (modelData.skeleton || !modelData.animations.empty()) {

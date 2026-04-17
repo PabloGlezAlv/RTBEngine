@@ -52,8 +52,9 @@ namespace RTBEngine {
             lua_State* L = luaL_newstate();
             luaL_openlibs(L);
             SetupLuaBindings(L);
+            const std::string resolvedFilePath = Core::ResourceManager::GetInstance().ResolvePathForRead(filePath);
 
-            if (luaL_dofile(L, filePath.c_str()) != LUA_OK) {
+            if (luaL_dofile(L, resolvedFilePath.c_str()) != LUA_OK) {
                 RTB_ERROR("SceneLoader: Failed to load file '" + filePath + "': " + std::string(lua_tostring(L, -1)));
                 lua_close(L);
                 return nullptr;
@@ -464,6 +465,14 @@ namespace RTBEngine {
                         auto* childGO = new ECS::GameObject(childName);
                         scene->AddGameObject(childGO);
                         childGO->SetParent(parentGO);
+
+                        Math::Vector3 position;
+                        Math::Quaternion rotation;
+                        Math::Vector3 scale;
+                        child->localTransform.Decompose(position, rotation, scale);
+                        childGO->GetTransform().SetPosition(position);
+                        childGO->GetTransform().SetRotation(rotation);
+                        childGO->GetTransform().SetScale(scale);
 
                         if (!child->meshIndices.empty()) {
                             int firstIdx = child->meshIndices[0];

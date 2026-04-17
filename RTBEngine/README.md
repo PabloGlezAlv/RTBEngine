@@ -1,6 +1,6 @@
 # RTBEngine
 
-A 3D game engine written in **C++17**, compiled as a static library (`RTBEngine.lib`). RTBEngine provides a complete set of subsystems for building games and interactive real-time applications on Windows: an Entity-Component-System architecture, OpenGL rendering with shadow mapping, Bullet-based rigid-body physics, FMOD spatial audio, SDL2 input, skeletal animation, Lua-based scene serialization, a macro-driven reflection system, and an ImGui-compatible UI framework.
+A 3D game engine written in **C++17**, compiled as `RTBEngine.dll` with an import library (`RTBEngine.lib`). RTBEngine provides a complete set of subsystems for building games and interactive real-time applications on Windows: an Entity-Component-System architecture, OpenGL rendering with shadow mapping, Bullet-based rigid-body physics, FMOD spatial audio, SDL2 input, skeletal animation, Lua-based scene serialization, a macro-driven reflection system, and an ImGui-compatible UI framework.
 
 This document covers every subsystem in depth — public API, internal design, data flow, and usage patterns.
 
@@ -120,7 +120,7 @@ RTBEngine/
 ├── SetupDeps.bat                  Downloads and builds all third-party libraries
 ├── BuildSDK.bat                   Compiles the engine and packages the SDK
 │
-├── RTBEngine/                     Engine static library project
+├── RTBEngine/                     Engine DLL project
 │   ├── RTBEngine.h                Master include: pulls in the entire public API
 │   ├── RTBEngineAPI.h             RTB_API macro (dllexport / dllimport)
 │   │
@@ -274,11 +274,13 @@ BuildSDK.bat
 ```
 
 This script:
-1. Compiles `RTBEngine.lib` in both Debug and Release configurations.
+1. Compiles `RTBEngine.dll` and `RTBEngine.lib` in both Debug and Release configurations.
 2. Copies all public headers into `RTBEngine_SDK/Include/RTBEngine/`.
 3. Copies the compiled `.lib` into `RTBEngine_SDK/Lib/`.
 
 Consuming projects (like the editor) reference the SDK rather than the engine source.
+
+Whenever the public ABI changes, rebuild the engine and regenerate the SDK before rebuilding `GameScripts.dll`. That includes changes in exported headers, reflection metadata, scene loading, input, or any script-facing API that lives in the SDK copy. Old SDK copies or stale script binaries can keep outdated macro expansions and crash on load.
 
 ### Visual Studio Solution
 
@@ -286,7 +288,7 @@ Consuming projects (like the editor) reference the SDK rather than the engine so
 - **Configurations**: `Debug | x64`, `Release | x64`
 - **Toolset**: MSVC v145 (Visual Studio 2026)
 - **C++ Standard**: `/std:c++17`
-- **Output**: `RTBEngine.lib`
+- **Output**: `RTBEngine.dll` plus `RTBEngine.lib`
 
 ### Preprocessor Defines
 
@@ -318,7 +320,7 @@ Consuming projects (like the editor) reference the SDK rather than the engine so
 RTBEngine is organized around three concepts:
 
 1. **Application** — owns the platform layer (window, OpenGL context, device), drives the main loop, and coordinates all subsystems.
-2. **Scene / SceneManager** — manages the active collection of `GameObject` instances. Scene loading and unloading happen through `SceneManager`, which fires lifecycle callbacks to let the `Application` respond (e.g., re-initialize physics).
+2. **Scene / SceneManager** — manages the active collection of `GameObject` instances. Scene loading now goes through deferred requests so the active scene can be replaced at a safe point without leaving subsystems half torn down.
 3. **Component** — the unit of behavior. Every distinct feature of a `GameObject` (rendering, physics, audio, scripts) is a `Component`. Components interact through their owner `GameObject` and the global singleton subsystems.
 
 ### Main Loop
@@ -328,9 +330,11 @@ Application::Run()
   loop:
     deltaTime = ComputeDelta()
     ProcessInput()            ← SDL events → InputManager
+    SceneManager::ProcessPendingSceneLoad()
     Update(deltaTime)         ← Scene::Update → all GameObjects → all Components
                               ← PhysicsSystem::Update (fixed step)
                               ← AudioSystem::Update
+    SceneManager::ProcessPendingSceneLoad()
     RenderShadowPass()        ← depth-only render for shadow-casting lights
     RenderGeometryPass()      ← full lit render with shadow texture
     ImGui::Render()           ← editor/debug overlay
@@ -351,6 +355,7 @@ Inside `Application::Initialize()`:
 ```
 
 Physics is initialized per-scene in `InitializePhysicsForScene()`, which is called from the `onSceneLoaded` callback. This ensures that Bullet bodies are created after the scene is fully populated.
+Scene requests can be queued during gameplay and are processed at safe points around the frame update so a scene change requested from `OnStart` or `OnUpdate` can complete before physics runs again.
 
 ### Shutdown Order (reverse of init)
 
@@ -412,14 +417,22 @@ void Shutdown();     // Releases all resources; called automatically after Run()
 ```cpp
 void ProcessInput();            // Polls SDL events; dispatches to InputManager and Window
 void Update(float deltaTime);   // Advances scene, physics, and audio
+static void RequestQuit();      // Script-facing quit request; consumed by the host/editor
+static bool IsQuitRequested();
+static bool ConsumeQuitRequest();
+static void ClearQuitRequest();
 ```
 
 `Update` follows this internal order:
-1. `Scene::Update(deltaTime)` — calls `Component::OnUpdate` on every active component.
-2. `PhysicsSystem::Update(scene, deltaTime)` — syncs transforms to Bullet bodies, steps the simulation, dispatches collision callbacks.
-3. `AudioSystem::Update()` — advances the FMOD system (required each frame).
+1. `SceneManager::ProcessPendingSceneLoad()` — resolves queued scene transitions before gameplay work for the frame.
+2. `Scene::Update(deltaTime)` — calls `Component::OnUpdate` on every active component.
+3. `SceneManager::ProcessPendingSceneLoad()` — runs again after component updates so a scene change requested from `OnStart` or `OnUpdate` takes effect before physics.
+4. `PhysicsSystem::Update(scene, deltaTime)` — syncs transforms to Bullet bodies, steps the simulation, dispatches collision callbacks.
+5. `AudioSystem::Update()` — advances the FMOD system (required each frame).
 
 `Scene::Update` actually has two passes at the component level: it calls `OnStart()` once for enabled components on the first frame, and then it calls `OnUpdate()` only on components that are both enabled and have `SetUpdateTickEnabled(true)`. This is the mechanism that lets event-driven scripts stay alive while opting out of idle per-frame work.
+
+`RequestQuit()` is the script-facing path for asking the host to stop play mode or close the runtime. The host consumes that request with `ConsumeQuitRequest()` and can clear it explicitly with `ClearQuitRequest()` when a play session ends or is cancelled.
 
 **Rendering:**
 
@@ -550,7 +563,7 @@ void Info(const std::string& message);
 void Warning(const std::string& message);
 void Error(const std::string& message);
 
-// const char* overloads (ABI-safe for script DLLs with separate CRT):
+// const char* overloads (ABI-safe for script DLL boundaries):
 void Log(LogLevel level, const char* message);
 void Info(const char* message);
 void Warning(const char* message);
@@ -975,15 +988,23 @@ static SceneManager& GetInstance();
 **Loading:**
 
 ```cpp
+bool RequestSceneLoad(const char* path);
+bool ProcessPendingSceneLoad();
+void ClearPendingSceneLoad();
 bool LoadScene(const std::string& path);
 void UnloadCurrentScene();
 ```
 
-`LoadScene` calls:
-1. `onSceneUnloading` callback (registered by Application as `ResetPhysics`).
-2. Destroys the existing scene (all `GameObject` destructors run).
-3. Calls `SceneLoader::Load(path)` to parse the Lua file and populate a new `Scene`.
-4. Calls `onSceneLoaded` callback (registered by Application as `InitializePhysicsForScene`).
+`RequestSceneLoad` copies the requested path into an internal pending slot and returns immediately. `ProcessPendingSceneLoad()` performs the transition at a safe point in the frame. Empty paths are ignored with a warning, and a newer request replaces the older pending one.
+
+`LoadScene` performs the actual transition safely:
+1. The current scene is moved to a temporary local and `activeScene` / `activeScenePath` are cleared.
+2. The previous dirty flag is preserved so it can be restored if loading fails.
+3. `SceneLoader::Load(path)` parses the Lua file and builds the new scene.
+4. If loading fails, the previous scene, path, and dirty state are restored.
+5. If loading succeeds, `onSceneUnloading` fires, the old scene is destroyed, the new scene becomes active, dirty state is cleared, and `onSceneLoaded` fires.
+
+`UnloadCurrentScene()` and any path that tears scripts down also clear pending scene requests so a stale request cannot resurrect after shutdown.
 
 **State:**
 
@@ -2202,10 +2223,10 @@ struct CollisionInfo {
 
 ### 9.6 Physics Lifecycle
 
-The correct order of physics operations across a scene reload:
+The correct order of physics operations across a deferred scene reload:
 
 ```
-1. User requests scene load (SceneManager::LoadScene)
+1. User requests scene load (SceneManager::RequestSceneLoad)
 2. onSceneUnloading fires → Application::ResetPhysics()
    └── PhysicsWorld removes all btRigidBody objects
    └── PhysicsSystem::Reset() clears collision tracking
@@ -2216,6 +2237,8 @@ The correct order of physics operations across a scene reload:
    └── For each RigidBodyComponent + BoxColliderComponent pair:
        PhysicsSystem::InitializeCollider(go, boxCollider)
 ```
+
+The deferred path matters because scene changes can now be requested from gameplay and then completed later by `SceneManager::ProcessPendingSceneLoad()`. When play mode stops, any queued request is cleared before the editor restores the pre-play scene.
 
 **Critical**: steps 2 and 3 must happen in that order. If `activeScene.reset()` runs before `ResetPhysics()`, the `btDiscreteDynamicsWorld` will access freed broadphase proxies in its internal structures when the bodies are removed, causing an access violation (`0xC0000005`).
 
@@ -2294,6 +2317,8 @@ static InputManager& GetInstance();
 void ProcessEvent(const SDL_Event& event);   // Call inside the SDL event loop
 void Update();                               // Call once per frame to flush just-pressed/released
 ```
+
+The public header keeps SDL behind a forward declaration so gameplay and script code can include the engine headers without inheriting SDL includes. SDL stays in the implementation file.
 
 **Keyboard:**
 
@@ -2906,6 +2931,8 @@ RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, anchorMin)
 RTB_PROPERTY_NESTED_HIDDEN(rectTransform, RectTransform, sizeDelta)
 ```
 
+When these macros are compiled inside `GameScripts.dll`, the registration path uses POD descriptors instead of moving `TypeInfo` or STL containers across the DLL boundary. The engine reconstructs its own runtime metadata on its side, which keeps the bridge stable even when the script DLL is rebuilt separately.
+
 For properties inherited from a base class that declares them directly, rebind `ThisClass` inside a scoped block:
 
 ```cpp
@@ -3157,6 +3184,8 @@ const std::string& GetLoadedPath() const;
 ```
 
 When `LoadScripts` is called, it loads the DLL and invokes the exported `RTBScripts_RegisterAll` function, which bridges each script component's type information across the DLL boundary using POD structs (no STL crossing). Each type is registered with both `TypeRegistry` and `ComponentRegistry`.
+
+The bridge uses two plain-data descriptors: `RTBScriptTypeDesc` for the type-level factory and destroy callbacks, and `RTBPropertyDesc` for each reflected property. `TypeInfo`, `PropertyInfo`, `std::string`, and `std::vector` stay on the engine side and are rebuilt there from the descriptors.
 
 ### 15.5 Latent Actions
 
@@ -3592,16 +3621,17 @@ Pointer-event dispatch is independent from `SetUpdateTickEnabled()`. This is imp
 
 ## 17. DLL Boundary Safety
 
-RTBEngine exports its API via `RTB_API` (`__declspec(dllexport/import)`). Script DLLs (`GameScripts.dll`) are compiled separately with `/MTd` (static CRT), while the engine uses its own CRT. This creates a critical constraint: **`std::string` and any heap-allocated STL types must never cross the DLL boundary by value**.
+RTBEngine exports its API via `RTB_API` (`__declspec(dllexport/import)`). Script DLLs (`GameScripts.dll`) are compiled separately from the engine and may be rebuilt against copied SDK headers. Even when both modules use the DLL runtime (`/MD` or `/MDd`), C++ STL ownership across that boundary is fragile because Debug/Release, iterator-debug settings, toolset version, or stale SDK copies can make binary layout or allocator ownership differ. The rule is therefore: **`std::string` and any heap-allocated STL types must not cross the DLL boundary by value or ownership**.
+
+The current script bridge follows that rule explicitly. `GameScripts.dll` publishes `RTBScriptTypeDesc` and `RTBPropertyDesc` records, and the engine rebuilds the runtime metadata from those POD descriptors on its side of the boundary.
 
 ### The Problem
 
 ```cpp
-// In Connector.cpp (GameScripts.dll — /MTd CRT):
+// In Connector.cpp (GameScripts.dll, compiled separately from the engine):
 std::string name = targetRef->GetName();   // GetName() returns std::string from engine's heap
 RTB_INFO("Name: " + name);                // operator+ allocates in script's heap
-// Crash: name's internal buffer is freed by the script's CRT,
-// but the engine's CRT allocated it — two different heaps.
+// Risk: ownership and STL layout cross the module boundary.
 ```
 
 ### The Solution
@@ -3643,6 +3673,8 @@ These overloads convert to `std::string` inside the engine's CRT — safe becaus
 | Raw pointers (`T*`) | `std::shared_ptr<T>` |
 | `Math::Vector2/3/4` (all-float structs) | `std::function<>` with captures |
 | `Math::Matrix4` | Any STL container |
+
+Also unsafe across the boundary: `TypeInfo`, `PropertyInfo`, and any script-facing reflection object that owns STL state. Those stay on the engine side and are reconstructed from POD descriptors.
 
 `LatentActionRunner` follows this rule by design: it is meant to be owned by the same module that creates the callbacks. Script components store their own runner, so captured lambdas are not transferred to an engine-global queue.
 
