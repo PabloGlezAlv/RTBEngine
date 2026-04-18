@@ -38,6 +38,7 @@ namespace RTBEngine {
             // If localBindPose is provided, uses its position/scale when animation data is static (1 key with zero)
             bool GetBoneTransform(const std::string& boneName, float time, Math::Matrix4& outTransform,
                                   const Math::Matrix4* localBindPose = nullptr) const;
+            bool HasBoneAnimation(const std::string& boneName) const;
 
             const std::string& GetName() const { return name; }
             float GetDuration() const { return duration; }

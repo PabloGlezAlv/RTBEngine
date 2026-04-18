@@ -138,6 +138,16 @@ namespace RTBEngine {
             clips[name] = clip;
         }
 
+        void Animator::ClearClips()
+        {
+            clips.clear();
+            currentClip = nullptr;
+            currentClipName.clear();
+            currentTime = 0.0f;
+            playing = false;
+            paused = false;
+        }
+
         AnimationClip* Animator::GetClip(const std::string& name) const
         {
             auto it = clips.find(name);

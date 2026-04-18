@@ -41,6 +41,7 @@ namespace RTBEngine {
 
             // Animation clips
             void AddClip(const std::string& name, std::shared_ptr<AnimationClip> clip);
+            void ClearClips();
             AnimationClip* GetClip(const std::string& name) const;
             std::vector<std::string> GetClipNames() const;
 

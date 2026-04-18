@@ -52,6 +52,10 @@ namespace RTBEngine {
             return true;
         }
 
+        bool AnimationClip::HasBoneAnimation(const std::string& boneName) const {
+            return boneNameToAnimIndex.find(boneName) != boneNameToAnimIndex.end();
+        }
+
         template<typename T>
         size_t AnimationClip::FindKeyIndex(const std::vector<T>& keys, float time) const {
             for (size_t i = 0; i < keys.size() - 1; i++) {
