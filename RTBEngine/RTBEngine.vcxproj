@@ -218,6 +218,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\UI\Canvas.cpp" />
     <ClCompile Include="Engine\UI\CanvasSystem.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIButton.cpp" />
+    <ClCompile Include="Engine\UI\Elements\UISlider.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIContainer.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIImage.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIPanel.cpp" />
@@ -315,6 +316,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\UI\Canvas.h" />
     <ClInclude Include="Engine\UI\CanvasSystem.h" />
     <ClInclude Include="Engine\UI\Elements\UIButton.h" />
+    <ClInclude Include="Engine\UI\Elements\UISlider.h" />
     <ClInclude Include="Engine\UI\Elements\UIContainer.h" />
     <ClInclude Include="Engine\UI\Elements\UIImage.h" />
     <ClInclude Include="Engine\UI\Elements\UIPanel.h" />
@@ -328,6 +330,9 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\UI\EventSystem\IPointerDownHandler.h" />
     <ClInclude Include="Engine\UI\EventSystem\IPointerUpHandler.h" />
     <ClInclude Include="Engine\UI\EventSystem\IPointerClickHandler.h" />
+    <ClInclude Include="Engine\UI\EventSystem\IBeginDragHandler.h" />
+    <ClInclude Include="Engine\UI\EventSystem\IDragHandler.h" />
+    <ClInclude Include="Engine\UI\EventSystem\IEndDragHandler.h" />
     <ClInclude Include="Engine\UI\EventSystem\PointerEventData.h" />
     <ClInclude Include="Engine\Scripting\SceneLoader.h" />
     <ClInclude Include="Engine\Scripting\SceneLuaBindings.h" />

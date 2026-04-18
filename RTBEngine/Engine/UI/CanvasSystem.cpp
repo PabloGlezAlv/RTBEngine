@@ -7,6 +7,9 @@
 #include "EventSystem/IPointerDownHandler.h"
 #include "EventSystem/IPointerUpHandler.h"
 #include "EventSystem/IPointerClickHandler.h"
+#include "EventSystem/IBeginDragHandler.h"
+#include "EventSystem/IDragHandler.h"
+#include "EventSystem/IEndDragHandler.h"
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
 #include "../Input/InputManager.h"
@@ -59,6 +62,7 @@ namespace RTBEngine {
 			activeScene = nullptr;
 			hoveredGameObject = nullptr;
 			pressedGameObject = nullptr;
+			draggingGameObject = nullptr;
 		}
 
 		bool CanvasSystem::IsGameObjectAlive(ECS::GameObject* gameObject) const {
@@ -120,6 +124,7 @@ namespace RTBEngine {
 		void CanvasSystem::ProcessInput(const Math::Vector2& mousePos) {
 			if (!IsGameObjectAlive(hoveredGameObject)) hoveredGameObject = nullptr;
 			if (!IsGameObjectAlive(pressedGameObject)) pressedGameObject = nullptr;
+			if (!IsGameObjectAlive(draggingGameObject)) draggingGameObject = nullptr;
 
 			Input::InputManager& input = Input::InputManager::GetInstance();
 
@@ -128,7 +133,12 @@ namespace RTBEngine {
 
 			PointerEventData eventData;
 			eventData.position = mousePos;
+			eventData.delta = Math::Vector2(
+				static_cast<float>(input.GetMouseDeltaX()),
+				static_cast<float>(input.GetMouseDeltaY()));
 			eventData.pointerEnter = currentGO;
+			eventData.pointerPress = pressedGameObject;
+			eventData.button = static_cast<int>(Input::MouseButton::Left);
 
 			if (hoveredGameObject != currentGO) {
 				if (hoveredGameObject) {
@@ -147,14 +157,32 @@ namespace RTBEngine {
 			if (input.IsMouseButtonJustPressed(Input::MouseButton::Left)) {
 				if (currentGO) {
 					pressedGameObject = currentGO;
+					draggingGameObject = currentGO;
 					eventData.pointerPress = currentGO;
 					ExecuteEvents<IPointerDownHandler>(currentGO, eventData,
 						[](IPointerDownHandler* h, const PointerEventData& e) { h->OnPointerDown(e); });
+					ExecuteEvents<IBeginDragHandler>(currentGO, eventData,
+						[](IBeginDragHandler* h, const PointerEventData& e) { h->OnBeginDrag(e); });
 				}
+			}
+
+			if (draggingGameObject &&
+				input.IsMouseButtonPressed(Input::MouseButton::Left) &&
+				!input.IsMouseButtonJustPressed(Input::MouseButton::Left)) {
+				eventData.pointerPress = draggingGameObject;
+				ExecuteEvents<IDragHandler>(draggingGameObject, eventData,
+					[](IDragHandler* h, const PointerEventData& e) { h->OnDrag(e); });
 			}
 
 			if (input.IsMouseButtonJustReleased(Input::MouseButton::Left)) {
 				eventData.pointerPress = pressedGameObject;
+
+				if (draggingGameObject) {
+					PointerEventData dragEndData = eventData;
+					dragEndData.pointerPress = draggingGameObject;
+					ExecuteEvents<IEndDragHandler>(draggingGameObject, dragEndData,
+						[](IEndDragHandler* h, const PointerEventData& e) { h->OnEndDrag(e); });
+				}
 
 				ECS::GameObject* releaseTarget = pressedGameObject ? pressedGameObject : currentGO;
 				if (releaseTarget) {
@@ -167,6 +195,7 @@ namespace RTBEngine {
 						[](IPointerClickHandler* h, const PointerEventData& e) { h->OnPointerClick(e); });
 				}
 				pressedGameObject = nullptr;
+				draggingGameObject = nullptr;
 			}
 		}
 

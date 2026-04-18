@@ -41,3 +41,4 @@
 #include "UI/Elements/UIImage.h"
 #include "UI/Elements/UIPanel.h"
 #include "UI/Elements/UIButton.h"
+#include "UI/Elements/UISlider.h"

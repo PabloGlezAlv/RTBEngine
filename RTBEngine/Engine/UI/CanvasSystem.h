@@ -55,6 +55,7 @@ namespace RTBEngine {
 
 			ECS::GameObject* hoveredGameObject = nullptr;
 			ECS::GameObject* pressedGameObject = nullptr;
+			ECS::GameObject* draggingGameObject = nullptr;
 		};
 #pragma warning(pop)
 

@@ -2747,7 +2747,7 @@ enum class PropertyType {
     Quaternion,
     Color,
     Enum,
-    AssetRef,       // Generic asset path string
+    AssetRef,       // Typed asset path string, typically serialized as Assets/...
     TextureRef,     // Texture asset path
     AudioClipRef,   // AudioClip asset path
     MeshRef,        // Mesh asset path
@@ -2779,8 +2779,8 @@ struct PropertyInfo {
     std::optional<std::string> tooltip;
     std::optional<std::string> category;
     std::vector<std::string> enumNames;
-    std::string assetType;
-    std::string componentTypeName;
+    std::string assetType;          // Only used when type == AssetRef
+    std::string componentTypeName;  // Only used when type == ComponentRef
 
     void* GetMutableData(void* objectBase) const;
     const void* GetData(const void* objectBase) const;
@@ -2811,6 +2811,8 @@ GetMemberOffset<UIText, UIElement>(&UIElement::anchorMin)
 ```
 
 This computes the offset of `UIElement::anchorMin` inside a full `UIText` object.
+
+For typed asset references, `assetType` tells editor tooling which logical asset family the string belongs to. A property registered as `RTB_PROPERTY_FBX(idleAnimationFbx)` is still stored in the component as a plain `std::string`, but the Inspector can restrict drag-and-drop and browsing to `.fbx` files while preserving the logical `Assets/...` path.
 
 ### 14.3 TypeInfo
 
@@ -2960,10 +2962,14 @@ This pattern works across deeper inheritance chains as long as `OwnerClass*` can
 | `RTB_PROPERTY_FONT(name)` | FontRef | Path + asset browser button |
 | `RTB_PROPERTY_GAMEOBJECT(name)` | GameObjectRef | Drag-and-drop from Hierarchy |
 | `RTB_PROPERTY_COMPONENT(name, TypeName)` | ComponentRef | Drag-and-drop from Hierarchy |
+| `RTB_PROPERTY_ASSET_PATH(name, "fbx")` | AssetRef | Typed asset slot + filtered browser |
+| `RTB_PROPERTY_FBX(name)` | AssetRef | FBX-only drag-and-drop slot |
 | `RTB_PROPERTY_HIDDEN(name)` | (any) | Not shown, but serialized |
 | `RTB_PROPERTY_READONLY(name)` | (any) | Shown, greyed out |
 | `RTB_PROPERTY_SERIALIZED(name)` | (any) | Serialized, not shown |
 | `RTB_PROPERTY_NESTED_HIDDEN(outer, InnerType, inner)` | Auto-detected from inner field | Serialized, hidden — for inline sub-objects |
+
+`RTB_PROPERTY_ASSET_PATH` and the convenience alias `RTB_PROPERTY_FBX` are the recommended way to expose typed script-side asset slots. They keep the underlying value as a serialized logical path while letting the editor provide an asset picker and filtered drag-and-drop workflow instead of a raw text field.
 
 ### 14.6 Writing a Reflectable Component
 
@@ -3347,6 +3353,8 @@ The scene loading and saving pipeline relies on several specialized utility clas
 **SceneLuaBindings** (`Engine/Scripting/SceneLuaBindings.h`) — `SetupLuaBindings(L)` — registers C++ engine types with the Lua state so scene files can reference engine constants and functions.
 
 ---
+
+`PropertyType::AssetRef` round-trips through the scene and prefab pipeline as a plain logical path string. Files therefore keep values such as `Assets/Models/AnimationsPlayer/great sword walk.fbx` exactly as authored, while the editor can still treat the field as a typed FBX slot through reflection metadata.
 
 ## 16. UI Subsystem
 
