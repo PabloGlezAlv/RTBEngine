@@ -40,7 +40,8 @@ namespace RTBEngine {
                 size_t offset = prop->offset;
                 size_t size = prop->size;
 
-                if (prop->type == Reflection::PropertyType::String)
+                if (prop->type == Reflection::PropertyType::String ||
+                    prop->type == Reflection::PropertyType::AssetRef)
                 {
                     const std::string* strPtr = static_cast<const std::string*>(prop->GetData(comp));
                     snap.stringData[offset] = *strPtr;

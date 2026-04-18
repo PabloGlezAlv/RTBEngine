@@ -148,6 +148,9 @@ namespace RTBEngine {
             prop.offset            = desc->offset;
             prop.size              = desc->size;
             prop.flags             = static_cast<RTBEngine::Reflection::PropertyFlags>(desc->flags);
+            if (prop.type == RTBEngine::Reflection::PropertyType::AssetRef) {
+                prop.assetType = SafeCString(desc->assetTypeName, "assetTypeName");
+            }
             if (prop.type == RTBEngine::Reflection::PropertyType::ComponentRef) {
                 prop.componentTypeName = SafeCString(desc->componentTypeName, "componentTypeName");
             }

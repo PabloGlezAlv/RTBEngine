@@ -71,6 +71,7 @@ namespace RTBEngine {
                     file << std::fixed << std::setprecision(2) << *static_cast<const double*>(data);
                     break;
                 case Reflection::PropertyType::String:
+                case Reflection::PropertyType::AssetRef:
                     file << FormatString(NormalizePath(*static_cast<const std::string*>(data)));
                     break;
                 case Reflection::PropertyType::Vector2:
@@ -96,8 +97,7 @@ namespace RTBEngine {
                 case Reflection::PropertyType::TextureRef:
                 case Reflection::PropertyType::AudioClipRef:
                 case Reflection::PropertyType::MeshRef:
-                case Reflection::PropertyType::FontRef:
-                case Reflection::PropertyType::AssetRef: {
+                case Reflection::PropertyType::FontRef: {
                     void* resourcePtr = *static_cast<void* const*>(data);
                     if (!resourcePtr) { file << "nil"; break; }
                     bool isFontRef = (prop.type == Reflection::PropertyType::FontRef);

@@ -105,6 +105,7 @@ namespace RTBEngine {
                         }
                         break;
                     case PropertyType::String:
+                    case PropertyType::AssetRef:
                         if (lua_isstring(L, -1)) {
                             WriteValue<std::string>(dst, std::string(lua_tostring(L, -1)));
                         }

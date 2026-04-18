@@ -95,7 +95,11 @@ namespace RTBEngine {
             prop.offset = offset;
             prop.size = size;
             prop.flags = flags;
-            prop.componentTypeName = extraTypeName ? extraTypeName : "";
+            if (type == PropertyType::AssetRef) {
+                prop.assetType = extraTypeName ? extraTypeName : "";
+            } else {
+                prop.componentTypeName = extraTypeName ? extraTypeName : "";
+            }
             properties.push_back(std::move(prop));
         }
 

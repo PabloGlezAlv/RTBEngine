@@ -13,6 +13,7 @@ struct RTBPropertyDesc {
     float       rangeMin;
     float       rangeMax;
     int         hasRange;
+    const char* assetTypeName;
     const char* componentTypeName;
 };
 
