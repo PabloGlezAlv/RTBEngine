@@ -33,6 +33,28 @@
 
 namespace {
 	std::atomic_bool g_quitRequested{ false };
+
+	bool IsMouseUiEvent(const SDL_Event& event)
+	{
+		switch (event.type) {
+		case SDL_MOUSEMOTION:
+		case SDL_MOUSEBUTTONDOWN:
+		case SDL_MOUSEBUTTONUP:
+		case SDL_MOUSEWHEEL:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	bool IsMouseOwnedByGameplay(const RTBEngine::Core::Window* window)
+	{
+		if (!window) {
+			return false;
+		}
+
+		return window->IsMouseCaptured() || !window->IsCursorVisible();
+	}
 }
 
 
@@ -316,7 +338,9 @@ void RTBEngine::Core::Application::ProcessInput()
 	SDL_Event event;
 	while (SDL_PollEvent(&event))
 	{
-		ImGui_ImplSDL2_ProcessEvent(&event);
+		if (!(IsMouseOwnedByGameplay(window.get()) && IsMouseUiEvent(event))) {
+			ImGui_ImplSDL2_ProcessEvent(&event);
+		}
 		input.ProcessEvent(event);
 
 		if (event.type == SDL_WINDOWEVENT) {
@@ -335,8 +359,6 @@ void RTBEngine::Core::Application::ProcessInput()
 		}
 	}
 
-	if (input.IsKeyJustPressed(Input::KeyCode::Escape))
-		isRunning = false;
 }
 
 void RTBEngine::Core::Application::Update(float deltaTime)
@@ -408,9 +430,11 @@ void RTBEngine::Core::Application::Render()
 	canvasSystem.UpdateAllRectTransforms(screenSize);
 
 	// Mouse position in window space (no offset for standalone)
-	int mx, my;
-	SDL_GetMouseState(&mx, &my);
-	canvasSystem.ProcessInput(Math::Vector2(static_cast<float>(mx), static_cast<float>(my)));
+	if (!IsMouseOwnedByGameplay(window.get())) {
+		int mx, my;
+		SDL_GetMouseState(&mx, &my);
+		canvasSystem.ProcessInput(Math::Vector2(static_cast<float>(mx), static_cast<float>(my)));
+	}
 
 	// Render to the background draw list (full screen, no offset)
 	canvasSystem.RenderToDrawList(ImGui::GetBackgroundDrawList(), screenSize, Math::Vector2(0.0f, 0.0f));

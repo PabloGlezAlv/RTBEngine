@@ -35,11 +35,11 @@ namespace RTBEngine {
 
 			// Mouse capture control
 			void SetMouseCaptured(bool captured);
-			bool IsMouseCaptured() const { return isMouseCaptured; }
+			bool IsMouseCaptured() const;
 
 			// Cursor visibility control
 			void SetCursorVisible(bool visible);
-			bool IsCursorVisible() const { return isCursorVisible; }
+			bool IsCursorVisible() const;
 
 			void UpdateSize(int newWidth, int newHeight);
 

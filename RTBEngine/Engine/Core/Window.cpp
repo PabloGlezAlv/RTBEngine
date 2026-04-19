@@ -130,7 +130,7 @@ void RTBEngine::Core::Window::SetFullscreen(bool enabled)
 
 void RTBEngine::Core::Window::SetMouseCaptured(bool captured)
 {
-	if (!sdlWindow || isMouseCaptured == captured) {
+	if (!sdlWindow || IsMouseCaptured() == captured) {
 		return;
 	}
 
@@ -140,18 +140,41 @@ void RTBEngine::Core::Window::SetMouseCaptured(bool captured)
 	// Also control cursor visibility
 	SDL_ShowCursor(captured ? SDL_DISABLE : SDL_ENABLE);
 
-	isMouseCaptured = captured;
-	isCursorVisible = !captured;
+	isMouseCaptured = IsMouseCaptured();
+	isCursorVisible = IsCursorVisible();
 }
 
 void RTBEngine::Core::Window::SetCursorVisible(bool visible)
 {
-	if (isCursorVisible == visible) {
+	if (!sdlWindow) {
+		isCursorVisible = visible;
+		return;
+	}
+
+	if (IsCursorVisible() == visible) {
 		return;
 	}
 
 	SDL_ShowCursor(visible ? SDL_ENABLE : SDL_DISABLE);
-	isCursorVisible = visible;
+	isCursorVisible = IsCursorVisible();
+}
+
+bool RTBEngine::Core::Window::IsMouseCaptured() const
+{
+	if (!sdlWindow) {
+		return isMouseCaptured;
+	}
+
+	return SDL_GetRelativeMouseMode() == SDL_TRUE;
+}
+
+bool RTBEngine::Core::Window::IsCursorVisible() const
+{
+	if (!sdlWindow) {
+		return isCursorVisible;
+	}
+
+	return SDL_ShowCursor(SDL_QUERY) == SDL_ENABLE;
 }
 
 void RTBEngine::Core::Window::UpdateSize(int newWidth, int newHeight)
