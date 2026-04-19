@@ -28,6 +28,7 @@ namespace RTBEngine {
             virtual void OnStart() {}
             virtual void OnUpdate(float deltaTime) {}
             virtual void OnFixedUpdate(float fixedDeltaTime) {}
+            virtual void OnLateUpdate(float deltaTime) {}
             virtual void OnDestroy() {}
             
             // Editor methods

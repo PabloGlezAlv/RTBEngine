@@ -170,6 +170,17 @@ namespace RTBEngine {
             }
         }
 
+        void GameObject::LateUpdate(float deltaTime)
+        {
+            if (!isActive) return;
+
+            for (auto& comp : components) {
+                if (comp->IsEnabled() && comp->IsUpdateTickEnabled()) {
+                    comp->OnLateUpdate(deltaTime);
+                }
+            }
+        }
+
         void GameObject::Render(Rendering::Camera* camera)
         {
             

@@ -6,6 +6,7 @@
 #include "../ECS/GameObject.h"
 #include "../ECS/LightComponent.h"
 #include "../ECS/RigidBodyComponent.h"
+#include "../ECS/CameraComponent.h"
 #include "../ECS/BoxColliderComponent.h"
 #include "../ECS/SphereColliderComponent.h"
 #include "../ECS/CapsuleColliderComponent.h"
@@ -378,6 +379,10 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 	ECS::Scene* scene = sceneMgr.GetActiveScene();
 	if (!scene) return;
 
+	if (physicsSystem) {
+		physicsSystem->SyncRenderTransforms(scene, 1.0f);
+	}
+
 	scene->Update(deltaTime);
 
 	if (IsQuitRequested()) {
@@ -402,6 +407,14 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 		physicsSystem->Update(scene, config.physics.timeStep);
 		physicsAccumulator -= config.physics.timeStep;
 	}
+
+	if (physicsSystem) {
+		const float interpolationAlpha =
+			(config.physics.timeStep > 0.0f) ? (physicsAccumulator / config.physics.timeStep) : 1.0f;
+		physicsSystem->SyncRenderTransforms(scene, interpolationAlpha);
+	}
+
+	scene->LateUpdate(deltaTime);
 }
 
 void RTBEngine::Core::Application::Render()
@@ -411,6 +424,14 @@ void RTBEngine::Core::Application::Render()
 
 	Rendering::Camera* activeCamera = scene->GetActiveCamera();
 	if (!activeCamera) return;
+
+	if (ECS::CameraComponent* activeCameraComponent = scene->GetMainCamera()) {
+		activeCameraComponent->SyncNow();
+		activeCamera = activeCameraComponent->GetCamera();
+		if (!activeCamera) {
+			return;
+		}
+	}
 
 	RenderShadowPass(scene);
 	RenderGeometryPass(scene, activeCamera);

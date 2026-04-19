@@ -107,6 +107,16 @@ void RTBEngine::ECS::Scene::FixedUpdate(float fixedDeltaTime)
 	FlushPendingCommands();
 }
 
+void RTBEngine::ECS::Scene::LateUpdate(float deltaTime)
+{
+	++iterationDepth;
+	for (auto& gameObject : gameObjects) {
+		if (gameObject) gameObject->LateUpdate(deltaTime);
+	}
+	--iterationDepth;
+	FlushPendingCommands();
+}
+
 void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 {
 	if (!camera) return;

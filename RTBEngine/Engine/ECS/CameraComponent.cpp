@@ -106,5 +106,12 @@ namespace RTBEngine {
             if (camera) camera->SetAspectRatio(aspectRatio);
         }
 
+        void CameraComponent::SyncNow() {
+            SyncProperties();
+            if (syncWithTransform) {
+                SyncWithTransform();
+            }
+        }
+
     }
 }

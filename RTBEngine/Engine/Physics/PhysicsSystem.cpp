@@ -9,6 +9,7 @@
 #include "../ECS/GameObject.h"
 #include "../ECS/RigidBodyComponent.h"
 #include "../ECS/BoxColliderComponent.h"
+#include "../Math/Math.h"
 #include "CollisionInfo.h"
 #include <BulletCollision/NarrowPhaseCollision/btPersistentManifold.h>
 
@@ -69,7 +70,16 @@ namespace RTBEngine {
             SyncTransformsToPhysics(scene);
             physicsWorld->Step(deltaTime);
             ProcessCollisions();
-            SyncPhysicsToTransforms(scene);
+            SyncPhysicsToTransforms(scene, 1.0f);
+        }
+
+        void PhysicsSystem::SyncRenderTransforms(ECS::Scene* scene, float interpolationAlpha)
+        {
+            if (!scene) {
+                return;
+            }
+
+            SyncPhysicsToTransforms(scene, Math::Clamp01(interpolationAlpha));
         }
 
         void PhysicsSystem::InitializeCollider(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider)
@@ -192,7 +202,7 @@ namespace RTBEngine {
             }
         }
 
-        void PhysicsSystem::SyncPhysicsToTransforms(ECS::Scene* scene)
+        void PhysicsSystem::SyncPhysicsToTransforms(ECS::Scene* scene, float interpolationAlpha)
         {
             const auto& gameObjects = scene->GetGameObjects();
 
@@ -212,7 +222,19 @@ namespace RTBEngine {
 
                 if (rigidBody->GetType() == RigidBodyType::Dynamic)
                 {
-                    const btTransform& btTrans = btBody->getWorldTransform();
+                    btTransform sampledTransform = btBody->getWorldTransform();
+                    if (interpolationAlpha < 1.0f) {
+                        const btTransform& previousTransform = btBody->getInterpolationWorldTransform();
+                        btQuaternion blendedRotation =
+                            previousTransform.getRotation().slerp(sampledTransform.getRotation(), interpolationAlpha);
+                        blendedRotation.normalize();
+
+                        sampledTransform.setOrigin(
+                            previousTransform.getOrigin().lerp(sampledTransform.getOrigin(), interpolationAlpha));
+                        sampledTransform.setRotation(blendedRotation);
+                    }
+
+                    const btTransform& btTrans = sampledTransform;
                     const btVector3& btPos = btTrans.getOrigin();
                     const btQuaternion& btRot = btTrans.getRotation();
 

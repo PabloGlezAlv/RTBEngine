@@ -48,6 +48,7 @@ namespace RTBEngine {
             float GetOrthographicSize() const { return orthographicSize; }
 
             void SetAspectRatio(float aspectRatio);
+            void SyncNow();
 
             void SetSyncWithTransform(bool sync) { syncWithTransform = sync; }
             bool GetSyncWithTransform() const { return syncWithTransform; }

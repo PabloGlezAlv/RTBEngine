@@ -43,6 +43,7 @@ namespace RTBEngine {
             ~PhysicsSystem();
 
             void Update(ECS::Scene* scene, float deltaTime);
+            void SyncRenderTransforms(ECS::Scene* scene, float interpolationAlpha);
             void InitializeCollider(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider);
             void InitializeCollider(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider);
             void InitializeCollider(ECS::GameObject* gameObject, ECS::CapsuleColliderComponent* capsuleCollider);
@@ -63,7 +64,7 @@ namespace RTBEngine {
             void InitializeDynamicBody(ECS::GameObject* gameObject, ECS::CapsuleColliderComponent* capsuleCollider, ECS::RigidBodyComponent* rbComp);
 
             void SyncTransformsToPhysics(ECS::Scene* scene);
-            void SyncPhysicsToTransforms(ECS::Scene* scene);
+            void SyncPhysicsToTransforms(ECS::Scene* scene, float interpolationAlpha);
 
             void ProcessCollisions();
             void NotifyCallbacks(ECS::GameObject* object, const CollisionInfo& info, bool isTrigger, CollisionState state);

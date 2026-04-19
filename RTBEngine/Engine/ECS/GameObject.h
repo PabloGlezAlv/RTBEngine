@@ -79,6 +79,7 @@ namespace RTBEngine {
 
             void Update(float deltaTime);
             void FixedUpdate(float fixedDeltaTime);
+            void LateUpdate(float deltaTime);
             void Render(Rendering::Camera* camera);
 
         private:
