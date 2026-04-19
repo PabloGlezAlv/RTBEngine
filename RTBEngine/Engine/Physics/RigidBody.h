@@ -1,6 +1,8 @@
 #pragma once
 #include "../RTBEngineAPI.h"
 #include <btBulletDynamicsCommon.h>
+#include "../Math/Vectors/Vector3.h"
+#include "../Math/Quaternions/Quaternion.h"
 #include <memory>
 
 namespace RTBEngine {
@@ -54,6 +56,7 @@ namespace RTBEngine {
 
             void SetAngularFactor(const btVector3& factor);
             void SetLinearFactor(const btVector3& factor);
+            void SetWorldTransform(const Math::Vector3& position, const Math::Quaternion& rotation);
 
             btRigidBody* GetBulletRigidBody() { return bulletRigidBody.get(); }
             const btRigidBody* GetBulletRigidBody() const { return bulletRigidBody.get(); }

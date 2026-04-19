@@ -34,6 +34,8 @@
 #include "ECS/AudioSourceComponent.h"
 #include "ECS/RigidBodyComponent.h"
 #include "ECS/BoxColliderComponent.h"
+#include "ECS/SphereColliderComponent.h"
+#include "ECS/CapsuleColliderComponent.h"
 #include "ECS/CameraComponent.h"
 
 // UI

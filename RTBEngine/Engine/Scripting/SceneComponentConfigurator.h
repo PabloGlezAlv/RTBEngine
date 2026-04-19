@@ -10,6 +10,8 @@ namespace RTBEngine {
         class AudioSourceComponent;
         class RigidBodyComponent;
         class BoxColliderComponent;
+        class SphereColliderComponent;
+        class CapsuleColliderComponent;
         class CameraComponent;
         class FreeLookCamera;
     }
@@ -42,6 +44,8 @@ namespace RTBEngine {
             void ConfigureAudioSource(lua_State* L, int tableIndex, ECS::AudioSourceComponent* comp);
             void ConfigureRigidBody(lua_State* L, int tableIndex, ECS::RigidBodyComponent* comp, ECS::GameObject* gameObject);
             void ConfigureBoxCollider(lua_State* L, int tableIndex, ECS::BoxColliderComponent* comp, ECS::GameObject* gameObject);
+            void ConfigureSphereCollider(lua_State* L, int tableIndex, ECS::SphereColliderComponent* comp, ECS::GameObject* gameObject);
+            void ConfigureCapsuleCollider(lua_State* L, int tableIndex, ECS::CapsuleColliderComponent* comp, ECS::GameObject* gameObject);
             void ConfigureCameraComponent(lua_State* L, int tableIndex, ECS::CameraComponent* comp);
             void ConfigureFreeLookCamera(lua_State* L, int tableIndex, ECS::FreeLookCamera* comp);
             void ConfigureAnimator(lua_State* L, int tableIndex, Animation::Animator* comp);

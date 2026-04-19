@@ -9,6 +9,8 @@
 #include "../ECS/AudioSourceComponent.h"
 #include "../ECS/RigidBodyComponent.h"
 #include "../ECS/BoxColliderComponent.h"
+#include "../ECS/SphereColliderComponent.h"
+#include "../ECS/CapsuleColliderComponent.h"
 #include "../ECS/Prefab.h"
 #include "../ECS/PrefabRegistry.h"
 #include "../Core/ResourceManager.h"
@@ -18,6 +20,8 @@
 #include "../Rendering/ModelLoader.h"
 #include "../Physics/RigidBody.h"
 #include "../Physics/BoxCollider.h"
+#include "../Physics/SphereCollider.h"
+#include "../Physics/CapsuleCollider.h"
 #include "../Math/Math.h"
 #include "../UI/Canvas.h"
 #include "../UI/Elements/UIText.h"
@@ -339,6 +343,10 @@ namespace RTBEngine {
                     SceneComponentConfigurator::ConfigureRigidBody(L, componentTableIndex, static_cast<ECS::RigidBodyComponent*>(comp), gameObject);
                 else if (componentType == "BoxColliderComponent")
                     SceneComponentConfigurator::ConfigureBoxCollider(L, componentTableIndex, static_cast<ECS::BoxColliderComponent*>(comp), gameObject);
+                else if (componentType == "SphereColliderComponent")
+                    SceneComponentConfigurator::ConfigureSphereCollider(L, componentTableIndex, static_cast<ECS::SphereColliderComponent*>(comp), gameObject);
+                else if (componentType == "CapsuleColliderComponent")
+                    SceneComponentConfigurator::ConfigureCapsuleCollider(L, componentTableIndex, static_cast<ECS::CapsuleColliderComponent*>(comp), gameObject);
                 else if (componentType == "Canvas")
                     SceneComponentConfigurator::ConfigureCanvas(L, componentTableIndex, static_cast<UI::Canvas*>(comp));
                 else if (componentType == "UIText")

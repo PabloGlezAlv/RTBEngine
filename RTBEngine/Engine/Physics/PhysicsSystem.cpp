@@ -2,7 +2,9 @@
 #include "PhysicsUtils.h"
 #include "BoxCollider.h"
 #include "SphereCollider.h"
+#include "CapsuleCollider.h"
 #include "../ECS/SphereColliderComponent.h"
+#include "../ECS/CapsuleColliderComponent.h"
 #include "../ECS/Transform.h"
 #include "../ECS/GameObject.h"
 #include "../ECS/RigidBodyComponent.h"
@@ -12,6 +14,37 @@
 
 namespace RTBEngine {
     namespace Physics {
+
+        namespace {
+            Math::Vector3 GetColliderCenterOffset(ECS::GameObject* gameObject)
+            {
+                if (!gameObject) {
+                    return Math::Vector3(0.0f, 0.0f, 0.0f);
+                }
+
+                if (ECS::CapsuleColliderComponent* capsule = gameObject->GetComponent<ECS::CapsuleColliderComponent>()) {
+                    return capsule->GetCenterOffset();
+                }
+
+                if (ECS::SphereColliderComponent* sphere = gameObject->GetComponent<ECS::SphereColliderComponent>()) {
+                    return sphere->GetCenterOffset();
+                }
+
+                return Math::Vector3(0.0f, 0.0f, 0.0f);
+            }
+
+            btTransform BuildColliderTransform(ECS::Transform& transform, const Math::Vector3& centerOffset)
+            {
+                const Math::Quaternion rotation = transform.GetRotation();
+                const Math::Vector3 worldCenter = transform.GetPosition() + (rotation * centerOffset);
+
+                btTransform btTrans;
+                btTrans.setIdentity();
+                btTrans.setOrigin(PhysicsUtils::ToBullet(worldCenter));
+                btTrans.setRotation(PhysicsUtils::ToBullet(rotation));
+                return btTrans;
+            }
+        }
 
         PhysicsSystem::PhysicsSystem(PhysicsWorld* physicsWorld)
             : physicsWorld(physicsWorld)
@@ -65,13 +98,7 @@ namespace RTBEngine {
                 return;
 
             ECS::Transform& transform = gameObject->GetTransform();
-            btVector3 position = PhysicsUtils::ToBullet(transform.GetPosition());
-            btQuaternion rotation = PhysicsUtils::ToBullet(transform.GetRotation());
-
-            btTransform btTrans;
-            btTrans.setIdentity();
-            btTrans.setOrigin(position);
-            btTrans.setRotation(rotation);
+            btTransform btTrans = BuildColliderTransform(transform, collider->GetCenter());
 
             btCollisionObject* collisionObj = new btCollisionObject();
             collisionObj->setCollisionShape(shape);
@@ -100,13 +127,7 @@ namespace RTBEngine {
                 return;
 
             ECS::Transform& transform = gameObject->GetTransform();
-            btVector3 position = PhysicsUtils::ToBullet(transform.GetPosition());
-            btQuaternion rotation = PhysicsUtils::ToBullet(transform.GetRotation());
-
-            btTransform btTrans;
-            btTrans.setIdentity();
-            btTrans.setOrigin(position);
-            btTrans.setRotation(rotation);
+            btTransform btTrans = BuildColliderTransform(transform, collider->GetCenter());
 
             btDefaultMotionState* motionState = new btDefaultMotionState(btTrans);
 
@@ -164,13 +185,7 @@ namespace RTBEngine {
                 if (rigidBody->GetType() == RigidBodyType::Kinematic)
                 {
                     ECS::Transform& transform = gameObject->GetTransform();
-                    btVector3 position = PhysicsUtils::ToBullet(transform.GetPosition());
-                    btQuaternion rotation = PhysicsUtils::ToBullet(transform.GetRotation());
-
-                    btTransform btTrans;
-                    btTrans.setIdentity();
-                    btTrans.setOrigin(position);
-                    btTrans.setRotation(rotation);
+                    btTransform btTrans = BuildColliderTransform(transform, GetColliderCenterOffset(gameObject.get()));
 
                     btBody->setWorldTransform(btTrans);
                 }
@@ -201,8 +216,9 @@ namespace RTBEngine {
                     const btVector3& btPos = btTrans.getOrigin();
                     const btQuaternion& btRot = btTrans.getRotation();
 
-                    Math::Vector3 position = PhysicsUtils::FromBullet(btPos);
                     Math::Quaternion rotation = PhysicsUtils::FromBullet(btRot);
+                    Math::Vector3 position = PhysicsUtils::FromBullet(btPos) -
+                        (rotation * GetColliderCenterOffset(gameObject.get()));
 
                     ECS::Transform& transform = gameObject->GetTransform();
                     transform.SetPosition(position);
@@ -237,9 +253,15 @@ namespace RTBEngine {
                 ECS::BoxColliderComponent* boxColliderB = goB->GetComponent<ECS::BoxColliderComponent>();
                 ECS::SphereColliderComponent* sphereColliderA = goA->GetComponent<ECS::SphereColliderComponent>();
                 ECS::SphereColliderComponent* sphereColliderB = goB->GetComponent<ECS::SphereColliderComponent>();
+                ECS::CapsuleColliderComponent* capsuleColliderA = goA->GetComponent<ECS::CapsuleColliderComponent>();
+                ECS::CapsuleColliderComponent* capsuleColliderB = goB->GetComponent<ECS::CapsuleColliderComponent>();
 
-                bool isTriggerA = (boxColliderA && boxColliderA->IsTrigger()) || (sphereColliderA && sphereColliderA->IsTrigger());
-                bool isTriggerB = (boxColliderB && boxColliderB->IsTrigger()) || (sphereColliderB && sphereColliderB->IsTrigger());
+                bool isTriggerA = (boxColliderA && boxColliderA->IsTrigger()) ||
+                    (sphereColliderA && sphereColliderA->IsTrigger()) ||
+                    (capsuleColliderA && capsuleColliderA->IsTrigger());
+                bool isTriggerB = (boxColliderB && boxColliderB->IsTrigger()) ||
+                    (sphereColliderB && sphereColliderB->IsTrigger()) ||
+                    (capsuleColliderB && capsuleColliderB->IsTrigger());
                 bool isTrigger = isTriggerA || isTriggerB;
 
                 btManifoldPoint& pt = manifold->getContactPoint(0);
@@ -352,19 +374,17 @@ namespace RTBEngine {
                 return;
 
             ECS::Transform& transform = gameObject->GetTransform();
-            btVector3 position = PhysicsUtils::ToBullet(transform.GetPosition());
-            btQuaternion rotation = PhysicsUtils::ToBullet(transform.GetRotation());
-
-            btTransform btTrans;
-            btTrans.setIdentity();
-            btTrans.setOrigin(position);
-            btTrans.setRotation(rotation);
+            btTransform btTrans = BuildColliderTransform(transform, collider->GetCenter());
 
             btCollisionObject* collisionObj = new btCollisionObject();
             collisionObj->setCollisionShape(shape);
             collisionObj->setWorldTransform(btTrans);
             collisionObj->setUserPointer(gameObject);
             collisionObj->setCollisionFlags(collisionObj->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
+
+            if (sphereCollider->IsTrigger()) {
+                collisionObj->setCollisionFlags(collisionObj->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
+            }
 
             physicsWorld->AddCollisionObject(collisionObj);
             sphereCollider->SetBulletCollisionObject(collisionObj, true);
@@ -383,13 +403,7 @@ namespace RTBEngine {
                 return;
 
             ECS::Transform& transform = gameObject->GetTransform();
-            btVector3 position = PhysicsUtils::ToBullet(transform.GetPosition());
-            btQuaternion rotation = PhysicsUtils::ToBullet(transform.GetRotation());
-
-            btTransform btTrans;
-            btTrans.setIdentity();
-            btTrans.setOrigin(position);
-            btTrans.setRotation(rotation);
+            btTransform btTrans = BuildColliderTransform(transform, collider->GetCenter());
 
             btDefaultMotionState* motionState = new btDefaultMotionState(btTrans);
 
@@ -413,6 +427,10 @@ namespace RTBEngine {
                 btBody->setActivationState(DISABLE_DEACTIVATION);
             }
 
+            if (sphereCollider->IsTrigger()) {
+                btBody->setCollisionFlags(btBody->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
+            }
+
             rigidBody->SetOwner(gameObject);
             btBody->setUserPointer(gameObject);
 
@@ -420,6 +438,98 @@ namespace RTBEngine {
             rigidBody->SetPhysicsWorld(physicsWorld);
             rigidBody->SetBulletRigidBody(std::move(btBody));
             sphereCollider->SetBulletCollisionObject(rigidBody->GetBulletRigidBody());
+        }
+
+        void PhysicsSystem::InitializeCollider(ECS::GameObject* gameObject, ECS::CapsuleColliderComponent* capsuleCollider)
+        {
+            if (!gameObject || !capsuleCollider || !physicsWorld)
+                return;
+
+            ECS::RigidBodyComponent* rbComp = gameObject->GetComponent<ECS::RigidBodyComponent>();
+
+            if (rbComp && rbComp->HasRigidBody()) {
+                InitializeDynamicBody(gameObject, capsuleCollider, rbComp);
+            }
+            else {
+                InitializeStaticCollider(gameObject, capsuleCollider);
+            }
+        }
+
+        void PhysicsSystem::InitializeStaticCollider(ECS::GameObject* gameObject, ECS::CapsuleColliderComponent* capsuleCollider)
+        {
+            Physics::CapsuleCollider* collider = capsuleCollider->GetCapsuleCollider();
+            if (!collider)
+                return;
+
+            btCollisionShape* shape = collider->GetCollisionShape();
+            if (!shape)
+                return;
+
+            ECS::Transform& transform = gameObject->GetTransform();
+            btTransform btTrans = BuildColliderTransform(transform, collider->GetCenter());
+
+            btCollisionObject* collisionObj = new btCollisionObject();
+            collisionObj->setCollisionShape(shape);
+            collisionObj->setWorldTransform(btTrans);
+            collisionObj->setUserPointer(gameObject);
+            collisionObj->setCollisionFlags(collisionObj->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
+
+            if (capsuleCollider->IsTrigger()) {
+                collisionObj->setCollisionFlags(collisionObj->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
+            }
+
+            physicsWorld->AddCollisionObject(collisionObj);
+            capsuleCollider->SetBulletCollisionObject(collisionObj, true);
+        }
+
+        void PhysicsSystem::InitializeDynamicBody(ECS::GameObject* gameObject, ECS::CapsuleColliderComponent* capsuleCollider, ECS::RigidBodyComponent* rbComp)
+        {
+            Physics::CapsuleCollider* collider = capsuleCollider->GetCapsuleCollider();
+            Physics::RigidBody* rigidBody = rbComp->GetRigidBody();
+
+            if (!collider || !rigidBody)
+                return;
+
+            btCollisionShape* shape = collider->GetCollisionShape();
+            if (!shape)
+                return;
+
+            ECS::Transform& transform = gameObject->GetTransform();
+            btTransform btTrans = BuildColliderTransform(transform, collider->GetCenter());
+
+            btDefaultMotionState* motionState = new btDefaultMotionState(btTrans);
+
+            float mass = rigidBody->GetMass();
+            btVector3 inertia(0, 0, 0);
+            if (mass > 0.0f) {
+                shape->calculateLocalInertia(mass, inertia);
+            }
+
+            btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, motionState, shape, inertia);
+            rbInfo.m_friction = rigidBody->GetFriction();
+            rbInfo.m_restitution = rigidBody->GetRestitution();
+
+            std::unique_ptr<btRigidBody> btBody = std::make_unique<btRigidBody>(rbInfo);
+
+            if (rigidBody->GetType() == RigidBodyType::Static) {
+                btBody->setCollisionFlags(btBody->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
+            }
+            else if (rigidBody->GetType() == RigidBodyType::Kinematic) {
+                btBody->setCollisionFlags(btBody->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
+                btBody->setActivationState(DISABLE_DEACTIVATION);
+            }
+
+            if (capsuleCollider->IsTrigger()) {
+                btBody->setCollisionFlags(btBody->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
+            }
+
+            rigidBody->SetOwner(gameObject);
+            btBody->setUserPointer(gameObject);
+
+            physicsWorld->AddRigidBody(btBody.get());
+            rigidBody->SetPhysicsWorld(physicsWorld);
+            rigidBody->SetBulletRigidBody(std::move(btBody));
+            capsuleCollider->SetBulletCollisionObject(rigidBody->GetBulletRigidBody());
         }
 
     }

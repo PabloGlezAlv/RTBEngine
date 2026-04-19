@@ -1,5 +1,6 @@
 #include "RigidBody.h"
 #include "PhysicsWorld.h"
+#include "PhysicsUtils.h"
 
 namespace RTBEngine {
     namespace Physics {
@@ -141,6 +142,23 @@ namespace RTBEngine {
             if (bulletRigidBody) {
                 bulletRigidBody->setLinearFactor(factor);
             }
+        }
+
+        void RigidBody::SetWorldTransform(const Math::Vector3& position, const Math::Quaternion& rotation) {
+            if (!bulletRigidBody) {
+                return;
+            }
+
+            btTransform worldTransform = bulletRigidBody->getWorldTransform();
+            worldTransform.setOrigin(PhysicsUtils::ToBullet(position));
+            worldTransform.setRotation(PhysicsUtils::ToBullet(rotation));
+
+            bulletRigidBody->setCenterOfMassTransform(worldTransform);
+            bulletRigidBody->setInterpolationWorldTransform(worldTransform);
+            if (btMotionState* motionState = bulletRigidBody->getMotionState()) {
+                motionState->setWorldTransform(worldTransform);
+            }
+            bulletRigidBody->activate(true);
         }
 
         void RigidBody::ClearBulletRigidBody() {

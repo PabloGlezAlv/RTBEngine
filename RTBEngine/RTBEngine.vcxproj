@@ -137,6 +137,8 @@ if exist "$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64\SDL2.dll" xcopy /y /d "$(
 if exist "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(OutDir)"
 if exist "$(ProjectDir)ThirdParty\assimp\bin\x64\" xcopy "$(ProjectDir)ThirdParty\assimp\bin\x64\*.dll" "$(OutDir)" /Y /D
 if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
+if exist "$(ProjectDir)Engine" xcopy /y /d /s "$(ProjectDir)Engine\*.h" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Include\RTBEngine\"
+if exist "$(ProjectDir)Engine\RTBEngine.h" xcopy /y /d "$(ProjectDir)Engine\RTBEngine.h" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Include\"
 if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).lib" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Lib\Debug\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -166,6 +168,8 @@ if exist "$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64\SDL2.dll" xcopy /y /d "$(
 if exist "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(OutDir)"
 if exist "$(ProjectDir)ThirdParty\assimp\bin\x64\" xcopy "$(ProjectDir)ThirdParty\assimp\bin\x64\*.dll" "$(OutDir)" /Y /D
 if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
+if exist "$(ProjectDir)Engine" xcopy /y /d /s "$(ProjectDir)Engine\*.h" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Include\RTBEngine\"
+if exist "$(ProjectDir)Engine\RTBEngine.h" xcopy /y /d "$(ProjectDir)Engine\RTBEngine.h" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Include\"
 if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).lib" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Lib\Release\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -251,6 +255,8 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\ECS\Transform.cpp" />
     <ClCompile Include="Engine\Core\Logger.cpp" />
     <ClCompile Include="Engine\ECS\BoxColliderComponent.cpp" />
+    <ClCompile Include="Engine\ECS\CapsuleColliderComponent.cpp" />
+    <ClCompile Include="Engine\Physics\CapsuleCollider.cpp" />
     <ClCompile Include="Engine\ECS\SphereColliderComponent.cpp" />
     <ClCompile Include="Engine\ECS\MissingComponent.cpp" />
     <ClCompile Include="Engine\Reflection\TypeInfo.cpp" />
@@ -308,6 +314,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Physics\RigidBody.h" />
     <ClInclude Include="Engine\Physics\Collider.h" />
     <ClInclude Include="Engine\Physics\BoxCollider.h" />
+    <ClInclude Include="Engine\Physics\CapsuleCollider.h" />
     <ClInclude Include="Engine\Physics\SphereCollider.h" />
     <ClInclude Include="Engine\Physics\PhysicsWorld.h" />
     <ClInclude Include="Engine\Physics\PhysicsSystem.h" />
@@ -358,6 +365,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\ECS\Transform.h" />
     <ClInclude Include="Engine\Core\Logger.h" />
     <ClInclude Include="Engine\ECS\BoxColliderComponent.h" />
+    <ClInclude Include="Engine\ECS\CapsuleColliderComponent.h" />
     <ClInclude Include="Engine\ECS\SphereColliderComponent.h" />
     <ClInclude Include="Engine\ECS\MissingComponent.h" />
     <ClInclude Include="Engine\Reflection\TypeInfo.h" />

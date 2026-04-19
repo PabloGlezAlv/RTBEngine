@@ -225,6 +225,12 @@
     <ClCompile Include="Engine\ECS\BoxColliderComponent.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\ECS\CapsuleColliderComponent.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Physics\CapsuleCollider.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Reflection\TypeInfo.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
@@ -363,6 +369,9 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Physics\BoxCollider.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Physics\CapsuleCollider.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Physics\SphereCollider.h">
@@ -531,6 +540,9 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\ECS\BoxColliderComponent.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\ECS\CapsuleColliderComponent.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Reflection\TypeInfo.h">

@@ -8,6 +8,7 @@
 #include "../ECS/RigidBodyComponent.h"
 #include "../ECS/BoxColliderComponent.h"
 #include "../ECS/SphereColliderComponent.h"
+#include "../ECS/CapsuleColliderComponent.h"
 #include "../ECS/MeshRenderer.h"
 #include "../Animation/Animator.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
@@ -635,6 +636,10 @@ void RTBEngine::Core::Application::InitializePhysicsForScene(ECS::Scene* scene)
 		ECS::SphereColliderComponent* sphereCollider = go->GetComponent<ECS::SphereColliderComponent>();
 		if (sphereCollider)
 			physicsSystem->InitializeCollider(go.get(), sphereCollider);
+
+		ECS::CapsuleColliderComponent* capsuleCollider = go->GetComponent<ECS::CapsuleColliderComponent>();
+		if (capsuleCollider)
+			physicsSystem->InitializeCollider(go.get(), capsuleCollider);
 	}
 }
 

@@ -10,6 +10,8 @@
 #include "../ECS/AudioSourceComponent.h"
 #include "../ECS/RigidBodyComponent.h"
 #include "../ECS/BoxColliderComponent.h"
+#include "../ECS/SphereColliderComponent.h"
+#include "../ECS/CapsuleColliderComponent.h"
 #include "../ECS/CameraComponent.h"
 #include "../ECS/FreeLookCamera.h"
 
@@ -25,6 +27,7 @@
 
 #include "../Physics/RigidBody.h"
 #include "../Physics/BoxCollider.h"
+#include "../Physics/SphereCollider.h"
 
 #include "../UI/Canvas.h"
 #include "../UI/UIElement.h"
@@ -32,6 +35,9 @@
 #include "../UI/Elements/UIImage.h"
 #include "../UI/Elements/UIPanel.h"
 #include "../UI/Elements/UIButton.h"
+
+#include <algorithm>
+#include <cmath>
 
 namespace RTBEngine {
     namespace Scripting {
@@ -241,6 +247,30 @@ namespace RTBEngine {
                     comp->SetSize(size * gameObject->GetTransform().GetScale());
                 }
 
+                comp->SetIsTrigger(ReadOptionalBool(L, tableIndex, "isTrigger", false));
+            }
+
+            void ConfigureSphereCollider(lua_State* L, int tableIndex, ECS::SphereColliderComponent* comp, ECS::GameObject* gameObject) {
+                const Math::Vector3 scale = gameObject->GetTransform().GetScale();
+                const float radius = ReadOptionalFloat(L, tableIndex, "radius", 0.5f) *
+                    std::max(std::abs(scale.x), std::abs(scale.z));
+                const Math::Vector3 centerOffset = ReadOptionalVector3(L, tableIndex, "centerOffset", Math::Vector3()) * scale;
+
+                comp->SetRadius(radius);
+                comp->SetCenterOffset(centerOffset);
+                comp->SetIsTrigger(ReadOptionalBool(L, tableIndex, "isTrigger", false));
+            }
+
+            void ConfigureCapsuleCollider(lua_State* L, int tableIndex, ECS::CapsuleColliderComponent* comp, ECS::GameObject* gameObject) {
+                const Math::Vector3 scale = gameObject->GetTransform().GetScale();
+                const float radius = ReadOptionalFloat(L, tableIndex, "radius", 0.35f) *
+                    std::max(std::abs(scale.x), std::abs(scale.z));
+                const float height = ReadOptionalFloat(L, tableIndex, "height", 1.8f) * std::abs(scale.y);
+                const Math::Vector3 centerOffset = ReadOptionalVector3(L, tableIndex, "centerOffset", Math::Vector3(0.0f, 0.9f, 0.0f)) * scale;
+
+                comp->SetRadius(radius);
+                comp->SetHeight(height);
+                comp->SetCenterOffset(centerOffset);
                 comp->SetIsTrigger(ReadOptionalBool(L, tableIndex, "isTrigger", false));
             }
 
