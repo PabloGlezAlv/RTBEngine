@@ -260,6 +260,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Animation\AnimationClip.h" />
     <ClInclude Include="Engine\Animation\Bone.h" />
     <ClInclude Include="Engine\Core\ApplicationConfig.h" />
+    <ClInclude Include="Engine\Core\Event.h" />
     <ClInclude Include="Engine\ECS\CameraComponent.h" />
     <ClInclude Include="Engine\ECS\FreeLookCamera.h" />
     <ClInclude Include="Engine\Rendering\Cubemap.h" />

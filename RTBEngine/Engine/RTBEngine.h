@@ -5,6 +5,7 @@
 #include "Core/Application.h"
 #include "Core/ResourceManager.h"
 #include "Core/Logger.h"
+#include "Core/Event.h"
 
 // ECS
 #include "ECS/GameObject.h"
