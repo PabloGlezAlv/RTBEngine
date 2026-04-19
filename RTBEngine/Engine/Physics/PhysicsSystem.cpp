@@ -122,6 +122,7 @@ namespace RTBEngine {
 
             physicsWorld->AddCollisionObject(collisionObj);
             boxCollider->SetBulletCollisionObject(collisionObj, true);
+            boxCollider->SetPhysicsWorld(physicsWorld);
         }
 
         void PhysicsSystem::InitializeDynamicBody(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider, ECS::RigidBodyComponent* rbComp)
@@ -172,6 +173,7 @@ namespace RTBEngine {
             rigidBody->SetPhysicsWorld(physicsWorld);
             rigidBody->SetBulletRigidBody(std::move(btBody));
             boxCollider->SetBulletCollisionObject(rigidBody->GetBulletRigidBody());
+            boxCollider->SetPhysicsWorld(physicsWorld);
         }
 
         void PhysicsSystem::SyncTransformsToPhysics(ECS::Scene* scene)
@@ -410,6 +412,7 @@ namespace RTBEngine {
 
             physicsWorld->AddCollisionObject(collisionObj);
             sphereCollider->SetBulletCollisionObject(collisionObj, true);
+            sphereCollider->SetPhysicsWorld(physicsWorld);
         }
 
         void PhysicsSystem::InitializeDynamicBody(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider, ECS::RigidBodyComponent* rbComp)
@@ -460,6 +463,7 @@ namespace RTBEngine {
             rigidBody->SetPhysicsWorld(physicsWorld);
             rigidBody->SetBulletRigidBody(std::move(btBody));
             sphereCollider->SetBulletCollisionObject(rigidBody->GetBulletRigidBody());
+            sphereCollider->SetPhysicsWorld(physicsWorld);
         }
 
         void PhysicsSystem::InitializeCollider(ECS::GameObject* gameObject, ECS::CapsuleColliderComponent* capsuleCollider)
@@ -502,6 +506,7 @@ namespace RTBEngine {
 
             physicsWorld->AddCollisionObject(collisionObj);
             capsuleCollider->SetBulletCollisionObject(collisionObj, true);
+            capsuleCollider->SetPhysicsWorld(physicsWorld);
         }
 
         void PhysicsSystem::InitializeDynamicBody(ECS::GameObject* gameObject, ECS::CapsuleColliderComponent* capsuleCollider, ECS::RigidBodyComponent* rbComp)
@@ -552,6 +557,7 @@ namespace RTBEngine {
             rigidBody->SetPhysicsWorld(physicsWorld);
             rigidBody->SetBulletRigidBody(std::move(btBody));
             capsuleCollider->SetBulletCollisionObject(rigidBody->GetBulletRigidBody());
+            capsuleCollider->SetPhysicsWorld(physicsWorld);
         }
 
     }

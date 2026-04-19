@@ -70,6 +70,7 @@ namespace RTBEngine {
             ECS::GameObject* GetOwner() const { return owner; }
 
             void SetPhysicsWorld(PhysicsWorld* world) { physicsWorldRef = world; }
+            PhysicsWorld* GetPhysicsWorld() const { return physicsWorldRef; }
         private:
             RigidBodyType bodyType;
             float bodyMass;

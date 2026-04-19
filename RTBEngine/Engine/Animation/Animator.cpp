@@ -14,6 +14,16 @@
 namespace RTBEngine {
     namespace Animation {
 
+        namespace {
+            void ReleaseLoadedModelMeshes(Rendering::ModelData& data)
+            {
+                for (Rendering::Mesh* mesh : data.meshes) {
+                    delete mesh;
+                }
+                data.meshes.clear();
+            }
+        }
+
         using ThisClass = Animator;
         RTB_REGISTER_COMPONENT(Animator)
             RTB_PROPERTY(modelRef)
@@ -136,6 +146,38 @@ namespace RTBEngine {
                 RTB_WARN("[Animator] Clip name collision: \"" + name + "\" already exists and will be overwritten.");
             }
             clips[name] = clip;
+
+            if (currentClipName == name) {
+                currentClip = clip.get();
+                if (!currentClip) {
+                    currentClipName.clear();
+                    currentTime = 0.0f;
+                    playing = false;
+                    paused = false;
+                    return;
+                }
+
+                if (currentTime > currentClip->GetDuration()) {
+                    currentTime = currentClip->GetDuration();
+                }
+            }
+        }
+
+        bool Animator::LoadClipFromFbx(const std::string& alias, const std::string& sourceFbx)
+        {
+            if (alias.empty() || sourceFbx.empty()) {
+                return false;
+            }
+
+            Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(sourceFbx);
+            if (modelData.animations.empty() || !modelData.animations.front()) {
+                ReleaseLoadedModelMeshes(modelData);
+                return false;
+            }
+
+            AddClip(alias, modelData.animations.front());
+            ReleaseLoadedModelMeshes(modelData);
+            return true;
         }
 
         void Animator::ClearClips()

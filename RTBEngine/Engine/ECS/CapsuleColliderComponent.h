@@ -8,6 +8,7 @@
 namespace RTBEngine {
     namespace Physics {
         class CapsuleCollider;
+        class PhysicsWorld;
     }
 }
 
@@ -44,6 +45,8 @@ namespace RTBEngine {
             Physics::CapsuleCollider* GetCapsuleCollider() const { return capsuleCollider.get(); }
             void SetBulletCollisionObject(btCollisionObject* obj, bool takeOwnership = false);
             btCollisionObject* GetBulletCollisionObject() const { return bulletObject; }
+            void SetPhysicsWorld(Physics::PhysicsWorld* world) { physicsWorldRef = world; }
+            Physics::PhysicsWorld* GetPhysicsWorld() const { return physicsWorldRef; }
 
             float radius = 0.35f;
             float height = 1.80f;
@@ -56,6 +59,7 @@ namespace RTBEngine {
             std::unique_ptr<Physics::CapsuleCollider> capsuleCollider;
             btCollisionObject* bulletObject = nullptr;
             bool ownsBulletObject = false;
+            Physics::PhysicsWorld* physicsWorldRef = nullptr;
         };
 #pragma warning(pop)
 
