@@ -1,8 +1,75 @@
 #include "PhysicsWorld.h"
 #include "PhysicsUtils.h"
 #include "../ECS/GameObject.h"
+#include <SDL_timer.h>
+#include <algorithm>
+#include <atomic>
+#include <mutex>
+#include <vector>
 
 namespace {
+    struct StoredPhysicsDebugQuery {
+        RTBEngine::Physics::PhysicsDebugQueryType type = RTBEngine::Physics::PhysicsDebugQueryType::Raycast;
+        RTBEngine::Math::Vector3 start = RTBEngine::Math::Vector3(0.0f, 0.0f, 0.0f);
+        RTBEngine::Math::Vector3 end = RTBEngine::Math::Vector3(0.0f, 0.0f, 0.0f);
+        float radius = 0.0f;
+        bool hit = false;
+        float hitFraction = 1.0f;
+        Uint64 expiresAtMs = 0;
+    };
+
+    constexpr Uint64 kPhysicsDebugQueryLifetimeMs = 5000;
+    constexpr std::size_t kMaxStoredPhysicsDebugQueries = 256;
+
+    std::atomic_bool gPhysicsDebugQueriesEnabled{ false };
+    std::mutex gPhysicsDebugQueriesMutex;
+    std::vector<StoredPhysicsDebugQuery> gPhysicsDebugQueries;
+
+    void PruneExpiredDebugQueriesLocked(Uint64 nowMs)
+    {
+        gPhysicsDebugQueries.erase(
+            std::remove_if(
+                gPhysicsDebugQueries.begin(),
+                gPhysicsDebugQueries.end(),
+                [nowMs](const StoredPhysicsDebugQuery& entry) {
+                    return entry.expiresAtMs <= nowMs;
+                }),
+            gPhysicsDebugQueries.end());
+    }
+
+    void StorePhysicsDebugQuery(RTBEngine::Physics::PhysicsDebugQueryType type,
+                                const RTBEngine::Math::Vector3& start,
+                                const RTBEngine::Math::Vector3& end,
+                                float radius,
+                                bool hit,
+                                float hitFraction)
+    {
+        if (!gPhysicsDebugQueriesEnabled.load(std::memory_order_relaxed)) {
+            return;
+        }
+
+        const Uint64 nowMs = SDL_GetTicks64();
+
+        std::lock_guard<std::mutex> lock(gPhysicsDebugQueriesMutex);
+        PruneExpiredDebugQueriesLocked(nowMs);
+
+        if (gPhysicsDebugQueries.size() >= kMaxStoredPhysicsDebugQueries) {
+            const std::size_t overflow = gPhysicsDebugQueries.size() - kMaxStoredPhysicsDebugQueries + 1;
+            gPhysicsDebugQueries.erase(gPhysicsDebugQueries.begin(),
+                                       gPhysicsDebugQueries.begin() + static_cast<std::ptrdiff_t>(overflow));
+        }
+
+        StoredPhysicsDebugQuery entry;
+        entry.type = type;
+        entry.start = start;
+        entry.end = end;
+        entry.radius = radius;
+        entry.hit = hit;
+        entry.hitFraction = std::clamp(hitFraction, 0.0f, 1.0f);
+        entry.expiresAtMs = nowMs + kPhysicsDebugQueryLifetimeMs;
+        gPhysicsDebugQueries.push_back(entry);
+    }
+
     RTBEngine::ECS::GameObject* ResolveHitGameObject(const btCollisionObject* collisionObject)
     {
         if (!collisionObject) {
@@ -103,6 +170,57 @@ namespace {
 
 namespace RTBEngine {
     namespace Physics {
+
+        void SetPhysicsDebugQueriesEnabled(bool enabled)
+        {
+            gPhysicsDebugQueriesEnabled.store(enabled, std::memory_order_relaxed);
+
+            if (!enabled) {
+                ClearPhysicsDebugQueries();
+            }
+        }
+
+        bool ArePhysicsDebugQueriesEnabled()
+        {
+            return gPhysicsDebugQueriesEnabled.load(std::memory_order_relaxed);
+        }
+
+        void ClearPhysicsDebugQueries()
+        {
+            std::lock_guard<std::mutex> lock(gPhysicsDebugQueriesMutex);
+            gPhysicsDebugQueries.clear();
+        }
+
+        int GetPhysicsDebugQuerySnapshot(PhysicsDebugQueryEntry* outEntries, int maxEntries)
+        {
+            if (!outEntries || maxEntries <= 0) {
+                return 0;
+            }
+
+            const Uint64 nowMs = SDL_GetTicks64();
+            std::lock_guard<std::mutex> lock(gPhysicsDebugQueriesMutex);
+            PruneExpiredDebugQueriesLocked(nowMs);
+
+            const int availableCount = static_cast<int>(gPhysicsDebugQueries.size());
+            const int resultCount = std::min(availableCount, maxEntries);
+            const int startIndex = availableCount - resultCount;
+
+            for (int i = 0; i < resultCount; ++i) {
+                const StoredPhysicsDebugQuery& stored = gPhysicsDebugQueries[startIndex + i];
+                PhysicsDebugQueryEntry entry;
+                entry.type = stored.type;
+                entry.start = stored.start;
+                entry.end = stored.end;
+                entry.radius = stored.radius;
+                entry.hit = stored.hit;
+                entry.hitFraction = stored.hitFraction;
+                entry.remainingSeconds =
+                    std::max(0.0f, static_cast<float>(stored.expiresAtMs - nowMs) / 1000.0f);
+                outEntries[i] = entry;
+            }
+
+            return resultCount;
+        }
 
         PhysicsWorld::PhysicsWorld()
             : collisionConfiguration(nullptr)
@@ -264,6 +382,7 @@ namespace RTBEngine {
             dynamicsWorld->rayTest(from, to, callback);
 
             if (!callback.hasHit()) {
+                StorePhysicsDebugQuery(PhysicsDebugQueryType::Raycast, start, end, 0.0f, false, 1.0f);
                 return false;
             }
 
@@ -271,6 +390,13 @@ namespace RTBEngine {
             outHit.point = PhysicsUtils::FromBullet(callback.m_hitPointWorld);
             outHit.normal = PhysicsUtils::FromBullet(callback.m_hitNormalWorld);
             outHit.fraction = callback.m_closestHitFraction;
+            StorePhysicsDebugQuery(
+                PhysicsDebugQueryType::Raycast,
+                start,
+                end,
+                0.0f,
+                true,
+                outHit.fraction);
             return outHit.gameObject != nullptr;
         }
 
@@ -302,6 +428,7 @@ namespace RTBEngine {
             dynamicsWorld->convexSweepTest(&sphereShape, fromTransform, toTransform, callback);
 
             if (!callback.hasHit()) {
+                StorePhysicsDebugQuery(PhysicsDebugQueryType::SphereCast, start, end, radius, false, 1.0f);
                 return false;
             }
 
@@ -309,6 +436,13 @@ namespace RTBEngine {
             outHit.point = PhysicsUtils::FromBullet(callback.m_hitPointWorld);
             outHit.normal = PhysicsUtils::FromBullet(callback.m_hitNormalWorld);
             outHit.fraction = callback.m_closestHitFraction;
+            StorePhysicsDebugQuery(
+                PhysicsDebugQueryType::SphereCast,
+                start,
+                end,
+                radius,
+                true,
+                outHit.fraction);
             return outHit.gameObject != nullptr;
         }
 

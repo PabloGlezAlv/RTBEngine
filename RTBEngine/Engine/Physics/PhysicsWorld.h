@@ -1,6 +1,7 @@
 #pragma once
 #include "../RTBEngineAPI.h"
 #include <btBulletDynamicsCommon.h>
+#include <cstdint>
 #include <memory>
 #include "../Math/Vectors/Vector3.h"
 
@@ -10,6 +11,11 @@ namespace RTBEngine {
     }
 
     namespace Physics {
+
+        enum class RTB_API PhysicsDebugQueryType : std::uint8_t {
+            Raycast = 0,
+            SphereCast = 1
+        };
 
         struct RTB_API PhysicsQueryHit {
             ECS::GameObject* gameObject = nullptr;
@@ -23,6 +29,21 @@ namespace RTBEngine {
             bool ignoreIgnoredObjectHierarchy = true;
             bool ignoreTriggers = false;
         };
+
+        struct RTB_API PhysicsDebugQueryEntry {
+            PhysicsDebugQueryType type = PhysicsDebugQueryType::Raycast;
+            Math::Vector3 start = Math::Vector3(0.0f, 0.0f, 0.0f);
+            Math::Vector3 end = Math::Vector3(0.0f, 0.0f, 0.0f);
+            float radius = 0.0f;
+            bool hit = false;
+            float hitFraction = 1.0f;
+            float remainingSeconds = 0.0f;
+        };
+
+        RTB_API void SetPhysicsDebugQueriesEnabled(bool enabled);
+        RTB_API bool ArePhysicsDebugQueriesEnabled();
+        RTB_API void ClearPhysicsDebugQueries();
+        RTB_API int GetPhysicsDebugQuerySnapshot(PhysicsDebugQueryEntry* outEntries, int maxEntries);
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
