@@ -4,6 +4,7 @@
 #include "GameObject.h"
 #include "Component.h"
 #include "MeshRenderer.h"
+#include "SceneManager.h"
 #include "../Reflection/TypeInfo.h"
 #include "../Scripting/ComponentRegistry.h"
 #include "../Core/ResourceManager.h"
@@ -13,6 +14,8 @@
 #include "../Rendering/FbxBinding.h"
 #include "../Rendering/ModelLoader.h"
 #include "../Audio/AudioClip.h"
+
+#include <unordered_map>
 
 namespace RTBEngine {
     namespace ECS {
@@ -71,6 +74,24 @@ namespace RTBEngine {
                     const Audio::AudioClip* clip = *static_cast<Audio::AudioClip* const*>(prop->GetData(comp));
                     if (clip)
                         snap.ptrPathData[offset] = resources.GetAudioClipPath(const_cast<Audio::AudioClip*>(clip));
+                    continue;
+                }
+
+                if (prop->type == Reflection::PropertyType::GameObjectRef)
+                {
+                    const GameObject* target = *static_cast<GameObject* const*>(prop->GetData(comp));
+                    if (target)
+                        snap.ptrPathData[offset] = target->GetUUID();
+                    continue;
+                }
+
+                if (prop->type == Reflection::PropertyType::ComponentRef)
+                {
+                    const Component* target = *static_cast<Component* const*>(prop->GetData(comp));
+                    if (target && target->GetOwner()) {
+                        snap.ptrPathData[offset] =
+                            target->GetOwner()->GetUUID() + "/" + std::string(target->GetTypeName());
+                    }
                     continue;
                 }
 
@@ -197,6 +218,7 @@ namespace RTBEngine {
         std::unique_ptr<Prefab> Prefab::CreateFromGameObject(const GameObject* source)
         {
             auto prefab = std::make_unique<Prefab>(source->GetName());
+            prefab->sourceUuid = source->GetUUID();
 
             const auto& transform = source->GetTransform();
             prefab->position = transform.GetPosition();
@@ -222,40 +244,150 @@ namespace RTBEngine {
 
         GameObject* Prefab::Instantiate(GameObject* parent, std::vector<GameObject*>& outChildren) const
         {
-            auto* go = new GameObject(name);
-            go->SetPrefabName(name);
+            struct PendingReferencePatch {
+                Component* component = nullptr;
+                const Reflection::PropertyInfo* property = nullptr;
+                std::string referenceValue;
+            };
 
-            go->GetTransform().SetPosition(position);
-            go->GetTransform().SetRotation(rotation);
-            go->GetTransform().SetScale(scale);
+            struct InstantiateContext {
+                std::unordered_map<std::string, GameObject*> sourceUuidToInstance;
+                std::vector<PendingReferencePatch> pendingReferencePatches;
+                std::vector<Component*> createdComponents;
+                Scene* activeScene = nullptr;
+            };
 
-            for (const ComponentSnapshot& snap : componentSnapshots)
+            InstantiateContext context;
+            context.activeScene = SceneManager::GetInstance().GetActiveScene();
+
+            std::function<GameObject*(const Prefab&, GameObject*)> instantiateNode =
+                [&](const Prefab& nodePrefab, GameObject* nodeParent) -> GameObject*
             {
-                Component* comp = Scripting::ComponentRegistry::GetInstance().CreateComponent(snap.typeName);
-                if (!comp) continue;
+                auto* go = new GameObject(nodePrefab.name);
+                go->SetPrefabName(nodePrefab.name);
+                go->GetTransform().SetPosition(nodePrefab.position);
+                go->GetTransform().SetRotation(nodePrefab.rotation);
+                go->GetTransform().SetScale(nodePrefab.scale);
 
-                const Reflection::TypeInfo* registeredTypeInfo =
-                    Scripting::ComponentRegistry::GetInstance().GetComponentTypeInfo(snap.typeName);
+                if (!nodePrefab.sourceUuid.empty()) {
+                    context.sourceUuidToInstance[nodePrefab.sourceUuid] = go;
+                }
 
-                ApplySnapshot(comp, snap);
-                go->AddComponent(comp, registeredTypeInfo);
-                comp->OnValidate();
+                for (const ComponentSnapshot& snap : nodePrefab.componentSnapshots)
+                {
+                    Component* comp = Scripting::ComponentRegistry::GetInstance().CreateComponent(snap.typeName);
+                    if (!comp) continue;
+
+                    const Reflection::TypeInfo* registeredTypeInfo =
+                        Scripting::ComponentRegistry::GetInstance().GetComponentTypeInfo(snap.typeName);
+                    const Reflection::TypeInfo* effectiveTypeInfo =
+                        registeredTypeInfo ? registeredTypeInfo : comp->GetTypeInfo();
+
+                    ApplySnapshot(comp, snap);
+                    go->AddComponent(comp, registeredTypeInfo);
+                    context.createdComponents.push_back(comp);
+
+                    if (!effectiveTypeInfo) {
+                        continue;
+                    }
+
+                    for (const Reflection::PropertyInfo* prop : effectiveTypeInfo->GetSerializableProperties()) {
+                        if (!prop ||
+                            (prop->type != Reflection::PropertyType::GameObjectRef &&
+                             prop->type != Reflection::PropertyType::ComponentRef)) {
+                            continue;
+                        }
+
+                        auto patchIt = snap.ptrPathData.find(prop->offset);
+                        if (patchIt == snap.ptrPathData.end() || patchIt->second.empty()) {
+                            continue;
+                        }
+
+                        context.pendingReferencePatches.push_back({ comp, prop, patchIt->second });
+                    }
+                }
+
+                if (nodeParent) {
+                    go->SetParent(nodeParent);
+                }
+
+                for (const auto& childPrefab : nodePrefab.childPrefabs)
+                {
+                    if (!childPrefab) continue;
+                    GameObject* child = instantiateNode(*childPrefab, go);
+                    if (child)
+                        outChildren.push_back(child);
+                }
+
+                return go;
+            };
+
+            GameObject* root = instantiateNode(*this, parent);
+
+            for (const PendingReferencePatch& patch : context.pendingReferencePatches)
+            {
+                if (!patch.component || !patch.property) {
+                    continue;
+                }
+
+                if (patch.property->type == Reflection::PropertyType::GameObjectRef) {
+                    GameObject* resolvedObject = nullptr;
+
+                    auto localIt = context.sourceUuidToInstance.find(patch.referenceValue);
+                    if (localIt != context.sourceUuidToInstance.end()) {
+                        resolvedObject = localIt->second;
+                    } else if (context.activeScene) {
+                        resolvedObject = context.activeScene->FindGameObjectByUUID(patch.referenceValue);
+                    }
+
+                    void* data = patch.property->GetMutableData(patch.component);
+                    if (data) {
+                        *static_cast<GameObject**>(data) = resolvedObject;
+                    }
+                    continue;
+                }
+
+                if (patch.property->type == Reflection::PropertyType::ComponentRef) {
+                    const size_t slash = patch.referenceValue.find('/');
+                    if (slash == std::string::npos) {
+                        continue;
+                    }
+
+                    const std::string targetUuid = patch.referenceValue.substr(0, slash);
+                    const std::string targetType = patch.referenceValue.substr(slash + 1);
+
+                    GameObject* targetGameObject = nullptr;
+                    auto localIt = context.sourceUuidToInstance.find(targetUuid);
+                    if (localIt != context.sourceUuidToInstance.end()) {
+                        targetGameObject = localIt->second;
+                    } else if (context.activeScene) {
+                        targetGameObject = context.activeScene->FindGameObjectByUUID(targetUuid);
+                    }
+
+                    Component* resolvedComponent = nullptr;
+                    if (targetGameObject) {
+                        for (const auto& component : targetGameObject->GetComponents()) {
+                            if (component && std::string(component->GetTypeName()) == targetType) {
+                                resolvedComponent = component.get();
+                                break;
+                            }
+                        }
+                    }
+
+                    void* data = patch.property->GetMutableData(patch.component);
+                    if (data) {
+                        *static_cast<Component**>(data) = resolvedComponent;
+                    }
+                }
             }
 
-            if (parent)
-                go->SetParent(parent);
-
-            // Recursively instantiate children; collect them all in outChildren so the
-            // caller can add them to the scene (Scene::Render only iterates the flat list).
-            for (const auto& childPrefab : childPrefabs)
-            {
-                if (!childPrefab) continue;
-                GameObject* child = childPrefab->Instantiate(go, outChildren);
-                if (child)
-                    outChildren.push_back(child);
+            for (Component* component : context.createdComponents) {
+                if (component) {
+                    component->OnValidate();
+                }
             }
 
-            return go;
+            return root;
         }
 
         GameObject* Prefab::Instantiate(GameObject* parent) const

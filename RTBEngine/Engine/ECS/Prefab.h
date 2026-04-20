@@ -58,6 +58,7 @@ namespace RTBEngine {
             static void SnapshotComponent(ComponentSnapshot& snap, const Component* comp);
         private:
             std::string name;
+            std::string sourceUuid;
             Math::Vector3 position;
             Math::Quaternion rotation;
             Math::Vector3 scale = Math::Vector3(1.0f, 1.0f, 1.0f);

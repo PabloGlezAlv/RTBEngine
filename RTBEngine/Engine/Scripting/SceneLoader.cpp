@@ -166,10 +166,17 @@ namespace RTBEngine {
                 return new ECS::GameObject(name);
             }
 
-            ECS::GameObject* go = prefab->Instantiate(nullptr);
+            std::vector<ECS::GameObject*> childGOs;
+            ECS::GameObject* go = prefab->Instantiate(nullptr, childGOs);
             go->SetName(name);
             if (!uuid.empty())
                 go->SetUUID(uuid);
+
+            for (ECS::GameObject* child : childGOs) {
+                if (child) {
+                    scene->AddGameObject(child);
+                }
+            }
 
             ReadTransform(L, tableIndex, go);
 
