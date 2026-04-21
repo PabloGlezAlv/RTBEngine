@@ -30,8 +30,8 @@ namespace RTBEngine {
             std::function<void(const std::string&)> onPrefabChanged;
 
         private:
-            PrefabRegistry() = default;
-            ~PrefabRegistry() = default;
+            PrefabRegistry();
+            ~PrefabRegistry();
 
             std::unordered_map<std::string, std::unique_ptr<Prefab>> prefabs;
             std::unordered_map<std::string, std::string> nameToPaths;

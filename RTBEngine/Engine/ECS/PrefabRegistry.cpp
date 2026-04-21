@@ -13,6 +13,10 @@ namespace RTBEngine {
             return instance;
         }
 
+        PrefabRegistry::PrefabRegistry() = default;
+
+        PrefabRegistry::~PrefabRegistry() = default;
+
         void PrefabRegistry::LoadAll(const std::string& directory)
         {
             if (!std::filesystem::exists(directory)) return;

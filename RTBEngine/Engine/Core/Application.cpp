@@ -20,6 +20,7 @@
 #include "../UI/CanvasSystem.h"
 #include "../Scripting/ComponentRegistry.h"
 #include "../Scripting/ScriptManager.h"
+#include "../ECS/PrefabRegistry.h"
 #include "../ECS/SceneManager.h"
 #include "../Rendering/Skybox.h"
 #include "../Rendering/Cubemap.h"
@@ -162,6 +163,17 @@ bool RTBEngine::Core::Application::Initialize()
 		fs::path scriptsDll = fs::current_path() / "GameScripts.dll";
 		if (fs::exists(scriptsDll)) {
 			Scripting::ScriptManager::GetInstance().LoadScripts(scriptsDll.string());
+		}
+	}
+
+	// Prefabs can contain script components, so load them after the script DLL
+	// and before any scene tries to instantiate prefab references.
+	if (!config.initialScenePath.empty()) {
+		namespace fs = std::filesystem;
+		const fs::path assetsPath = fs::current_path() / "Assets";
+		ECS::PrefabRegistry::GetInstance().Clear();
+		if (fs::exists(assetsPath) && fs::is_directory(assetsPath)) {
+			ECS::PrefabRegistry::GetInstance().LoadAll(assetsPath.string());
 		}
 	}
 

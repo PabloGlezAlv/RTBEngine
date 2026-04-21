@@ -6,6 +6,10 @@
 #include <iomanip>
 #include <cstdint>
 
+#ifndef _ITERATOR_DEBUG_LEVEL
+#define _ITERATOR_DEBUG_LEVEL 0
+#endif
+
 // --- Windows DLL loading API ---
 //
 // HMODULE
@@ -56,6 +60,59 @@ namespace RTBEngine {
         static std::string                       s_pendingTypeName;
         static size_t                            s_pendingPropIndex = 0;
         static std::vector<std::string>         s_pendingTypes;
+
+        static int ExpectedDebugFlag()
+        {
+#ifdef _DEBUG
+            return 1;
+#else
+            return 0;
+#endif
+        }
+
+        static const char* BuildFlavorName(int isDebug)
+        {
+            return isDebug ? "Debug" : "Release";
+        }
+
+        static bool ValidateScriptBuildInfo(const RTBScriptBuildInfo* info, const std::string& dllPath)
+        {
+            if (!info) {
+                RTB_ERROR("ScriptManager: '" + dllPath + "' did not return RTBScriptBuildInfo.");
+                return false;
+            }
+
+            const int expectedDebug = ExpectedDebugFlag();
+            const int expectedIteratorDebugLevel = _ITERATOR_DEBUG_LEVEL;
+            const bool matches =
+                info->abiVersion == RTB_SCRIPT_BRIDGE_ABI_VERSION &&
+                info->isDebug == expectedDebug &&
+                info->iteratorDebugLevel == expectedIteratorDebugLevel &&
+                info->sizeofStdString == sizeof(std::string) &&
+                info->sizeofPropertyDesc == sizeof(RTBPropertyDesc) &&
+                info->sizeofScriptTypeDesc == sizeof(RTBScriptTypeDesc);
+
+            if (matches) {
+                return true;
+            }
+
+            RTB_ERROR(
+                "ScriptManager: Refusing to load '" + dllPath + "' because its script ABI/build settings do not match RTBEngine. "
+                "Engine{abi=" + std::to_string(RTB_SCRIPT_BRIDGE_ABI_VERSION) +
+                ", config=" + BuildFlavorName(expectedDebug) +
+                ", iteratorDebugLevel=" + std::to_string(expectedIteratorDebugLevel) +
+                ", sizeof(std::string)=" + std::to_string(sizeof(std::string)) +
+                ", sizeof(RTBPropertyDesc)=" + std::to_string(sizeof(RTBPropertyDesc)) +
+                ", sizeof(RTBScriptTypeDesc)=" + std::to_string(sizeof(RTBScriptTypeDesc)) +
+                "} Script{abi=" + std::to_string(info->abiVersion) +
+                ", config=" + BuildFlavorName(info->isDebug) +
+                ", iteratorDebugLevel=" + std::to_string(info->iteratorDebugLevel) +
+                ", sizeof(std::string)=" + std::to_string(info->sizeofStdString) +
+                ", sizeof(RTBPropertyDesc)=" + std::to_string(info->sizeofPropertyDesc) +
+                ", sizeof(RTBScriptTypeDesc)=" + std::to_string(info->sizeofScriptTypeDesc) +
+                "}.");
+            return false;
+        }
 
         static std::string PtrToHex(const void* ptr)
         {
@@ -195,6 +252,27 @@ namespace RTBEngine {
             if (dllHandle == nullptr) {
                 DWORD error = GetLastError();
                 RTB_ERROR("ScriptManager: Failed to load '" + dllPath + "' (error " + std::to_string(error) + ")");
+                return false;
+            }
+
+            using BuildInfoFunc = const RTBScriptBuildInfo*(*)();
+            auto* getBuildInfo = reinterpret_cast<BuildInfoFunc>(
+                GetProcAddress(dllHandle, "RTBScripts_GetBuildInfo"));
+            if (!getBuildInfo) {
+                RTB_ERROR("ScriptManager: Refusing to load '" + dllPath +
+                    "' because it does not export RTBScripts_GetBuildInfo.");
+                FreeLibrary(dllHandle);
+                dllHandle = nullptr;
+                loadedPath.clear();
+                loadedScriptTypes.clear();
+                return false;
+            }
+
+            if (!ValidateScriptBuildInfo(getBuildInfo(), dllPath)) {
+                FreeLibrary(dllHandle);
+                dllHandle = nullptr;
+                loadedPath.clear();
+                loadedScriptTypes.clear();
                 return false;
             }
 
