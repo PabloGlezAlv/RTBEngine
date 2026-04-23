@@ -322,7 +322,6 @@ namespace RTBEngine {
                     continue;
                 }
 
-                // If the GO already has this component (from prefab), reuse it instead of adding a duplicate
                 ECS::Component* existing = nullptr;
                 for (const auto& c : gameObject->GetComponents()) {
                     if (std::string(c->GetTypeName()) == componentType) {

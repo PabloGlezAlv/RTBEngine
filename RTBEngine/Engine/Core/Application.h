@@ -62,6 +62,7 @@ namespace RTBEngine {
             void SetIsRunning(bool value) { isRunning = value; }
 
             void ResetPhysics();
+            void RebuildPhysicsForScene(ECS::Scene* scene);
             void InitializePhysicsForScene(ECS::Scene* scene);
             Physics::PhysicsWorld* GetPhysicsWorld() const { return physicsWorld; }
 

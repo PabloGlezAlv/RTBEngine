@@ -671,6 +671,25 @@ void RTBEngine::Core::Application::ResetPhysics()
 	physicsAccumulator = 0.0f;
 }
 
+void RTBEngine::Core::Application::RebuildPhysicsForScene(ECS::Scene* scene)
+{
+	if (!scene) {
+		ResetPhysics();
+		return;
+	}
+
+	for (const auto& gameObject : scene->GetGameObjects()) {
+		if (!gameObject) {
+			continue;
+		}
+
+		DetachPhysicsFromGameObject(gameObject.get());
+	}
+
+	ResetPhysics();
+	InitializePhysicsForScene(scene);
+}
+
 void RTBEngine::Core::Application::InitializePhysicsForGameObject(ECS::GameObject* gameObject)
 {
 	if (!gameObject || !physicsSystem) {
