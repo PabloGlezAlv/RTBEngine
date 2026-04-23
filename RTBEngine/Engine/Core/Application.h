@@ -1,102 +1,107 @@
 #pragma once
+
 #include "../RTBEngineAPI.h"
-#include <cstdint>
-#include <memory>
-#include <functional>
 #include "ApplicationConfig.h"
+#include <cstdint>
+#include <functional>
+#include <memory>
 
 namespace RTBEngine {
-	namespace ECS {
-		class SceneManager;
-		class Scene;
-	}
+    namespace ECS {
+        class GameObject;
+        class Scene;
+    }
 
-	namespace Rendering {
-		class Camera;
-		class Shader;
-		class Skybox;
-		class Frustum;
-	}
+    namespace Physics {
+        class PhysicsSystem;
+        class PhysicsWorld;
+    }
 
-	namespace Physics {
-		class PhysicsSystem;
-		class PhysicsWorld;
-	}
+    namespace Rendering {
+        class Camera;
+        class Frustum;
+        class Shader;
+        class Skybox;
+    }
 }
 
 namespace RTBEngine {
-	namespace Core {
-#pragma warning(push)
-#pragma warning(disable: 4251)
-		class Window;
+    namespace Core {
+        #pragma warning(push)
+        #pragma warning(disable: 4251)
+        class Window;
 
-		class RTB_API Application {
-		public:
-			explicit Application(const ApplicationConfig& config);
-			~Application();
+        class RTB_API Application {
+        public:
+            explicit Application(const ApplicationConfig& config);
+            ~Application();
 
-			bool Initialize();
-			void Run();
-			void Shutdown();
+            bool Initialize();
+            void Run();
+            void Shutdown();
 
-			bool IsRunning() const { return isRunning; }
-			void RequestExit() { isRunning = false; }
-			static void RequestQuit();
-			static bool IsQuitRequested();
-			static bool ConsumeQuitRequest();
-			static void ClearQuitRequest();
-			Window* GetWindow() { return window.get(); }
-			void* GetImGuiContext();
+            bool IsRunning() const { return isRunning; }
+            void RequestExit() { isRunning = false; }
+            static void RequestQuit();
+            static bool IsQuitRequested();
+            static bool ConsumeQuitRequest();
+            static void ClearQuitRequest();
 
-			void SetOnQuitRequested(std::function<void()> callback) { onQuitRequested = callback; }
-			const ApplicationConfig& GetConfig() const { return config; }
+            Window* GetWindow() { return window.get(); }
+            void* GetImGuiContext();
 
-			void ProcessInput();
-			void Update(float deltaTime);
-			void Render();
+            void SetOnQuitRequested(std::function<void()> callback) { onQuitRequested = callback; }
+            const ApplicationConfig& GetConfig() const { return config; }
 
-			void RenderShadowPass(ECS::Scene* scene);
-			void RenderGeometryPass(ECS::Scene* scene, Rendering::Camera* camera);
-			void SetIsRunning(bool value) { isRunning = value; }
+            void ProcessInput();
+            void Update(float deltaTime);
+            void Render();
 
-		void ResetPhysics();
-		void InitializePhysicsForScene(ECS::Scene* scene);
-		Physics::PhysicsWorld* GetPhysicsWorld() const { return physicsWorld; }
+            void RenderShadowPass(ECS::Scene* scene);
+            void RenderGeometryPass(ECS::Scene* scene, Rendering::Camera* camera);
+            void SetIsRunning(bool value) { isRunning = value; }
 
-		private:
-			bool InitializeImGui();
-			void ShutdownImGui();
-			void RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader, const Rendering::Frustum& frustum);
-			void OnWindowResized(int width, int height);
-			ApplicationConfig config;
+            void ResetPhysics();
+            void InitializePhysicsForScene(ECS::Scene* scene);
+            Physics::PhysicsWorld* GetPhysicsWorld() const { return physicsWorld; }
 
-			bool isRunning = false;
-		bool isShutdown = false;
-			std::uint32_t lastTime = 0;
-			float deltaTime = 0.0f;
+        private:
+            bool InitializeImGui();
+            void ShutdownImGui();
+            void RenderSceneDepthOnly(ECS::Scene* scene,
+                                      Rendering::Shader* shader,
+                                      const Rendering::Frustum& frustum);
+            void OnWindowResized(int width, int height);
+            void InitializePhysicsForGameObject(ECS::GameObject* gameObject);
+            void InitializePhysicsForHierarchy(ECS::GameObject* root);
+            void DetachPhysicsFromGameObject(ECS::GameObject* gameObject);
+            void DetachPhysicsHierarchy(ECS::GameObject* root);
 
-			std::unique_ptr<Window> window;
+            ApplicationConfig config;
+            bool isRunning = false;
+            bool isShutdown = false;
+            std::uint32_t lastTime = 0;
 
-			Physics::PhysicsWorld* physicsWorld;
-			Physics::PhysicsSystem* physicsSystem;
+            std::unique_ptr<Window> window;
+            Physics::PhysicsWorld* physicsWorld = nullptr;
+            Physics::PhysicsSystem* physicsSystem = nullptr;
+            float physicsAccumulator = 0.0f;
+            Rendering::Skybox* skybox = nullptr;
+            std::function<void()> onQuitRequested;
 
-			float physicsAccumulator = 0.0f;
+            Application(const Application&) = delete;
+            Application& operator=(const Application&) = delete;
+        };
+        #pragma warning(pop)
+    }
 
-			Rendering::Skybox* skybox = nullptr;
+    inline int Run(const Core::ApplicationConfig& config) {
+        Core::Application app(config);
+        if (!app.Initialize()) {
+            return -1;
+        }
 
-			std::function<void()> onQuitRequested;
-
-			Application(const Application&) = delete;
-			Application& operator=(const Application&) = delete;
-		};
-#pragma warning(pop)
-	}
-
-	// Helper functionto simply run the program
-	inline int Run(const Core::ApplicationConfig& config) {
-		Core::Application app(config);
-		if (!app.Initialize()) return -1;
-		app.Run();
-		return 0;
-	}
+        app.Run();
+        return 0;
+    }
 }

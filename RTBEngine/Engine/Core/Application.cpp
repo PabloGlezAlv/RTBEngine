@@ -58,8 +58,20 @@ namespace {
 
 		return window->IsMouseCaptured() || !window->IsCursorVisible();
 	}
-}
 
+	void CollectHierarchy(RTBEngine::ECS::GameObject* root,
+		std::vector<RTBEngine::ECS::GameObject*>& outHierarchy)
+	{
+		if (!root) {
+			return;
+		}
+
+		outHierarchy.push_back(root);
+		for (RTBEngine::ECS::GameObject* child : root->GetChildren()) {
+			CollectHierarchy(child, outHierarchy);
+		}
+	}
+}
 
 RTBEngine::Core::Application::Application(const ApplicationConfig& cfg)
 	: config(cfg), lastTime(0), isRunning(false), physicsSystem(nullptr), physicsAccumulator(0.0f), physicsWorld(nullptr)
@@ -238,6 +250,12 @@ bool RTBEngine::Core::Application::Initialize()
 
 	ECS::SceneManager& sceneMgr = ECS::SceneManager::GetInstance();
 	sceneMgr.Initialize();
+	sceneMgr.SetOnHierarchyAdded([this](ECS::GameObject* root) {
+		InitializePhysicsForHierarchy(root);
+	});
+	sceneMgr.SetOnHierarchyDeactivated([this](ECS::GameObject* root) {
+		DetachPhysicsHierarchy(root);
+	});
 
 	sceneMgr.SetOnSceneUnloading([this](ECS::Scene* /*scene*/) {
 		UI::CanvasSystem::GetInstance().ClearState();
@@ -245,7 +263,7 @@ bool RTBEngine::Core::Application::Initialize()
 		// This prevents btDbvtBroadphase::destroyProxy from accessing a freed proxy
 		// when ~BoxColliderComponent() deletes the raw btCollisionObject.
 		ResetPhysics();
-		});
+	});
 
 	sceneMgr.SetOnSceneLoaded([this](ECS::Scene* scene) {
 		// Physics was already reset by onSceneUnloading before scene destruction.
@@ -256,7 +274,7 @@ bool RTBEngine::Core::Application::Initialize()
 				static_cast<float>(config.window.width) / static_cast<float>(config.window.height)
 			);
 		}
-		});
+	});
 
 	if (!config.initialScenePath.empty()) {
 		if (!sceneMgr.LoadScene(config.initialScenePath)) {
@@ -653,6 +671,36 @@ void RTBEngine::Core::Application::ResetPhysics()
 	physicsAccumulator = 0.0f;
 }
 
+void RTBEngine::Core::Application::InitializePhysicsForGameObject(ECS::GameObject* gameObject)
+{
+	if (!gameObject || !physicsSystem) {
+		return;
+	}
+
+	ECS::BoxColliderComponent* boxCollider = gameObject->GetComponent<ECS::BoxColliderComponent>();
+	if (boxCollider) {
+		if (!boxCollider->GetBulletCollisionObject() && !boxCollider->GetPhysicsWorld()) {
+			physicsSystem->InitializeCollider(gameObject, boxCollider);
+		}
+		return;
+	}
+
+	ECS::SphereColliderComponent* sphereCollider = gameObject->GetComponent<ECS::SphereColliderComponent>();
+	if (sphereCollider) {
+		if (!sphereCollider->GetBulletCollisionObject() && !sphereCollider->GetPhysicsWorld()) {
+			physicsSystem->InitializeCollider(gameObject, sphereCollider);
+		}
+		return;
+	}
+
+	ECS::CapsuleColliderComponent* capsuleCollider = gameObject->GetComponent<ECS::CapsuleColliderComponent>();
+	if (capsuleCollider &&
+		!capsuleCollider->GetBulletCollisionObject() &&
+		!capsuleCollider->GetPhysicsWorld()) {
+		physicsSystem->InitializeCollider(gameObject, capsuleCollider);
+	}
+}
+
 void RTBEngine::Core::Application::InitializePhysicsForScene(ECS::Scene* scene)
 {
 	if (!scene || !physicsSystem)
@@ -660,19 +708,85 @@ void RTBEngine::Core::Application::InitializePhysicsForScene(ECS::Scene* scene)
 
 	for (const auto& go : scene->GetGameObjects())
 	{
-		ECS::BoxColliderComponent* boxCollider = go->GetComponent<ECS::BoxColliderComponent>();
-		if (boxCollider) {
-			physicsSystem->InitializeCollider(go.get(), boxCollider);
-			continue;
+		InitializePhysicsForGameObject(go.get());
+	}
+}
+
+void RTBEngine::Core::Application::InitializePhysicsForHierarchy(ECS::GameObject* root)
+{
+	if (!root) {
+		return;
+	}
+
+	std::vector<ECS::GameObject*> hierarchy;
+	CollectHierarchy(root, hierarchy);
+
+	for (ECS::GameObject* gameObject : hierarchy) {
+		InitializePhysicsForGameObject(gameObject);
+	}
+}
+
+void RTBEngine::Core::Application::DetachPhysicsFromGameObject(ECS::GameObject* gameObject)
+{
+	if (!gameObject) {
+		return;
+	}
+
+	ECS::BoxColliderComponent* boxCollider = gameObject->GetComponent<ECS::BoxColliderComponent>();
+	ECS::SphereColliderComponent* sphereCollider = gameObject->GetComponent<ECS::SphereColliderComponent>();
+	ECS::CapsuleColliderComponent* capsuleCollider = gameObject->GetComponent<ECS::CapsuleColliderComponent>();
+	ECS::RigidBodyComponent* rbComp = gameObject->GetComponent<ECS::RigidBodyComponent>();
+	Physics::RigidBody* rigidBody = (rbComp && rbComp->HasRigidBody()) ? rbComp->GetRigidBody() : nullptr;
+	btRigidBody* bulletBody = rigidBody ? rigidBody->GetBulletRigidBody() : nullptr;
+
+	auto clearDynamicColliderRef = [bulletBody](auto* collider) {
+		if (!collider || collider->GetBulletCollisionObject() != bulletBody) {
+			return;
 		}
 
-		ECS::SphereColliderComponent* sphereCollider = go->GetComponent<ECS::SphereColliderComponent>();
-		if (sphereCollider)
-			physicsSystem->InitializeCollider(go.get(), sphereCollider);
+		collider->SetPhysicsWorld(nullptr);
+		collider->SetBulletCollisionObject(nullptr, false);
+	};
 
-		ECS::CapsuleColliderComponent* capsuleCollider = go->GetComponent<ECS::CapsuleColliderComponent>();
-		if (capsuleCollider)
-			physicsSystem->InitializeCollider(go.get(), capsuleCollider);
+	if (bulletBody) {
+		clearDynamicColliderRef(boxCollider);
+		clearDynamicColliderRef(sphereCollider);
+		clearDynamicColliderRef(capsuleCollider);
+		rigidBody->ClearBulletRigidBody();
+		rigidBody->SetPhysicsWorld(nullptr);
+	} else if (rigidBody) {
+		rigidBody->SetPhysicsWorld(nullptr);
+	}
+
+	auto detachStaticCollider = [](auto* collider) {
+		if (!collider || !collider->GetBulletCollisionObject()) {
+			return;
+		}
+
+		if (Physics::PhysicsWorld* world = collider->GetPhysicsWorld()) {
+			world->RemoveCollisionObject(collider->GetBulletCollisionObject());
+		}
+
+		collider->SetPhysicsWorld(nullptr);
+		collider->SetBulletCollisionObject(nullptr, false);
+	};
+
+	detachStaticCollider(boxCollider);
+	detachStaticCollider(sphereCollider);
+	detachStaticCollider(capsuleCollider);
+}
+
+void RTBEngine::Core::Application::DetachPhysicsHierarchy(ECS::GameObject* root)
+{
+	if (!root) {
+		return;
+	}
+
+	std::vector<ECS::GameObject*> hierarchy;
+	CollectHierarchy(root, hierarchy);
+
+	for (ECS::GameObject* gameObject : hierarchy) {
+		DetachPhysicsFromGameObject(gameObject);
 	}
 }
 

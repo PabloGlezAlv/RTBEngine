@@ -1,8 +1,79 @@
 #include "SceneManager.h"
-#include "../Scripting/SceneLoader.h"
+
 #include "../Core/Logger.h"
+#include "../Scripting/SceneLoader.h"
+#include "GameObject.h"
 #include "Prefab.h"
-#include <cstdio>
+#include "Scene.h"
+
+#include <vector>
+
+namespace {
+    RTBEngine::ECS::GameObject* FinalizeInstantiation(
+        RTBEngine::ECS::Scene* scene,
+        RTBEngine::ECS::GameObject* root,
+        const std::vector<RTBEngine::ECS::GameObject*>& children,
+        const std::function<void(RTBEngine::ECS::GameObject*)>& onHierarchyAdded)
+    {
+        if (!scene || !root) {
+            return nullptr;
+        }
+
+        scene->AddGameObject(root);
+        for (RTBEngine::ECS::GameObject* child : children) {
+            if (child) {
+                scene->AddGameObject(child);
+            }
+        }
+
+        if (onHierarchyAdded) {
+            onHierarchyAdded(root);
+        }
+
+        return root;
+    }
+
+    RTBEngine::ECS::GameObject* InstantiatePrefab(
+        RTBEngine::ECS::Scene* scene,
+        const RTBEngine::ECS::Prefab& prefab,
+        RTBEngine::ECS::GameObject* parent,
+        const RTBEngine::Math::Vector3* positionOverride,
+        const RTBEngine::Math::Quaternion* rotationOverride,
+        const std::function<void(RTBEngine::ECS::GameObject*)>& onHierarchyAdded)
+    {
+        if (!scene) {
+            return nullptr;
+        }
+
+        std::vector<RTBEngine::ECS::GameObject*> children;
+        RTBEngine::ECS::GameObject* root = prefab.Instantiate(parent, children);
+        if (!root) {
+            return nullptr;
+        }
+
+        if (positionOverride) {
+            root->GetTransform().SetPosition(*positionOverride);
+        }
+
+        if (rotationOverride) {
+            root->GetTransform().SetRotation(*rotationOverride);
+        }
+
+        return FinalizeInstantiation(scene, root, children, onHierarchyAdded);
+    }
+
+    void SetHierarchyActive(RTBEngine::ECS::GameObject* root, bool active)
+    {
+        if (!root) {
+            return;
+        }
+
+        root->SetActive(active);
+        for (RTBEngine::ECS::GameObject* child : root->GetChildren()) {
+            SetHierarchyActive(child, active);
+        }
+    }
+}
 
 namespace RTBEngine {
     namespace ECS {
@@ -24,6 +95,10 @@ namespace RTBEngine {
 
         void SceneManager::Shutdown() {
             UnloadCurrentScene();
+            onSceneLoaded = nullptr;
+            onSceneUnloading = nullptr;
+            onHierarchyAdded = nullptr;
+            onHierarchyDeactivated = nullptr;
         }
 
         bool SceneManager::LoadScene(const std::string& path) {
@@ -115,16 +190,19 @@ namespace RTBEngine {
                 return;
             }
 
-            if (activeScene) {
-                isSceneTransitioning = true;
-                if (onSceneUnloading) {
-                    onSceneUnloading(activeScene.get());
-                }
-                activeScene.reset();
-                activeScenePath.clear();
-                sceneDirty = false;
-                isSceneTransitioning = false;
+            if (!activeScene) {
+                return;
             }
+
+            isSceneTransitioning = true;
+            if (onSceneUnloading) {
+                onSceneUnloading(activeScene.get());
+            }
+
+            activeScene.reset();
+            activeScenePath.clear();
+            sceneDirty = false;
+            isSceneTransitioning = false;
         }
 
         GameObject* SceneManager::Instantiate(const std::string& name, GameObject* parent)
@@ -134,18 +212,53 @@ namespace RTBEngine {
                 RTB_ERROR("SceneManager::Instantiate - No active scene");
                 return nullptr;
             }
-            auto* go = new GameObject(name);
-            if (parent)
-                go->SetParent(parent);
-            scene->AddGameObject(go);
-            return go;
+
+            GameObject* gameObject = new GameObject(name);
+            if (parent) {
+                gameObject->SetParent(parent);
+            }
+
+            const std::vector<GameObject*> noChildren;
+            return FinalizeInstantiation(scene, gameObject, noChildren, onHierarchyAdded);
         }
 
         GameObject* SceneManager::Instantiate(const Prefab& prefab, GameObject* parent)
         {
-            return prefab.Instantiate(parent);
+            Scene* scene = GetActiveScene();
+            if (!scene) {
+                RTB_ERROR("SceneManager::Instantiate(Prefab) - No active scene");
+                return nullptr;
+            }
+
+            return InstantiatePrefab(scene, prefab, parent, nullptr, nullptr, onHierarchyAdded);
         }
 
+        GameObject* SceneManager::Instantiate(const Prefab& prefab,
+                                              const Math::Vector3& position,
+                                              const Math::Quaternion& rotation,
+                                              GameObject* parent)
+        {
+            Scene* scene = GetActiveScene();
+            if (!scene) {
+                RTB_ERROR("SceneManager::Instantiate(Prefab, Transform) - No active scene");
+                return nullptr;
+            }
+
+            return InstantiatePrefab(scene, prefab, parent, &position, &rotation, onHierarchyAdded);
+        }
+
+        void SceneManager::DeactivateHierarchy(GameObject* root)
+        {
+            if (!root) {
+                return;
+            }
+
+            if (onHierarchyDeactivated) {
+                onHierarchyDeactivated(root);
+            }
+
+            SetHierarchyActive(root, false);
+        }
 
         void SceneManager::SetOnSceneLoaded(std::function<void(Scene*)> callback) {
             onSceneLoaded = callback;
@@ -155,6 +268,14 @@ namespace RTBEngine {
             onSceneUnloading = callback;
         }
 
+        void SceneManager::SetOnHierarchyAdded(std::function<void(GameObject*)> callback) {
+            onHierarchyAdded = callback;
+        }
+
+        void SceneManager::SetOnHierarchyDeactivated(std::function<void(GameObject*)> callback) {
+            onHierarchyDeactivated = callback;
+        }
+
         void SceneManager::MarkSceneDirty() {
             sceneDirty = true;
         }
@@ -162,6 +283,5 @@ namespace RTBEngine {
         void SceneManager::ClearSceneDirty() {
             sceneDirty = false;
         }
-
     }
 }

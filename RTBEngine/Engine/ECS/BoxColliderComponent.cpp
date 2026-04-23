@@ -25,8 +25,6 @@ namespace RTBEngine {
 
 		void BoxColliderComponent::OnDestroy()
 		{
-			// If a sibling RigidBodyComponent shares the btRigidBody whose collision shape
-			// belongs to this collider, clear it now so it does not hold a dangling shape pointer.
 			if (owner) {
 				RigidBodyComponent* rb = owner->GetComponent<RigidBodyComponent>();
 				if (rb && rb->HasRigidBody()) {

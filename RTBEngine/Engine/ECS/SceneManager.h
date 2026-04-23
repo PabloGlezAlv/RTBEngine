@@ -1,19 +1,21 @@
 #pragma once
+
+#include "../Math/Quaternions/Quaternion.h"
+#include "../Math/Vectors/Vector3.h"
 #include "../RTBEngineAPI.h"
 #include "Scene.h"
+#include <functional>
 #include <memory>
 #include <string>
-#include <functional>
 
 namespace RTBEngine {
     namespace ECS {
+        class GameObject;
+        class Prefab;
+        class Scene;
 
-        // C4251: STL members in DLL-exported class are safe here because
-        // SceneManager is a singleton — clients never copy or directly access them.
         #pragma warning(push)
         #pragma warning(disable: 4251)
-        class Prefab;
-
         class RTB_API SceneManager {
         public:
             static SceneManager& GetInstance();
@@ -37,10 +39,16 @@ namespace RTBEngine {
 
             void SetOnSceneLoaded(std::function<void(Scene*)> callback);
             void SetOnSceneUnloading(std::function<void(Scene*)> callback);
+            void SetOnHierarchyAdded(std::function<void(GameObject*)> callback);
+            void SetOnHierarchyDeactivated(std::function<void(GameObject*)> callback);
 
             GameObject* Instantiate(const std::string& name = "GameObject", GameObject* parent = nullptr);
-            GameObject* Instantiate(const ECS::Prefab& prefab, GameObject* parent = nullptr);
-
+            GameObject* Instantiate(const Prefab& prefab, GameObject* parent = nullptr);
+            GameObject* Instantiate(const Prefab& prefab,
+                                    const Math::Vector3& position,
+                                    const Math::Quaternion& rotation,
+                                    GameObject* parent = nullptr);
+            void DeactivateHierarchy(GameObject* root);
 
             void MarkSceneDirty();
             void ClearSceneDirty();
@@ -59,8 +67,9 @@ namespace RTBEngine {
 
             std::function<void(Scene*)> onSceneLoaded;
             std::function<void(Scene*)> onSceneUnloading;
+            std::function<void(GameObject*)> onHierarchyAdded;
+            std::function<void(GameObject*)> onHierarchyDeactivated;
         };
         #pragma warning(pop)
-
     }
 }
