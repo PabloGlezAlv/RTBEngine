@@ -128,6 +128,7 @@ namespace RTBEngine {
 
         void InputManager::SetMouseRelativeMode(bool enabled) {
             SDL_SetRelativeMouseMode(enabled ? SDL_TRUE : SDL_FALSE);
+            SDL_ShowCursor(enabled ? SDL_DISABLE : SDL_ENABLE);
         }
 
         void InputManager::SetMousePosition(int x, int y) {
