@@ -15,6 +15,11 @@ namespace RTBEngine {
 
         class GameObject;
 
+        enum class ComponentTimeMode {
+            Scaled,
+            Unscaled
+        };
+
         class RTB_API Component {
         public:
             Component();
@@ -57,6 +62,8 @@ namespace RTBEngine {
             bool IsEnabled() const { return isEnabled; }
             void SetUpdateTickEnabled(bool enabled);
             bool IsUpdateTickEnabled() const { return updateTickEnabled; }
+            void SetTimeMode(ComponentTimeMode mode);
+            ComponentTimeMode GetTimeMode() const { return timeMode; }
 
             virtual const char* GetTypeName() const = 0;
 
@@ -71,6 +78,7 @@ namespace RTBEngine {
             GameObject* owner;
             bool isEnabled;
             bool updateTickEnabled;
+            ComponentTimeMode timeMode;
         };
 
     }

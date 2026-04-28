@@ -21,6 +21,9 @@
     <ClCompile Include="Engine\Core\Application.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Core\Time.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Math\Vectors\Vector3.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
@@ -273,6 +276,9 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Core\Application.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Core\Time.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Math\Vectors\Vector3.h">

@@ -86,7 +86,6 @@ namespace RTBEngine {
             std::unique_ptr<Window> window;
             Physics::PhysicsWorld* physicsWorld = nullptr;
             Physics::PhysicsSystem* physicsSystem = nullptr;
-            float physicsAccumulator = 0.0f;
             Rendering::Skybox* skybox = nullptr;
             std::function<void()> onQuitRequested;
 

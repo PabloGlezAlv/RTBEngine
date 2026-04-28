@@ -1,5 +1,6 @@
 #include "Application.h"
 #include "Window.h"
+#include "Time.h"
 #include "../Input/Input.h"
 #include "../Rendering/Rendering.h"
 #include "../ECS/Scene.h"
@@ -74,7 +75,7 @@ namespace {
 }
 
 RTBEngine::Core::Application::Application(const ApplicationConfig& cfg)
-	: config(cfg), lastTime(0), isRunning(false), physicsSystem(nullptr), physicsAccumulator(0.0f), physicsWorld(nullptr)
+	: config(cfg), lastTime(0), isRunning(false), physicsSystem(nullptr), physicsWorld(nullptr)
 {
 }
 
@@ -166,6 +167,8 @@ bool RTBEngine::Core::Application::Initialize()
 	RTB_INFO("RTBEngine Initializing...");
 
 	lastTime = SDL_GetTicks();
+	Time::Reset();
+	Time::SetFixedDeltaTime(config.physics.timeStep);
 
 	Scripting::ComponentRegistry::GetInstance().RegisterBuiltInComponents();
 
@@ -400,6 +403,9 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 		return;
 	}
 
+	Time::SetFixedDeltaTime(config.physics.timeStep);
+	Time::AdvanceFrame(deltaTime);
+
 	ECS::SceneManager& sceneMgr = ECS::SceneManager::GetInstance();
 	sceneMgr.ProcessPendingSceneLoad();
 
@@ -432,17 +438,15 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 	if (!scene) return;
 
 	// Fixed timestep physics update
-	physicsAccumulator += deltaTime;
-	while (physicsAccumulator >= config.physics.timeStep) {
-		scene->FixedUpdate(config.physics.timeStep);
-		physicsSystem->Update(scene, config.physics.timeStep);
-		physicsAccumulator -= config.physics.timeStep;
+	while (Time::ConsumeFixedStep()) {
+		scene->FixedUpdate(Time::GetFixedDeltaTime());
+		if (physicsSystem) {
+			physicsSystem->Update(scene, Time::GetFixedDeltaTime());
+		}
 	}
 
 	if (physicsSystem) {
-		const float interpolationAlpha =
-			(config.physics.timeStep > 0.0f) ? (physicsAccumulator / config.physics.timeStep) : 1.0f;
-		physicsSystem->SyncRenderTransforms(scene, interpolationAlpha);
+		physicsSystem->SyncRenderTransforms(scene, Time::GetFixedInterpolationAlpha());
 	}
 
 	scene->LateUpdate(deltaTime);
@@ -669,7 +673,6 @@ void RTBEngine::Core::Application::ResetPhysics()
 	if (physicsSystem)
 		physicsSystem->Reset();
 
-	physicsAccumulator = 0.0f;
 }
 
 void RTBEngine::Core::Application::RebuildPhysicsForScene(ECS::Scene* scene)

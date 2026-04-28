@@ -1,4 +1,5 @@
 #include "GameObject.h"
+#include "../Core/Time.h"
 #include "../Reflection/TypeInfo.h"
 #include "../Core/Logger.h"
 #include <objbase.h>
@@ -137,6 +138,7 @@ namespace RTBEngine {
         void GameObject::Update(float deltaTime)
         {
             if (!isActive) return;
+            (void)deltaTime;
 
             if (!started) {
                 for (size_t i = 0; i < components.size(); ++i) {
@@ -156,7 +158,11 @@ namespace RTBEngine {
 
             for (auto& comp : components) {
                 if (comp->IsEnabled() && comp->IsUpdateTickEnabled()) {
-                    comp->OnUpdate(deltaTime);
+                    if (comp->GetTimeMode() == ComponentTimeMode::Unscaled) {
+                        comp->OnUpdate(Core::Time::GetUnscaledDeltaTime());
+                    } else if (!Core::Time::IsPaused()) {
+                        comp->OnUpdate(Core::Time::GetDeltaTime());
+                    }
                 }
             }
         }
@@ -175,10 +181,15 @@ namespace RTBEngine {
         void GameObject::LateUpdate(float deltaTime)
         {
             if (!isActive) return;
+            (void)deltaTime;
 
             for (auto& comp : components) {
                 if (comp->IsEnabled() && comp->IsUpdateTickEnabled()) {
-                    comp->OnLateUpdate(deltaTime);
+                    if (comp->GetTimeMode() == ComponentTimeMode::Unscaled) {
+                        comp->OnLateUpdate(Core::Time::GetUnscaledDeltaTime());
+                    } else if (!Core::Time::IsPaused()) {
+                        comp->OnLateUpdate(Core::Time::GetDeltaTime());
+                    }
                 }
             }
         }

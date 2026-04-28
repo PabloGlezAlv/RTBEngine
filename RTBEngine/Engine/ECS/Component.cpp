@@ -8,6 +8,7 @@ namespace RTBEngine {
             : owner(nullptr)
             , isEnabled(true)
             , updateTickEnabled(true)
+            , timeMode(ComponentTimeMode::Scaled)
         {
         }
 
@@ -28,6 +29,11 @@ namespace RTBEngine {
         void Component::SetUpdateTickEnabled(bool enabled)
         {
             this->updateTickEnabled = enabled;
+        }
+
+        void Component::SetTimeMode(ComponentTimeMode mode)
+        {
+            this->timeMode = mode;
         }
 
     }
