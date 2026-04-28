@@ -6,6 +6,53 @@
 #include "CameraComponent.h"
 #include "../Core/Logger.h"
 
+namespace {
+	RTBEngine::ECS::CameraComponent* FindCameraComponent(
+		const std::vector<std::unique_ptr<RTBEngine::ECS::GameObject>>& objects,
+		bool requireActive,
+		bool requireMain)
+	{
+		for (const auto& gameObject : objects) {
+			if (!gameObject) {
+				continue;
+			}
+
+			if (requireActive && !gameObject->IsActive()) {
+				continue;
+			}
+
+			RTBEngine::ECS::CameraComponent* camera = gameObject->GetComponent<RTBEngine::ECS::CameraComponent>();
+			if (!camera || !camera->GetCamera()) {
+				continue;
+			}
+
+			if (requireMain && !camera->IsMain()) {
+				continue;
+			}
+
+			return camera;
+		}
+
+		return nullptr;
+	}
+
+	void SetMainCameraFlag(
+		std::vector<std::unique_ptr<RTBEngine::ECS::GameObject>>& objects,
+		RTBEngine::ECS::CameraComponent* selectedCamera)
+	{
+		for (const auto& gameObject : objects) {
+			if (!gameObject) {
+				continue;
+			}
+
+			RTBEngine::ECS::CameraComponent* camera = gameObject->GetComponent<RTBEngine::ECS::CameraComponent>();
+			if (camera) {
+				camera->SetAsMain(camera == selectedCamera);
+			}
+		}
+	}
+}
+
 RTBEngine::ECS::Scene::Scene(const std::string& name) : name(name)
 {
 }
@@ -191,40 +238,32 @@ void RTBEngine::ECS::Scene::CollectLights()
 }
 
 void RTBEngine::ECS::Scene::SetMainCamera(CameraComponent* camera) {
-	mainCamera = camera;
+	SetMainCameraFlag(gameObjects, camera);
+	SetMainCameraFlag(pendingAdds, camera);
 }
 
 RTBEngine::ECS::CameraComponent* RTBEngine::ECS::Scene::GetMainCamera() const {
-	return mainCamera;
+	RTBEngine::ECS::CameraComponent* camera = FindCameraComponent(gameObjects, false, true);
+	if (camera) {
+		return camera;
+	}
+
+	return FindCameraComponent(pendingAdds, false, true);
 }
 
 RTBEngine::Rendering::Camera* RTBEngine::ECS::Scene::GetActiveCamera() {
-	// If main camera is set, use it
-	if (mainCamera && mainCamera->GetCamera()) {
-		return mainCamera->GetCamera();
+	RTBEngine::ECS::CameraComponent* camera = FindCameraComponent(gameObjects, true, true);
+	if (!camera) {
+		camera = FindCameraComponent(pendingAdds, true, true);
 	}
 
-	// Otherwise, find first CameraComponent marked as main
-	for (auto& go : gameObjects) {
-		if (go && go->IsActive()) {
-			CameraComponent* camComp = go->GetComponent<CameraComponent>();
-			if (camComp && camComp->IsMain() && camComp->GetCamera()) {
-				mainCamera = camComp;
-				return camComp->GetCamera();
-			}
-		}
+	if (!camera) {
+		camera = FindCameraComponent(gameObjects, true, false);
 	}
 
-	// If no main camera, find any CameraComponent
-	for (auto& go : gameObjects) {
-		if (go && go->IsActive()) {
-			CameraComponent* camComp = go->GetComponent<CameraComponent>();
-			if (camComp && camComp->GetCamera()) {
-				mainCamera = camComp;
-				return camComp->GetCamera();
-			}
-		}
+	if (!camera) {
+		camera = FindCameraComponent(pendingAdds, true, false);
 	}
 
-	return nullptr;
+	return camera ? camera->GetCamera() : nullptr;
 }

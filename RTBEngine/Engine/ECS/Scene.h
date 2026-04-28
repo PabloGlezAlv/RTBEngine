@@ -74,8 +74,6 @@ namespace RTBEngine {
             std::vector<GameObject*> pendingRemoves;
             int iterationDepth = 0;
 
-            CameraComponent* mainCamera = nullptr;
-
             // Skybox settings
             Rendering::Cubemap* skyboxCubemap = nullptr;
             bool skyboxEnabled = true;
