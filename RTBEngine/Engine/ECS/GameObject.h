@@ -68,6 +68,7 @@ namespace RTBEngine {
 
             void SetActive(bool active);
             bool IsActive() const { return isActive; }
+            bool IsBeingDestroyed() const { return isBeingDestroyed; }
 
             void SetTransient(bool t) { isTransient = t; }
             bool IsTransient() const { return isTransient; }
@@ -91,6 +92,7 @@ namespace RTBEngine {
             std::vector<ComponentPtr> components;
             bool isActive;
             bool started;
+            bool isBeingDestroyed = false;
             bool isTransient = false;
 
             GameObject* parent = nullptr;

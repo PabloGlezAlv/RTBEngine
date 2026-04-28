@@ -57,6 +57,8 @@ namespace RTBEngine {
 
         GameObject::~GameObject()
         {
+            isBeingDestroyed = true;
+
             for (auto& comp : components) {
                 comp->OnDestroy();
             }
