@@ -339,19 +339,20 @@ void RTBEngine::Core::Application::Shutdown()
 
 	ShutdownImGui();
 
-	if (physicsWorld) {
-		physicsWorld->Cleanup();
-		delete physicsWorld;
-		physicsWorld = nullptr;
-	}
+	// Destroy the scene while physics is still alive so component OnDestroy paths
+	// can detach Bullet state through the normal scene-unloading callback.
+	ECS::SceneManager::GetInstance().Shutdown();
 
 	if (physicsSystem) {
 		delete physicsSystem;
 		physicsSystem = nullptr;
 	}
 
-	// Destroy the scene first so script component vtables are still valid during OnDestroy.
-	ECS::SceneManager::GetInstance().Shutdown();
+	if (physicsWorld) {
+		physicsWorld->Cleanup();
+		delete physicsWorld;
+		physicsWorld = nullptr;
+	}
 
 	// Only after all GameObjects are destroyed, unload the script DLL.
 	Scripting::ScriptManager::GetInstance().UnloadScripts();
