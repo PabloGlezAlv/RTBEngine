@@ -1,5 +1,6 @@
 #include "Scene.h"
 #include <algorithm>
+#include <unordered_set>
 
 #include "GameObject.h"
 #include "MeshRenderer.h"
@@ -51,6 +52,50 @@ namespace {
 			}
 		}
 	}
+
+	void CollectHierarchyPostOrder(
+		RTBEngine::ECS::GameObject* root,
+		std::vector<RTBEngine::ECS::GameObject*>& outHierarchy)
+	{
+		if (!root) {
+			return;
+		}
+
+		for (RTBEngine::ECS::GameObject* child : root->GetChildren()) {
+			CollectHierarchyPostOrder(child, outHierarchy);
+		}
+
+		outHierarchy.push_back(root);
+	}
+
+	void DestroyOwnedGameObject(
+		std::vector<std::unique_ptr<RTBEngine::ECS::GameObject>>& objects,
+		RTBEngine::ECS::GameObject* target)
+	{
+		auto it = std::find_if(objects.begin(), objects.end(),
+			[target](const std::unique_ptr<RTBEngine::ECS::GameObject>& obj) {
+				return obj.get() == target;
+			});
+
+		if (it != objects.end()) {
+			objects.erase(it);
+		}
+	}
+
+	bool HasQueuedAncestor(
+		RTBEngine::ECS::GameObject* candidate,
+		const std::unordered_set<RTBEngine::ECS::GameObject*>& queuedRemovals)
+	{
+		for (RTBEngine::ECS::GameObject* parent = candidate ? candidate->GetParent() : nullptr;
+			parent;
+			parent = parent->GetParent()) {
+			if (queuedRemovals.find(parent) != queuedRemovals.end()) {
+				return true;
+			}
+		}
+
+		return false;
+	}
 }
 
 RTBEngine::ECS::Scene::Scene(const std::string& name) : name(name)
@@ -74,18 +119,42 @@ void RTBEngine::ECS::Scene::AddGameObject(GameObject* gameObject)
 
 void RTBEngine::ECS::Scene::RemoveGameObject(GameObject* gameObject)
 {
+	if (!gameObject) {
+		return;
+	}
+
 	if (iterationDepth > 0) {
 		pendingRemoves.push_back(gameObject);
 		return;
 	}
 
-	auto it = std::find_if(gameObjects.begin(), gameObjects.end(),
-		[gameObject](const std::unique_ptr<GameObject>& obj) {
-			return obj.get() == gameObject;
-		});
+	std::vector<GameObject*> hierarchy;
+	CollectHierarchyPostOrder(gameObject, hierarchy);
 
-	if (it != gameObjects.end()) {
-		gameObjects.erase(it);
+	if (hierarchy.empty()) {
+		return;
+	}
+
+	const std::unordered_set<GameObject*> hierarchySet(hierarchy.begin(), hierarchy.end());
+
+	pendingRemoves.erase(
+		std::remove_if(
+			pendingRemoves.begin(),
+			pendingRemoves.end(),
+			[&hierarchySet](GameObject* queued) {
+				return queued && hierarchySet.find(queued) != hierarchySet.end();
+			}),
+		pendingRemoves.end());
+
+	for (GameObject* node : hierarchy) {
+		if (node && node->GetParent()) {
+			node->SetParent(nullptr);
+		}
+	}
+
+	for (GameObject* node : hierarchy) {
+		DestroyOwnedGameObject(gameObjects, node);
+		DestroyOwnedGameObject(pendingAdds, node);
 	}
 }
 
@@ -93,17 +162,38 @@ void RTBEngine::ECS::Scene::FlushPendingCommands()
 {
 	if (iterationDepth > 0) return;
 
-	// Process removes first to avoid updating objects marked for deletion
-	for (auto* target : pendingRemoves) {
-		auto it = std::find_if(gameObjects.begin(), gameObjects.end(),
-			[target](const std::unique_ptr<GameObject>& obj) {
-				return obj.get() == target;
-			});
-		if (it != gameObjects.end()) {
-			gameObjects.erase(it);
+	// Process removes first to avoid updating objects marked for deletion.
+	if (!pendingRemoves.empty()) {
+		std::unordered_set<GameObject*> queuedRemovals;
+		for (GameObject* target : pendingRemoves) {
+			if (target) {
+				queuedRemovals.insert(target);
+			}
+		}
+
+		std::vector<GameObject*> rootRemovals;
+		rootRemovals.reserve(pendingRemoves.size());
+
+		for (GameObject* target : pendingRemoves) {
+			if (!target) {
+				continue;
+			}
+
+			if (HasQueuedAncestor(target, queuedRemovals)) {
+				continue;
+			}
+
+			if (std::find(rootRemovals.begin(), rootRemovals.end(), target) == rootRemovals.end()) {
+				rootRemovals.push_back(target);
+			}
+		}
+
+		pendingRemoves.clear();
+
+		for (GameObject* target : rootRemovals) {
+			RemoveGameObject(target);
 		}
 	}
-	pendingRemoves.clear();
 
 	// Then flush adds
 	for (auto& go : pendingAdds) {
