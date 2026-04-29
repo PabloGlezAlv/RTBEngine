@@ -19,6 +19,7 @@
 #include "../UI/Elements/UIPanel.h"
 #include "../UI/Elements/UIButton.h"
 #include "../UI/Elements/UIContainer.h"
+#include "../UI/Elements/UIJoystick.h"
 
 namespace RTBEngine {
     namespace Scripting {
@@ -89,6 +90,7 @@ namespace RTBEngine {
             RegisterComponent("UIPanel", []() { return new UI::UIPanel(); });
             RegisterComponent("UIButton", []() { return new UI::UIButton(); });
             RegisterComponent("UIContainer", []() { return new UI::UIContainer(); });
+            RegisterComponent("UIJoystick", []() { return new UI::UIJoystick(); });
         }
 
     }

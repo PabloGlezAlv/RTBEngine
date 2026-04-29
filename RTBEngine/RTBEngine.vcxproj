@@ -224,6 +224,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\UI\CanvasSystem.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIButton.cpp" />
     <ClCompile Include="Engine\UI\Elements\UISlider.cpp" />
+    <ClCompile Include="Engine\UI\Elements\UIJoystick.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIContainer.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIImage.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIPanel.cpp" />
@@ -327,6 +328,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\UI\CanvasSystem.h" />
     <ClInclude Include="Engine\UI\Elements\UIButton.h" />
     <ClInclude Include="Engine\UI\Elements\UISlider.h" />
+    <ClInclude Include="Engine\UI\Elements\UIJoystick.h" />
     <ClInclude Include="Engine\UI\Elements\UIContainer.h" />
     <ClInclude Include="Engine\UI\Elements\UIImage.h" />
     <ClInclude Include="Engine\UI\Elements\UIPanel.h" />

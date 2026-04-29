@@ -46,3 +46,4 @@
 #include "UI/Elements/UIPanel.h"
 #include "UI/Elements/UIButton.h"
 #include "UI/Elements/UISlider.h"
+#include "UI/Elements/UIJoystick.h"

@@ -162,6 +162,9 @@
     <ClCompile Include="Engine\UI\Elements\UISlider.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\UI\Elements\UIJoystick.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\UI\Elements\UIImage.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
@@ -453,6 +456,9 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\UI\Elements\UISlider.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\UI\Elements\UIJoystick.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\UI\Elements\UIImage.h">
