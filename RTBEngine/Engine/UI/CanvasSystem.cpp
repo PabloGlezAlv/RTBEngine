@@ -2,6 +2,8 @@
 #include "Canvas.h"
 #include "UIElement.h"
 #include "UIRenderContext.h"
+#include "Elements/UIImage.h"
+#include "Elements/UIPanel.h"
 #include "EventSystem/IPointerEnterHandler.h"
 #include "EventSystem/IPointerExitHandler.h"
 #include "EventSystem/IPointerDownHandler.h"
@@ -12,13 +14,127 @@
 #include "EventSystem/IEndDragHandler.h"
 #include "../ECS/Scene.h"
 #include "../ECS/GameObject.h"
+#include "../Core/ResourceManager.h"
 #include "../Input/InputManager.h"
 #include "../Input/MouseButton.h"
+#include "../Rendering/Camera.h"
+#include "../Rendering/Shader.h"
+#include "../Rendering/Texture.h"
+#include <GL/glew.h>
 #include <imgui.h>
 #include <algorithm>
+#include <array>
+#include <cstddef>
 
 namespace RTBEngine {
 	namespace UI {
+
+		namespace {
+			struct WorldUIVertex {
+				float x;
+				float y;
+				float z;
+				float u;
+				float v;
+			};
+
+			class WorldUIQuadRenderer {
+			public:
+				void Draw(const std::array<WorldUIVertex, 6>& vertices) {
+					EnsureInitialized();
+					if (vao == 0 || vbo == 0) return;
+
+					glBindVertexArray(vao);
+					glBindBuffer(GL_ARRAY_BUFFER, vbo);
+					glBufferSubData(GL_ARRAY_BUFFER, 0,
+						static_cast<GLsizeiptr>(vertices.size() * sizeof(WorldUIVertex)),
+						vertices.data());
+					glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size()));
+					glBindVertexArray(0);
+				}
+
+			private:
+				void EnsureInitialized() {
+					if (vao != 0 && vbo != 0) return;
+
+					glGenVertexArrays(1, &vao);
+					glGenBuffers(1, &vbo);
+
+					glBindVertexArray(vao);
+					glBindBuffer(GL_ARRAY_BUFFER, vbo);
+					glBufferData(GL_ARRAY_BUFFER,
+						static_cast<GLsizeiptr>(sizeof(WorldUIVertex) * 6),
+						nullptr,
+						GL_DYNAMIC_DRAW);
+
+					glEnableVertexAttribArray(0);
+					glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+						sizeof(WorldUIVertex),
+						reinterpret_cast<void*>(offsetof(WorldUIVertex, x)));
+
+					glEnableVertexAttribArray(1);
+					glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
+						sizeof(WorldUIVertex),
+						reinterpret_cast<void*>(offsetof(WorldUIVertex, u)));
+
+					glBindVertexArray(0);
+				}
+
+				GLuint vao = 0;
+				GLuint vbo = 0;
+			};
+
+			WorldUIQuadRenderer& GetWorldUIQuadRenderer() {
+				static WorldUIQuadRenderer renderer;
+				return renderer;
+			}
+
+			std::array<WorldUIVertex, 6> BuildWorldSpaceQuad(Canvas* canvas, UIElement* element) {
+				const Math::Vector4 rect = element->GetRectTransform()->GetWorldRect();
+				const Math::Vector2 canvasSize = canvas->GetCanvasSize();
+				const float pixelsPerUnit = std::max(1.0f, canvas->GetPixelsPerUnit());
+
+				const float x0 = (rect.x - canvasSize.x * 0.5f) / pixelsPerUnit;
+				const float x1 = (rect.x + rect.z - canvasSize.x * 0.5f) / pixelsPerUnit;
+				const float y0 = (canvasSize.y * 0.5f - rect.y) / pixelsPerUnit;
+				const float y1 = (canvasSize.y * 0.5f - rect.y - rect.w) / pixelsPerUnit;
+
+				return {{
+					{ x0, y0, 0.0f, 0.0f, 1.0f },
+					{ x1, y0, 0.0f, 1.0f, 1.0f },
+					{ x1, y1, 0.0f, 1.0f, 0.0f },
+					{ x0, y0, 0.0f, 0.0f, 1.0f },
+					{ x1, y1, 0.0f, 1.0f, 0.0f },
+					{ x0, y1, 0.0f, 0.0f, 0.0f },
+				}};
+			}
+
+			void RenderWorldSpaceElement(Canvas* canvas, UIElement* element, Rendering::Shader* shader) {
+				if (!canvas || !element || !shader) return;
+				if (!element->IsVisible() || !element->IsEnabled()) return;
+
+				const Math::Vector4 rect = element->GetRectTransform()->GetWorldRect();
+				if (rect.z <= 0.0f || rect.w <= 0.0f) return;
+
+				if (auto* image = dynamic_cast<UIImage*>(element)) {
+					Rendering::Texture* texture = image->GetTexture();
+					if (!texture || texture->GetID() == 0) return;
+
+					shader->SetBool("uHasTexture", true);
+					shader->SetVector4("uColor", image->GetTint());
+					texture->Bind(0);
+					GetWorldUIQuadRenderer().Draw(BuildWorldSpaceQuad(canvas, element));
+					texture->Unbind();
+					return;
+				}
+
+				if (auto* panel = dynamic_cast<UIPanel*>(element)) {
+					shader->SetBool("uHasTexture", false);
+					shader->SetVector4("uColor", panel->GetBackgroundColor());
+					GetWorldUIQuadRenderer().Draw(BuildWorldSpaceQuad(canvas, element));
+				}
+			}
+		}
 
 		void CanvasSystem::Update(ECS::Scene* scene) {
 			if (!scene) return;
@@ -51,10 +167,78 @@ namespace RTBEngine {
 			UIRenderContext::Begin(drawList, offset);
 
 			for (Canvas* canvas : activeCanvases) {
+				if (canvas->GetRenderMode() == Canvas::RenderMode::WorldSpace) continue;
 				canvas->RenderCanvas(renderScreenSize);
 			}
 
 			UIRenderContext::End();
+		}
+
+		void CanvasSystem::RenderWorldSpace(Rendering::Camera* camera) {
+			if (!camera) return;
+
+			Rendering::Shader* shader = Core::ResourceManager::GetInstance().GetShader("ui_world");
+			if (!shader) return;
+
+			GLboolean wasDepthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
+			GLboolean wasBlendEnabled = glIsEnabled(GL_BLEND);
+			GLboolean wasCullFaceEnabled = glIsEnabled(GL_CULL_FACE);
+			GLboolean wasDepthMaskEnabled = GL_TRUE;
+			GLint previousBlendSrcRgb = GL_ONE;
+			GLint previousBlendDstRgb = GL_ZERO;
+			GLint previousBlendSrcAlpha = GL_ONE;
+			GLint previousBlendDstAlpha = GL_ZERO;
+			glGetBooleanv(GL_DEPTH_WRITEMASK, &wasDepthMaskEnabled);
+			glGetIntegerv(GL_BLEND_SRC_RGB, &previousBlendSrcRgb);
+			glGetIntegerv(GL_BLEND_DST_RGB, &previousBlendDstRgb);
+			glGetIntegerv(GL_BLEND_SRC_ALPHA, &previousBlendSrcAlpha);
+			glGetIntegerv(GL_BLEND_DST_ALPHA, &previousBlendDstAlpha);
+
+			glEnable(GL_DEPTH_TEST);
+			glDepthMask(GL_FALSE);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glDisable(GL_CULL_FACE);
+
+			shader->Bind();
+			shader->SetMatrix4("uView", camera->GetViewMatrix());
+			shader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
+			shader->SetInt("uTexture", 0);
+
+			for (Canvas* canvas : activeCanvases) {
+				if (!canvas || canvas->GetRenderMode() != Canvas::RenderMode::WorldSpace) continue;
+				ECS::GameObject* canvasObject = canvas->GetOwner();
+				if (!canvasObject || !canvasObject->IsActive()) continue;
+
+				canvas->PrepareForHitTest(canvas->GetCanvasSize());
+				shader->SetMatrix4("uModel", canvasObject->GetWorldMatrix());
+
+				for (UIElement* element : canvas->GetUIElements()) {
+					RenderWorldSpaceElement(canvas, element, shader);
+				}
+			}
+
+			shader->Unbind();
+
+			glDepthMask(wasDepthMaskEnabled);
+			if (wasBlendEnabled) {
+				glEnable(GL_BLEND);
+			} else {
+				glDisable(GL_BLEND);
+			}
+			glBlendFuncSeparate(previousBlendSrcRgb, previousBlendDstRgb, previousBlendSrcAlpha, previousBlendDstAlpha);
+
+			if (wasCullFaceEnabled) {
+				glEnable(GL_CULL_FACE);
+			} else {
+				glDisable(GL_CULL_FACE);
+			}
+
+			if (wasDepthTestEnabled) {
+				glEnable(GL_DEPTH_TEST);
+			} else {
+				glDisable(GL_DEPTH_TEST);
+			}
 		}
 
 		void CanvasSystem::ClearState() {
@@ -77,6 +261,7 @@ namespace RTBEngine {
 			std::vector<Math::Vector4> rects;
 			if (!gameObject) return rects;
 			for (Canvas* canvas : activeCanvases) {
+				if (canvas->GetRenderMode() == Canvas::RenderMode::WorldSpace) continue;
 				for (UIElement* element : canvas->GetUIElements()) {
 					if (element->GetOwner() == gameObject && element->IsRaycastTarget()) {
 						rects.push_back(element->GetRectTransform()->GetWorldRect());
@@ -94,6 +279,7 @@ namespace RTBEngine {
 		UIElement* CanvasSystem::GetElementUnderMouse(const Math::Vector2& mousePos) {
 			for (auto it = activeCanvases.rbegin(); it != activeCanvases.rend(); ++it) {
 				Canvas* canvas = *it;
+				if (canvas->GetRenderMode() == Canvas::RenderMode::WorldSpace) continue;
 				const auto& elements = canvas->GetUIElements();
 
 				for (auto elemIt = elements.rbegin(); elemIt != elements.rend(); ++elemIt) {

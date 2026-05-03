@@ -32,6 +32,9 @@ namespace RTBEngine {
 			Math::Vector2 GetCanvasSize() const { return canvasSize; }
 			void SetCanvasSize(const Math::Vector2& size) { canvasSize = size; }
 
+			float GetPixelsPerUnit() const { return pixelsPerUnit; }
+			void SetPixelsPerUnit(float value);
+
 			int GetSortOrder() const { return sortOrder; }
 			void SetSortOrder(int order) { sortOrder = order; }
 
@@ -52,6 +55,7 @@ namespace RTBEngine {
 
 			RenderMode renderMode = RenderMode::ScreenSpaceOverlay;
 			Math::Vector2 canvasSize;
+			float pixelsPerUnit = 100.0f;
 			int sortOrder = 0;
 			std::vector<UIElement*> cachedUIElements;
 			bool isInitialized = false;

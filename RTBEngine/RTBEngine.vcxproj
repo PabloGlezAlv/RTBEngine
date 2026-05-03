@@ -139,6 +139,7 @@ if exist "$(ProjectDir)ThirdParty\assimp\bin\x64\" xcopy "$(ProjectDir)ThirdPart
 if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
 if exist "$(ProjectDir)Engine" xcopy /y /d /s "$(ProjectDir)Engine\*.h" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Include\RTBEngine\"
 if exist "$(ProjectDir)Engine\RTBEngine.h" xcopy /y /d "$(ProjectDir)Engine\RTBEngine.h" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Include\"
+if exist "$(ProjectDir)Default" xcopy /y /d /e /i "$(ProjectDir)Default" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Default"
 if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).lib" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Lib\Debug\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -170,6 +171,7 @@ if exist "$(ProjectDir)ThirdParty\assimp\bin\x64\" xcopy "$(ProjectDir)ThirdPart
 if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
 if exist "$(ProjectDir)Engine" xcopy /y /d /s "$(ProjectDir)Engine\*.h" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Include\RTBEngine\"
 if exist "$(ProjectDir)Engine\RTBEngine.h" xcopy /y /d "$(ProjectDir)Engine\RTBEngine.h" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Include\"
+if exist "$(ProjectDir)Default" xcopy /y /d /e /i "$(ProjectDir)Default" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Default"
 if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).lib" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Lib\Release\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -384,6 +386,8 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <None Include="Default\Shaders\shadow.vert" />
     <None Include="Default\Shaders\skybox.frag" />
     <None Include="Default\Shaders\skybox.vert" />
+    <None Include="Default\Shaders\ui_world.frag" />
+    <None Include="Default\Shaders\ui_world.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

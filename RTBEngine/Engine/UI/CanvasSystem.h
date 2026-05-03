@@ -13,6 +13,10 @@ namespace RTBEngine {
 		class GameObject;
 	}
 
+	namespace Rendering {
+		class Camera;
+	}
+
 	namespace UI {
 		class Canvas;
 		class UIElement;
@@ -32,6 +36,7 @@ namespace RTBEngine {
 			void Update(ECS::Scene* scene);
 			void UpdateAllRectTransforms(const Math::Vector2& screenSize);
 			void ProcessInput(const Math::Vector2& mousePos);
+			void RenderWorldSpace(Rendering::Camera* camera);
 			void RenderToDrawList(ImDrawList* drawList, const Math::Vector2& screenSize, const Math::Vector2& offset);
 			void ClearState();
 

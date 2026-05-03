@@ -45,6 +45,17 @@ namespace RTBEngine {
             using namespace SceneParsingUtils;
 
             void ConfigureCanvas(lua_State* L, int tableIndex, UI::Canvas* comp) {
+                const std::string renderMode = ReadOptionalString(L, tableIndex, "renderMode", "ScreenSpaceOverlay");
+                if (renderMode == "WorldSpace") {
+                    comp->SetRenderMode(UI::Canvas::RenderMode::WorldSpace);
+                } else if (renderMode == "ScreenSpaceCamera") {
+                    comp->SetRenderMode(UI::Canvas::RenderMode::ScreenSpaceCamera);
+                } else {
+                    comp->SetRenderMode(UI::Canvas::RenderMode::ScreenSpaceOverlay);
+                }
+
+                comp->SetCanvasSize(ReadOptionalVector2(L, tableIndex, "canvasSize", comp->GetCanvasSize()));
+                comp->SetPixelsPerUnit(ReadOptionalFloat(L, tableIndex, "pixelsPerUnit", comp->GetPixelsPerUnit()));
                 comp->SetSortOrder(static_cast<int>(ReadOptionalFloat(L, tableIndex, "sortOrder", comp->GetSortOrder())));
             }
 

@@ -227,6 +227,16 @@ bool RTBEngine::Core::Application::Initialize()
 		return false;
 	}
 
+	Rendering::Shader* uiWorldShader = resources.LoadShader(
+		"ui_world",
+		"Default/Shaders/ui_world.vert",
+		"Default/Shaders/ui_world.frag"
+	);
+	if (!uiWorldShader) {
+		RTB_ERROR("Failed to load world-space UI shader");
+		return false;
+	}
+
 	// Initialize default skybox
 	skybox = resources.GetDefaultSkybox();
 
@@ -663,6 +673,9 @@ void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Renderi
 		skybox->Render(camera);
 	}
 
+	auto& canvasSystem = UI::CanvasSystem::GetInstance();
+	canvasSystem.Update(scene);
+	canvasSystem.RenderWorldSpace(camera);
 }
 
 void RTBEngine::Core::Application::ResetPhysics()

@@ -608,5 +608,7 @@
     <None Include="Default\Shaders\shadow.vert" />
     <None Include="Default\Shaders\skybox.frag" />
     <None Include="Default\Shaders\skybox.vert" />
+    <None Include="Default\Shaders\ui_world.frag" />
+    <None Include="Default\Shaders\ui_world.vert" />
   </ItemGroup>
 </Project>

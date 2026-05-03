@@ -1,6 +1,7 @@
 #include "Canvas.h"
 #include "UIElement.h"
 #include "../ECS/GameObject.h"
+#include <algorithm>
 #include <functional>
 #include <cstdint>
 
@@ -11,6 +12,7 @@ namespace RTBEngine {
         RTB_REGISTER_COMPONENT(Canvas)
             RTB_PROPERTY_ENUM(renderMode, "ScreenSpaceOverlay", "ScreenSpaceCamera", "WorldSpace")
             RTB_PROPERTY(canvasSize)
+			RTB_PROPERTY_RANGE(pixelsPerUnit, 1.0f, 1000.0f)
             RTB_PROPERTY(sortOrder)
         RTB_END_REGISTER(Canvas)
 
@@ -19,6 +21,10 @@ namespace RTBEngine {
 		}
 
 		Canvas::~Canvas() {
+		}
+
+		void Canvas::SetPixelsPerUnit(float value) {
+			pixelsPerUnit = std::max(1.0f, value);
 		}
 
 		void Canvas::OnAwake() {
@@ -81,6 +87,8 @@ namespace RTBEngine {
 		}
 
 		void Canvas::UpdateRectTransforms(const Math::Vector2& screenSize) {
+			const Math::Vector2 rootSize =
+				renderMode == RenderMode::WorldSpace ? canvasSize : screenSize;
 
 			for (UIElement* element : cachedUIElements) {
 				if (!element) continue;
@@ -92,7 +100,7 @@ namespace RTBEngine {
 
 				// Default: canvas is the "root" parent with scale 1.0
 				Math::Vector2 parentWorldPos(0.0f, 0.0f);
-				Math::Vector2 parentWorldSize = screenSize;
+				Math::Vector2 parentWorldSize = rootSize;
 				Math::Vector2 parentLossyScale(1.0f, 1.0f);
 
 				if (parentObj && parentObj != owner) {
@@ -106,10 +114,7 @@ namespace RTBEngine {
 					}
 				}
 
-				// Only recalculate if this element's transform data has changed
-				if (rt->IsDirty()) {
-					rt->CalculateWorldTransform(parentWorldPos, parentWorldSize, parentLossyScale);
-				}
+				rt->CalculateWorldTransform(parentWorldPos, parentWorldSize, parentLossyScale);
 			}
 		}
 

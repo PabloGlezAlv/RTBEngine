@@ -447,12 +447,13 @@ void RenderGeometryPass(ECS::Scene* scene, Rendering::Camera* camera);
 2. For each shadow-casting `DirectionalLight`, calls `RenderShadowPass`.
 3. Calls `RenderGeometryPass` with the active camera.
 4. Renders the `Skybox` after opaque geometry.
-5. Renders ImGui.
-6. Calls `Window::SwapBuffers()`.
+5. Renders `Canvas::WorldSpace` UI through the 3D pipeline.
+6. Renders screen-space UI and ImGui overlays.
+7. Calls `Window::SwapBuffers()`.
 
 `RenderShadowPass` binds the light's `ShadowMap` framebuffer, sets the depth-only shader, and renders every `MeshRenderer` with `RenderSceneDepthOnly()`.
 
-`RenderGeometryPass` binds the screen framebuffer, uploads all light data to the lit shader, uploads the shadow map texture and light-space matrix, then calls `Scene::Render(camera)` which delegates to each `MeshRenderer`.
+`RenderGeometryPass` binds the screen framebuffer, uploads all light data to the lit shader, uploads the shadow map texture and light-space matrix, then calls `Scene::Render(camera)` which delegates to each `MeshRenderer`. After scene geometry and skybox rendering, it calls `CanvasSystem::RenderWorldSpace(camera)` so world-space UI is depth-tested against the 3D scene before the ImGui HUD is drawn.
 
 **Physics helpers:**
 
@@ -1929,9 +1930,14 @@ The full render pipeline executed each frame by `Application::Render()`:
    └── GL_LEQUAL depth test, no depth write
    └── View matrix stripped of translation
 
-7. ImGui::Render()
+7. CanvasSystem::RenderWorldSpace(camera)
+   - renders Canvas::WorldSpace UIImage/UIPanel quads with ui_world shader
+   - depth test enabled, alpha blending enabled, depth writes disabled
+   - does not participate in the shadow pass
 
-8. Window::SwapBuffers()
+8. ImGui::Render()
+
+9. Window::SwapBuffers()
 ```
 
 ### 8.14 Frustum
@@ -3358,7 +3364,7 @@ The scene loading and saving pipeline relies on several specialized utility clas
 
 ## 16. UI Subsystem
 
-The UI subsystem provides a component-based 2D UI framework that runs on top of the 3D scene. It is separate from ImGui (which is only for the editor). The runtime UI uses OpenGL quads rendered in screen space.
+The UI subsystem provides a component-based UI framework for both screen-space HUDs and depth-tested world-space UI. It is separate from ImGui (which is only for the editor and debug overlay). Screen-space UI still renders through the ImGui draw-list path, while `Canvas::WorldSpace` renders textured/color quads directly inside the 3D render pipeline.
 
 ### 16.1 RectTransform
 
@@ -3461,7 +3467,49 @@ void          SetCanvasSize(const Math::Vector2& size);
 Math::Vector2 GetCanvasSize() const;
 ```
 
-In `ScreenSpaceOverlay` mode, canvas size is automatically set to the window dimensions each frame.
+In `ScreenSpaceOverlay` mode, layout uses the current viewport dimensions each frame. In `WorldSpace` mode, layout uses the fixed `canvasSize` value, so children keep a stable pixel layout before being converted into local world units.
+
+**World-space scale:**
+
+```cpp
+void  SetPixelsPerUnit(float value);
+float GetPixelsPerUnit() const;
+```
+
+`pixelsPerUnit` controls the conversion from UI pixels to local world units when `renderMode == WorldSpace`. For example, a 256 px wide image on a canvas with `pixelsPerUnit = 128` becomes 2 world units wide before the Canvas GameObject transform is applied.
+
+Minimal Lua scene setup:
+
+```lua
+{
+    name = "WorldSpaceCanvas",
+    position = Vector3(0.0, 1.5, 2.0),
+    components = {
+        {
+            type = "Canvas",
+            renderMode = "WorldSpace",
+            canvasSize = Vector2(256.0, 256.0),
+            pixelsPerUnit = 128.0
+        },
+    },
+    children = {
+        {
+            name = "WorldImage",
+            components = {
+                {
+                    type = "UIImage",
+                    texture = "Default/Textures/logo.png",
+                    anchorMin = Vector2(0.5, 0.5),
+                    anchorMax = Vector2(0.5, 0.5),
+                    pivot = Vector2(0.5, 0.5),
+                    anchoredPosition = Vector2(0.0, 0.0),
+                    sizeDelta = Vector2(256.0, 256.0)
+                },
+            }
+        },
+    }
+}
+```
 
 **Sort order** (for multi-canvas layering):
 
@@ -3479,7 +3527,9 @@ void RenderCanvas(const Math::Vector2& screenSize);
 void PrepareForHitTest(const Math::Vector2& screenSize);
 ```
 
-`RenderCanvas` collects all `UIElement` children recursively, sorts them by depth, and calls `Render()` on each visible one.
+`RenderCanvas` is the screen-space path. It collects all `UIElement` children recursively and calls `Render()` on each visible one through `UIRenderContext`.
+
+`WorldSpace` canvases are not rendered by `RenderCanvas`; `CanvasSystem::RenderWorldSpace(camera)` draws their supported elements as 3D quads.
 
 **Element collection:**
 
@@ -3496,19 +3546,23 @@ Returns a cached list of all `UIElement` descendants. Rebuilt only when `GameObj
 ```cpp
 static CanvasSystem& GetInstance();
 
-void RegisterCanvas(Canvas* canvas);
-void UnregisterCanvas(Canvas* canvas);
+void Update(ECS::Scene* scene);
+void UpdateAllRectTransforms(const Math::Vector2& customScreenSize);
+void RenderToDrawList(ImDrawList* drawList,
+                      const Math::Vector2& screenSize,
+                      const Math::Vector2& offset);
+void RenderWorldSpace(Rendering::Camera* camera);
+void ClearState();
 
-void Update(const Math::Vector2& screenSize);
-void RenderAll(const Math::Vector2& screenSize);
-
-// Mouse input (called by GameViewPanel in Play mode):
-void OnMouseMove(float x, float y);
-void OnMouseDown(int button, float x, float y);
-void OnMouseUp(int button, float x, float y);
+void ProcessInput(const Math::Vector2& mousePos);
+std::vector<Math::Vector4> GetRaycastRectsForGameObject(ECS::GameObject* gameObject) const;
 ```
 
-`CanvasSystem` processes input events through `PrepareForHitTest()` and walks the element tree in reverse render order to find the front-most `raycastTarget` element under the cursor.
+`RenderToDrawList` is the screen-space path used by standalone runtime and the editor Game View overlay. It filters out `Canvas::WorldSpace` canvases so a world-space image is not duplicated as HUD.
+
+`RenderWorldSpace` is the 3D path. It uses the `ui_world` shader, enables depth testing and alpha blending, disables depth writes for transparent UI, and draws `UIImage` and `UIPanel` elements as quads on the Canvas GameObject's world transform. `UIText` is not rendered in world space in this V1.
+
+`CanvasSystem` processes pointer input only for screen-space canvases. World-space UI is visual-only in this version; future world-space interaction should use camera raycasts instead of 2D mouse hit tests.
 
 ### 16.5 UIButton
 
