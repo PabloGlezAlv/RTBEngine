@@ -74,13 +74,13 @@
     <VcpkgEnabled>true</VcpkgEnabled>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(ProjectDir)ThirdParty\stb;$(ProjectDir)ThirdParty\lua\include;$(ProjectDir)ThirdParty\luaBridge\Source;$(ProjectDir)ThirdParty\imgui-1.92.5;$(ProjectDir)ThirdParty\imgui-1.92.5\backends;$(ProjectDir)ThirdParty\bullet3-3.25\src;$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(ProjectDir)ThirdParty\fmod\api\core\inc;$(IncludePath)</IncludePath>
-    <LibraryPath>$(ProjectDir)ThirdParty\lua;$(ProjectDir)ThirdParty\bullet3-3.25\build_msvc\lib\Debug;$(ProjectDir)ThirdParty\assimp\lib\Release\x64;$(ProjectDir)ThirdParty\glew-2.1.0\lib\Release\x64;$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64;$(ProjectDir)ThirdParty\fmod\api\core\lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)ThirdParty\stb;$(ProjectDir)ThirdParty\lua\include;$(ProjectDir)ThirdParty\luaBridge\Source;$(ProjectDir)ThirdParty\imgui-1.92.5;$(ProjectDir)ThirdParty\imgui-1.92.5\backends;$(ProjectDir)ThirdParty\bullet3-3.25\src;$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(ProjectDir)ThirdParty\fmod\api\core\inc;$(ProjectDir)ThirdParty\EOSSDK\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)ThirdParty\lua;$(ProjectDir)ThirdParty\bullet3-3.25\build_msvc\lib\Debug;$(ProjectDir)ThirdParty\assimp\lib\Release\x64;$(ProjectDir)ThirdParty\glew-2.1.0\lib\Release\x64;$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64;$(ProjectDir)ThirdParty\fmod\api\core\lib\x64;$(ProjectDir)ThirdParty\EOSSDK\Lib;$(LibraryPath)</LibraryPath>
     <CustomBuildAfterTargets />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(ProjectDir)ThirdParty\stb;$(ProjectDir)ThirdParty\lua\include;$(ProjectDir)ThirdParty\luaBridge\Source;$(ProjectDir)ThirdParty\imgui-1.92.5;$(ProjectDir)ThirdParty\imgui-1.92.5\backends;$(ProjectDir)ThirdParty\bullet3-3.25\src;$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(ProjectDir)ThirdParty\fmod\api\core\inc;$(IncludePath)</IncludePath>
-    <LibraryPath>$(ProjectDir)ThirdParty\lua;$(ProjectDir)ThirdParty\bullet3-3.25\build_msvc\lib\Release;$(ProjectDir)ThirdParty\assimp\lib\Release\x64;$(ProjectDir)ThirdParty\glew-2.1.0\lib\Release\x64;$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64;$(ProjectDir)ThirdParty\fmod\api\core\lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)ThirdParty\stb;$(ProjectDir)ThirdParty\lua\include;$(ProjectDir)ThirdParty\luaBridge\Source;$(ProjectDir)ThirdParty\imgui-1.92.5;$(ProjectDir)ThirdParty\imgui-1.92.5\backends;$(ProjectDir)ThirdParty\bullet3-3.25\src;$(ProjectDir)ThirdParty\assimp\include;$(ProjectDir)ThirdParty\glew-2.1.0\include;$(ProjectDir)ThirdParty\SDL2-2.32.10\include;$(ProjectDir)ThirdParty\fmod\api\core\inc;$(ProjectDir)ThirdParty\EOSSDK\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)ThirdParty\lua;$(ProjectDir)ThirdParty\bullet3-3.25\build_msvc\lib\Release;$(ProjectDir)ThirdParty\assimp\lib\Release\x64;$(ProjectDir)ThirdParty\glew-2.1.0\lib\Release\x64;$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64;$(ProjectDir)ThirdParty\fmod\api\core\lib\x64;$(ProjectDir)ThirdParty\EOSSDK\Lib;$(LibraryPath)</LibraryPath>
     <CustomBuildAfterTargets />
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -129,7 +129,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>lua54.lib;LinearMath_Debug.lib;BulletCollision_Debug.lib;BulletDynamics_Debug.lib;assimp-vc145-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;fmod_vc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lua54.lib;LinearMath_Debug.lib;BulletCollision_Debug.lib;BulletDynamics_Debug.lib;assimp-vc145-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;fmod_vc.lib;EOSSDK-Win64-Shipping.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>if exist "$(ProjectDir)ThirdParty\lua\lua54.dll" xcopy /y /d "$(ProjectDir)ThirdParty\lua\lua54.dll" "$(OutDir)"
@@ -137,6 +137,11 @@ if exist "$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64\SDL2.dll" xcopy /y /d "$(
 if exist "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(OutDir)"
 if exist "$(ProjectDir)ThirdParty\assimp\bin\x64\" xcopy "$(ProjectDir)ThirdParty\assimp\bin\x64\*.dll" "$(OutDir)" /Y /D
 if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
+if exist "$(ProjectDir)ThirdParty\EOSSDK\Bin\EOSSDK-Win64-Shipping.dll" xcopy /y /d "$(ProjectDir)ThirdParty\EOSSDK\Bin\EOSSDK-Win64-Shipping.dll" "$(OutDir)"
+if exist "$(ProjectDir)ThirdParty\EOSSDK\Bin\x64\xaudio2_9redist.dll" xcopy /y /d "$(ProjectDir)ThirdParty\EOSSDK\Bin\x64\xaudio2_9redist.dll" "$(OutDir)"
+if not exist "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Bin\" mkdir "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Bin\"
+if exist "$(ProjectDir)ThirdParty\EOSSDK\Bin\EOSSDK-Win64-Shipping.dll" xcopy /y /d "$(ProjectDir)ThirdParty\EOSSDK\Bin\EOSSDK-Win64-Shipping.dll" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Bin\"
+if exist "$(ProjectDir)ThirdParty\EOSSDK\Bin\x64\xaudio2_9redist.dll" xcopy /y /d "$(ProjectDir)ThirdParty\EOSSDK\Bin\x64\xaudio2_9redist.dll" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Bin\"
 if exist "$(ProjectDir)Engine" xcopy /y /d /s "$(ProjectDir)Engine\*.h" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Include\RTBEngine\"
 if exist "$(ProjectDir)Engine\RTBEngine.h" xcopy /y /d "$(ProjectDir)Engine\RTBEngine.h" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Include\"
 if exist "$(ProjectDir)Default" xcopy /y /d /e /i "$(ProjectDir)Default" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Default"
@@ -161,7 +166,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)ThirdParty\assimp\lib\Release\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>lua54.lib;LinearMath.lib;BulletCollision.lib;BulletDynamics.lib;assimp-vc145-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;fmod_vc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lua54.lib;LinearMath.lib;BulletCollision.lib;BulletDynamics.lib;assimp-vc145-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;fmod_vc.lib;EOSSDK-Win64-Shipping.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>if exist "$(ProjectDir)ThirdParty\lua\lua54.dll" xcopy /y /d "$(ProjectDir)ThirdParty\lua\lua54.dll" "$(OutDir)"
@@ -169,6 +174,11 @@ if exist "$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64\SDL2.dll" xcopy /y /d "$(
 if exist "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(OutDir)"
 if exist "$(ProjectDir)ThirdParty\assimp\bin\x64\" xcopy "$(ProjectDir)ThirdParty\assimp\bin\x64\*.dll" "$(OutDir)" /Y /D
 if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
+if exist "$(ProjectDir)ThirdParty\EOSSDK\Bin\EOSSDK-Win64-Shipping.dll" xcopy /y /d "$(ProjectDir)ThirdParty\EOSSDK\Bin\EOSSDK-Win64-Shipping.dll" "$(OutDir)"
+if exist "$(ProjectDir)ThirdParty\EOSSDK\Bin\x64\xaudio2_9redist.dll" xcopy /y /d "$(ProjectDir)ThirdParty\EOSSDK\Bin\x64\xaudio2_9redist.dll" "$(OutDir)"
+if not exist "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Bin\" mkdir "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Bin\"
+if exist "$(ProjectDir)ThirdParty\EOSSDK\Bin\EOSSDK-Win64-Shipping.dll" xcopy /y /d "$(ProjectDir)ThirdParty\EOSSDK\Bin\EOSSDK-Win64-Shipping.dll" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Bin\"
+if exist "$(ProjectDir)ThirdParty\EOSSDK\Bin\x64\xaudio2_9redist.dll" xcopy /y /d "$(ProjectDir)ThirdParty\EOSSDK\Bin\x64\xaudio2_9redist.dll" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Bin\"
 if exist "$(ProjectDir)Engine" xcopy /y /d /s "$(ProjectDir)Engine\*.h" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Include\RTBEngine\"
 if exist "$(ProjectDir)Engine\RTBEngine.h" xcopy /y /d "$(ProjectDir)Engine\RTBEngine.h" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Include\"
 if exist "$(ProjectDir)Default" xcopy /y /d /e /i "$(ProjectDir)Default" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Default"

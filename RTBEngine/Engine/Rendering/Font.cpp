@@ -97,14 +97,16 @@ namespace RTBEngine {
 			const char* end = current + text.size();
 			while (current < end) {
 				unsigned int codepoint = static_cast<unsigned char>(*current);
+				//Normal text
 				if (codepoint < 0x80) {
 					current += 1;
 				}
-				else {
+				else { //Multibyte check
 					int bytes = ImTextCharFromUtf8(&codepoint, current, end);
 					current += bytes > 0 ? bytes : 1;
 				}
-
+				
+				//Check line jump
 				if (codepoint < 32) {
 					if (codepoint == '\n') {
 						cursorX = originX;
@@ -112,7 +114,8 @@ namespace RTBEngine {
 					}
 					continue;
 				}
-
+				
+				// Info
 				const ImFontGlyph* glyph = bakedFont->FindGlyph(static_cast<ImWchar>(codepoint));
 				if (!glyph) continue;
 
