@@ -26,6 +26,7 @@
 #include "../Rendering/Skybox.h"
 #include "../Rendering/Cubemap.h"
 #include "../Rendering/Frustum.h"
+#include "../Online/OnlineSystem.h"
 
 #include <imgui.h>
 #include <backends/imgui_impl_sdl2.h>
@@ -169,6 +170,11 @@ bool RTBEngine::Core::Application::Initialize()
 	lastTime = SDL_GetTicks();
 	Time::Reset();
 	Time::SetFixedDeltaTime(config.physics.timeStep);
+
+	if (!Online::OnlineSystem::GetInstance().Initialize(config.online)) {
+		RTB_ERROR("Failed to initialize OnlineSystem");
+		return false;
+	}
 
 	Scripting::ComponentRegistry::GetInstance().RegisterBuiltInComponents();
 
@@ -350,6 +356,8 @@ void RTBEngine::Core::Application::Shutdown()
 	isRunning = false;
 	ClearQuitRequest();
 
+	Online::OnlineSystem::GetInstance().Shutdown();
+
 	ShutdownImGui();
 
 	// Destroy the scene while physics is still alive so component OnDestroy paths
@@ -415,6 +423,8 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 
 	Time::SetFixedDeltaTime(config.physics.timeStep);
 	Time::AdvanceFrame(deltaTime);
+
+	Online::OnlineSystem::GetInstance().Tick(deltaTime);
 
 	ECS::SceneManager& sceneMgr = ECS::SceneManager::GetInstance();
 	sceneMgr.ProcessPendingSceneLoad();

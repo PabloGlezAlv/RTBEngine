@@ -268,6 +268,10 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_opengl3.cpp" />
     <ClCompile Include="Engine\ECS\Transform.cpp" />
     <ClCompile Include="Engine\Core\Logger.cpp" />
+    <ClCompile Include="Engine\Online\EosOnlineBackend.cpp" />
+    <ClCompile Include="Engine\Online\NullOnlineBackend.cpp" />
+    <ClCompile Include="Engine\Online\OnlineSystem.cpp" />
+    <ClCompile Include="Engine\Online\OnlineTypes.cpp" />
     <ClCompile Include="Engine\ECS\BoxColliderComponent.cpp" />
     <ClCompile Include="Engine\ECS\CapsuleColliderComponent.cpp" />
     <ClCompile Include="Engine\Physics\CapsuleCollider.cpp" />
@@ -286,6 +290,12 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Rendering\Cubemap.h" />
     <ClInclude Include="Engine\Rendering\FrameBuffer.h" />
     <ClInclude Include="Engine\RTBEngine.h" />
+    <ClInclude Include="Engine\Online\EosOnlineBackend.h" />
+    <ClInclude Include="Engine\Online\IOnlineBackend.h" />
+    <ClInclude Include="Engine\Online\NullOnlineBackend.h" />
+    <ClInclude Include="Engine\Online\OnlineConfig.h" />
+    <ClInclude Include="Engine\Online\OnlineSystem.h" />
+    <ClInclude Include="Engine\Online\OnlineTypes.h" />
     <ClInclude Include="Engine\Scripting\ComponentRegistry.h" />
     <ClInclude Include="Engine\Scripting\ScriptManager.h" />
     <ClInclude Include="Engine\ECS\AudioSourceComponent.h" />

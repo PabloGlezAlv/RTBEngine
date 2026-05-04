@@ -1,5 +1,6 @@
 #pragma once
 #include "../RTBEngineAPI.h"
+#include "../Online/OnlineConfig.h"
 #include <string>
 #include "../Math/Vectors/Vector3.h"
 
@@ -31,6 +32,7 @@ namespace RTBEngine {
             WindowConfig window;
             PhysicsConfig physics;
             RenderingConfig rendering;
+            Online::OnlineConfig online;
             std::string initialScenePath;
         };
 

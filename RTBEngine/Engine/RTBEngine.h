@@ -28,6 +28,11 @@
 // Scripting
 #include "Scripting/ComponentRegistry.h"
 
+// Online
+#include "Online/OnlineConfig.h"
+#include "Online/OnlineSystem.h"
+#include "Online/OnlineTypes.h"
+
 // Built-in Components
 #include "ECS/MissingComponent.h"
 #include "ECS/MeshRenderer.h"
