@@ -100,13 +100,14 @@ This document covers every subsystem in depth — public API, internal design, d
     - 16.2 [UIElement](#162-uielement)
     - 16.3 [Canvas](#163-canvas)
     - 16.4 [CanvasSystem](#164-canvassystem)
-    - 16.5 [UIButton](#165-uibutton)
-    - 16.6 [UIText](#166-uitext)
-    - 16.7 [UIImage](#167-uiimage)
-    - 16.8 [UIPanel](#168-uipanel)
-    - 16.9 [UIContainer](#169-uicontainer)
-    - 16.10 [UIRenderContext](#1610-uirendercontext)
-    - 16.11 [EventSystem](#1611-eventsystem)
+    - 16.5 [World-Space UI Rendering](#165-world-space-ui-rendering)
+    - 16.6 [UIButton](#166-uibutton)
+    - 16.7 [UIText](#167-uitext)
+    - 16.8 [UIImage](#168-uiimage)
+    - 16.9 [UIPanel](#169-uipanel)
+    - 16.10 [UIContainer](#1610-uicontainer)
+    - 16.11 [UIRenderContext](#1611-uirendercontext)
+    - 16.12 [EventSystem](#1612-eventsystem)
 17. [DLL Boundary Safety](#17-dll-boundary-safety)
 18. [Code Conventions](#18-code-conventions)
 
@@ -1931,7 +1932,7 @@ The full render pipeline executed each frame by `Application::Render()`:
    └── View matrix stripped of translation
 
 7. CanvasSystem::RenderWorldSpace(camera)
-   - renders Canvas::WorldSpace UIImage/UIPanel quads with ui_world shader
+   - renders Canvas::WorldSpace UIImage/UIPanel/UIText quads with ui_world shader
    - depth test enabled, alpha blending enabled, depth writes disabled
    - does not participate in the shadow pass
 
@@ -3507,6 +3508,23 @@ Minimal Lua scene setup:
                 },
             }
         },
+        {
+            name = "WorldText",
+            components = {
+                {
+                    type = "UIText",
+                    text = "World Text",
+                    color = Color(0.2, 0.95, 1.0, 1.0),
+                    fontSize = 28.0,
+                    alignment = "Center",
+                    anchorMin = Vector2(0.5, 0.5),
+                    anchorMax = Vector2(0.5, 0.5),
+                    pivot = Vector2(0.5, 0.5),
+                    anchoredPosition = Vector2(0.0, -80.0),
+                    sizeDelta = Vector2(240.0, 48.0)
+                },
+            }
+        },
     }
 }
 ```
@@ -3560,11 +3578,19 @@ std::vector<Math::Vector4> GetRaycastRectsForGameObject(ECS::GameObject* gameObj
 
 `RenderToDrawList` is the screen-space path used by standalone runtime and the editor Game View overlay. It filters out `Canvas::WorldSpace` canvases so a world-space image is not duplicated as HUD.
 
-`RenderWorldSpace` is the 3D path. It uses the `ui_world` shader, enables depth testing and alpha blending, disables depth writes for transparent UI, and draws `UIImage` and `UIPanel` elements as quads on the Canvas GameObject's world transform. `UIText` is not rendered in world space in this V1.
+`RenderWorldSpace` is the 3D path. It uses the `ui_world` shader, enables depth testing and alpha blending, disables depth writes for transparent UI, and draws `UIImage`, `UIPanel`, and `UIText` elements as quads on the Canvas GameObject's world transform. Text uses the engine `Font` API to build glyph geometry from the existing atlas; rich text, advanced word-wrap, SDF/MSDF text, and 3D UI input are not part of this version.
 
 `CanvasSystem` processes pointer input only for screen-space canvases. World-space UI is visual-only in this version; future world-space interaction should use camera raycasts instead of 2D mouse hit tests.
 
-### 16.5 UIButton
+### 16.5 World-Space UI Rendering
+
+World-space UI is rendered as transparent 3D geometry inside the main scene, not through the ImGui overlay. `CanvasSystem::RenderWorldSpace(camera)` runs after scene geometry and skybox, with depth test enabled, alpha blending enabled, and depth writes disabled, so scene objects can occlude the UI correctly.
+
+Layout is still calculated in 2D using `Canvas`, `RectTransform`, `canvasSize`, and `pixelsPerUnit`. The resulting UI rectangles are converted into local plane vertices and then transformed by the Canvas GameObject world matrix. `UIImage` and `UIPanel` render as quads; `UIText` uses the public `Rendering::Font` API to measure text, build glyph geometry, and sample the font atlas without exposing ImGui internals to `CanvasSystem`.
+
+Current limits: supported elements are `UIImage`, `UIPanel`, and `UIText`; screen-space HUD rendering is unchanged; world-space UI is visual-only for now; and text does not yet support rich text, advanced wrapping, fallback fonts, bidi/shaping, or SDF/MSDF rendering.
+
+### 16.6 UIButton
 
 `Engine/UI/Elements/UIButton.h` — A clickable rectangular region with optional text label.
 
@@ -3578,7 +3604,7 @@ void SetPressedColor(const Math::Vector4& color);
 
 `Render()` draws a colored quad (color changes based on hover/press state) and overlays the label text using the default font.
 
-### 16.6 UIText
+### 16.7 UIText
 
 `Engine/UI/Elements/UIText.h` — Renders a text string.
 
@@ -3602,7 +3628,7 @@ Math::Vector4 colorRef  = {1,1,1,1};
 int         alignmentRef = 0;
 ```
 
-### 16.7 UIImage
+### 16.8 UIImage
 
 `Engine/UI/Elements/UIImage.h` — Renders a textured quad.
 
@@ -3618,7 +3644,7 @@ std::string   textureRef;
 Math::Vector4 colorRef = {1,1,1,1};
 ```
 
-### 16.8 UIPanel
+### 16.9 UIPanel
 
 `Engine/UI/Elements/UIPanel.h` — A solid-colored or textured background rectangle. Used as a container backdrop.
 
@@ -3627,11 +3653,11 @@ void SetColor(const Math::Vector4& color);
 void SetTexture(Rendering::Texture* texture);   // Optional background texture
 ```
 
-### 16.9 UIContainer
+### 16.10 UIContainer
 
 `Engine/UI/Elements/UIContainer.h` — A layout-only UI element. Extends `UIElement` with an empty `Render()` implementation. Used to group child elements without drawing anything itself.
 
-### 16.10 UIRenderContext
+### 16.11 UIRenderContext
 
 `Engine/UI/UIRenderContext.h` — Static rendering context that controls where UI elements draw to. Enables rendering UI into off-screen framebuffers (e.g., the editor's Game View panel).
 
@@ -3649,7 +3675,7 @@ struct UIRenderContext {
 
 Before rendering canvases to a framebuffer, call `Begin()` with the framebuffer's draw list and position offset. After rendering, call `End()`. All `UIElement::Render()` calls use `GetDrawList()` to obtain the correct target.
 
-### 16.11 EventSystem
+### 16.12 EventSystem
 
 `Engine/UI/EventSystem/` — Interface-based pointer event system for UI elements. Components implement these interfaces to receive input events from `CanvasSystem`.
 

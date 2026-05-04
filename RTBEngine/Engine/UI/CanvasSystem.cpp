@@ -4,6 +4,7 @@
 #include "UIRenderContext.h"
 #include "Elements/UIImage.h"
 #include "Elements/UIPanel.h"
+#include "Elements/UIText.h"
 #include "EventSystem/IPointerEnterHandler.h"
 #include "EventSystem/IPointerExitHandler.h"
 #include "EventSystem/IPointerDownHandler.h"
@@ -18,13 +19,16 @@
 #include "../Input/InputManager.h"
 #include "../Input/MouseButton.h"
 #include "../Rendering/Camera.h"
+#include "../Rendering/Font.h"
 #include "../Rendering/Shader.h"
 #include "../Rendering/Texture.h"
 #include <GL/glew.h>
 #include <imgui.h>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
+#include <vector>
 
 namespace RTBEngine {
 	namespace UI {
@@ -41,22 +45,38 @@ namespace RTBEngine {
 			class WorldUIQuadRenderer {
 			public:
 				void Draw(const std::array<WorldUIVertex, 6>& vertices) {
-					EnsureInitialized();
-					if (vao == 0 || vbo == 0) return;
+					Draw(vertices.data(), vertices.size());
+				}
 
-					glBindVertexArray(vao);
-					glBindBuffer(GL_ARRAY_BUFFER, vbo);
-					glBufferSubData(GL_ARRAY_BUFFER, 0,
-						static_cast<GLsizeiptr>(vertices.size() * sizeof(WorldUIVertex)),
-						vertices.data());
-					glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size()));
-					glBindVertexArray(0);
+				void Draw(const std::vector<WorldUIVertex>& vertices) {
+					if (vertices.empty()) return;
+					Draw(vertices.data(), vertices.size());
 				}
 
 			private:
+				void Draw(const WorldUIVertex* vertices, size_t vertexCount) {
+					EnsureInitialized();
+					if (vao == 0 || vbo == 0 || !vertices || vertexCount == 0) return;
+
+					// Upload the current UI mesh and draw it as a triangle list.
+					glBindVertexArray(vao);
+					glBindBuffer(GL_ARRAY_BUFFER, vbo);
+					const GLsizeiptr bytes = static_cast<GLsizeiptr>(vertexCount * sizeof(WorldUIVertex));
+					if (bytes > bufferCapacity) {
+						glBufferData(GL_ARRAY_BUFFER, bytes, vertices, GL_DYNAMIC_DRAW);
+						bufferCapacity = bytes;
+					}
+					else {
+						glBufferSubData(GL_ARRAY_BUFFER, 0, bytes, vertices);
+					}
+					glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount));
+					glBindVertexArray(0);
+				}
+
 				void EnsureInitialized() {
 					if (vao != 0 && vbo != 0) return;
 
+					// One small dynamic vertex layout is enough for images, panels, and generated text quads.
 					glGenVertexArrays(1, &vao);
 					glGenBuffers(1, &vbo);
 
@@ -82,6 +102,7 @@ namespace RTBEngine {
 
 				GLuint vao = 0;
 				GLuint vbo = 0;
+				GLsizeiptr bufferCapacity = static_cast<GLsizeiptr>(sizeof(WorldUIVertex) * 6);
 			};
 
 			WorldUIQuadRenderer& GetWorldUIQuadRenderer() {
@@ -89,24 +110,119 @@ namespace RTBEngine {
 				return renderer;
 			}
 
-			std::array<WorldUIVertex, 6> BuildWorldSpaceQuad(Canvas* canvas, UIElement* element) {
-				const Math::Vector4 rect = element->GetRectTransform()->GetWorldRect();
+			std::array<WorldUIVertex, 6> BuildWorldSpaceQuadFromRect(
+				Canvas* canvas,
+				const Math::Vector4& rect,
+				float u0,
+				float v0,
+				float u1,
+				float v1) {
 				const Math::Vector2 canvasSize = canvas->GetCanvasSize();
 				const float pixelsPerUnit = std::max(1.0f, canvas->GetPixelsPerUnit());
 
+				// Convert the UI rect from canvas pixels into a local plane centered on the Canvas origin.
 				const float x0 = (rect.x - canvasSize.x * 0.5f) / pixelsPerUnit;
 				const float x1 = (rect.x + rect.z - canvasSize.x * 0.5f) / pixelsPerUnit;
 				const float y0 = (canvasSize.y * 0.5f - rect.y) / pixelsPerUnit;
 				const float y1 = (canvasSize.y * 0.5f - rect.y - rect.w) / pixelsPerUnit;
 
 				return {{
-					{ x0, y0, 0.0f, 0.0f, 1.0f },
-					{ x1, y0, 0.0f, 1.0f, 1.0f },
-					{ x1, y1, 0.0f, 1.0f, 0.0f },
-					{ x0, y0, 0.0f, 0.0f, 1.0f },
-					{ x1, y1, 0.0f, 1.0f, 0.0f },
-					{ x0, y1, 0.0f, 0.0f, 0.0f },
+					{ x0, y0, 0.0f, u0, v0 },
+					{ x1, y0, 0.0f, u1, v0 },
+					{ x1, y1, 0.0f, u1, v1 },
+					{ x0, y0, 0.0f, u0, v0 },
+					{ x1, y1, 0.0f, u1, v1 },
+					{ x0, y1, 0.0f, u0, v1 },
 				}};
+			}
+
+			std::array<WorldUIVertex, 6> BuildWorldSpaceQuad(Canvas* canvas, UIElement* element) {
+				return BuildWorldSpaceQuadFromRect(
+					canvas,
+					element->GetRectTransform()->GetWorldRect(),
+					0.0f,
+					1.0f,
+					1.0f,
+					0.0f);
+			}
+
+			float GetEffectiveTextFontSize(UIText* text) {
+				Math::Vector2 lossyScale = text->GetRectTransform()->GetLossyScale();
+				// Text size follows UI scale so a scaled RectTransform keeps the same visual proportion.
+				float effectiveScale = std::abs(lossyScale.y);
+				if (effectiveScale < 0.01f) {
+					effectiveScale = 0.01f;
+				}
+
+				return std::max(1.0f, text->GetFontSize() * effectiveScale);
+			}
+
+			Rendering::Font* ResolveTextFont(UIText* text) {
+				Rendering::Font* activeFont = text->GetFont();
+				if (!activeFont) {
+					activeFont = Core::ResourceManager::GetInstance().GetDefaultFont();
+				}
+
+				return activeFont;
+			}
+
+			void RenderWorldSpaceText(Canvas* canvas, UIText* text, Rendering::Shader* shader) {
+				if (text->GetText().empty()) return;
+
+				const Math::Vector4 rect = text->GetRectTransform()->GetWorldRect();
+				const float effectiveFontSize = GetEffectiveTextFontSize(text);
+				Rendering::Font* activeFont = ResolveTextFont(text);
+				if (!activeFont) return;
+
+				const GLuint atlasTextureID = activeFont->GetAtlasTextureID(effectiveFontSize);
+				if (atlasTextureID == 0) return;
+
+				const std::string& value = text->GetText();
+				Math::Vector2 textSize = activeFont->MeasureText(value, effectiveFontSize);
+
+				// Align the text block inside its RectTransform before generating glyph geometry.
+				float cursorX = rect.x;
+				float cursorY = rect.y;
+				switch (text->GetAlignment()) {
+				case TextAlignment::Center:
+					cursorX += (rect.z - textSize.x) * 0.5f;
+					cursorY += (rect.w - textSize.y) * 0.5f;
+					break;
+				case TextAlignment::Right:
+					cursorX += rect.z - textSize.x;
+					cursorY += (rect.w - textSize.y) * 0.5f;
+					break;
+				case TextAlignment::Left:
+				default:
+					cursorY += (rect.w - textSize.y) * 0.5f;
+					break;
+				}
+
+				std::vector<Rendering::FontTextVertex> textVertices;
+				activeFont->BuildTextGeometry(value, effectiveFontSize, Math::Vector2(cursorX, cursorY), textVertices);
+				if (textVertices.empty()) return;
+
+				const Math::Vector2 canvasSize = canvas->GetCanvasSize();
+				const float pixelsPerUnit = std::max(1.0f, canvas->GetPixelsPerUnit());
+				std::vector<WorldUIVertex> worldVertices;
+				worldVertices.reserve(textVertices.size());
+				// The font API gives us 2D canvas-space vertices; here we map them onto the 3D canvas plane.
+				for (const Rendering::FontTextVertex& vertex : textVertices) {
+					worldVertices.push_back({
+						(vertex.x - canvasSize.x * 0.5f) / pixelsPerUnit,
+						(canvasSize.y * 0.5f - vertex.y) / pixelsPerUnit,
+						0.0f,
+						vertex.u,
+						vertex.v
+					});
+				}
+
+				shader->SetBool("uHasTexture", true);
+				shader->SetVector4("uColor", text->GetColor());
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, atlasTextureID);
+				GetWorldUIQuadRenderer().Draw(worldVertices);
+				glBindTexture(GL_TEXTURE_2D, 0);
 			}
 
 			void RenderWorldSpaceElement(Canvas* canvas, UIElement* element, Rendering::Shader* shader) {
@@ -132,6 +248,11 @@ namespace RTBEngine {
 					shader->SetBool("uHasTexture", false);
 					shader->SetVector4("uColor", panel->GetBackgroundColor());
 					GetWorldUIQuadRenderer().Draw(BuildWorldSpaceQuad(canvas, element));
+					return;
+				}
+
+				if (auto* text = dynamic_cast<UIText*>(element)) {
+					RenderWorldSpaceText(canvas, text, shader);
 				}
 			}
 		}
@@ -167,6 +288,7 @@ namespace RTBEngine {
 			UIRenderContext::Begin(drawList, offset);
 
 			for (Canvas* canvas : activeCanvases) {
+				// World-space canvases have their own 3D pass and must not be duplicated as HUD overlay.
 				if (canvas->GetRenderMode() == Canvas::RenderMode::WorldSpace) continue;
 				canvas->RenderCanvas(renderScreenSize);
 			}
@@ -194,6 +316,7 @@ namespace RTBEngine {
 			glGetIntegerv(GL_BLEND_SRC_ALPHA, &previousBlendSrcAlpha);
 			glGetIntegerv(GL_BLEND_DST_ALPHA, &previousBlendDstAlpha);
 
+			// Draw world UI as transparent scene geometry: depth-tested, alpha-blended, and double-sided.
 			glEnable(GL_DEPTH_TEST);
 			glDepthMask(GL_FALSE);
 			glEnable(GL_BLEND);
@@ -210,6 +333,7 @@ namespace RTBEngine {
 				ECS::GameObject* canvasObject = canvas->GetOwner();
 				if (!canvasObject || !canvasObject->IsActive()) continue;
 
+				// World-space layout still starts from canvas pixels; only the final rendering happens in 3D.
 				canvas->PrepareForHitTest(canvas->GetCanvasSize());
 				shader->SetMatrix4("uModel", canvasObject->GetWorldMatrix());
 
