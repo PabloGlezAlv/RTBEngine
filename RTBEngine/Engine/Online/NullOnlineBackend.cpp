@@ -42,5 +42,15 @@ namespace RTBEngine {
             return "";
         }
 
+        IOnlineIdentity* NullOnlineBackend::GetIdentity()
+        {
+            return &identity;
+        }
+
+        const IOnlineIdentity* NullOnlineBackend::GetIdentity() const
+        {
+            return &identity;
+        }
+
     }
 }

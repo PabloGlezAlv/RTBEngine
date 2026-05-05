@@ -2,6 +2,7 @@
 
 #include "../RTBEngineAPI.h"
 #include "IOnlineBackend.h"
+#include "IOnlineIdentity.h"
 #include "OnlineTypes.h"
 
 #include <memory>
@@ -28,6 +29,8 @@ namespace RTBEngine {
             OnlineState GetState() const { return state; }
             OnlineBackendType GetBackendType() const { return backendType; }
             const std::string& GetLastError() const { return lastError; }
+            IOnlineIdentity* GetIdentity();
+            const IOnlineIdentity* GetIdentity() const;
 
         private:
             OnlineSystem() = default;

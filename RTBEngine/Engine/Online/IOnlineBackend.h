@@ -5,6 +5,7 @@
 namespace RTBEngine {
     namespace Online {
 
+        class IOnlineIdentity;
         struct OnlineConfig;
 
         // Backend contract for the online layer.
@@ -18,6 +19,8 @@ namespace RTBEngine {
             virtual void Shutdown() = 0;
             virtual bool IsInitialized() const = 0;
             virtual const char* GetLastError() const = 0;
+            virtual IOnlineIdentity* GetIdentity() = 0;
+            virtual const IOnlineIdentity* GetIdentity() const = 0;
         };
 
     }

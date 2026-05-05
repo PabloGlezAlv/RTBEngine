@@ -29,9 +29,12 @@
 #include "Scripting/ComponentRegistry.h"
 
 // Online
+#include "Online/IOnlineIdentity.h"
 #include "Online/OnlineConfig.h"
+#include "Online/OnlineResult.h"
 #include "Online/OnlineSystem.h"
 #include "Online/OnlineTypes.h"
+#include "Online/OnlineUser.h"
 
 // Built-in Components
 #include "ECS/MissingComponent.h"

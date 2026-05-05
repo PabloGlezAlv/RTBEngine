@@ -161,6 +161,8 @@ namespace RTBEngine {
                 return false;
             }
 
+            identity.SetPlatformHandle(platformHandle);
+
             initialized = true;
             RTB_INFO(std::string("OnlineSystem: EOS backend initialized. SDK version: ") + EOS_GetVersion());
             return true;
@@ -180,6 +182,8 @@ namespace RTBEngine {
         // Releases the platform handle before shutting down the global EOS SDK state.
         void EosOnlineBackend::Shutdown()
         {
+            identity.ResetPlatformHandle();
+
             if (platformHandle) {
                 EOS_Platform_Release(static_cast<EOS_HPlatform>(platformHandle));
                 platformHandle = nullptr;
@@ -211,6 +215,16 @@ namespace RTBEngine {
         const char* EosOnlineBackend::GetLastError() const
         {
             return lastError.c_str();
+        }
+
+        IOnlineIdentity* EosOnlineBackend::GetIdentity()
+        {
+            return &identity;
+        }
+
+        const IOnlineIdentity* EosOnlineBackend::GetIdentity() const
+        {
+            return &identity;
         }
 
     }

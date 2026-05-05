@@ -87,6 +87,16 @@ namespace RTBEngine {
             state = OnlineState::Disabled;
         }
 
+        IOnlineIdentity* OnlineSystem::GetIdentity()
+        {
+            return backend ? backend->GetIdentity() : nullptr;
+        }
+
+        const IOnlineIdentity* OnlineSystem::GetIdentity() const
+        {
+            return backend ? backend->GetIdentity() : nullptr;
+        }
+
         // Centralized backend factory
         std::unique_ptr<IOnlineBackend> OnlineSystem::CreateBackend(OnlineBackendType type)
         {

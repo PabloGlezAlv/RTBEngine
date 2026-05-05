@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EosOnlineIdentity.h"
 #include "IOnlineBackend.h"
 
 #include <string>
@@ -22,6 +23,8 @@ namespace RTBEngine {
             void Shutdown() override;
             bool IsInitialized() const override;
             const char* GetLastError() const override;
+            IOnlineIdentity* GetIdentity() override;
+            const IOnlineIdentity* GetIdentity() const override;
 
         private:
             // Stored as void* to keep EOS types out of the public engine header surface.
@@ -31,6 +34,7 @@ namespace RTBEngine {
             bool eosInitializedByBackend = false;
             bool initialized = false;
             std::string lastError;
+            EosOnlineIdentity identity;
         };
 #pragma warning(pop)
 

@@ -1,10 +1,13 @@
 #pragma once
 
 #include "IOnlineBackend.h"
+#include "NullOnlineIdentity.h"
 
 namespace RTBEngine {
     namespace Online {
 
+#pragma warning(push)
+#pragma warning(disable: 4251)
         // No-op backend used for tests, offline builds, and future editor workflows.
         class RTB_API NullOnlineBackend final : public IOnlineBackend {
         public:
@@ -14,10 +17,14 @@ namespace RTBEngine {
             void Shutdown() override;
             bool IsInitialized() const override;
             const char* GetLastError() const override;
+            IOnlineIdentity* GetIdentity() override;
+            const IOnlineIdentity* GetIdentity() const override;
 
         private:
             bool initialized = false;
+            NullOnlineIdentity identity;
         };
+#pragma warning(pop)
 
     }
 }
