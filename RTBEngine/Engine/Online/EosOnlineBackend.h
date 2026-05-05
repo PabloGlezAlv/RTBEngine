@@ -1,12 +1,14 @@
 #pragma once
 
-#include "EosOnlineIdentity.h"
 #include "IOnlineBackend.h"
 
+#include <memory>
 #include <string>
 
 namespace RTBEngine {
     namespace Online {
+
+        class EosOnlineIdentity;
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
@@ -14,7 +16,7 @@ namespace RTBEngine {
         // This first implementation only owns SDK startup, platform ticking, and shutdown.
         class RTB_API EosOnlineBackend final : public IOnlineBackend {
         public:
-            EosOnlineBackend() = default;
+            EosOnlineBackend();
             ~EosOnlineBackend() override;
 
             const char* GetName() const override;
@@ -34,7 +36,7 @@ namespace RTBEngine {
             bool eosInitializedByBackend = false;
             bool initialized = false;
             std::string lastError;
-            EosOnlineIdentity identity;
+            std::unique_ptr<EosOnlineIdentity> identity;
         };
 #pragma warning(pop)
 

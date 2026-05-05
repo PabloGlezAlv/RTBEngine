@@ -1,5 +1,6 @@
 #include "EosOnlineBackend.h"
 
+#include "EosOnlineIdentity.h"
 #include "OnlineConfig.h"
 #include "../Core/Logger.h"
 
@@ -10,6 +11,7 @@
 #include <eos_types.h>
 #include <eos_version.h>
 
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -86,6 +88,11 @@ namespace {
 namespace RTBEngine {
     namespace Online {
 
+        EosOnlineBackend::EosOnlineBackend()
+            : identity(std::make_unique<EosOnlineIdentity>())
+        {
+        }
+
         EosOnlineBackend::~EosOnlineBackend()
         {
             Shutdown();
@@ -100,12 +107,15 @@ namespace RTBEngine {
         // Future:Auth, Lobby, or P2P...
         bool EosOnlineBackend::Initialize(const OnlineConfig& config)
         {
+            // Ignore repeated initialization attempts.
             if (initialized) {
                 return true;
             }
 
+            // Start each initialization attempt with a clean error state.
             lastError.clear();
 
+            // Validate the EOS portal data before calling into the SDK.
             const std::string missingConfig = BuildMissingEosConfigMessage(config);
             if (!missingConfig.empty()) {
                 lastError = missingConfig;
@@ -127,6 +137,7 @@ namespace RTBEngine {
                 return false;
             }
 
+            // Track ownership so shutdown does not tear down EOS configured elsewhere.
             eosInitializedByBackend = (initializeResult == EOS_EResult::EOS_Success);
 
             // Route EOS diagnostics through RTBEngine's logging system.
@@ -145,14 +156,17 @@ namespace RTBEngine {
             platformOptions.TickBudgetInMilliseconds = config.tickBudgetMilliseconds;
 
             if (config.loadingInEditor) {
+                // Let EOS know this platform instance is running inside an editor-like host.
                 platformOptions.Flags |= EOS_PF_LOADING_IN_EDITOR;
             }
 
             if (config.disableOverlay) {
+                // Overlay is disabled until the engine has a dedicated integration path.
                 platformOptions.Flags |= EOS_PF_DISABLE_OVERLAY;
                 platformOptions.Flags |= EOS_PF_DISABLE_SOCIAL_OVERLAY;
             }
 
+            // Create the platform instance used by Connect, Lobby, P2P, and future EOS services.
             platformHandle = EOS_Platform_Create(&platformOptions);
             if (!platformHandle) {
                 lastError = "EOS_Platform_Create failed.";
@@ -161,7 +175,8 @@ namespace RTBEngine {
                 return false;
             }
 
-            identity.SetPlatformHandle(platformHandle);
+            // Give identity access to the platform so it can resolve EOS Connect.
+            identity->SetPlatformHandle(platformHandle);
 
             initialized = true;
             RTB_INFO(std::string("OnlineSystem: EOS backend initialized. SDK version: ") + EOS_GetVersion());
@@ -182,13 +197,18 @@ namespace RTBEngine {
         // Releases the platform handle before shutting down the global EOS SDK state.
         void EosOnlineBackend::Shutdown()
         {
-            identity.ResetPlatformHandle();
+            // Identity must forget EOS handles before the platform is released.
+            if (identity) {
+                identity->ResetPlatformHandle();
+            }
 
+            // Release the platform handle before EOS_Shutdown as required by EOS.
             if (platformHandle) {
                 EOS_Platform_Release(static_cast<EOS_HPlatform>(platformHandle));
                 platformHandle = nullptr;
             }
 
+            // Only shut down the global SDK if this backend initialized it.
             if (eosInitializedByBackend) {
                 EOS_Logging_SetCallback(nullptr);
                 const EOS_EResult shutdownResult = EOS_Shutdown();
@@ -219,12 +239,12 @@ namespace RTBEngine {
 
         IOnlineIdentity* EosOnlineBackend::GetIdentity()
         {
-            return &identity;
+            return identity.get();
         }
 
         const IOnlineIdentity* EosOnlineBackend::GetIdentity() const
         {
-            return &identity;
+            return identity.get();
         }
 
     }

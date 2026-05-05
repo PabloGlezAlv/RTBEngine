@@ -10,20 +10,24 @@ namespace RTBEngine {
 
         bool OnlineUserId::IsValid() const
         {
+            // A user id is valid only when it has both a provider type and a value.
             return type != OnlineUserIdType::Invalid && !value.empty();
         }
 
         std::string OnlineUserId::ToString() const
         {
+            // Keep invalid ids readable in logs.
             if (!IsValid()) {
                 return "Invalid";
             }
 
+            // Prefix the value with its provider-neutral id type.
             return std::string(RTBEngine::Online::ToString(type)) + ":" + value;
         }
 
         bool OnlineUserId::operator==(const OnlineUserId& other) const
         {
+            // User ids match only when both the type and provider value match.
             return type == other.type && value == other.value;
         }
 

@@ -6,6 +6,7 @@ namespace RTBEngine {
         // Creates a deterministic local user without contacting any online service.
         OnlineResult NullOnlineIdentity::Login(const OnlineLoginOptions& options)
         {
+            // Use the requested name when provided, otherwise create a predictable local user.
             displayName = options.displayName.empty() ? "LocalUser" : options.displayName;
             localUserId = OnlineUserId(OnlineUserIdType::Local, displayName);
             lastError.clear();
@@ -16,6 +17,7 @@ namespace RTBEngine {
 
         void NullOnlineIdentity::Logout()
         {
+            // Reset local-only identity state.
             status = OnlineLoginStatus::NotLoggedIn;
             localUserId = OnlineUserId();
             displayName.clear();

@@ -5,11 +5,13 @@ namespace RTBEngine {
 
         OnlineResult OnlineResult::Success(const std::string& message)
         {
+            // Success results always carry the neutral None error code.
             return { true, OnlineErrorCode::None, message };
         }
 
         OnlineResult OnlineResult::Failure(OnlineErrorCode errorCode, const std::string& message)
         {
+            // Failure results preserve the category and human-readable message.
             return { false, errorCode, message };
         }
 

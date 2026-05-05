@@ -14,6 +14,7 @@ namespace RTBEngine {
 
         bool NullOnlineBackend::Initialize(const OnlineConfig&)
         {
+            // Mark the no-op backend as ready without contacting any service.
             initialized = true;
             RTB_INFO("OnlineSystem: Null backend initialized.");
             return true;
@@ -25,6 +26,7 @@ namespace RTBEngine {
 
         void NullOnlineBackend::Shutdown()
         {
+            // Report shutdown only when the backend was previously initialized.
             if (initialized) {
                 RTB_INFO("OnlineSystem: Null backend shut down.");
             }
@@ -44,6 +46,7 @@ namespace RTBEngine {
 
         IOnlineIdentity* NullOnlineBackend::GetIdentity()
         {
+            // Expose the offline identity implementation.
             return &identity;
         }
 

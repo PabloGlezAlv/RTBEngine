@@ -2,13 +2,20 @@
 
 #include "IOnlineIdentity.h"
 
+#include <memory>
+
 namespace RTBEngine {
     namespace Online {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
+        // EOS Connect identity implementation.
+        // The public header stays provider-neutral; EOS-native handles live in the private Impl.
         class RTB_API EosOnlineIdentity final : public IOnlineIdentity {
         public:
+            EosOnlineIdentity();
+            ~EosOnlineIdentity() override;
+
             void SetPlatformHandle(void* handle);
             void ResetPlatformHandle();
 
@@ -20,11 +27,8 @@ namespace RTBEngine {
             const char* GetLastError() const override;
 
         private:
-            void* platformHandle = nullptr;
-            OnlineLoginStatus status = OnlineLoginStatus::NotLoggedIn;
-            OnlineUserId localUserId;
-            std::string displayName;
-            std::string lastError;
+            class Impl;
+            std::unique_ptr<Impl> impl;
         };
 #pragma warning(pop)
 

@@ -26,13 +26,16 @@ namespace RTBEngine {
         // Starts the selected backend while keeping online optional by default.
         bool OnlineSystem::Initialize(const OnlineConfig& config)
         {
+            // Reset any previous backend before applying the new configuration.
             Shutdown();
 
+            // Cache the requested runtime configuration.
             enabled = config.enabled;
             failApplicationOnError = config.failApplicationOnError;
             backendType = config.backend;
             lastError.clear();
 
+            // Disabled online is a valid no-op startup mode.
             if (!enabled) {
                 state = OnlineState::Disabled;
                 RTB_INFO("OnlineSystem: disabled.");
@@ -48,7 +51,7 @@ namespace RTBEngine {
                 return !failApplicationOnError;
             }
 
-            // Backend failures can either stop the application or degrade gracefully.
+            // Let the selected backend perform SDK-specific initialization.
             if (!backend->Initialize(config)) {
                 state = OnlineState::Error;
                 const char* backendError = backend->GetLastError();
@@ -61,6 +64,7 @@ namespace RTBEngine {
                 return !failApplicationOnError;
             }
 
+            // The backend is ready and can now be ticked every frame.
             state = OnlineState::Initialized;
             RTB_INFO(std::string("OnlineSystem: initialized with backend ") + backend->GetName() + ".");
             return true;
@@ -68,20 +72,24 @@ namespace RTBEngine {
 
         void OnlineSystem::Tick(float deltaTime)
         {
+            // Skip backend work unless initialization completed successfully.
             if (state != OnlineState::Initialized || !backend) {
                 return;
             }
 
+            // Forward frame updates to the active backend.
             backend->Tick(deltaTime);
         }
 
         void OnlineSystem::Shutdown()
         {
+            // Shut down the active backend before clearing facade state.
             if (backend) {
                 backend->Shutdown();
                 backend.reset();
             }
 
+            // Return the facade to its default disabled state.
             enabled = false;
             failApplicationOnError = false;
             state = OnlineState::Disabled;
@@ -89,11 +97,13 @@ namespace RTBEngine {
 
         IOnlineIdentity* OnlineSystem::GetIdentity()
         {
+            // Identity is only available while a backend instance exists.
             return backend ? backend->GetIdentity() : nullptr;
         }
 
         const IOnlineIdentity* OnlineSystem::GetIdentity() const
         {
+            // Const overload for read-only diagnostics and tools.
             return backend ? backend->GetIdentity() : nullptr;
         }
 
@@ -102,8 +112,10 @@ namespace RTBEngine {
         {
             switch (type) {
             case OnlineBackendType::Null:
+                // Null backend provides offline/test behavior.
                 return std::make_unique<NullOnlineBackend>();
             case OnlineBackendType::EOS:
+                // EOS backend owns the Epic Online Services SDK integration.
                 return std::make_unique<EosOnlineBackend>();
             default:
                 return nullptr;
