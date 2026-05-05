@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../RTBEngineAPI.h"
+#include "../Core/Event.h"
 #include "OnlineResult.h"
 #include "OnlineUser.h"
 
@@ -25,6 +26,13 @@ namespace RTBEngine {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
+        // Payload emitted whenever the local identity state changes.
+        struct RTB_API OnlineLoginStatusChangedEvent {
+            OnlineLoginStatus previousStatus = OnlineLoginStatus::NotLoggedIn;
+            OnlineLoginStatus currentStatus = OnlineLoginStatus::NotLoggedIn;
+            OnlineUserId localUserId;
+        };
+
         struct RTB_API OnlineLoginOptions {
             OnlineLoginType type = OnlineLoginType::DeviceId;
             std::string displayName;
@@ -43,6 +51,8 @@ namespace RTBEngine {
             virtual const OnlineUserId& GetLocalUserId() const = 0;
             virtual const std::string& GetDisplayName() const = 0;
             virtual const char* GetLastError() const = 0;
+            virtual Core::EventSubscription SubscribeLoginStatusChanged(Core::Event<OnlineLoginStatusChangedEvent>::Callback callback) = 0;
+            virtual void ClearLoginStatusChangedListeners() = 0;
 
             bool IsLoggedIn() const { return GetLoginStatus() == OnlineLoginStatus::LoggedIn; }
         };

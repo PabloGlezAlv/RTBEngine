@@ -16,12 +16,17 @@ namespace RTBEngine {
             const OnlineUserId& GetLocalUserId() const override;
             const std::string& GetDisplayName() const override;
             const char* GetLastError() const override;
+            Core::EventSubscription SubscribeLoginStatusChanged(Core::Event<OnlineLoginStatusChangedEvent>::Callback callback) override;
+            void ClearLoginStatusChangedListeners() override;
 
         private:
+            void SetStatus(OnlineLoginStatus newStatus);
+
             OnlineLoginStatus status = OnlineLoginStatus::NotLoggedIn;
             OnlineUserId localUserId;
             std::string displayName;
             std::string lastError;
+            Core::Event<OnlineLoginStatusChangedEvent> loginStatusChanged;
         };
 #pragma warning(pop)
 

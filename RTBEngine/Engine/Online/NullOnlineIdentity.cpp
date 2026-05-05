@@ -1,5 +1,7 @@
 #include "NullOnlineIdentity.h"
 
+#include <utility>
+
 namespace RTBEngine {
     namespace Online {
 
@@ -10,7 +12,7 @@ namespace RTBEngine {
             displayName = options.displayName.empty() ? "LocalUser" : options.displayName;
             localUserId = OnlineUserId(OnlineUserIdType::Local, displayName);
             lastError.clear();
-            status = OnlineLoginStatus::LoggedIn;
+            SetStatus(OnlineLoginStatus::LoggedIn);
 
             return OnlineResult::Success("Null identity logged in.");
         }
@@ -18,10 +20,16 @@ namespace RTBEngine {
         void NullOnlineIdentity::Logout()
         {
             // Reset local-only identity state.
-            status = OnlineLoginStatus::NotLoggedIn;
+            const bool wasLoggedIn = status != OnlineLoginStatus::NotLoggedIn;
             localUserId = OnlineUserId();
             displayName.clear();
             lastError.clear();
+
+            if (wasLoggedIn) {
+                SetStatus(OnlineLoginStatus::NotLoggedIn);
+            } else {
+                status = OnlineLoginStatus::NotLoggedIn;
+            }
         }
 
         OnlineLoginStatus NullOnlineIdentity::GetLoginStatus() const
@@ -42,6 +50,30 @@ namespace RTBEngine {
         const char* NullOnlineIdentity::GetLastError() const
         {
             return lastError.c_str();
+        }
+
+        Core::EventSubscription NullOnlineIdentity::SubscribeLoginStatusChanged(Core::Event<OnlineLoginStatusChangedEvent>::Callback callback)
+        {
+            // Allow external systems to react to local identity state changes.
+            return loginStatusChanged.Subscribe(std::move(callback));
+        }
+
+        void NullOnlineIdentity::ClearLoginStatusChangedListeners()
+        {
+            // Drop all identity listeners, usually during tool shutdown or scene reset.
+            loginStatusChanged.Clear();
+        }
+
+        void NullOnlineIdentity::SetStatus(OnlineLoginStatus newStatus)
+        {
+            const OnlineLoginStatus previousStatus = status;
+            status = newStatus;
+
+            if (previousStatus == newStatus) {
+                return;
+            }
+
+            loginStatusChanged.Invoke({ previousStatus, status, localUserId });
         }
 
     }

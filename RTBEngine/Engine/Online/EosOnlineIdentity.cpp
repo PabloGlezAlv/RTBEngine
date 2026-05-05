@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace {
 
@@ -82,7 +83,7 @@ namespace RTBEngine {
                 lastError.clear();
                 localUserId = OnlineUserId();
                 localProductUserId = nullptr;
-                status = OnlineLoginStatus::LoggingIn;
+                SetStatus(OnlineLoginStatus::LoggingIn);
 
                 // Kick off the first async EOS call.
                 StartDeviceIdCreation();
@@ -91,6 +92,8 @@ namespace RTBEngine {
 
             void Logout()
             {
+                const bool hadActiveState = status != OnlineLoginStatus::NotLoggedIn;
+
                 // Tell EOS to discard the local Product User session if one exists.
                 if (connectHandle && localProductUserId) {
                     EOS_Connect_LogoutOptions options{};
@@ -100,11 +103,16 @@ namespace RTBEngine {
                 }
 
                 // Clear engine-side identity state immediately.
-                status = OnlineLoginStatus::NotLoggedIn;
                 localUserId = OnlineUserId();
                 localProductUserId = nullptr;
                 displayName.clear();
                 lastError.clear();
+
+                if (hadActiveState) {
+                    SetStatus(OnlineLoginStatus::NotLoggedIn);
+                } else {
+                    status = OnlineLoginStatus::NotLoggedIn;
+                }
             }
 
             OnlineLoginStatus GetLoginStatus() const
@@ -125,6 +133,18 @@ namespace RTBEngine {
             const char* GetLastError() const
             {
                 return lastError.c_str();
+            }
+
+            Core::EventSubscription SubscribeLoginStatusChanged(Core::Event<OnlineLoginStatusChangedEvent>::Callback callback)
+            {
+                // Register an external listener for async EOS identity state changes.
+                return loginStatusChanged.Subscribe(std::move(callback));
+            }
+
+            void ClearLoginStatusChangedListeners()
+            {
+                // Drop all listeners owned by this identity instance.
+                loginStatusChanged.Clear();
             }
 
         private:
@@ -185,8 +205,8 @@ namespace RTBEngine {
                 // Store both the EOS handle and the engine-facing user id.
                 localProductUserId = productUserId;
                 localUserId = OnlineUserId(OnlineUserIdType::EOSProductUser, productUserIdText);
-                status = OnlineLoginStatus::LoggedIn;
                 lastError.clear();
+                SetStatus(OnlineLoginStatus::LoggedIn);
 
                 RTB_INFO("OnlineIdentity: EOS Device ID login completed. ProductUserId: " + productUserIdText);
             }
@@ -194,11 +214,23 @@ namespace RTBEngine {
             void FailLogin(const std::string& message, OnlineErrorCode)
             {
                 // Move identity into an error state and clear any partial user data.
-                status = OnlineLoginStatus::Error;
                 localProductUserId = nullptr;
                 localUserId = OnlineUserId();
                 lastError = message;
+                SetStatus(OnlineLoginStatus::Error);
                 RTB_ERROR("OnlineIdentity: " + lastError);
+            }
+
+            void SetStatus(OnlineLoginStatus newStatus)
+            {
+                const OnlineLoginStatus previousStatus = status;
+                status = newStatus;
+
+                if (previousStatus == newStatus) {
+                    return;
+                }
+
+                loginStatusChanged.Invoke({ previousStatus, status, localUserId });
             }
 
             static void EOS_CALL OnCreateDeviceIdCompleted(const EOS_Connect_CreateDeviceIdCallbackInfo* data)
@@ -287,6 +319,7 @@ namespace RTBEngine {
             OnlineUserId localUserId;
             std::string displayName;
             std::string lastError;
+            Core::Event<OnlineLoginStatusChangedEvent> loginStatusChanged;
         };
 
         EosOnlineIdentity::EosOnlineIdentity()
@@ -338,6 +371,18 @@ namespace RTBEngine {
         const char* EosOnlineIdentity::GetLastError() const
         {
             return impl->GetLastError();
+        }
+
+        Core::EventSubscription EosOnlineIdentity::SubscribeLoginStatusChanged(Core::Event<OnlineLoginStatusChangedEvent>::Callback callback)
+        {
+            // Forward listener registration to the private implementation.
+            return impl->SubscribeLoginStatusChanged(std::move(callback));
+        }
+
+        void EosOnlineIdentity::ClearLoginStatusChangedListeners()
+        {
+            // Forward listener clearing to the private implementation.
+            impl->ClearLoginStatusChangedListeners();
         }
 
     }

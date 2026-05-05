@@ -25,6 +25,8 @@ namespace RTBEngine {
             const OnlineUserId& GetLocalUserId() const override;
             const std::string& GetDisplayName() const override;
             const char* GetLastError() const override;
+            Core::EventSubscription SubscribeLoginStatusChanged(Core::Event<OnlineLoginStatusChangedEvent>::Callback callback) override;
+            void ClearLoginStatusChangedListeners() override;
 
         private:
             class Impl;
