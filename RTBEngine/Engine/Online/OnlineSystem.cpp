@@ -107,6 +107,18 @@ namespace RTBEngine {
             return backend ? backend->GetIdentity() : nullptr;
         }
 
+        IOnlineLobby* OnlineSystem::GetLobby()
+        {
+            // Lobby is only available while a backend instance exists.
+            return backend ? backend->GetLobby() : nullptr;
+        }
+
+        const IOnlineLobby* OnlineSystem::GetLobby() const
+        {
+            // Const overload for read-only diagnostics and tools.
+            return backend ? backend->GetLobby() : nullptr;
+        }
+
         // Centralized backend factory
         std::unique_ptr<IOnlineBackend> OnlineSystem::CreateBackend(OnlineBackendType type)
         {

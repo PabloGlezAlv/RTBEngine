@@ -6,6 +6,11 @@
 namespace RTBEngine {
     namespace Online {
 
+        NullOnlineBackend::NullOnlineBackend()
+            : lobby(&identity)
+        {
+        }
+
         // The null backend follows the same lifecycle contract without touching any SDK.
         const char* NullOnlineBackend::GetName() const
         {
@@ -53,6 +58,17 @@ namespace RTBEngine {
         const IOnlineIdentity* NullOnlineBackend::GetIdentity() const
         {
             return &identity;
+        }
+
+        IOnlineLobby* NullOnlineBackend::GetLobby()
+        {
+            // Expose the offline lobby implementation.
+            return &lobby;
+        }
+
+        const IOnlineLobby* NullOnlineBackend::GetLobby() const
+        {
+            return &lobby;
         }
 
     }

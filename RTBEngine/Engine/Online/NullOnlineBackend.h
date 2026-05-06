@@ -2,6 +2,7 @@
 
 #include "IOnlineBackend.h"
 #include "NullOnlineIdentity.h"
+#include "NullOnlineLobby.h"
 
 namespace RTBEngine {
     namespace Online {
@@ -11,6 +12,8 @@ namespace RTBEngine {
         // No-op backend used for tests, offline builds, and future editor workflows.
         class RTB_API NullOnlineBackend final : public IOnlineBackend {
         public:
+            NullOnlineBackend();
+
             const char* GetName() const override;
             bool Initialize(const OnlineConfig& config) override;
             void Tick(float deltaTime) override;
@@ -19,10 +22,13 @@ namespace RTBEngine {
             const char* GetLastError() const override;
             IOnlineIdentity* GetIdentity() override;
             const IOnlineIdentity* GetIdentity() const override;
+            IOnlineLobby* GetLobby() override;
+            const IOnlineLobby* GetLobby() const override;
 
         private:
             bool initialized = false;
             NullOnlineIdentity identity;
+            NullOnlineLobby lobby;
         };
 #pragma warning(pop)
 

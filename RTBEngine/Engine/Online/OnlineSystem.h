@@ -3,6 +3,7 @@
 #include "../RTBEngineAPI.h"
 #include "IOnlineBackend.h"
 #include "IOnlineIdentity.h"
+#include "IOnlineLobby.h"
 #include "OnlineTypes.h"
 
 #include <memory>
@@ -31,6 +32,8 @@ namespace RTBEngine {
             const std::string& GetLastError() const { return lastError; }
             IOnlineIdentity* GetIdentity();
             const IOnlineIdentity* GetIdentity() const;
+            IOnlineLobby* GetLobby();
+            const IOnlineLobby* GetLobby() const;
 
         private:
             OnlineSystem() = default;

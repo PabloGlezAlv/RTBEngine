@@ -9,6 +9,7 @@ namespace RTBEngine {
     namespace Online {
 
         class EosOnlineIdentity;
+        class EosOnlineLobby;
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
@@ -27,6 +28,8 @@ namespace RTBEngine {
             const char* GetLastError() const override;
             IOnlineIdentity* GetIdentity() override;
             const IOnlineIdentity* GetIdentity() const override;
+            IOnlineLobby* GetLobby() override;
+            const IOnlineLobby* GetLobby() const override;
 
         private:
             // Stored as void* to keep EOS types out of the public engine header surface.
@@ -37,6 +40,7 @@ namespace RTBEngine {
             bool initialized = false;
             std::string lastError;
             std::unique_ptr<EosOnlineIdentity> identity;
+            std::unique_ptr<EosOnlineLobby> lobby;
         };
 #pragma warning(pop)
 

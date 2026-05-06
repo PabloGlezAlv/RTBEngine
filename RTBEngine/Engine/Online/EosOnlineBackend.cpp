@@ -1,6 +1,7 @@
 #include "EosOnlineBackend.h"
 
 #include "EosOnlineIdentity.h"
+#include "EosOnlineLobby.h"
 #include "OnlineConfig.h"
 #include "../Core/Logger.h"
 
@@ -90,6 +91,7 @@ namespace RTBEngine {
 
         EosOnlineBackend::EosOnlineBackend()
             : identity(std::make_unique<EosOnlineIdentity>())
+            , lobby(std::make_unique<EosOnlineLobby>(identity.get()))
         {
         }
 
@@ -177,6 +179,7 @@ namespace RTBEngine {
 
             // Give identity access to the platform so it can resolve EOS Connect.
             identity->SetPlatformHandle(platformHandle);
+            lobby->SetPlatformHandle(platformHandle);
 
             initialized = true;
             RTB_INFO(std::string("OnlineSystem: EOS backend initialized. SDK version: ") + EOS_GetVersion());
@@ -198,6 +201,10 @@ namespace RTBEngine {
         void EosOnlineBackend::Shutdown()
         {
             // Identity must forget EOS handles before the platform is released.
+            if (lobby) {
+                lobby->ResetPlatformHandle();
+            }
+
             if (identity) {
                 identity->ResetPlatformHandle();
             }
@@ -245,6 +252,16 @@ namespace RTBEngine {
         const IOnlineIdentity* EosOnlineBackend::GetIdentity() const
         {
             return identity.get();
+        }
+
+        IOnlineLobby* EosOnlineBackend::GetLobby()
+        {
+            return lobby.get();
+        }
+
+        const IOnlineLobby* EosOnlineBackend::GetLobby() const
+        {
+            return lobby.get();
         }
 
     }

@@ -234,13 +234,22 @@
     <ClCompile Include="Engine\Online\EosOnlineIdentity.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Online\EosOnlineLobby.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Online\IOnlineIdentity.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Online\IOnlineLobby.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Online\NullOnlineBackend.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Online\NullOnlineIdentity.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Online\NullOnlineLobby.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Online\OnlineResult.cpp">
@@ -458,16 +467,25 @@
     <ClInclude Include="Engine\Online\EosOnlineIdentity.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Online\EosOnlineLobby.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Online\IOnlineBackend.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Online\IOnlineIdentity.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Online\IOnlineLobby.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Online\NullOnlineBackend.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Online\NullOnlineIdentity.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Online\NullOnlineLobby.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Online\OnlineConfig.h">
