@@ -32,6 +32,7 @@ namespace RTBEngine {
             bool isServer = false;
             bool loadingInEditor = false;
             bool disableOverlay = true;
+            std::string cacheDirectory;
             std::uint32_t tickBudgetMilliseconds = 0;
         };
 #pragma warning(pop)

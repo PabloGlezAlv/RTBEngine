@@ -10,8 +10,14 @@ namespace RTBEngine {
                 return "NotInLobby";
             case OnlineLobbyState::Creating:
                 return "Creating";
+            case OnlineLobbyState::Searching:
+                return "Searching";
+            case OnlineLobbyState::Joining:
+                return "Joining";
             case OnlineLobbyState::InLobby:
                 return "InLobby";
+            case OnlineLobbyState::Leaving:
+                return "Leaving";
             case OnlineLobbyState::Destroying:
                 return "Destroying";
             case OnlineLobbyState::Error:

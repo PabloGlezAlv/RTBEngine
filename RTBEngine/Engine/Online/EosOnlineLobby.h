@@ -18,11 +18,16 @@ namespace RTBEngine {
 
             void SetPlatformHandle(void* handle);
             void ResetPlatformHandle();
+            void Tick(float deltaTime);
 
             OnlineResult CreateLobby(const OnlineCreateLobbyOptions& options) override;
+            OnlineResult FindLobbies(const OnlineFindLobbiesOptions& options) override;
+            OnlineResult JoinLobby(const OnlineJoinLobbyOptions& options) override;
+            OnlineResult LeaveLobby() override;
             OnlineResult DestroyLobby() override;
             OnlineLobbyState GetState() const override;
             const OnlineLobbyInfo& GetCurrentLobby() const override;
+            const std::vector<OnlineLobbyInfo>& GetSearchResults() const override;
             const char* GetLastError() const override;
             Core::EventSubscription SubscribeLobbyStatusChanged(Core::Event<OnlineLobbyStatusChangedEvent>::Callback callback) override;
             void ClearLobbyStatusChangedListeners() override;

@@ -155,6 +155,7 @@ namespace RTBEngine {
             platformOptions.ClientCredentials.ClientId = config.clientId.c_str();
             platformOptions.ClientCredentials.ClientSecret = config.clientSecret.c_str();
             platformOptions.bIsServer = config.isServer ? EOS_TRUE : EOS_FALSE;
+            platformOptions.CacheDirectory = config.cacheDirectory.empty() ? nullptr : config.cacheDirectory.c_str();
             platformOptions.TickBudgetInMilliseconds = config.tickBudgetMilliseconds;
 
             if (config.loadingInEditor) {
@@ -188,13 +189,17 @@ namespace RTBEngine {
 
         // EOS processes asynchronous SDK work from this call.
         // Future login, lobby, and P2P callbacks will depend on this running every frame.
-        void EosOnlineBackend::Tick(float)
+        void EosOnlineBackend::Tick(float deltaTime)
         {
             if (!platformHandle) {
                 return;
             }
 
             EOS_Platform_Tick(static_cast<EOS_HPlatform>(platformHandle));
+
+            if (lobby) {
+                lobby->Tick(deltaTime);
+            }
         }
 
         // Releases the platform handle before shutting down the global EOS SDK state.
