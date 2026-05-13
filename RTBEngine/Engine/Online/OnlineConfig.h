@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../RTBEngineAPI.h"
+#include "IOnlineIdentity.h"
 #include "OnlineTypes.h"
 
 #include <cstdint>
@@ -34,6 +35,12 @@ namespace RTBEngine {
             bool disableOverlay = true;
             std::string cacheDirectory;
             std::uint32_t tickBudgetMilliseconds = 0;
+
+            // Default local-user login used by runtime scenes/tools that auto-login.
+            OnlineLoginType loginType = OnlineLoginType::DeviceId;
+            std::string loginDisplayName;
+            std::string developerAuthHost = "localhost:6300";
+            std::string developerAuthCredentialName;
         };
 #pragma warning(pop)
 

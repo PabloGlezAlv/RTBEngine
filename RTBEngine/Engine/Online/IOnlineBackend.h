@@ -7,6 +7,7 @@ namespace RTBEngine {
 
         class IOnlineIdentity;
         class IOnlineLobby;
+        class IOnlineTransport;
         struct OnlineConfig;
 
         // Backend contract for the online layer.
@@ -24,6 +25,8 @@ namespace RTBEngine {
             virtual const IOnlineIdentity* GetIdentity() const = 0;
             virtual IOnlineLobby* GetLobby() = 0;
             virtual const IOnlineLobby* GetLobby() const = 0;
+            virtual IOnlineTransport* GetTransport() = 0;
+            virtual const IOnlineTransport* GetTransport() const = 0;
         };
 
     }

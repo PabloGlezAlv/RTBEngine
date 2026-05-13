@@ -462,6 +462,34 @@ namespace RTBEngine {
                         : 0;
                 }
 
+                for (std::uint32_t memberIndex = 0; memberIndex < memberCount; ++memberIndex) {
+                    EOS_LobbyDetails_GetMemberByIndexOptions memberOptions{};
+                    memberOptions.ApiVersion = EOS_LOBBYDETAILS_GETMEMBERBYINDEX_API_LATEST;
+                    memberOptions.MemberIndex = memberIndex;
+
+                    EOS_ProductUserId memberId = EOS_LobbyDetails_GetMemberByIndex(detailsHandle, &memberOptions);
+                    const std::string memberIdText = ProductUserIdToString(memberId);
+                    if (memberIdText.empty()) {
+                        continue;
+                    }
+
+                    OnlineUserId memberUserId(OnlineUserIdType::EOSProductUser, memberIdText);
+                    const auto exists = std::find(
+                        lobbyInfo.memberUserIds.begin(),
+                        lobbyInfo.memberUserIds.end(),
+                        memberUserId);
+                    if (exists == lobbyInfo.memberUserIds.end()) {
+                        lobbyInfo.memberUserIds.push_back(std::move(memberUserId));
+                    }
+                }
+
+                if (lobbyInfo.memberUserIds.size() > lobbyInfo.currentMembers) {
+                    lobbyInfo.currentMembers = static_cast<std::uint32_t>(lobbyInfo.memberUserIds.size());
+                    lobbyInfo.availableSlots = lobbyInfo.maxMembers > lobbyInfo.currentMembers
+                        ? lobbyInfo.maxMembers - lobbyInfo.currentMembers
+                        : 0;
+                }
+
                 return lobbyInfo;
             }
 
@@ -565,6 +593,16 @@ namespace RTBEngine {
                     refreshedLobby.availableSlots = refreshedLobby.maxMembers > refreshedLobby.currentMembers
                         ? refreshedLobby.maxMembers - refreshedLobby.currentMembers
                         : 0;
+                }
+
+                for (const OnlineUserId& knownMember : currentLobby.memberUserIds) {
+                    const auto exists = std::find(
+                        refreshedLobby.memberUserIds.begin(),
+                        refreshedLobby.memberUserIds.end(),
+                        knownMember);
+                    if (exists == refreshedLobby.memberUserIds.end()) {
+                        refreshedLobby.memberUserIds.push_back(knownMember);
+                    }
                 }
 
                 currentLobby = std::move(refreshedLobby);
@@ -814,11 +852,14 @@ namespace RTBEngine {
                     OnlineUserIdType::EOSProductUser,
                     ProductUserIdToString(data->TargetUserId));
                 const std::string targetUserText = targetUserId.GetValue();
+                const bool targetWasKnown = !targetUserText.empty() &&
+                    knownMemberIds.find(targetUserText) != knownMemberIds.end();
 
                 switch (data->CurrentStatus) {
                 case EOS_ELobbyMemberStatus::EOS_LMS_JOINED:
+                    TrackKnownMember(targetUserId);
                     // Count each EOS Product User once; duplicated local Device ID windows are not real EOS members.
-                    if (!targetUserText.empty() && knownMemberIds.insert(targetUserText).second) {
+                    if (!targetUserText.empty() && !targetWasKnown) {
                         ApplyKnownMemberFloor();
                     } else if (targetUserText.empty() && currentLobby.currentMembers < currentLobby.maxMembers) {
                         ++currentLobby.currentMembers;
@@ -829,6 +870,9 @@ namespace RTBEngine {
                 case EOS_ELobbyMemberStatus::EOS_LMS_KICKED:
                     if (!targetUserText.empty() && knownMemberIds.erase(targetUserText) > 0) {
                         currentLobby.currentMembers = static_cast<std::uint32_t>(knownMemberIds.size());
+                        currentLobby.memberUserIds.erase(
+                            std::remove(currentLobby.memberUserIds.begin(), currentLobby.memberUserIds.end(), targetUserId),
+                            currentLobby.memberUserIds.end());
                     } else if (currentLobby.currentMembers > 0) {
                         --currentLobby.currentMembers;
                     }
@@ -857,18 +901,30 @@ namespace RTBEngine {
                     std::to_string(currentLobby.maxMembers));
 
                 RefreshCurrentLobbyFromDetails();
+                lobbyStatusChanged.Invoke({ state, state, currentLobby });
             }
 
             void TrackKnownMember(const OnlineUserId& userId)
             {
                 if (userId.GetType() == OnlineUserIdType::EOSProductUser && !userId.GetValue().empty()) {
                     knownMemberIds.insert(userId.GetValue());
+                    const auto exists = std::find(
+                        currentLobby.memberUserIds.begin(),
+                        currentLobby.memberUserIds.end(),
+                        userId);
+                    if (exists == currentLobby.memberUserIds.end()) {
+                        currentLobby.memberUserIds.push_back(userId);
+                    }
                 }
             }
 
             void SeedKnownMembersFromCurrentLobby()
             {
                 TrackKnownMember(currentLobby.ownerUserId);
+                const std::vector<OnlineUserId> currentMembers = currentLobby.memberUserIds;
+                for (const OnlineUserId& memberUserId : currentMembers) {
+                    TrackKnownMember(memberUserId);
+                }
                 if (identity && identity->IsLoggedIn()) {
                     TrackKnownMember(identity->GetLocalUserId());
                 }

@@ -50,6 +50,7 @@ namespace RTBEngine {
             currentLobby = {};
             currentLobby.lobbyId = "null-lobby-" + std::to_string(nextLobbyId++);
             currentLobby.ownerUserId = identity->GetLocalUserId();
+            currentLobby.memberUserIds = { currentLobby.ownerUserId };
             currentLobby.currentMembers = 1;
             currentLobby.maxMembers = maxMembers;
             currentLobby.availableSlots = maxMembers > 0 ? maxMembers - 1 : 0;
@@ -89,6 +90,7 @@ namespace RTBEngine {
             OnlineLobbyInfo result;
             result.lobbyId = options.lobbyId;
             result.ownerUserId = OnlineUserId(OnlineUserIdType::Local, "NullHost");
+            result.memberUserIds = { result.ownerUserId };
             result.currentMembers = 1;
             result.maxMembers = 6;
             result.availableSlots = 5;
@@ -126,6 +128,7 @@ namespace RTBEngine {
             currentLobby = {};
             currentLobby.lobbyId = options.lobbyId;
             currentLobby.ownerUserId = OnlineUserId(OnlineUserIdType::Local, "NullHost");
+            currentLobby.memberUserIds = { currentLobby.ownerUserId, identity->GetLocalUserId() };
             currentLobby.currentMembers = 2;
             currentLobby.maxMembers = 6;
             currentLobby.availableSlots = 4;

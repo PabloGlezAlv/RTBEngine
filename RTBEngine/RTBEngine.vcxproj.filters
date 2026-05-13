@@ -237,6 +237,9 @@
     <ClCompile Include="Engine\Online\EosOnlineLobby.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Online\EosP2PTransport.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Online\IOnlineIdentity.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
@@ -250,6 +253,9 @@
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Online\NullOnlineLobby.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Online\NullNetworkTransport.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Online\OnlineResult.cpp">
@@ -470,6 +476,9 @@
     <ClInclude Include="Engine\Online\EosOnlineLobby.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Online\EosP2PTransport.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Online\IOnlineBackend.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
@@ -479,6 +488,9 @@
     <ClInclude Include="Engine\Online\IOnlineLobby.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Online\IOnlineTransport.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Online\NullOnlineBackend.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
@@ -486,6 +498,9 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Online\NullOnlineLobby.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Online\NullNetworkTransport.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Online\OnlineConfig.h">

@@ -11,6 +11,8 @@ namespace RTBEngine {
                 return "DeviceId";
             case OnlineLoginType::DeveloperAuth:
                 return "DeveloperAuth";
+            case OnlineLoginType::AccountPortal:
+                return "AccountPortal";
             default:
                 return "Unknown";
             }

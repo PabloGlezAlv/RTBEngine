@@ -2,6 +2,9 @@
 
 #include "IOnlineBackend.h"
 
+#include <eos_common.h>
+#include <eos_ui_types.h>
+
 #include <memory>
 #include <string>
 
@@ -10,6 +13,7 @@ namespace RTBEngine {
 
         class EosOnlineIdentity;
         class EosOnlineLobby;
+        class EosP2PTransport;
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
@@ -30,17 +34,32 @@ namespace RTBEngine {
             const IOnlineIdentity* GetIdentity() const override;
             IOnlineLobby* GetLobby() override;
             const IOnlineLobby* GetLobby() const override;
+            IOnlineTransport* GetTransport() override;
+            const IOnlineTransport* GetTransport() const override;
 
         private:
+            void RegisterUiDiagnostics();
+            void RemoveUiDiagnostics();
+            bool ShouldDeferTickForExternalAuthUi() const;
+            static void EOS_CALL OnUiDisplaySettingsUpdated(const EOS_UI_OnDisplaySettingsUpdatedCallbackInfo* data);
+
             // Stored as void* to keep EOS types out of the public engine header surface.
             void* platformHandle = nullptr;
+            void* uiHandle = nullptr;
+            EOS_NotificationId uiDisplaySettingsNotificationId = EOS_INVALID_NOTIFICATIONID;
 
             // Tracks ownership so we only call EOS_Shutdown if this backend called EOS_Initialize.
             bool eosInitializedByBackend = false;
             bool initialized = false;
+            bool uiDisplayStateKnown = false;
+            bool eosOverlayVisible = false;
+            bool eosOverlayExclusiveInput = false;
+            bool externalAuthUiFlowActive = false;
+            bool externalAuthUiPauseLogged = false;
             std::string lastError;
             std::unique_ptr<EosOnlineIdentity> identity;
             std::unique_ptr<EosOnlineLobby> lobby;
+            std::unique_ptr<EosP2PTransport> transport;
         };
 #pragma warning(pop)
 

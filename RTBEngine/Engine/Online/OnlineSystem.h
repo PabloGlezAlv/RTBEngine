@@ -4,6 +4,7 @@
 #include "IOnlineBackend.h"
 #include "IOnlineIdentity.h"
 #include "IOnlineLobby.h"
+#include "IOnlineTransport.h"
 #include "OnlineTypes.h"
 
 #include <memory>
@@ -30,10 +31,13 @@ namespace RTBEngine {
             OnlineState GetState() const { return state; }
             OnlineBackendType GetBackendType() const { return backendType; }
             const std::string& GetLastError() const { return lastError; }
+            const OnlineLoginOptions& GetDefaultLoginOptions() const { return defaultLoginOptions; }
             IOnlineIdentity* GetIdentity();
             const IOnlineIdentity* GetIdentity() const;
             IOnlineLobby* GetLobby();
             const IOnlineLobby* GetLobby() const;
+            IOnlineTransport* GetTransport();
+            const IOnlineTransport* GetTransport() const;
 
         private:
             OnlineSystem() = default;
@@ -48,6 +52,7 @@ namespace RTBEngine {
             bool failApplicationOnError = false;
             OnlineState state = OnlineState::Disabled;
             OnlineBackendType backendType = OnlineBackendType::EOS;
+            OnlineLoginOptions defaultLoginOptions;
             std::string lastError;
             std::unique_ptr<IOnlineBackend> backend;
         };

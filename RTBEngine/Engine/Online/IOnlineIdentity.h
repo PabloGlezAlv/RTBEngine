@@ -13,7 +13,8 @@ namespace RTBEngine {
         // Login methods the engine will support first.
         enum class OnlineLoginType {
             DeviceId,
-            DeveloperAuth
+            DeveloperAuth,
+            AccountPortal
         };
 
         // Current state of the local user's identity session.

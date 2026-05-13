@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IOnlineBackend.h"
+#include "NullNetworkTransport.h"
 #include "NullOnlineIdentity.h"
 #include "NullOnlineLobby.h"
 
@@ -24,11 +25,14 @@ namespace RTBEngine {
             const IOnlineIdentity* GetIdentity() const override;
             IOnlineLobby* GetLobby() override;
             const IOnlineLobby* GetLobby() const override;
+            IOnlineTransport* GetTransport() override;
+            const IOnlineTransport* GetTransport() const override;
 
         private:
             bool initialized = false;
             NullOnlineIdentity identity;
             NullOnlineLobby lobby;
+            NullNetworkTransport transport;
         };
 #pragma warning(pop)
 

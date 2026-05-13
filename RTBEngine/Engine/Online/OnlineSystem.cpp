@@ -33,6 +33,10 @@ namespace RTBEngine {
             enabled = config.enabled;
             failApplicationOnError = config.failApplicationOnError;
             backendType = config.backend;
+            defaultLoginOptions.type = config.loginType;
+            defaultLoginOptions.displayName = config.loginDisplayName;
+            defaultLoginOptions.developerAuthHost = config.developerAuthHost;
+            defaultLoginOptions.developerAuthCredentialName = config.developerAuthCredentialName;
             lastError.clear();
 
             // Disabled online is a valid no-op startup mode.
@@ -92,6 +96,7 @@ namespace RTBEngine {
             // Return the facade to its default disabled state.
             enabled = false;
             failApplicationOnError = false;
+            defaultLoginOptions = OnlineLoginOptions();
             state = OnlineState::Disabled;
         }
 
@@ -117,6 +122,18 @@ namespace RTBEngine {
         {
             // Const overload for read-only diagnostics and tools.
             return backend ? backend->GetLobby() : nullptr;
+        }
+
+        IOnlineTransport* OnlineSystem::GetTransport()
+        {
+            // Transport is only available while a backend instance exists.
+            return backend ? backend->GetTransport() : nullptr;
+        }
+
+        const IOnlineTransport* OnlineSystem::GetTransport() const
+        {
+            // Const overload for read-only diagnostics and tools.
+            return backend ? backend->GetTransport() : nullptr;
         }
 
         // Centralized backend factory

@@ -31,6 +31,7 @@
 // Online
 #include "Online/IOnlineIdentity.h"
 #include "Online/IOnlineLobby.h"
+#include "Online/IOnlineTransport.h"
 #include "Online/OnlineConfig.h"
 #include "Online/OnlineResult.h"
 #include "Online/OnlineSystem.h"

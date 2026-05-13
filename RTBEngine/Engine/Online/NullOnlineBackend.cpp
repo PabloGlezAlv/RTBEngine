@@ -71,5 +71,16 @@ namespace RTBEngine {
             return &lobby;
         }
 
+        IOnlineTransport* NullOnlineBackend::GetTransport()
+        {
+            // Expose the offline transport implementation.
+            return &transport;
+        }
+
+        const IOnlineTransport* NullOnlineBackend::GetTransport() const
+        {
+            return &transport;
+        }
+
     }
 }

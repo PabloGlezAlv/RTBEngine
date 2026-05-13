@@ -28,6 +28,7 @@ namespace RTBEngine {
         struct RTB_API OnlineLobbyInfo {
             std::string lobbyId;
             OnlineUserId ownerUserId;
+            std::vector<OnlineUserId> memberUserIds;
             std::uint32_t currentMembers = 0;
             std::uint32_t maxMembers = 0;
             std::uint32_t availableSlots = 0;
