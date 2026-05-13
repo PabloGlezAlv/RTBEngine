@@ -5,6 +5,7 @@
 #include "Elements/UIImage.h"
 #include "Elements/UIPanel.h"
 #include "Elements/UIText.h"
+#include "Elements/UIInputField.h"
 #include "EventSystem/IPointerEnterHandler.h"
 #include "EventSystem/IPointerExitHandler.h"
 #include "EventSystem/IPointerDownHandler.h"
@@ -366,6 +367,7 @@ namespace RTBEngine {
 		}
 
 		void CanvasSystem::ClearState() {
+			UIInputField::ClearFocusedField();
 			activeCanvases.clear();
 			activeScene = nullptr;
 			hoveredGameObject = nullptr;
@@ -465,6 +467,11 @@ namespace RTBEngine {
 			}
 
 			if (input.IsMouseButtonJustPressed(Input::MouseButton::Left)) {
+				UIInputField* inputField = currentGO ? currentGO->GetComponent<UIInputField>() : nullptr;
+				if (!inputField || !inputField->IsInteractable()) {
+					UIInputField::ClearFocusedField();
+				}
+
 				if (currentGO) {
 					pressedGameObject = currentGO;
 					draggingGameObject = currentGO;

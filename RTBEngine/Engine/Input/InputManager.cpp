@@ -28,6 +28,7 @@ namespace RTBEngine {
             mouseDeltaX = 0;
             mouseDeltaY = 0;
             scrollDelta = 0;
+            textInput.clear();
         }
 
         void InputManager::ProcessEvent(const SDL_Event& event) {
@@ -69,6 +70,10 @@ namespace RTBEngine {
 
             case SDL_MOUSEWHEEL:
                 scrollDelta = event.wheel.y;
+                break;
+
+            case SDL_TEXTINPUT:
+                textInput += event.text.text;
                 break;
 
             case SDL_WINDOWEVENT:

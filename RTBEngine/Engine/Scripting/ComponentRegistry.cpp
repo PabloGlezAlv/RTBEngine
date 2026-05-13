@@ -18,6 +18,7 @@
 #include "../UI/Elements/UIImage.h"
 #include "../UI/Elements/UIPanel.h"
 #include "../UI/Elements/UIButton.h"
+#include "../UI/Elements/UIInputField.h"
 #include "../UI/Elements/UIContainer.h"
 #include "../UI/Elements/UIJoystick.h"
 
@@ -89,6 +90,7 @@ namespace RTBEngine {
             RegisterComponent("UIImage", []() { return new UI::UIImage(); });
             RegisterComponent("UIPanel", []() { return new UI::UIPanel(); });
             RegisterComponent("UIButton", []() { return new UI::UIButton(); });
+            RegisterComponent("UIInputField", []() { return new UI::UIInputField(); });
             RegisterComponent("UIContainer", []() { return new UI::UIContainer(); });
             RegisterComponent("UIJoystick", []() { return new UI::UIJoystick(); });
         }

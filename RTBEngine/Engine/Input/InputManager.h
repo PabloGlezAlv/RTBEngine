@@ -1,5 +1,6 @@
 #pragma once
 #include "../RTBEngineAPI.h"
+#include <string>
 #include <unordered_map>
 #include "KeyCode.h"
 #include "MouseButton.h"
@@ -31,6 +32,7 @@ namespace RTBEngine {
             int GetMouseDeltaX() const { return mouseDeltaX; }
             int GetMouseDeltaY() const { return mouseDeltaY; }
             int GetScrollDelta() const { return scrollDelta; }
+            const std::string& GetTextInput() const { return textInput; }
 
             void SetMouseRelativeMode(bool enabled);
             void SetMousePosition(int x, int y);
@@ -55,6 +57,7 @@ namespace RTBEngine {
             int mouseDeltaX;
             int mouseDeltaY;
             int scrollDelta;
+            std::string textInput;
         };
 #pragma warning(pop)
 
