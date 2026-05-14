@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">RTBEngine mark</title>
+  <desc id="desc">A geometric engine mark made from a cube and orbit lines.</desc>
+  <defs>
+    <linearGradient id="paint" x1="12" y1="12" x2="84" y2="84" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#37d8c2"/>
+      <stop offset="0.55" stop-color="#8fd36b"/>
+      <stop offset="1" stop-color="#f5b84b"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="20" fill="#101216"/>
+  <path d="M48 18 73 32.5v29L48 76 23 61.5v-29L48 18Z" fill="none" stroke="url(#paint)" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M48 18v29m25-14.5L48 47 23 32.5M48 47v29" fill="none" stroke="#f7f4e8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>
+  <path d="M16 50c10 13 54 13 64 0M80 46c-10-13-54-13-64 0" fill="none" stroke="#37d8c2" stroke-width="3" stroke-linecap="round" opacity=".72"/>
+</svg>
