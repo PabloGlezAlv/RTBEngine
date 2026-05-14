@@ -72,6 +72,9 @@
     <ClCompile Include="Engine\ECS\MeshRenderer.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\ECS\TrailRenderer.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\ECS\Scene.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
@@ -395,6 +398,9 @@
     <ClInclude Include="Engine\ECS\MeshRenderer.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\ECS\TrailRenderer.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\ECS\Scene.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
@@ -703,6 +709,8 @@
     <None Include="Assets\Scenes\TestScene.lua" />
     <None Include="Default\Shaders\basic.frag" />
     <None Include="Default\Shaders\basic.vert" />
+    <None Include="Default\Shaders\trail_2d.frag" />
+    <None Include="Default\Shaders\trail_2d.vert" />
     <None Include="Default\Shaders\shadow.frag" />
     <None Include="Default\Shaders\shadow.vert" />
     <None Include="Default\Shaders\skybox.frag" />

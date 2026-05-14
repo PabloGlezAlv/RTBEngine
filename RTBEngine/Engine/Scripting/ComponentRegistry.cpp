@@ -12,6 +12,7 @@
 #include "../ECS/CapsuleColliderComponent.h"
 #include "../ECS/CameraComponent.h"
 #include "../ECS/FreeLookCamera.h"
+#include "../ECS/TrailRenderer.h"
 #include "../Animation/Animator.h"
 #include "../UI/Canvas.h"
 #include "../UI/Elements/UIText.h"
@@ -84,6 +85,7 @@ namespace RTBEngine {
             RegisterComponent("CapsuleColliderComponent", []() { return new ECS::CapsuleColliderComponent(); });
             RegisterComponent("CameraComponent", []() { return new ECS::CameraComponent(); });
             RegisterComponent("FreeLookCamera", []() { return new ECS::FreeLookCamera(); });
+            RegisterComponent("TrailRenderer", []() { return new ECS::TrailRenderer(); });
             RegisterComponent("Animator", []() { return new Animation::Animator(); });
             RegisterComponent("Canvas", []() { return new UI::Canvas(); });
             RegisterComponent("UIText", []() { return new UI::UIText(); });

@@ -48,6 +48,7 @@
 #include "ECS/SphereColliderComponent.h"
 #include "ECS/CapsuleColliderComponent.h"
 #include "ECS/CameraComponent.h"
+#include "ECS/TrailRenderer.h"
 
 // UI
 #include "UI/Canvas.h"

@@ -5,6 +5,7 @@
 #include "GameObject.h"
 #include "MeshRenderer.h"
 #include "CameraComponent.h"
+#include "TrailRenderer.h"
 #include "../Core/Logger.h"
 
 namespace {
@@ -284,6 +285,15 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 				}
 
 				renderer->Render(camera, lights);
+			}
+		}
+	}
+
+	for (auto& gameObject : gameObjects) {
+		if (gameObject && gameObject->IsActive()) {
+			TrailRenderer* trailRenderer = gameObject->GetComponent<TrailRenderer>();
+			if (trailRenderer && trailRenderer->IsEnabled()) {
+				trailRenderer->Render(camera);
 			}
 		}
 	}
