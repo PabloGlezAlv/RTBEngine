@@ -21,18 +21,10 @@
 #include <string>
 #include <vector>
 
-#if defined(_WIN32)
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <Windows.h>
-#endif
-
 namespace {
 
     constexpr long long AuthUiWaitingLogCooldownMilliseconds = 30000;
 
-    std::atomic<bool> gAuthExternalUiFlowObserved{ false };
     std::atomic<long long> gNextAuthUiWaitingLogAtMilliseconds{ 0 };
     std::atomic<int> gSuppressedAuthUiWaitingLogCount{ 0 };
 
@@ -56,7 +48,6 @@ namespace {
 
     void ResetAuthUiLogState()
     {
-        gAuthExternalUiFlowObserved.store(false);
         gNextAuthUiWaitingLogAtMilliseconds.store(0);
         gSuppressedAuthUiWaitingLogCount.store(0);
     }
@@ -90,22 +81,6 @@ namespace {
         return true;
     }
 
-    bool IsCurrentProcessForeground()
-    {
-#if defined(_WIN32)
-        const HWND foregroundWindow = GetForegroundWindow();
-        if (!foregroundWindow) {
-            return true;
-        }
-
-        DWORD foregroundProcessId = 0;
-        GetWindowThreadProcessId(foregroundWindow, &foregroundProcessId);
-        return foregroundProcessId == GetCurrentProcessId();
-#else
-        return true;
-#endif
-    }
-
     // Bridges EOS SDK log messages into the engine logger.
     void EOS_CALL OnEosLogMessage(const EOS_LogMessage* message)
     {
@@ -124,7 +99,6 @@ namespace {
         text += message->Message ? message->Message : "";
 
         if (IsAuthUiWaitingLog(text)) {
-            gAuthExternalUiFlowObserved.store(true);
             if (!ShouldEmitAuthUiWaitingLog(text)) {
                 return;
             }
@@ -249,6 +223,7 @@ namespace RTBEngine {
 
             const bool disableOverlayForThisPlatform =
                 config.disableOverlay || config.loadingInEditor || config.isServer;
+            authOverlayEnabled = !disableOverlayForThisPlatform;
             if (disableOverlayForThisPlatform) {
                 // Editor and server/headless instances should never open Epic UI.
                 platformOptions.Flags |= EOS_PF_DISABLE_OVERLAY;
@@ -273,6 +248,7 @@ namespace RTBEngine {
             RegisterUiDiagnostics();
 
             // Give identity access to the platform so it can resolve EOS Connect.
+            identity->SetAuthOverlayDiagnosticsEnabled(authOverlayEnabled);
             identity->SetPlatformHandle(platformHandle);
             lobby->SetPlatformHandle(platformHandle);
             transport->SetPlatformHandle(platformHandle);
@@ -288,32 +264,6 @@ namespace RTBEngine {
         {
             if (!platformHandle) {
                 return;
-            }
-
-            if (gAuthExternalUiFlowObserved.exchange(false)) {
-                externalAuthUiFlowActive = true;
-            }
-
-            if (identity && identity->GetLoginStatus() != OnlineLoginStatus::LoggingIn) {
-                externalAuthUiFlowActive = false;
-                externalAuthUiPauseLogged = false;
-            }
-
-            if (ShouldDeferTickForExternalAuthUi()) {
-                if (!externalAuthUiPauseLogged) {
-                    RTB_INFO("OnlineSystem: EOS Auth external UI has focus; pausing Auth polling until the player window is focused again.");
-                    externalAuthUiPauseLogged = true;
-                }
-
-                if (lobby) {
-                    lobby->Tick(deltaTime);
-                }
-                return;
-            }
-
-            if (externalAuthUiPauseLogged) {
-                RTB_INFO("OnlineSystem: player window focused again; resuming EOS Auth polling.");
-                externalAuthUiPauseLogged = false;
             }
 
             EOS_Platform_Tick(static_cast<EOS_HPlatform>(platformHandle));
@@ -364,8 +314,7 @@ namespace RTBEngine {
             }
 
             initialized = false;
-            externalAuthUiFlowActive = false;
-            externalAuthUiPauseLogged = false;
+            authOverlayEnabled = false;
             ResetAuthUiLogState();
         }
 
@@ -412,19 +361,6 @@ namespace RTBEngine {
             eosOverlayExclusiveInput = false;
         }
 
-        bool EosOnlineBackend::ShouldDeferTickForExternalAuthUi() const
-        {
-            if (!externalAuthUiFlowActive || eosOverlayVisible) {
-                return false;
-            }
-
-            if (!identity || identity->GetLoginStatus() != OnlineLoginStatus::LoggingIn) {
-                return false;
-            }
-
-            return !IsCurrentProcessForeground();
-        }
-
         void EOS_CALL EosOnlineBackend::OnUiDisplaySettingsUpdated(
             const EOS_UI_OnDisplaySettingsUpdatedCallbackInfo* data)
         {
@@ -445,6 +381,14 @@ namespace RTBEngine {
             self->eosOverlayExclusiveInput = exclusiveInput;
 
             if (changed) {
+                const bool handledByIdentity =
+                    self->identity &&
+                    self->identity->NotifyAuthOverlayDisplayState(visible, exclusiveInput);
+
+                if (handledByIdentity) {
+                    return;
+                }
+
                 RTB_INFO(std::string("OnlineSystem: EOS overlay display state. Visible: ") +
                     (visible ? "true" : "false") +
                     " ExclusiveInput: " + (exclusiveInput ? "true" : "false"));

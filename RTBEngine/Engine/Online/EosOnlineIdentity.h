@@ -7,6 +7,8 @@
 namespace RTBEngine {
     namespace Online {
 
+        class EosOnlineBackend;
+
 #pragma warning(push)
 #pragma warning(disable: 4251)
         // EOS Connect identity implementation.
@@ -29,6 +31,11 @@ namespace RTBEngine {
             void ClearLoginStatusChangedListeners() override;
 
         private:
+            friend class EosOnlineBackend;
+
+            void SetAuthOverlayDiagnosticsEnabled(bool enabled);
+            bool NotifyAuthOverlayDisplayState(bool visible, bool exclusiveInput);
+
             class Impl;
             std::unique_ptr<Impl> impl;
         };

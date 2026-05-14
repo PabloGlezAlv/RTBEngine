@@ -9,11 +9,21 @@
 #include <eos_connect_types.h>
 #include <eos_sdk.h>
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <utility>
 
 namespace {
+
+    constexpr int AuthOverlayBounceTransitionLimit = 8;
+    constexpr long long AuthOverlayBounceTimeoutMilliseconds = 60000;
+
+    long long GetSteadyClockMilliseconds()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+    }
 
     std::string EosResultToString(EOS_EResult result)
     {
@@ -64,6 +74,14 @@ namespace {
         }
     }
 
+    std::string BuildAuthConfigurationChecklist()
+    {
+        return " Checklist: verify the DevAuthTool host/port and credential name, "
+            "the Epic account has access to the organization/product, an Epic Account "
+            "Services Application exists, BasicProfile is allowed in Application "
+            "Permissions, and the EOS Client is linked to that Application.";
+    }
+
     std::string BuildAuthFailureMessage(
         RTBEngine::Online::OnlineLoginType loginType,
         EOS_EResult result,
@@ -95,6 +113,11 @@ namespace {
                 "and recreate the DevAuth credential after portal changes.";
         }
 
+        if (result == EOS_EResult::EOS_Auth_AccountPortalLoadError) {
+            message += ". EOS could not load the Account Portal. Check overlay/browser availability, "
+                "network access, and EOS overlay configuration.";
+        }
+
         if (result == EOS_EResult::EOS_Auth_PinGrantCode) {
             message += ". EOS returned a PIN grant code; complete browser/device authorization.";
         }
@@ -107,6 +130,40 @@ namespace {
             message += ". EOS browser/device authorization expired; restart login.";
         }
 
+        if (loginType == RTBEngine::Online::OnlineLoginType::DeveloperAuth ||
+            loginType == RTBEngine::Online::OnlineLoginType::AccountPortal) {
+            message += BuildAuthConfigurationChecklist();
+        }
+
+        return message;
+    }
+
+    std::string BuildAuthOverlayBounceFailureMessage(
+        RTBEngine::Online::OnlineLoginType loginType,
+        const std::string& credentialName,
+        const std::string& host,
+        int transitionCount,
+        long long elapsedMilliseconds)
+    {
+        std::string message = std::string("EOS Auth overlay kept reopening/closing during ") +
+            RTBEngine::Online::ToString(loginType) + " login";
+
+        if (loginType == RTBEngine::Online::OnlineLoginType::DeveloperAuth) {
+            message += " for credential '" + credentialName + "' at '" + host + "'";
+        }
+
+        message += ". Transitions: " + std::to_string(transitionCount) +
+            " ElapsedMs: " + std::to_string(elapsedMilliseconds);
+
+        if (loginType == RTBEngine::Online::OnlineLoginType::DeveloperAuth) {
+            message += ". DevAuthTool was reached, so the likely failure is after DevAuth, "
+                "inside Epic Account Services consent/configuration.";
+        } else {
+            message += ". The likely failure is inside Epic Account Services "
+                "consent/configuration.";
+        }
+
+        message += BuildAuthConfigurationChecklist();
         return message;
     }
 
@@ -156,6 +213,13 @@ namespace {
         return message;
     }
 
+    bool IsFinalAuthFailureResult(EOS_EResult result)
+    {
+        return result == EOS_EResult::EOS_Auth_UserInterfaceRequired ||
+            result == EOS_EResult::EOS_Auth_AccountPortalLoadError ||
+            result == EOS_EResult::EOS_Auth_PinGrantExpired;
+    }
+
 }
 
 namespace RTBEngine {
@@ -177,6 +241,56 @@ namespace RTBEngine {
                     : nullptr;
 
                 AddAuthLoginStatusNotification();
+            }
+
+            void SetAuthOverlayDiagnosticsEnabled(bool enabled)
+            {
+                authOverlayDiagnosticsEnabled = enabled;
+            }
+
+            bool NotifyAuthOverlayDisplayState(bool visible, bool exclusiveInput)
+            {
+                if (!authLoginInFlight || status != OnlineLoginStatus::LoggingIn) {
+                    return false;
+                }
+
+                const bool changed =
+                    !authOverlayStateKnown ||
+                    authOverlayVisible != visible ||
+                    authOverlayExclusiveInput != exclusiveInput;
+
+                authOverlayStateKnown = true;
+                authOverlayVisible = visible;
+                authOverlayExclusiveInput = exclusiveInput;
+
+                if (!changed) {
+                    return true;
+                }
+
+                ++authOverlayTransitionCount;
+                const long long elapsedMilliseconds = GetAuthAttemptElapsedMilliseconds();
+
+                RTB_INFO(GetAuthAttemptPrefix() + " overlay transition #" +
+                    std::to_string(authOverlayTransitionCount) +
+                    ". Visible: " + (visible ? "true" : "false") +
+                    " ExclusiveInput: " + (exclusiveInput ? "true" : "false") +
+                    " ElapsedMs: " + std::to_string(elapsedMilliseconds));
+
+                if (!authOverlayBounceFailed &&
+                    (authOverlayTransitionCount > AuthOverlayBounceTransitionLimit ||
+                        elapsedMilliseconds > AuthOverlayBounceTimeoutMilliseconds)) {
+                    authOverlayBounceFailed = true;
+                    FailLogin(
+                        BuildAuthOverlayBounceFailureMessage(
+                            activeLoginType,
+                            developerAuthCredentialName,
+                            developerAuthHost,
+                            authOverlayTransitionCount,
+                            elapsedMilliseconds),
+                        OnlineErrorCode::BackendError);
+                }
+
+                return true;
             }
 
             void ResetPlatformHandle()
@@ -262,7 +376,7 @@ namespace RTBEngine {
                 }
 
                 // Clear engine-side identity state immediately.
-                EndAuthLoginAttempt();
+                EndAuthLoginAttempt("Canceled");
                 localUserId = OnlineUserId();
                 localEpicAccountId = nullptr;
                 localProductUserId = nullptr;
@@ -395,18 +509,70 @@ namespace RTBEngine {
 
             void BeginAuthLoginAttempt()
             {
+                ++authAttemptId;
                 authLoginInFlight = true;
+                authAttemptStartMilliseconds = GetSteadyClockMilliseconds();
                 authPinGrantLogged = false;
                 authPinGrantPendingLogged = false;
                 authCorrectiveActionLogged = false;
+                authOverlayStateKnown = false;
+                authOverlayVisible = false;
+                authOverlayExclusiveInput = false;
+                authOverlayTransitionCount = 0;
+                authOverlayBounceFailed = false;
+
+                RTB_INFO(GetAuthAttemptPrefix() + " started." + BuildAuthAttemptDetails());
             }
 
-            void EndAuthLoginAttempt()
+            void EndAuthLoginAttempt(const std::string& finalState = "Finished")
             {
+                if (authLoginInFlight) {
+                    RTB_INFO(GetAuthAttemptPrefix() + " finished. State: " + finalState +
+                        " ElapsedMs: " + std::to_string(GetAuthAttemptElapsedMilliseconds()) +
+                        " OverlayTransitions: " + std::to_string(authOverlayTransitionCount));
+                }
+
                 authLoginInFlight = false;
                 authPinGrantLogged = false;
                 authPinGrantPendingLogged = false;
                 authCorrectiveActionLogged = false;
+                authAttemptStartMilliseconds = 0;
+                authOverlayStateKnown = false;
+                authOverlayVisible = false;
+                authOverlayExclusiveInput = false;
+                authOverlayTransitionCount = 0;
+                authOverlayBounceFailed = false;
+            }
+
+            std::string GetAuthAttemptPrefix() const
+            {
+                return "OnlineIdentity: Auth attempt #" + std::to_string(authAttemptId);
+            }
+
+            std::string BuildAuthAttemptDetails() const
+            {
+                std::string details = " Type: ";
+                details += ToString(activeLoginType);
+                details += " OverlayEnabled: ";
+                details += (authOverlayDiagnosticsEnabled ? "true" : "false");
+
+                if (activeLoginType == OnlineLoginType::DeveloperAuth) {
+                    details += " Host: ";
+                    details += developerAuthHost.empty() ? "<empty>" : developerAuthHost;
+                    details += " Credential: ";
+                    details += developerAuthCredentialName.empty() ? "<empty>" : developerAuthCredentialName;
+                }
+
+                return details;
+            }
+
+            long long GetAuthAttemptElapsedMilliseconds() const
+            {
+                if (authAttemptStartMilliseconds <= 0) {
+                    return 0;
+                }
+
+                return GetSteadyClockMilliseconds() - authAttemptStartMilliseconds;
             }
 
             void AddAuthLoginStatusNotification()
@@ -566,7 +732,7 @@ namespace RTBEngine {
             void FailLogin(const std::string& message, OnlineErrorCode)
             {
                 // Move identity into an error state and clear any partial user data.
-                EndAuthLoginAttempt();
+                EndAuthLoginAttempt("Error: " + message);
                 localProductUserId = nullptr;
                 localUserId = OnlineUserId();
                 lastError = message;
@@ -642,9 +808,53 @@ namespace RTBEngine {
 
                 Impl* self = static_cast<Impl*>(data->ClientData);
                 const std::string resultText = EosResultToString(data->ResultCode);
-                RTB_INFO(std::string("OnlineIdentity: EOS Auth login callback for ") +
-                    ToString(self->activeLoginType) + ": " + resultText);
-                self->LogAuthAccounts("Auth login callback " + resultText);
+
+                if (!self->authLoginInFlight || self->status != OnlineLoginStatus::LoggingIn) {
+                    RTB_WARN(self->GetAuthAttemptPrefix() +
+                        " ignored stale EOS Auth login callback. Result: " + resultText);
+                    self->LogAuthAccounts("stale Auth login callback " + resultText);
+                    return;
+                }
+
+                RTB_INFO(self->GetAuthAttemptPrefix() + " callback. Result: " +
+                    resultText + self->BuildAuthAttemptDetails());
+                self->LogAuthAccounts(self->GetAuthAttemptPrefix() + " callback " + resultText);
+
+                if (data->ResultCode == EOS_EResult::EOS_Success) {
+                    self->EndAuthLoginAttempt("AuthSuccess");
+                    self->localEpicAccountId = data->SelectedAccountId
+                        ? data->SelectedAccountId
+                        : data->LocalUserId;
+
+                    if (!self->localEpicAccountId) {
+                        self->FailLogin("EOS Auth returned an invalid Epic Account ID.", OnlineErrorCode::BackendError);
+                        return;
+                    }
+
+                    self->LogAuthAccounts("successful Auth login");
+                    self->StartEpicConnectLogin(self->localEpicAccountId);
+                    return;
+                }
+
+                if (data->ResultCode == EOS_EResult::EOS_Auth_CorrectiveActionRequired) {
+                    if (!self->authCorrectiveActionLogged) {
+                        self->authCorrectiveActionLogged = true;
+                        RTB_WARN(BuildIntermediateAuthMessage(self->activeLoginType, data->ResultCode));
+                    }
+                    return;
+                }
+
+                if (IsFinalAuthFailureResult(data->ResultCode)) {
+                    self->FailLogin(
+                        BuildAuthFailureMessage(
+                            self->activeLoginType,
+                            data->ResultCode,
+                            self->developerAuthCredentialName,
+                            self->developerAuthHost),
+                        OnlineErrorCode::BackendError
+                    );
+                    return;
+                }
 
                 if (data->ResultCode == EOS_EResult::EOS_Auth_PinGrantCode) {
                     if (!self->authPinGrantLogged) {
@@ -662,21 +872,7 @@ namespace RTBEngine {
                     return;
                 }
 
-                if (data->ResultCode == EOS_EResult::EOS_Auth_CorrectiveActionRequired) {
-                    if (!self->authCorrectiveActionLogged) {
-                        self->authCorrectiveActionLogged = true;
-                        RTB_WARN(BuildIntermediateAuthMessage(self->activeLoginType, data->ResultCode));
-                    }
-                    return;
-                }
-
-                if (data->ResultCode != EOS_EResult::EOS_Success &&
-                    !EOS_EResult_IsOperationComplete(data->ResultCode)) {
-                    RTB_WARN(BuildIntermediateAuthMessage(self->activeLoginType, data->ResultCode));
-                    return;
-                }
-
-                if (data->ResultCode != EOS_EResult::EOS_Success) {
+                if (EOS_EResult_IsOperationComplete(data->ResultCode)) {
                     self->FailLogin(
                         BuildAuthFailureMessage(
                             self->activeLoginType,
@@ -688,18 +884,7 @@ namespace RTBEngine {
                     return;
                 }
 
-                self->EndAuthLoginAttempt();
-                self->localEpicAccountId = data->SelectedAccountId
-                    ? data->SelectedAccountId
-                    : data->LocalUserId;
-
-                if (!self->localEpicAccountId) {
-                    self->FailLogin("EOS Auth returned an invalid Epic Account ID.", OnlineErrorCode::BackendError);
-                    return;
-                }
-
-                self->LogAuthAccounts("successful Auth login");
-                self->StartEpicConnectLogin(self->localEpicAccountId);
+                RTB_WARN(BuildIntermediateAuthMessage(self->activeLoginType, data->ResultCode));
             }
 
             static void EOS_CALL OnAuthLoginStatusChanged(
@@ -771,9 +956,17 @@ namespace RTBEngine {
             OnlineLoginStatus status = OnlineLoginStatus::NotLoggedIn;
             OnlineLoginType activeLoginType = OnlineLoginType::DeviceId;
             bool authLoginInFlight = false;
+            bool authOverlayDiagnosticsEnabled = false;
             bool authPinGrantLogged = false;
             bool authPinGrantPendingLogged = false;
             bool authCorrectiveActionLogged = false;
+            bool authOverlayStateKnown = false;
+            bool authOverlayVisible = false;
+            bool authOverlayExclusiveInput = false;
+            bool authOverlayBounceFailed = false;
+            int authAttemptId = 0;
+            int authOverlayTransitionCount = 0;
+            long long authAttemptStartMilliseconds = 0;
             OnlineUserId localUserId;
             std::string displayName;
             std::string lastError;
@@ -794,6 +987,16 @@ namespace RTBEngine {
         {
             // Forward the backend-created EOS platform to the private implementation.
             impl->SetPlatformHandle(handle);
+        }
+
+        void EosOnlineIdentity::SetAuthOverlayDiagnosticsEnabled(bool enabled)
+        {
+            impl->SetAuthOverlayDiagnosticsEnabled(enabled);
+        }
+
+        bool EosOnlineIdentity::NotifyAuthOverlayDisplayState(bool visible, bool exclusiveInput)
+        {
+            return impl->NotifyAuthOverlayDisplayState(visible, exclusiveInput);
         }
 
         void EosOnlineIdentity::ResetPlatformHandle()
