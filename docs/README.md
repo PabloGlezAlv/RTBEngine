@@ -31,8 +31,9 @@ https://www.rtbengine.is-a.dev/privacy.html
 https://www.rtbengine.is-a.dev/terms.html
 ```
 
-The `CNAME` file in this folder tells GitHub Pages to use
-`www.rtbengine.is-a.dev`.
+During the `is-a.dev` review, keep `docs/CNAME` removed so GitHub Pages stays
+reachable at `https://PabloGlezAlv.github.io/RTBEngine/` for PR preview.
+After the PR is merged, recreate `docs/CNAME` with `www.rtbengine.is-a.dev`.
 
 The DNS files to submit to `is-a-dev/register` are prepared in:
 
