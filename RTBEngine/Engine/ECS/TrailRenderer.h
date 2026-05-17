@@ -49,7 +49,6 @@ namespace RTBEngine {
             float width = 0.15f;
             Math::Vector4 color = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
             bool visible = false;
-            bool useWorldSpace = true;
 
             RTB_COMPONENT(TrailRenderer)
 
@@ -61,7 +60,6 @@ namespace RTBEngine {
 
             bool EnsureRenderResources();
             void ReleaseRenderResources();
-            Math::Vector3 ResolvePoint(const Math::Vector3& point) const;
         };
 #pragma warning(pop)
 

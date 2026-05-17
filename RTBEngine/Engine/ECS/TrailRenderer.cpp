@@ -25,7 +25,6 @@ namespace RTBEngine {
             RTB_PROPERTY_RANGE(width, 0.001f, 10.0f)
             RTB_PROPERTY_COLOR(color)
             RTB_PROPERTY(visible)
-            RTB_PROPERTY(useWorldSpace)
         RTB_END_REGISTER(TrailRenderer)
 
         TrailRenderer::TrailRenderer()
@@ -134,16 +133,6 @@ namespace RTBEngine {
             shader = nullptr;
         }
 
-        Math::Vector3 TrailRenderer::ResolvePoint(const Math::Vector3& point) const
-        {
-            if (useWorldSpace || !owner) {
-                return point;
-            }
-
-            const Math::Vector4 worldPoint = owner->GetWorldMatrix() * Math::Vector4(point.x, point.y, point.z, 1.0f);
-            return Math::Vector3(worldPoint.x, worldPoint.y, worldPoint.z);
-        }
-
         void TrailRenderer::Render(Rendering::Camera* camera)
         {
             if (!isEnabled || !visible || !camera || points.size() < 2) {
@@ -163,8 +152,8 @@ namespace RTBEngine {
             const Math::Vector3 up = Math::Vector3::Up();
 
             for (std::size_t i = 0; i + 1 < points.size(); ++i) {
-                const Math::Vector3 start = ResolvePoint(points[i]);
-                const Math::Vector3 end = ResolvePoint(points[i + 1]);
+                const Math::Vector3 start = points[i];
+                const Math::Vector3 end = points[i + 1];
 
                 // V1 draws each 2D segment as a flat quad on the world XZ plane.
                 Math::Vector3 direction = end - start;
