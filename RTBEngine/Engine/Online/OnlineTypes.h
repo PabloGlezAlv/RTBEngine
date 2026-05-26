@@ -7,7 +7,7 @@ namespace RTBEngine {
 
         enum class OnlineBackendType {
             Null,
-            EOS
+            LAN
         };
 
         enum class OnlineState {

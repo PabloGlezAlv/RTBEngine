@@ -289,13 +289,13 @@ namespace RTBEngine {
                 s_pendingTypes.clear();
                 bridge(&BridgeBeginType, &BridgePropCallback, &BridgeEndType);
                 loadedScriptTypes = std::move(s_pendingTypes);
-                if (loadedScriptTypes.empty()) {
-                    RTB_INFO("ScriptManager: No script components registered in '" + dllPath + "'");
-                } else {
-                    for (const auto& name : loadedScriptTypes) {
-                        RTB_INFO("ScriptManager: Registered component '" + name + "'");
-                    }
-                }
+                // if (loadedScriptTypes.empty()) {
+                //     RTB_INFO("ScriptManager: No script components registered in '" + dllPath + "'");
+                // } else {
+                //     for (const auto& name : loadedScriptTypes) {
+                //         RTB_INFO("ScriptManager: Registered component '" + name + "'");
+                //     }
+                // }
             }
 
             loadedPath = dllPath;

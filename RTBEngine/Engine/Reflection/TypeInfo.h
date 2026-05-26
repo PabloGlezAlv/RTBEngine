@@ -125,15 +125,14 @@ namespace RTBEngine {
         // Uses a real temporary instance instead of a fake probe address because
         // MSVC may dereference vbtable data when applying a member pointer on types
         // with multiple inheritance / virtual bases (for example UI event handlers).
-        template<typename OwnerClass, typename DeclaringClass, typename MemberType>
-        inline size_t GetMemberOffset(MemberType DeclaringClass::* member) {
+        template<typename OwnerClass, typename MemberClass, typename MemberType>
+        inline size_t GetMemberOffset(MemberType MemberClass::* member) {
             static_assert(std::is_default_constructible_v<OwnerClass>,
                 "Reflected component types must be default constructible.");
 
             alignas(OwnerClass) unsigned char storage[sizeof(OwnerClass)];
             auto* ownerPtr = new (storage) OwnerClass();
-            auto* declaringPtr = static_cast<DeclaringClass*>(ownerPtr);
-            auto* memberPtr = &(declaringPtr->*member);
+            auto* memberPtr = &(ownerPtr->*member);
             const auto offset = reinterpret_cast<const char*>(memberPtr) - reinterpret_cast<const char*>(ownerPtr);
             ownerPtr->~OwnerClass();
             return static_cast<size_t>(offset);

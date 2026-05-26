@@ -1,6 +1,6 @@
 #include "OnlineSystem.h"
 
-#include "EosOnlineBackend.h"
+#include "LanOnlineBackend.h"
 #include "IOnlineBackend.h"
 #include "NullOnlineBackend.h"
 #include "OnlineConfig.h"
@@ -35,8 +35,6 @@ namespace RTBEngine {
             backendType = config.backend;
             defaultLoginOptions.type = config.loginType;
             defaultLoginOptions.displayName = config.loginDisplayName;
-            defaultLoginOptions.developerAuthHost = config.developerAuthHost;
-            defaultLoginOptions.developerAuthCredentialName = config.developerAuthCredentialName;
             lastError.clear();
 
             // Disabled online is a valid no-op startup mode.
@@ -143,9 +141,8 @@ namespace RTBEngine {
             case OnlineBackendType::Null:
                 // Null backend provides offline/test behavior.
                 return std::make_unique<NullOnlineBackend>();
-            case OnlineBackendType::EOS:
-                // EOS backend owns the Epic Online Services SDK integration.
-                return std::make_unique<EosOnlineBackend>();
+            case OnlineBackendType::LAN:
+                return std::make_unique<LanOnlineBackend>();
             default:
                 return nullptr;
             }

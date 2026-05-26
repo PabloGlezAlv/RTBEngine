@@ -11,7 +11,7 @@ namespace RTBEngine {
         enum class OnlineUserIdType {
             Invalid,
             Local,
-            EOSProductUser
+            NetworkPeer
         };
 
 #pragma warning(push)

@@ -47,11 +47,15 @@ namespace RTBEngine {
 
         struct RTB_API OnlineFindLobbiesOptions {
             std::string lobbyId;
+            // Empty = search on local network (UDP broadcast). Set to host IP or DNS for Internet play.
+            std::string hostAddress;
             std::uint32_t maxResults = 10;
         };
 
         struct RTB_API OnlineJoinLobbyOptions {
             std::string lobbyId;
+            // Empty = local broadcast search. Set to the host public IP or DNS name to join over Internet.
+            std::string hostAddress;
         };
 
         struct RTB_API OnlineLobbyStatusChangedEvent {

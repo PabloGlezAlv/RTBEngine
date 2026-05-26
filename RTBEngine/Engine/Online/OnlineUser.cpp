@@ -44,8 +44,8 @@ namespace RTBEngine {
                 return "Invalid";
             case OnlineUserIdType::Local:
                 return "Local";
-            case OnlineUserIdType::EOSProductUser:
-                return "EOSProductUser";
+            case OnlineUserIdType::NetworkPeer:
+                return "NetworkPeer";
             default:
                 return "Unknown";
             }

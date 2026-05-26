@@ -51,7 +51,7 @@ namespace RTBEngine {
             bool enabled = false;
             bool failApplicationOnError = false;
             OnlineState state = OnlineState::Disabled;
-            OnlineBackendType backendType = OnlineBackendType::EOS;
+            OnlineBackendType backendType = OnlineBackendType::LAN;
             OnlineLoginOptions defaultLoginOptions;
             std::string lastError;
             std::unique_ptr<IOnlineBackend> backend;

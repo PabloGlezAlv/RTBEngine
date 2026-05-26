@@ -26,7 +26,7 @@
 #define RTB_SERIALIZE()
 
 #define RTB_MEMBER_OFFSET(PropName)                                                    \
-    RTBEngine::Reflection::GetMemberOffset<RTBCurrentClass, ThisClass>(&ThisClass::PropName)
+    RTBEngine::Reflection::GetMemberOffset<RTBCurrentClass>(&ThisClass::PropName)
 
 #ifdef GAMESCRIPTS_EXPORTS
 #define RTB__BRIDGE_PROP(NameLiteral, TypeValue, OffsetValue, SizeValue, FlagsValue, RangeMinValue, RangeMaxValue, HasRangeValue, AssetTypeNameValue, ComponentTypeNameValue) \
@@ -141,7 +141,9 @@ private:
                     const size_t _rtb_inner_off =                                       \
                         reinterpret_cast<const char*>(&_rtb_probe.InnerProp)             \
                         - reinterpret_cast<const char*>(&_rtb_probe);                    \
-                    const size_t _rtb_off = RTB_MEMBER_OFFSET(OuterProp) + _rtb_inner_off; \
+                    const size_t _rtb_off =                                                      \
+                        RTBEngine::Reflection::GetMemberOffset<RTBCurrentClass>(                 \
+                            &RTBCurrentClass::OuterProp) + _rtb_inner_off;                      \
                     RTB__BRIDGE_PROP(                                                    \
                         #InnerProp,                                                      \
                         RTBEngine::Reflection::DeducePropertyType<                       \
@@ -160,7 +162,9 @@ private:
                     const size_t _rtb_inner_off =                                       \
                         reinterpret_cast<const char*>(&_rtb_probe.InnerProp)             \
                         - reinterpret_cast<const char*>(&_rtb_probe);                    \
-                    const size_t _rtb_off = RTB_MEMBER_OFFSET(OuterProp) + _rtb_inner_off; \
+                    const size_t _rtb_off =                                                      \
+                        RTBEngine::Reflection::GetMemberOffset<RTBCurrentClass>(                 \
+                            &RTBCurrentClass::OuterProp) + _rtb_inner_off;                      \
                     info.AddPropertyPOD(                                                 \
                         #InnerProp,                                                      \
                         RTBEngine::Reflection::DeducePropertyType<                       \

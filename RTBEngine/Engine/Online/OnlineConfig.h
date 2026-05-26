@@ -13,34 +13,30 @@ namespace RTBEngine {
 #pragma warning(push)
 #pragma warning(disable: 4251)
         // Runtime options used by ApplicationConfig to decide if the online layer
-        // should start and which backend should own the SDK integration.
-        struct RTB_API OnlineConfig {
+        // should start and which backend should own networking.
+        struct OnlineConfig {
             bool enabled = false;
             bool failApplicationOnError = false;
-            OnlineBackendType backend = OnlineBackendType::EOS;
+            OnlineBackendType backend = OnlineBackendType::LAN;
 
             // Public product metadata.
             std::string productName = "RTBEngine";
             std::string productVersion = "0.1.0";
 
-            // EOS portal identifiers and service credentials.
-            std::string productId;
-            std::string sandboxId;
-            std::string deploymentId;
-            std::string clientId;
-            std::string clientSecret;
+            // UDP backend ports. Each local test player should use unique values.
+            std::uint16_t lanGamePort = 27015;
+            std::uint16_t lanDiscoveryPort = 27016;
+            // Default host to contact when joining from game/editor (empty = local broadcast only).
+            std::string defaultHostAddress;
 
             bool isServer = false;
             bool loadingInEditor = false;
-            bool disableOverlay = true;
             std::string cacheDirectory;
             std::uint32_t tickBudgetMilliseconds = 0;
 
             // Default local-user login used by runtime scenes/tools that auto-login.
             OnlineLoginType loginType = OnlineLoginType::DeviceId;
             std::string loginDisplayName;
-            std::string developerAuthHost = "localhost:6300";
-            std::string developerAuthCredentialName;
         };
 #pragma warning(pop)
 

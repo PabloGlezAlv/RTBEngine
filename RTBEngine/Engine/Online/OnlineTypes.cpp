@@ -8,8 +8,8 @@ namespace RTBEngine {
             switch (backend) {
             case OnlineBackendType::Null:
                 return "Null";
-            case OnlineBackendType::EOS:
-                return "EOS";
+            case OnlineBackendType::LAN:
+                return "LAN";
             default:
                 return "Unknown";
             }
