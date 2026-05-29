@@ -11,14 +11,15 @@ namespace RTBEngine {
             std::uint16_t port = 0;
 
             bool IsValid() const { return !host.empty() && port != 0; }
+            // Returns "host:port" used by NetworkPeer user ids.
             std::string ToAddress() const;
             static bool TryParse(const std::string& value, UdpEndpoint& outEndpoint);
         };
 
-        // Resolves an IPv4 address or hostname to a host string suitable for UDP endpoints.
+        // Resolves IPv4 literal or hostname to a dotted-quad string.
         bool ResolveHostAddress(const std::string& hostAddress, std::string& outHost, std::string& outError);
 
-        // Best-effort local IPv4 string for sharing with remote clients (empty if unavailable).
+        // Returns the first non-loopback IPv4 address, or empty on failure.
         std::string GetLocalIPv4Address();
 
         class UdpSocket {
@@ -29,6 +30,7 @@ namespace RTBEngine {
             UdpSocket(const UdpSocket&) = delete;
             UdpSocket& operator=(const UdpSocket&) = delete;
 
+            // Creates and binds a datagram socket. allowBroadcast enables SO_BROADCAST.
             bool Open(const std::string& bindHost, std::uint16_t bindPort, bool allowBroadcast, std::string& outError);
             void Close();
             bool IsOpen() const { return socketHandle != nullptr; }
@@ -39,6 +41,7 @@ namespace RTBEngine {
                 const UdpEndpoint& destination,
                 std::string& outError);
 
+            // Non-blocking read; returns false when no datagram is available.
             bool ReceiveFrom(
                 void* buffer,
                 std::uint32_t bufferSize,
@@ -50,6 +53,7 @@ namespace RTBEngine {
             void* socketHandle = nullptr;
         };
 
+        // Reference-counted Winsock startup; call once per process using UDP.
         bool InitializeWinsock(std::string& outError);
         void ShutdownWinsock();
 

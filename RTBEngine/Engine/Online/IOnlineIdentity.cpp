@@ -3,29 +3,27 @@
 namespace RTBEngine {
     namespace Online {
 
-        // Converts supported login methods to stable diagnostic strings.
         const char* ToString(OnlineLoginType type)
         {
             switch (type) {
             case OnlineLoginType::DeviceId:
-                return "DeviceId";
+                return "DeviceId";           // local device id login (current default)
             case OnlineLoginType::DeveloperAuth:
-                return "DeveloperAuth";
+                return "DeveloperAuth";     // reserved for dev credential flow
             case OnlineLoginType::AccountPortal:
-                return "AccountPortal";
+                return "AccountPortal";     // reserved for account portal flow
             default:
                 return "Unknown";
             }
         }
 
-        // Converts identity lifecycle states to stable diagnostic strings.
         const char* ToString(OnlineLoginStatus status)
         {
             switch (status) {
             case OnlineLoginStatus::NotLoggedIn:
                 return "NotLoggedIn";
             case OnlineLoginStatus::LoggingIn:
-                return "LoggingIn";
+                return "LoggingIn"; // async login in progress (future backends)
             case OnlineLoginStatus::LoggedIn:
                 return "LoggedIn";
             case OnlineLoginStatus::Error:

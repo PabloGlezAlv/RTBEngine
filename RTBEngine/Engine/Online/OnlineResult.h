@@ -7,7 +7,6 @@
 namespace RTBEngine {
     namespace Online {
 
-        // Shared error categories returned by online subsystems.
         enum class OnlineErrorCode {
             None,
             Disabled,

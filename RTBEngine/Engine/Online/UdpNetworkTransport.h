@@ -15,20 +15,25 @@ namespace RTBEngine {
 #pragma warning(disable: 4251)
         class RTB_API UdpNetworkTransport final : public IOnlineTransport {
         public:
+            // Opens a UDP socket on 0.0.0.0:port for gameplay traffic.
             bool Bind(std::uint16_t port, std::string& outError);
+            // Closes socket and clears pending/received packet queues.
             void Unbind();
 
             bool IsAvailable() const override;
+            // Wraps payload in RTBR/RTBU header and sends to the peer endpoint.
             OnlineResult SendPacket(
                 const OnlineUserId& remoteUserId,
                 std::uint8_t channel,
                 const void* data,
                 std::uint32_t size,
                 OnlinePacketReliability reliability) override;
+            // Dequeues one packet received since the last call (also pumps the socket).
             bool ReceivePacket(OnlinePacket& outPacket) override;
             void CloseConnections() override;
             const char* GetLastError() const override;
 
+            // Reads all pending datagrams, handles acks/retries, fills receivedPackets.
             void PumpIncoming();
 
         private:

@@ -47,14 +47,14 @@ namespace RTBEngine {
 
         struct RTB_API OnlineFindLobbiesOptions {
             std::string lobbyId;
-            // Empty = search on local network (UDP broadcast). Set to host IP or DNS for Internet play.
+            // Empty = UDP broadcast on LAN. Set host IP/DNS for direct Internet lookup.
             std::string hostAddress;
             std::uint32_t maxResults = 10;
         };
 
         struct RTB_API OnlineJoinLobbyOptions {
             std::string lobbyId;
-            // Empty = local broadcast search. Set to the host public IP or DNS name to join over Internet.
+            // Empty = LAN broadcast search. Set host IP/DNS to join over Internet.
             std::string hostAddress;
         };
 
@@ -68,10 +68,14 @@ namespace RTBEngine {
         public:
             virtual ~IOnlineLobby() = default;
 
+            // Host-only: allocates a lobby id and starts advertising on the discovery port.
             virtual OnlineResult CreateLobby(const OnlineCreateLobbyOptions& options) = 0;
+            // Sends RTB_FIND on discovery; fills searchResults with RTB_FOUND replies.
             virtual OnlineResult FindLobbies(const OnlineFindLobbiesOptions& options) = 0;
+            // Sends RTB_JOIN; host replies with RTB_JOIN_ACK and updates memberUserIds.
             virtual OnlineResult JoinLobby(const OnlineJoinLobbyOptions& options) = 0;
             virtual OnlineResult LeaveLobby() = 0;
+            // Owner-only: tears down the lobby and stops advertising.
             virtual OnlineResult DestroyLobby() = 0;
             virtual OnlineLobbyState GetState() const = 0;
             virtual const OnlineLobbyInfo& GetCurrentLobby() const = 0;

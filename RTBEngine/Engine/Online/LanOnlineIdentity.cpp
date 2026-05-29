@@ -1,25 +1,22 @@
-#include "NullOnlineIdentity.h"
+#include "LanOnlineIdentity.h"
 
 #include <utility>
 
 namespace RTBEngine {
     namespace Online {
 
-        // Creates a deterministic local user without contacting any online service.
-        OnlineResult NullOnlineIdentity::Login(const OnlineLoginOptions& options)
+        OnlineResult LanOnlineIdentity::Login(const OnlineLoginOptions& options)
         {
-            // Use the requested name when provided, otherwise create a predictable local user.
             displayName = options.displayName.empty() ? "LocalUser" : options.displayName;
             localUserId = OnlineUserId(OnlineUserIdType::Local, displayName);
             lastError.clear();
             SetStatus(OnlineLoginStatus::LoggedIn);
 
-            return OnlineResult::Success("Null identity logged in.");
+            return OnlineResult::Success("Local identity logged in.");
         }
 
-        void NullOnlineIdentity::Logout()
+        void LanOnlineIdentity::Logout()
         {
-            // Reset local-only identity state.
             const bool wasLoggedIn = status != OnlineLoginStatus::NotLoggedIn;
             localUserId = OnlineUserId();
             displayName.clear();
@@ -32,39 +29,37 @@ namespace RTBEngine {
             }
         }
 
-        OnlineLoginStatus NullOnlineIdentity::GetLoginStatus() const
+        OnlineLoginStatus LanOnlineIdentity::GetLoginStatus() const
         {
             return status;
         }
 
-        const OnlineUserId& NullOnlineIdentity::GetLocalUserId() const
+        const OnlineUserId& LanOnlineIdentity::GetLocalUserId() const
         {
             return localUserId;
         }
 
-        const std::string& NullOnlineIdentity::GetDisplayName() const
+        const std::string& LanOnlineIdentity::GetDisplayName() const
         {
             return displayName;
         }
 
-        const char* NullOnlineIdentity::GetLastError() const
+        const char* LanOnlineIdentity::GetLastError() const
         {
             return lastError.c_str();
         }
 
-        Core::EventSubscription NullOnlineIdentity::SubscribeLoginStatusChanged(Core::Event<OnlineLoginStatusChangedEvent>::Callback callback)
+        Core::EventSubscription LanOnlineIdentity::SubscribeLoginStatusChanged(Core::Event<OnlineLoginStatusChangedEvent>::Callback callback)
         {
-            // Allow external systems to react to local identity state changes.
             return loginStatusChanged.Subscribe(std::move(callback));
         }
 
-        void NullOnlineIdentity::ClearLoginStatusChangedListeners()
+        void LanOnlineIdentity::ClearLoginStatusChangedListeners()
         {
-            // Drop all identity listeners, usually during tool shutdown or scene reset.
             loginStatusChanged.Clear();
         }
 
-        void NullOnlineIdentity::SetStatus(OnlineLoginStatus newStatus)
+        void LanOnlineIdentity::SetStatus(OnlineLoginStatus newStatus)
         {
             const OnlineLoginStatus previousStatus = status;
             status = newStatus;

@@ -265,15 +265,12 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\ECS\Transform.cpp" />
     <ClCompile Include="Engine\Core\Logger.cpp" />
     <ClCompile Include="Engine\Online\LanOnlineBackend.cpp" />
+    <ClCompile Include="Engine\Online\LanOnlineIdentity.cpp" />
     <ClCompile Include="Engine\Online\LanOnlineLobby.cpp" />
     <ClCompile Include="Engine\Online\UdpNetworkTransport.cpp" />
     <ClCompile Include="Engine\Online\UdpSocket.cpp" />
     <ClCompile Include="Engine\Online\IOnlineIdentity.cpp" />
     <ClCompile Include="Engine\Online\IOnlineLobby.cpp" />
-    <ClCompile Include="Engine\Online\NullOnlineBackend.cpp" />
-    <ClCompile Include="Engine\Online\NullOnlineIdentity.cpp" />
-    <ClCompile Include="Engine\Online\NullOnlineLobby.cpp" />
-    <ClCompile Include="Engine\Online\NullNetworkTransport.cpp" />
     <ClCompile Include="Engine\Online\OnlineResult.cpp" />
     <ClCompile Include="Engine\Online\OnlineSystem.cpp" />
     <ClCompile Include="Engine\Online\OnlineTypes.cpp" />
@@ -297,6 +294,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Rendering\FrameBuffer.h" />
     <ClInclude Include="Engine\RTBEngine.h" />
     <ClInclude Include="Engine\Online\LanOnlineBackend.h" />
+    <ClInclude Include="Engine\Online\LanOnlineIdentity.h" />
     <ClInclude Include="Engine\Online\LanOnlineLobby.h" />
     <ClInclude Include="Engine\Online\UdpNetworkTransport.h" />
     <ClInclude Include="Engine\Online\UdpSocket.h" />
@@ -304,10 +302,6 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Online\IOnlineIdentity.h" />
     <ClInclude Include="Engine\Online\IOnlineLobby.h" />
     <ClInclude Include="Engine\Online\IOnlineTransport.h" />
-    <ClInclude Include="Engine\Online\NullOnlineBackend.h" />
-    <ClInclude Include="Engine\Online\NullOnlineIdentity.h" />
-    <ClInclude Include="Engine\Online\NullOnlineLobby.h" />
-    <ClInclude Include="Engine\Online\NullNetworkTransport.h" />
     <ClInclude Include="Engine\Online\OnlineConfig.h" />
     <ClInclude Include="Engine\Online\OnlineResult.h" />
     <ClInclude Include="Engine\Online\OnlineSystem.h" />

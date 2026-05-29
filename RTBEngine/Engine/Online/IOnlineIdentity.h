@@ -10,14 +10,12 @@
 namespace RTBEngine {
     namespace Online {
 
-        // Login methods the engine will support first.
         enum class OnlineLoginType {
             DeviceId,
             DeveloperAuth,
             AccountPortal
         };
 
-        // Current state of the local user's identity session.
         enum class OnlineLoginStatus {
             NotLoggedIn,
             LoggingIn,
@@ -27,7 +25,6 @@ namespace RTBEngine {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
-        // Payload emitted whenever the local identity state changes.
         struct RTB_API OnlineLoginStatusChangedEvent {
             OnlineLoginStatus previousStatus = OnlineLoginStatus::NotLoggedIn;
             OnlineLoginStatus currentStatus = OnlineLoginStatus::NotLoggedIn;
@@ -41,11 +38,11 @@ namespace RTBEngine {
             std::string developerAuthCredentialName;
         };
 
-        // Identity contract for local-user login and user-id discovery.
         class RTB_API IOnlineIdentity {
         public:
             virtual ~IOnlineIdentity() = default;
 
+            // Establishes the local user session and assigns a Local: user id.
             virtual OnlineResult Login(const OnlineLoginOptions& options) = 0;
             virtual void Logout() = 0;
             virtual OnlineLoginStatus GetLoginStatus() const = 0;

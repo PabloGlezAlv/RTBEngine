@@ -11,11 +11,11 @@ namespace RTBEngine {
             case OnlineLobbyState::Creating:
                 return "Creating";
             case OnlineLobbyState::Searching:
-                return "Searching";
+                return "Searching";   // RTB_FIND in flight
             case OnlineLobbyState::Joining:
-                return "Joining";
+                return "Joining";     // waiting for RTB_JOIN_ACK
             case OnlineLobbyState::InLobby:
-                return "InLobby";
+                return "InLobby";     // session active
             case OnlineLobbyState::Leaving:
                 return "Leaving";
             case OnlineLobbyState::Destroying:

@@ -6,7 +6,6 @@ namespace RTBEngine {
     namespace Online {
 
         enum class OnlineBackendType {
-            Null,
             LAN
         };
 

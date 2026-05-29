@@ -7,11 +7,10 @@
 namespace RTBEngine {
     namespace Online {
 
-        // Provider-neutral user id categories.
         enum class OnlineUserIdType {
             Invalid,
-            Local,
-            NetworkPeer
+            Local,        // this machine's logged-in user
+            NetworkPeer   // remote machine as host:port (LAN transport addressing)
         };
 
 #pragma warning(push)
@@ -24,6 +23,7 @@ namespace RTBEngine {
             bool IsValid() const;
             OnlineUserIdType GetType() const { return type; }
             const std::string& GetValue() const { return value; }
+            // Formats as "Type:value", e.g. "Local:Player1" or "NetworkPeer:192.168.0.2:27015".
             std::string ToString() const;
 
             bool operator==(const OnlineUserId& other) const;

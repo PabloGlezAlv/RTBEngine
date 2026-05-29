@@ -18,7 +18,9 @@ namespace RTBEngine {
         public:
             LanOnlineLobby(IOnlineIdentity* identity, UdpNetworkTransport* transport);
 
+            // Stores ports and opens discovery socket (ephemeral bind on clients).
             bool Configure(std::uint16_t discoveryPort, std::uint16_t gamePort, std::string& outError);
+            // Processes RTB_* discovery messages and re-broadcasts lobby ads from the host.
             void Tick(float deltaTime);
 
             OnlineResult CreateLobby(const OnlineCreateLobbyOptions& options) override;

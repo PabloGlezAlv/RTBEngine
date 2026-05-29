@@ -4,31 +4,27 @@ namespace RTBEngine {
     namespace Online {
 
         OnlineUserId::OnlineUserId(OnlineUserIdType type, const std::string& value)
-            : type(type), value(value)
+            : type(type), value(value) // value is id body without "Local:" prefix
         {
         }
 
         bool OnlineUserId::IsValid() const
         {
-            // A user id is valid only when it has both a provider type and a value.
-            return type != OnlineUserIdType::Invalid && !value.empty();
+            return type != OnlineUserIdType::Invalid && !value.empty(); // Invalid type or empty string = unusable id
         }
 
         std::string OnlineUserId::ToString() const
         {
-            // Keep invalid ids readable in logs.
             if (!IsValid()) {
-                return "Invalid";
+                return "Invalid"; // stable log text for default-constructed ids
             }
 
-            // Prefix the value with its provider-neutral id type.
-            return std::string(RTBEngine::Online::ToString(type)) + ":" + value;
+            return std::string(RTBEngine::Online::ToString(type)) + ":" + value; // e.g. NetworkPeer:192.168.0.2:27015
         }
 
         bool OnlineUserId::operator==(const OnlineUserId& other) const
         {
-            // User ids match only when both the type and provider value match.
-            return type == other.type && value == other.value;
+            return type == other.type && value == other.value; // both type tag and payload must match
         }
 
         bool OnlineUserId::operator!=(const OnlineUserId& other) const
@@ -36,16 +32,15 @@ namespace RTBEngine {
             return !(*this == other);
         }
 
-        // Converts provider-neutral user id categories to stable diagnostic strings.
         const char* ToString(OnlineUserIdType type)
         {
             switch (type) {
             case OnlineUserIdType::Invalid:
                 return "Invalid";
             case OnlineUserIdType::Local:
-                return "Local";
+                return "Local"; // this machine's logged-in user
             case OnlineUserIdType::NetworkPeer:
-                return "NetworkPeer";
+                return "NetworkPeer"; // remote UDP endpoint identity
             default:
                 return "Unknown";
             }

@@ -2,7 +2,7 @@
 
 #include "IOnlineBackend.h"
 #include "LanOnlineLobby.h"
-#include "NullOnlineIdentity.h"
+#include "LanOnlineIdentity.h"
 #include "UdpNetworkTransport.h"
 
 namespace RTBEngine {
@@ -13,6 +13,7 @@ namespace RTBEngine {
         class RTB_API LanOnlineBackend final : public IOnlineBackend {
         public:
             LanOnlineBackend();
+
             const char* GetName() const override;
             bool Initialize(const OnlineConfig& config) override;
             void Tick(float deltaTime) override;
@@ -29,7 +30,7 @@ namespace RTBEngine {
         private:
             bool initialized = false;
             std::string lastError;
-            NullOnlineIdentity identity;
+            LanOnlineIdentity identity;
             UdpNetworkTransport transport;
             LanOnlineLobby lobby;
         };

@@ -28,12 +28,14 @@ namespace RTBEngine {
             virtual ~IOnlineTransport() = default;
 
             virtual bool IsAvailable() const = 0;
+            // remoteUserId must be NetworkPeer:host:port for LAN UDP sends.
             virtual OnlineResult SendPacket(
                 const OnlineUserId& remoteUserId,
                 std::uint8_t channel,
                 const void* data,
                 std::uint32_t size,
                 OnlinePacketReliability reliability) = 0;
+            // Returns false when the receive queue is empty.
             virtual bool ReceivePacket(OnlinePacket& outPacket) = 0;
             virtual void CloseConnections() = 0;
             virtual const char* GetLastError() const = 0;

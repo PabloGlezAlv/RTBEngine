@@ -7,8 +7,7 @@ namespace RTBEngine {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
-        // Offline identity implementation used by the Null backend.
-        class RTB_API NullOnlineIdentity final : public IOnlineIdentity {
+        class RTB_API LanOnlineIdentity final : public IOnlineIdentity {
         public:
             OnlineResult Login(const OnlineLoginOptions& options) override;
             void Logout() override;

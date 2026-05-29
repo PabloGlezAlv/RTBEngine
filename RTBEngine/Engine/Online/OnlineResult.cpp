@@ -5,32 +5,29 @@ namespace RTBEngine {
 
         OnlineResult OnlineResult::Success(const std::string& message)
         {
-            // Success results always carry the neutral None error code.
-            return { true, OnlineErrorCode::None, message };
+            return { true, OnlineErrorCode::None, message }; // success flag true, no error category
         }
 
         OnlineResult OnlineResult::Failure(OnlineErrorCode errorCode, const std::string& message)
         {
-            // Failure results preserve the category and human-readable message.
-            return { false, errorCode, message };
+            return { false, errorCode, message }; // caller inspects errorCode for failure kind
         }
 
-        // Converts shared error categories to stable diagnostic strings.
         const char* ToString(OnlineErrorCode errorCode)
         {
             switch (errorCode) {
             case OnlineErrorCode::None:
                 return "None";
             case OnlineErrorCode::Disabled:
-                return "Disabled";
+                return "Disabled"; // online layer turned off
             case OnlineErrorCode::NotImplemented:
                 return "NotImplemented";
             case OnlineErrorCode::InvalidState:
-                return "InvalidState";
+                return "InvalidState"; // e.g. join while not logged in
             case OnlineErrorCode::InvalidConfig:
-                return "InvalidConfig";
+                return "InvalidConfig"; // bad lobby id or peer address
             case OnlineErrorCode::BackendError:
-                return "BackendError";
+                return "BackendError"; // socket/DNS/timeout failures
             default:
                 return "Unknown";
             }
