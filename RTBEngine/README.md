@@ -35,6 +35,8 @@ This document covers every subsystem in depth — public API, internal design, d
    - 7.6 [AudioSourceComponent](#76-audiosourcecomponent)
    - 7.7 [FreeLookCamera](#77-freelookcamera)
    - 7.8 [SphereColliderComponent](#78-spherecollidercomponent)
+   - 7.9 [NetworkIdentity](#79-networkidentity)
+   - 7.10 [NetworkTransform](#710-networktransform)
 8. [Rendering Subsystem](#8-rendering-subsystem)
    - 8.1 [Camera](#81-camera)
    - 8.2 [Shader](#82-shader)
@@ -109,7 +111,14 @@ This document covers every subsystem in depth — public API, internal design, d
     - 16.11 [UIRenderContext](#1611-uirendercontext)
     - 16.12 [EventSystem](#1612-eventsystem)
 17. [DLL Boundary Safety](#17-dll-boundary-safety)
-18. [Code Conventions](#18-code-conventions)
+18. [Online Subsystem](#18-online-subsystem)
+   - 18.1 [Overview](#181-overview)
+   - 18.2 [OnlineSystem and LAN Backend](#182-onlinesystem-and-lan-backend)
+   - 18.3 [OnlineGameplayNet (RTBN v2)](#183-onlinegameplaynet-rtbn-v2)
+   - 18.4 [Network Components](#184-network-components)
+   - 18.5 [Host-Authoritative Flow](#185-host-authoritative-flow)
+   - 18.6 [Configuration](#186-configuration)
+19. [Code Conventions](#19-code-conventions)
 
 ---
 
@@ -1446,6 +1455,62 @@ btCollisionObject* GetBulletCollisionObject() const;
 float         radius       = 0.5f;
 Math::Vector3 centerOffset = {0, 0, 0};
 bool          isTrigger    = false;
+```
+
+### 7.9 NetworkIdentity
+
+`Engine/ECS/NetworkIdentity.h` — Assigns a stable online identity and player slot to a pawn. Used with `NetworkTransform` and gameplay scripts to decide who sends input and who simulates physics. Authority checks use `OnlineSystem` (lobby/identity), not the RTBN protocol layer.
+
+```cpp
+auto* identity = pawn->AddComponent<NetworkIdentity>();
+identity->SetNetworkPlayerSlot(0);  // host = slot 0
+identity->SetOwnerUserId(OnlineSystem::GetInstance().GetIdentity()->GetLocalUserId());
+```
+
+**Runtime queries:**
+
+```cpp
+bool IsLocallyControlled() const;  // camera + input on this machine
+bool IsSimulatedByHost() const;    // host runs movement/physics in online mode
+std::string GetNetworkObjectKey() const;  // e.g. "PlayerSlot_0"
+```
+
+**Reflected properties:**
+
+```cpp
+std::string networkOwnerUserId;  // "Local:Player" or "NetworkPeer:192.168.0.2:27015"
+int         networkPlayerSlot = -1;
+```
+
+### 7.10 NetworkTransform
+
+`Engine/ECS/NetworkTransform.h` — Replicates position and rotation over UDP. Host broadcasts authoritative snapshots; clients interpolate received state.
+
+Attach alongside `NetworkIdentity` on any replicated pawn:
+
+```cpp
+auto* netTransform = pawn->AddComponent<NetworkTransform>();
+netTransform->sendRate = 20.0f;
+netTransform->interpolationSpeed = 14.0f;
+```
+
+**Behaviour:**
+
+| Role | Phase | Action |
+|------|-------|--------|
+| Host | `OnFixedUpdate` | Sends transform at `sendRate` Hz via `OnlineGameplayNet::BroadcastTransform` |
+| Client | `OnLateUpdate` | Reads latest snapshot and lerps/slerps toward it |
+
+Incoming packets are drained once per frame by `OnlineSystem::Tick` (which calls `OnlineGameplayNet::Pump`).
+
+**Reflected properties:**
+
+```cpp
+std::string objectKey;           // optional; defaults to NetworkIdentity key
+float       sendRate = 20.0f;
+float       interpolationSpeed = 14.0f;
+bool        replicatePosition = true;
+bool        replicateRotation = true;
 ```
 
 ---
@@ -3783,7 +3848,167 @@ All engine classes with STL members have this suppression applied.
 
 ---
 
-## 18. Code Conventions
+## 18. Online Subsystem
+
+RTBEngine ships a LAN multiplayer stack built on Winsock UDP. The engine provides infrastructure (login, lobby discovery, transport) and built-in replication components. Game-specific logic (menus, character controllers) lives in project scripts but uses the engine APIs documented here.
+
+### 18.1 Overview
+
+```
+OnlineSystem          Singleton entry point
+  └─ LanOnlineBackend
+       ├─ LanOnlineIdentity   Local login (DeviceId)
+       ├─ LanOnlineLobby      UDP text discovery (RTB_AD / RTB_FIND / RTB_JOIN)
+       └─ UdpNetworkTransport Winsock gameplay packets (RTBR / RTBU)
+OnlineGameplayNet     RTBN v2 protocol (StartMatch, transforms, input)
+NetworkIdentity       Per-pawn online identity and slot
+NetworkTransform      Host-authoritative transform replication
+```
+
+**Model:** host-authoritative. The lobby owner simulates physics for all pawns. Clients send input; the host broadcasts world state.
+
+### 18.2 OnlineSystem and LAN Backend
+
+Initialize once at startup:
+
+```cpp
+using namespace RTBEngine::Online;
+
+OnlineConfig config;
+config.enabled = true;
+config.lanGamePort = 27015;
+config.lanDiscoveryPort = 27016;
+config.loginDisplayName = "Player1";
+
+OnlineSystem& online = OnlineSystem::GetInstance();
+online.Initialize(config);
+
+// Each frame:
+online.Tick(deltaTime);  // backend UDP + OnlineGameplayNet::Pump()
+```
+
+Access subsystems and lobby state:
+
+```cpp
+IOnlineIdentity* identity = online.GetIdentity();
+IOnlineLobby* lobby = online.GetLobby();
+IOnlineTransport* transport = online.GetTransport();
+
+online.IsInLobby();
+online.IsLobbyOwner();
+online.GetLocalUserId();
+online.GetOrderedLobbyMembers();
+online.GetLocalPlayerIndex();
+```
+
+**Lobby workflow:**
+
+```cpp
+identity->Login({ OnlineLoginType::DeviceId, "Player1" });
+
+// Host:
+lobby->CreateLobby({ .maxMembers = 6 });
+// Share lobbyId (e.g. "ABC123") + your LAN IP
+
+// Client:
+lobby->JoinLobby({ .lobbyId = "ABC123", .hostAddress = "" });  // empty = LAN broadcast
+```
+
+Discovery messages are plain-text UDP on `lanDiscoveryPort`. Gameplay uses binary-framed packets on `lanGamePort`.
+
+### 18.3 OnlineGameplayNet (RTBN v2)
+
+`Engine/Online/OnlineGameplayNet.h` — High-level gameplay protocol over `IOnlineTransport`.
+
+| Message | Channel | Reliability | Direction |
+|---------|---------|-------------|-----------|
+| `StartMatch` | 0 | Reliable | Host → clients |
+| `TransformSnapshot` | 1 | Unreliable | Host → clients |
+| `PlayerInput` | 2 | Unreliable | Client → host |
+
+```cpp
+using namespace RTBEngine::Online;
+
+// Pump runs inside OnlineSystem::Tick — do not call manually unless online is disabled.
+
+// Host starts match:
+OnlineGameplayNet::BroadcastStartMatch("Assets/Scenes/DefaultScene.lua");
+
+// Client receives:
+std::string scene;
+if (OnlineGameplayNet::ConsumeStartMatch(scene)) { /* load scene */ }
+
+// Client sends input:
+OnlineGameplayNet::PlayerInputSnapshot input;
+input.moveZ = 1.0f;
+OnlineGameplayNet::SendPlayerInput(input);
+
+// Host reads remote input:
+OnlineGameplayNet::PlayerInputSnapshot remote;
+OnlineGameplayNet::TryGetLatestInputForUser("NetworkPeer:192.168.1.20:27015", remote);
+
+// Host replicates transform:
+OnlineGameplayNet::TransformSnapshot snap;
+snap.objectKey = "PlayerSlot_1";
+snap.position = pawn->GetTransform().GetPosition();
+OnlineGameplayNet::BroadcastTransform(snap);
+```
+
+Replication keys default to `PlayerSlot_N` from `NetworkIdentity::GetNetworkObjectKey()`.
+
+### 18.4 Network Components
+
+See [§7.9 NetworkIdentity](#79-networkidentity) and [§7.10 NetworkTransform](#710-networktransform).
+
+Typical pawn setup in a scene:
+
+```lua
+components = {
+    { type = "NetworkIdentity" },
+    { type = "NetworkTransform", sendRate = 20.0, interpolationSpeed = 14.0 },
+}
+```
+
+`NetworkTransform` resolves its object key from the sibling `NetworkIdentity` component automatically.
+
+### 18.5 Host-Authoritative Flow
+
+1. Both peers call `OnlineSystem::Initialize` and log in.
+2. Host creates lobby; client joins via lobby code.
+3. Host calls `BroadcastStartMatch`; clients load the gameplay scene.
+4. Each frame: `OnlineSystem::Tick` (includes gameplay packet pump).
+5. Clients: `SendPlayerInput` from local pawn.
+6. Host: reads input with `TryGetLatestInputForUser`, simulates all pawns.
+7. Host: `NetworkTransform` broadcasts transforms; clients interpolate.
+
+Helper queries:
+
+```cpp
+OnlineGameplayNet::IsInOnlineLobby();
+OnlineGameplayNet::IsLobbyHost();
+OnlineGameplayNet::GetOrderedLobbyMembers();
+OnlineGameplayNet::GetLocalPlayerIndex();  // 0 = host
+```
+
+### 18.6 Configuration
+
+`OnlineConfig` fields:
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `enabled` | `false` | Master switch |
+| `lanGamePort` | `27015` | Gameplay UDP bind port |
+| `lanDiscoveryPort` | `27016` | Lobby discovery port |
+| `loginDisplayName` | `""` | Local player name |
+| `failApplicationOnError` | `false` | Abort if init fails |
+
+When `enabled` is false, `OnlineSystem` stays in `Disabled` state and no sockets are opened. There is no null/fake backend — online is either fully initialized or off.
+
+Winsock layer (`Engine/Online/UdpSocket.cpp`): `WSAStartup` → `socket` → `bind` → non-blocking `sendto`/`recvfrom` → `closesocket` → `WSACleanup`.
+
+---
+
+## 19. Code Conventions
 
 ### Naming
 

@@ -72,6 +72,12 @@
     <ClCompile Include="Engine\ECS\MeshRenderer.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\ECS\NetworkIdentity.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\ECS\NetworkTransform.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\ECS\TrailRenderer.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
@@ -258,6 +264,9 @@
     <ClCompile Include="Engine\Online\OnlineResult.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Online\OnlineGameplayNet.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Online\OnlineSystem.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
@@ -389,6 +398,12 @@
     <ClInclude Include="Engine\ECS\MeshRenderer.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\ECS\NetworkIdentity.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\ECS\NetworkTransform.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\ECS\TrailRenderer.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
@@ -498,6 +513,9 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Online\OnlineResult.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Online\OnlineGameplayNet.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Online\OnlineSystem.h">

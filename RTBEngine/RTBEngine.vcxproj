@@ -214,6 +214,8 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Rendering\FbxBinding.cpp" />
     <ClCompile Include="Engine\ECS\GameObject.cpp" />
     <ClCompile Include="Engine\ECS\MeshRenderer.cpp" />
+    <ClCompile Include="Engine\ECS\NetworkIdentity.cpp" />
+    <ClCompile Include="Engine\ECS\NetworkTransform.cpp" />
     <ClCompile Include="Engine\ECS\TrailRenderer.cpp" />
     <ClCompile Include="Engine\ECS\Scene.cpp" />
     <ClCompile Include="Engine\Rendering\Lighting\Light.cpp" />
@@ -272,6 +274,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Online\IOnlineIdentity.cpp" />
     <ClCompile Include="Engine\Online\IOnlineLobby.cpp" />
     <ClCompile Include="Engine\Online\OnlineResult.cpp" />
+    <ClCompile Include="Engine\Online\OnlineGameplayNet.cpp" />
     <ClCompile Include="Engine\Online\OnlineSystem.cpp" />
     <ClCompile Include="Engine\Online\OnlineTypes.cpp" />
     <ClCompile Include="Engine\Online\OnlineUser.cpp" />
@@ -304,6 +307,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Online\IOnlineTransport.h" />
     <ClInclude Include="Engine\Online\OnlineConfig.h" />
     <ClInclude Include="Engine\Online\OnlineResult.h" />
+    <ClInclude Include="Engine\Online\OnlineGameplayNet.h" />
     <ClInclude Include="Engine\Online\OnlineSystem.h" />
     <ClInclude Include="Engine\Online\OnlineTypes.h" />
     <ClInclude Include="Engine\Online\OnlineUser.h" />
@@ -343,6 +347,8 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Rendering\FbxBinding.h" />
     <ClInclude Include="Engine\ECS\GameObject.h" />
     <ClInclude Include="Engine\ECS\MeshRenderer.h" />
+    <ClInclude Include="Engine\ECS\NetworkIdentity.h" />
+    <ClInclude Include="Engine\ECS\NetworkTransform.h" />
     <ClInclude Include="Engine\ECS\TrailRenderer.h" />
     <ClInclude Include="Engine\ECS\Scene.h" />
     <ClInclude Include="Engine\Rendering\Lighting\Light.h" />

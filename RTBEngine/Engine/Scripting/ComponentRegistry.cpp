@@ -3,6 +3,9 @@
 #include "../RTBEngine.h"
 #include "../Reflection/TypeInfo.h"
 
+#include "../ECS/NetworkIdentity.h"
+#include "../ECS/NetworkTransform.h"
+#include "../Online/OnlineGameplayNet.h"
 #include "../ECS/MeshRenderer.h"
 #include "../ECS/LightComponent.h"
 #include "../ECS/AudioSourceComponent.h"
@@ -86,6 +89,8 @@ namespace RTBEngine {
             RegisterComponent("CameraComponent", []() { return new ECS::CameraComponent(); });
             RegisterComponent("FreeLookCamera", []() { return new ECS::FreeLookCamera(); });
             RegisterComponent("TrailRenderer", []() { return new ECS::TrailRenderer(); });
+            RegisterComponent("NetworkIdentity", []() { return new ECS::NetworkIdentity(); });
+            RegisterComponent("NetworkTransform", []() { return new ECS::NetworkTransform(); });
             RegisterComponent("Animator", []() { return new Animation::Animator(); });
             RegisterComponent("Canvas", []() { return new UI::Canvas(); });
             RegisterComponent("UIText", []() { return new UI::UIText(); });

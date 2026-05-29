@@ -3,6 +3,7 @@
 #include "LanOnlineBackend.h"
 #include "IOnlineBackend.h"
 #include "OnlineConfig.h"
+#include "OnlineGameplayNet.h"
 #include "../Core/Logger.h"
 
 #include <memory>
@@ -64,6 +65,7 @@ namespace RTBEngine {
             }
 
             backend->Tick(deltaTime);
+            OnlineGameplayNet::Pump();
         }
 
         void OnlineSystem::Shutdown()
@@ -107,6 +109,62 @@ namespace RTBEngine {
         const IOnlineTransport* OnlineSystem::GetTransport() const
         {
             return backend ? backend->GetTransport() : nullptr;
+        }
+
+        bool OnlineSystem::IsInLobby() const
+        {
+            const IOnlineLobby* lobby = GetLobby();
+            return lobby && !lobby->GetCurrentLobby().lobbyId.empty();
+        }
+
+        bool OnlineSystem::IsLobbyOwner() const
+        {
+            const IOnlineLobby* lobby = GetLobby();
+            return lobby && !lobby->GetCurrentLobby().lobbyId.empty() && lobby->GetCurrentLobby().isOwner;
+        }
+
+        OnlineUserId OnlineSystem::GetLocalUserId() const
+        {
+            const IOnlineIdentity* identity = GetIdentity();
+            return identity ? identity->GetLocalUserId() : OnlineUserId();
+        }
+
+        std::vector<OnlineUserId> OnlineSystem::GetOrderedLobbyMembers() const
+        {
+            std::vector<OnlineUserId> members;
+
+            const IOnlineLobby* lobby = GetLobby();
+            if (!lobby || lobby->GetCurrentLobby().lobbyId.empty()) {
+                return members;
+            }
+
+            const OnlineLobbyInfo& lobbyInfo = lobby->GetCurrentLobby();
+            if (lobbyInfo.ownerUserId.IsValid()) {
+                members.push_back(lobbyInfo.ownerUserId);
+            }
+
+            for (const OnlineUserId& member : lobbyInfo.memberUserIds) {
+                if (!member.IsValid() || member == lobbyInfo.ownerUserId) {
+                    continue;
+                }
+
+                members.push_back(member);
+            }
+
+            return members;
+        }
+
+        std::size_t OnlineSystem::GetLocalPlayerIndex() const
+        {
+            const OnlineUserId localUserId = GetLocalUserId();
+            const std::vector<OnlineUserId> members = GetOrderedLobbyMembers();
+            for (std::size_t index = 0; index < members.size(); ++index) {
+                if (members[index] == localUserId) {
+                    return index;
+                }
+            }
+
+            return 0;
         }
 
     }

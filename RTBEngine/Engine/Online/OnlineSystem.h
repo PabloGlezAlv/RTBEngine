@@ -6,9 +6,12 @@
 #include "IOnlineLobby.h"
 #include "IOnlineTransport.h"
 #include "OnlineTypes.h"
+#include "OnlineUser.h"
 
+#include <cstddef>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace RTBEngine {
     namespace Online {
@@ -37,6 +40,12 @@ namespace RTBEngine {
             const IOnlineLobby* GetLobby() const;
             IOnlineTransport* GetTransport();
             const IOnlineTransport* GetTransport() const;
+
+            bool IsInLobby() const;
+            bool IsLobbyOwner() const;
+            OnlineUserId GetLocalUserId() const;
+            std::vector<OnlineUserId> GetOrderedLobbyMembers() const;
+            std::size_t GetLocalPlayerIndex() const;
 
         private:
             OnlineSystem() = default;

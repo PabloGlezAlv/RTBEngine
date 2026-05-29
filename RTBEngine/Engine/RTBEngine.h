@@ -37,10 +37,13 @@
 #include "Online/OnlineSystem.h"
 #include "Online/OnlineTypes.h"
 #include "Online/OnlineUser.h"
+#include "Online/OnlineGameplayNet.h"
 
 // Built-in Components
 #include "ECS/MissingComponent.h"
 #include "ECS/MeshRenderer.h"
+#include "ECS/NetworkIdentity.h"
+#include "ECS/NetworkTransform.h"
 #include "ECS/LightComponent.h"
 #include "ECS/AudioSourceComponent.h"
 #include "ECS/RigidBodyComponent.h"
