@@ -33,6 +33,8 @@ namespace RTBEngine {
             OnlineBackendType GetBackendType() const { return OnlineBackendType::LAN; }
             const std::string& GetLastError() const { return lastError; }
             const OnlineLoginOptions& GetDefaultLoginOptions() const { return defaultLoginOptions; }
+            void SetSessionDisplayName(const std::string& name);
+            const std::string& GetSessionDisplayName() const;
 
             IOnlineIdentity* GetIdentity();
             const IOnlineIdentity* GetIdentity() const;

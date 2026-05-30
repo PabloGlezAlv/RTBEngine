@@ -34,6 +34,8 @@ namespace RTBEngine {
             const char* GetLastError() const override;
             Core::EventSubscription SubscribeLobbyStatusChanged(Core::Event<OnlineLobbyStatusChangedEvent>::Callback callback) override;
             void ClearLobbyStatusChangedListeners() override;
+            Core::EventSubscription SubscribeMemberJoined(Core::Event<OnlineLobbyMemberJoinedEvent>::Callback callback) override;
+            void ClearMemberJoinedListeners() override;
 
         private:
             void SetState(OnlineLobbyState newState);
@@ -56,6 +58,7 @@ namespace RTBEngine {
             std::string lastError;
             std::chrono::steady_clock::time_point lastAdvertiseTime{};
             Core::Event<OnlineLobbyStatusChangedEvent> lobbyStatusChanged;
+            Core::Event<OnlineLobbyMemberJoinedEvent> memberJoined;
         };
 #pragma warning(pop)
 

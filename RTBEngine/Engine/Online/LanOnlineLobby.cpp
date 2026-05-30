@@ -293,6 +293,16 @@ namespace RTBEngine {
             lobbyStatusChanged.Clear();
         }
 
+        Core::EventSubscription LanOnlineLobby::SubscribeMemberJoined(Core::Event<OnlineLobbyMemberJoinedEvent>::Callback callback)
+        {
+            return memberJoined.Subscribe(std::move(callback));
+        }
+
+        void LanOnlineLobby::ClearMemberJoinedListeners()
+        {
+            memberJoined.Clear();
+        }
+
         void LanOnlineLobby::SetState(OnlineLobbyState newState)
         {
             const OnlineLobbyState previousState = state;
@@ -409,6 +419,7 @@ namespace RTBEngine {
                     }
 
                     const std::string memberId = payload.substr(0, firstSeparator);
+                    const std::string displayName = payload.substr(firstSeparator + 1, secondSeparator - firstSeparator - 1);
                     const std::string clientGamePortText = payload.substr(secondSeparator + 1);
                     UdpEndpoint clientEndpoint = sender; // client IP from UDP source address
                     try {
@@ -429,6 +440,9 @@ namespace RTBEngine {
                         if (currentLobby.availableSlots > 0) {
                             --currentLobby.availableSlots;
                         }
+
+                        std::string joinedName = displayName.empty() ? memberId : displayName;
+                        memberJoined.Invoke({ joinedName });
                     }
 
                     const std::string ack = std::string(kJoinAckPrefix) + currentLobby.lobbyId + "|" +

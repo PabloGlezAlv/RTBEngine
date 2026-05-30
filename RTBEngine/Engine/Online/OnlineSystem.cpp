@@ -6,11 +6,39 @@
 #include "OnlineGameplayNet.h"
 #include "../Core/Logger.h"
 
+#include <algorithm>
+#include <cctype>
 #include <memory>
 #include <string>
 
 namespace RTBEngine {
     namespace Online {
+
+        namespace {
+
+            constexpr std::size_t kMaxSessionDisplayNameLength = 24;
+
+            std::string SanitizeSessionDisplayName(const std::string& name)
+            {
+                const auto isNotSpace = [](unsigned char character) {
+                    return !std::isspace(character);
+                };
+
+                auto begin = std::find_if(name.begin(), name.end(), isNotSpace);
+                if (begin == name.end()) {
+                    return "Player";
+                }
+
+                auto end = std::find_if(name.rbegin(), name.rend(), isNotSpace).base();
+                std::string sanitized(begin, end);
+                if (sanitized.size() > kMaxSessionDisplayNameLength) {
+                    sanitized.resize(kMaxSessionDisplayNameLength);
+                }
+
+                return sanitized.empty() ? "Player" : sanitized;
+            }
+
+        }
 
         OnlineSystem& OnlineSystem::GetInstance()
         {
@@ -79,6 +107,16 @@ namespace RTBEngine {
             failApplicationOnError = false;
             defaultLoginOptions = OnlineLoginOptions();
             state = OnlineState::Disabled;
+        }
+
+        void OnlineSystem::SetSessionDisplayName(const std::string& name)
+        {
+            defaultLoginOptions.displayName = SanitizeSessionDisplayName(name);
+        }
+
+        const std::string& OnlineSystem::GetSessionDisplayName() const
+        {
+            return defaultLoginOptions.displayName;
         }
 
         IOnlineIdentity* OnlineSystem::GetIdentity()

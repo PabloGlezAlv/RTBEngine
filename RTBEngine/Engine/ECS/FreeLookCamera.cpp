@@ -5,7 +5,6 @@
 #include "../Input/MouseButton.h"
 #include <cmath>
 #include <algorithm>
-#include <iostream>
 #include "../RTBEngine.h"
 
 namespace RTBEngine {
@@ -66,25 +65,6 @@ namespace RTBEngine {
             // Get camera orientation vectors
             Math::Vector3 forward = transform.GetForward();
             Math::Vector3 right = transform.GetRight();
-            Math::Vector3 up = transform.GetUp();
-
-            // Debug: Print vectors with P key
-            static bool debugPrinted = false;
-            if (input.IsKeyJustPressed(Input::KeyCode::P) && !debugPrinted) {
-                std::string debugMsg = "\n=== FreeLookCamera Debug ===\n";
-                debugMsg += "Yaw: " + std::to_string(yaw) + "°, Pitch: " + std::to_string(pitch) + "°\n";
-                debugMsg += "Forward: (" + std::to_string(forward.x) + ", " + std::to_string(forward.y) + ", " + std::to_string(forward.z) + ")\n";
-                debugMsg += "Right:   (" + std::to_string(right.x) + ", " + std::to_string(right.y) + ", " + std::to_string(right.z) + ")\n";
-                debugMsg += "Up:      (" + std::to_string(up.x) + ", " + std::to_string(up.y) + ", " + std::to_string(up.z) + ")\n";
-                Math::Vector3 pos = transform.GetPosition();
-                debugMsg += "Position: (" + std::to_string(pos.x) + ", " + std::to_string(pos.y) + ", " + std::to_string(pos.z) + ")\n";
-                debugMsg += "============================\n";
-                RTB_INFO(debugMsg);
-                debugPrinted = true;
-            }
-            if (!input.IsKeyPressed(Input::KeyCode::P)) {
-                debugPrinted = false;
-            }
 
             // Movement input
             Math::Vector3 movement(0, 0, 0);

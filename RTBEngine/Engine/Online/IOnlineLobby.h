@@ -64,6 +64,10 @@ namespace RTBEngine {
             OnlineLobbyInfo lobby;
         };
 
+        struct RTB_API OnlineLobbyMemberJoinedEvent {
+            std::string displayName;
+        };
+
         class RTB_API IOnlineLobby {
         public:
             virtual ~IOnlineLobby() = default;
@@ -83,6 +87,8 @@ namespace RTBEngine {
             virtual const char* GetLastError() const = 0;
             virtual Core::EventSubscription SubscribeLobbyStatusChanged(Core::Event<OnlineLobbyStatusChangedEvent>::Callback callback) = 0;
             virtual void ClearLobbyStatusChangedListeners() = 0;
+            virtual Core::EventSubscription SubscribeMemberJoined(Core::Event<OnlineLobbyMemberJoinedEvent>::Callback callback) = 0;
+            virtual void ClearMemberJoinedListeners() = 0;
 
             bool IsInLobby() const { return GetState() == OnlineLobbyState::InLobby; }
         };
