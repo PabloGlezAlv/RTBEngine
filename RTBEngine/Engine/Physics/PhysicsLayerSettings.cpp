@@ -39,6 +39,14 @@ namespace RTBEngine {
                 return std::string(first, last);
             }
 
+            std::string ToLower(std::string value)
+            {
+                for (char& character : value) {
+                    character = static_cast<char>(std::tolower(static_cast<unsigned char>(character)));
+                }
+                return value;
+            }
+
         }
 
         PhysicsLayerSettings& PhysicsLayerSettings::Get()
