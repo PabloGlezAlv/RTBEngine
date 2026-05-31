@@ -39,6 +39,9 @@
 #include "Online/OnlineUser.h"
 #include "Online/OnlineGameplayNet.h"
 
+// Physics layers
+#include "Physics/PhysicsLayerSettings.h"
+
 // Built-in Components
 #include "ECS/MissingComponent.h"
 #include "ECS/MeshRenderer.h"

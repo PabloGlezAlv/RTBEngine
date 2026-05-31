@@ -53,6 +53,9 @@ namespace RTBEngine {
             const Math::Quaternion& GetRotation() const { return rotation; }
             const Math::Vector3& GetScale() const { return scale; }
 
+            int GetCollisionLayer() const { return collisionLayer; }
+            void SetCollisionLayer(int layerIndex) { collisionLayer = layerIndex; }
+
             static void ApplySnapshot(Component* target, const ComponentSnapshot& snap);
 
             static void SnapshotComponent(ComponentSnapshot& snap, const Component* comp);
@@ -62,6 +65,7 @@ namespace RTBEngine {
             Math::Vector3 position;
             Math::Quaternion rotation;
             Math::Vector3 scale = Math::Vector3(1.0f, 1.0f, 1.0f);
+            int collisionLayer = 0;
             std::vector<ComponentSnapshot> componentSnapshots;
             std::vector<std::unique_ptr<Prefab>> childPrefabs;
         };

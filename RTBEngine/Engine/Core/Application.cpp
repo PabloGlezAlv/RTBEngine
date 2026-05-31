@@ -16,6 +16,9 @@
 #include "../Rendering/Lighting/DirectionalLight.h"
 #include "ResourceManager.h"
 #include "../Physics/PhysicsWorld.h"
+#include "../Physics/PhysicsLayerSettings.h"
+
+#include <filesystem>
 #include "../Physics/PhysicsSystem.h"
 #include "../Audio/AudioSystem.h"
 #include "../UI/CanvasSystem.h"
@@ -246,6 +249,16 @@ bool RTBEngine::Core::Application::Initialize()
 	// Initialize default skybox
 	skybox = resources.GetDefaultSkybox();
 
+
+	// Collision layers (project physics_layers.ini in working directory)
+	{
+		auto& layerSettings = Physics::PhysicsLayerSettings::Get();
+		const std::filesystem::path layerSettingsPath =
+			std::filesystem::current_path() / Physics::PhysicsLayerSettings::GetDefaultSettingsFileName();
+		if (!layerSettings.LoadFromFile(layerSettingsPath)) {
+			layerSettings.ResetToDefaults();
+		}
+	}
 
 	// Initialize physics
 	physicsWorld = new Physics::PhysicsWorld();

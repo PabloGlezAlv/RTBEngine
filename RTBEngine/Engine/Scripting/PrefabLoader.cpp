@@ -19,6 +19,7 @@
 #include "../UI/Elements/UIPanel.h"
 #include "../UI/Elements/UIButton.h"
 #include "../UI/Elements/UIContainer.h"
+#include "../Physics/PhysicsLayerSettings.h"
 #include "../RTBEngine.h"
 #include <lua.hpp>
 #include <LuaBridge/LuaBridge.h>
@@ -94,6 +95,17 @@ namespace RTBEngine {
             lua_pop(L, 1);
         }
 
+        static void LoadCollisionLayer(lua_State* L, int nodeTableIndex, ECS::Prefab& prefab)
+        {
+            lua_getfield(L, nodeTableIndex, "collisionLayer");
+            if (lua_isstring(L, -1)) {
+                prefab.SetCollisionLayer(Physics::PhysicsLayerSettings::Get().GetLayerIndex(lua_tostring(L, -1)));
+            } else if (lua_isnumber(L, -1)) {
+                prefab.SetCollisionLayer(static_cast<int>(lua_tointeger(L, -1)));
+            }
+            lua_pop(L, 1);
+        }
+
         static void LoadTransform(lua_State* L, int nodeTableIndex, ECS::Prefab& prefab)
         {
             lua_getfield(L, nodeTableIndex, "position");
@@ -127,6 +139,7 @@ namespace RTBEngine {
             auto prefab = std::make_unique<ECS::Prefab>(nodeName);
 
             LoadTransform(L, nodeTableIndex, *prefab);
+            LoadCollisionLayer(L, nodeTableIndex, *prefab);
             LoadComponents(L, nodeTableIndex, *prefab);
 
             // Recursively load children if present

@@ -1,4 +1,5 @@
 #include "PhysicsSystem.h"
+#include "PhysicsLayerSettings.h"
 #include "PhysicsUtils.h"
 #include "BoxCollider.h"
 #include "SphereCollider.h"
@@ -44,6 +45,39 @@ namespace RTBEngine {
                 btTrans.setOrigin(PhysicsUtils::ToBullet(worldCenter));
                 btTrans.setRotation(PhysicsUtils::ToBullet(rotation));
                 return btTrans;
+            }
+
+            void GetCollisionFiltersForGameObject(
+                const ECS::GameObject* gameObject,
+                int& outGroup,
+                int& outMask)
+            {
+                const PhysicsLayerSettings& settings = PhysicsLayerSettings::Get();
+                const int layerIndex = gameObject ? gameObject->GetCollisionLayer() : 0;
+                outGroup = settings.GetLayerGroup(layerIndex);
+                outMask = settings.GetLayerMask(layerIndex);
+            }
+
+            void AddRigidBodyWithLayer(
+                PhysicsWorld* world,
+                ECS::GameObject* gameObject,
+                btRigidBody* body)
+            {
+                int group = 0;
+                int mask = 0;
+                GetCollisionFiltersForGameObject(gameObject, group, mask);
+                world->AddRigidBody(body, group, mask);
+            }
+
+            void AddCollisionObjectWithLayer(
+                PhysicsWorld* world,
+                ECS::GameObject* gameObject,
+                btCollisionObject* object)
+            {
+                int group = 0;
+                int mask = 0;
+                GetCollisionFiltersForGameObject(gameObject, group, mask);
+                world->AddCollisionObject(object, group, mask);
             }
         }
 
@@ -120,7 +154,7 @@ namespace RTBEngine {
                 collisionObj->setCollisionFlags(collisionObj->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
             }
 
-            physicsWorld->AddCollisionObject(collisionObj);
+            AddCollisionObjectWithLayer(physicsWorld, gameObject, collisionObj);
             boxCollider->SetBulletCollisionObject(collisionObj, true);
             boxCollider->SetPhysicsWorld(physicsWorld);
         }
@@ -169,7 +203,7 @@ namespace RTBEngine {
             rigidBody->SetOwner(gameObject);
             btBody->setUserPointer(gameObject);
 
-            physicsWorld->AddRigidBody(btBody.get());
+            AddRigidBodyWithLayer(physicsWorld, gameObject, btBody.get());
             rigidBody->SetPhysicsWorld(physicsWorld);
             rigidBody->SetBulletRigidBody(std::move(btBody));
             boxCollider->SetBulletCollisionObject(rigidBody->GetBulletRigidBody());
@@ -410,7 +444,7 @@ namespace RTBEngine {
                 collisionObj->setCollisionFlags(collisionObj->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
             }
 
-            physicsWorld->AddCollisionObject(collisionObj);
+            AddCollisionObjectWithLayer(physicsWorld, gameObject, collisionObj);
             sphereCollider->SetBulletCollisionObject(collisionObj, true);
             sphereCollider->SetPhysicsWorld(physicsWorld);
         }
@@ -459,7 +493,7 @@ namespace RTBEngine {
             rigidBody->SetOwner(gameObject);
             btBody->setUserPointer(gameObject);
 
-            physicsWorld->AddRigidBody(btBody.get());
+            AddRigidBodyWithLayer(physicsWorld, gameObject, btBody.get());
             rigidBody->SetPhysicsWorld(physicsWorld);
             rigidBody->SetBulletRigidBody(std::move(btBody));
             sphereCollider->SetBulletCollisionObject(rigidBody->GetBulletRigidBody());
@@ -504,7 +538,7 @@ namespace RTBEngine {
                 collisionObj->setCollisionFlags(collisionObj->getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
             }
 
-            physicsWorld->AddCollisionObject(collisionObj);
+            AddCollisionObjectWithLayer(physicsWorld, gameObject, collisionObj);
             capsuleCollider->SetBulletCollisionObject(collisionObj, true);
             capsuleCollider->SetPhysicsWorld(physicsWorld);
         }
@@ -553,7 +587,7 @@ namespace RTBEngine {
             rigidBody->SetOwner(gameObject);
             btBody->setUserPointer(gameObject);
 
-            physicsWorld->AddRigidBody(btBody.get());
+            AddRigidBodyWithLayer(physicsWorld, gameObject, btBody.get());
             rigidBody->SetPhysicsWorld(physicsWorld);
             rigidBody->SetBulletRigidBody(std::move(btBody));
             capsuleCollider->SetBulletCollisionObject(rigidBody->GetBulletRigidBody());

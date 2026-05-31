@@ -4,6 +4,7 @@
 #include "ComponentRegistry.h"
 #include "ScenePropertySerializer.h"
 #include "../Math/Math.h"
+#include "../Physics/PhysicsLayerSettings.h"
 #include "../RTBEngine.h"
 #include <fstream>
 #include <filesystem>
@@ -40,6 +41,12 @@ namespace RTBEngine {
 
             file << ind << "{\n";
             file << ind << "    name = \"" << prefab.GetName() << "\",\n";
+            if (prefab.GetCollisionLayer() != 0) {
+                file << ind << "    collisionLayer = "
+                    << ScenePropertySerializer::FormatString(
+                        Physics::PhysicsLayerSettings::Get().GetLayerName(prefab.GetCollisionLayer()))
+                    << ",\n";
+            }
             WriteTransform(file, prefab, depth + 1);
             file << ind << "    components = {\n";
 
@@ -87,6 +94,12 @@ namespace RTBEngine {
             try {
                 file << "return {\n";
                 file << "    name = \"" << prefab.GetName() << "\",\n";
+                if (prefab.GetCollisionLayer() != 0) {
+                    file << "    collisionLayer = "
+                        << ScenePropertySerializer::FormatString(
+                            Physics::PhysicsLayerSettings::Get().GetLayerName(prefab.GetCollisionLayer()))
+                        << ",\n";
+                }
                 WriteTransform(file, prefab, 1);
                 file << "    components = {\n";
 

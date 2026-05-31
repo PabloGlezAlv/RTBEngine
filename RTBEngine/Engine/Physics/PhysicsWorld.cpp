@@ -323,6 +323,14 @@ namespace RTBEngine {
             }
         }
 
+        void PhysicsWorld::AddRigidBody(btRigidBody* body, int collisionFilterGroup, int collisionFilterMask)
+        {
+            if (dynamicsWorld && body)
+            {
+                dynamicsWorld->addRigidBody(body, collisionFilterGroup, collisionFilterMask);
+            }
+        }
+
         void PhysicsWorld::RemoveRigidBody(btRigidBody* body)
         {
             if (dynamicsWorld && body)
@@ -336,6 +344,14 @@ namespace RTBEngine {
             if (dynamicsWorld && obj)
             {
                 dynamicsWorld->addCollisionObject(obj);
+            }
+        }
+
+        void PhysicsWorld::AddCollisionObject(btCollisionObject* obj, int collisionFilterGroup, int collisionFilterMask)
+        {
+            if (dynamicsWorld && obj)
+            {
+                dynamicsWorld->addCollisionObject(obj, collisionFilterGroup, collisionFilterMask);
             }
         }
 

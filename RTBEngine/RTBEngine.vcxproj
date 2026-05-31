@@ -227,6 +227,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Physics\SphereCollider.cpp" />
     <ClCompile Include="Engine\Physics\PhysicsWorld.cpp" />
     <ClCompile Include="Engine\Physics\PhysicsSystem.cpp" />
+    <ClCompile Include="Engine\Physics\PhysicsLayerSettings.cpp" />
     <ClCompile Include="Engine\Rendering\Lighting\PointLight.cpp" />
     <ClCompile Include="Engine\Rendering\Lighting\SpotLight.cpp" />
     <ClCompile Include="Engine\UI\Canvas.cpp" />
@@ -360,6 +361,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Physics\CapsuleCollider.h" />
     <ClInclude Include="Engine\Physics\SphereCollider.h" />
     <ClInclude Include="Engine\Physics\PhysicsWorld.h" />
+    <ClInclude Include="Engine\Physics\PhysicsLayerSettings.h" />
     <ClInclude Include="Engine\Physics\PhysicsSystem.h" />
     <ClInclude Include="Engine\Physics\PhysicsUtils.h" />
     <ClInclude Include="Engine\Rendering\Lighting\PointLight.h" />

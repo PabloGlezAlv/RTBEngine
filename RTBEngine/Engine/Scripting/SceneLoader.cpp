@@ -22,6 +22,7 @@
 #include "../Physics/BoxCollider.h"
 #include "../Physics/SphereCollider.h"
 #include "../Physics/CapsuleCollider.h"
+#include "../Physics/PhysicsLayerSettings.h"
 #include "../Math/Math.h"
 #include "../UI/Canvas.h"
 #include "../UI/Elements/UIText.h"
@@ -47,6 +48,23 @@
 
 namespace RTBEngine {
     namespace Scripting {
+
+        namespace {
+            void ReadCollisionLayer(lua_State* L, int tableIndex, ECS::GameObject* gameObject)
+            {
+                if (!gameObject) {
+                    return;
+                }
+
+                lua_getfield(L, tableIndex, "collisionLayer");
+                if (lua_isstring(L, -1)) {
+                    gameObject->SetCollisionLayerByName(lua_tostring(L, -1));
+                } else if (lua_isnumber(L, -1)) {
+                    gameObject->SetCollisionLayer(static_cast<int>(lua_tointeger(L, -1)));
+                }
+                lua_pop(L, 1);
+            }
+        }
 
         void SceneLoader::SetupLuaBindings(lua_State* L) {
             SceneLuaBindings::SetupLuaBindings(L);
@@ -140,6 +158,7 @@ namespace RTBEngine {
                 go->SetUUID(savedUUID);
 
             ReadTransform(L, tableIndex, go);
+            ReadCollisionLayer(L, tableIndex, go);
 
             std::string parentName = SceneParsingUtils::ReadOptionalString(L, tableIndex, "parent", "");
             if (!parentName.empty())

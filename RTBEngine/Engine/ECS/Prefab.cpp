@@ -224,6 +224,7 @@ namespace RTBEngine {
             prefab->position = transform.GetPosition();
             prefab->rotation = transform.GetRotation();
             prefab->scale = transform.GetScale();
+            prefab->collisionLayer = source->GetCollisionLayer();
 
             for (const auto& comp : source->GetComponents())
             {
@@ -268,6 +269,7 @@ namespace RTBEngine {
                 go->GetTransform().SetPosition(nodePrefab.position);
                 go->GetTransform().SetRotation(nodePrefab.rotation);
                 go->GetTransform().SetScale(nodePrefab.scale);
+                go->SetCollisionLayer(nodePrefab.collisionLayer);
 
                 if (!nodePrefab.sourceUuid.empty()) {
                     context.sourceUuidToInstance[nodePrefab.sourceUuid] = go;

@@ -73,6 +73,10 @@ namespace RTBEngine {
             void SetTransient(bool t) { isTransient = t; }
             bool IsTransient() const { return isTransient; }
 
+            int GetCollisionLayer() const { return collisionLayer; }
+            void SetCollisionLayer(int layerIndex);
+            void SetCollisionLayerByName(const std::string& layerName);
+
             Math::Matrix4 GetWorldMatrix() const;
             Math::Vector3 GetWorldPosition() const;
             Math::Quaternion GetWorldRotation() const;
@@ -94,6 +98,7 @@ namespace RTBEngine {
             bool started;
             bool isBeingDestroyed = false;
             bool isTransient = false;
+            int collisionLayer = 0;
 
             GameObject* parent = nullptr;
             std::vector<GameObject*> children;

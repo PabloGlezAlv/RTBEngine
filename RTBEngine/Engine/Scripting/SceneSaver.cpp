@@ -13,6 +13,7 @@
 #include "../Math/Quaternions/Quaternion.h"
 #include "../Rendering/Cubemap.h"
 #include "../Core/ResourceManager.h"
+#include "../Physics/PhysicsLayerSettings.h"
 #include "../RTBEngine.h"
 
 namespace RTBEngine {
@@ -98,6 +99,13 @@ namespace RTBEngine {
             file << ind << "{\n";
             file << ind << "    name = \"" << go->GetName() << "\",\n";
             file << ind << "    uuid = \"" << go->GetUUID() << "\",\n";
+
+            if (go->GetCollisionLayer() != 0) {
+                file << ind << "    collisionLayer = "
+                    << ScenePropertySerializer::FormatString(
+                        Physics::PhysicsLayerSettings::Get().GetLayerName(go->GetCollisionLayer()))
+                    << ",\n";
+            }
 
             if (go->IsPrefabInstance())
             {

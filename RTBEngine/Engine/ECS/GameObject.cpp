@@ -2,6 +2,8 @@
 #include "../Core/Time.h"
 #include "../Reflection/TypeInfo.h"
 #include "../Core/Logger.h"
+#include "../Physics/PhysicsLayerSettings.h"
+#include <algorithm>
 #include <objbase.h>
 #include <cstdio>
 
@@ -243,6 +245,16 @@ namespace RTBEngine {
                 children.erase(it);
                 ++s_globalHierarchyVersion;
             }
+        }
+
+        void GameObject::SetCollisionLayer(int layerIndex)
+        {
+            collisionLayer = std::clamp(layerIndex, 0, Physics::kMaxPhysicsLayers - 1);
+        }
+
+        void GameObject::SetCollisionLayerByName(const std::string& layerName)
+        {
+            SetCollisionLayer(Physics::PhysicsLayerSettings::Get().GetLayerIndex(layerName));
         }
 
     }
