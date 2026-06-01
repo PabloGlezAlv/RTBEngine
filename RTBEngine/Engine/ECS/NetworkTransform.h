@@ -30,14 +30,16 @@ namespace RTBEngine {
             void OnFixedUpdate(float fixedDeltaTime) override;
             void OnLateUpdate(float deltaTime) override;
             void OnValidate() override;
+            void OnDestroy() override;
 
         private:
             float sendTimer = 0.0f;
-            std::string resolvedObjectKey;
+            std::string registeredObjectKey;
             bool hasCachedSnapshot = false;
+            bool loggedEmptyObjectKeyError = false;
             Online::OnlineGameplayNet::TransformSnapshot cachedSnapshot;
 
-            void ResolveObjectKey();
+            void EnsureObjectKeyRegistered();
             bool HasSendAuthority() const;
             bool HasReceiveAuthority() const;
             void SendSnapshot(float deltaTime);

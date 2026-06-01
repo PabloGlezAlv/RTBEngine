@@ -19,6 +19,8 @@
 
 #include <unordered_map>
 
+#include <unordered_set>
+
 #include <vector>
 
 
@@ -46,6 +48,8 @@ namespace RTBEngine {
             std::unordered_map<std::string, OnlineGameplayNet::TransformSnapshot> latestTransforms;
 
             std::unordered_map<std::string, OnlineGameplayNet::PlayerInputSnapshot> latestInputs;
+
+            std::unordered_set<std::string> registeredTransformObjectKeys;
 
             bool engineHandlersRegistered = false;
 
@@ -463,9 +467,81 @@ namespace RTBEngine {
 
 
 
+        bool OnlineGameplayNet::RegisterTransformObjectKey(const std::string& objectKey)
+
+        {
+
+            if (objectKey.empty()) {
+
+                return false;
+
+            }
+
+
+
+            const auto [it, inserted] = registeredTransformObjectKeys.insert(objectKey);
+
+            return inserted;
+
+        }
+
+
+
+        void OnlineGameplayNet::UnregisterTransformObjectKey(const std::string& objectKey)
+
+        {
+
+            if (objectKey.empty()) {
+
+                return;
+
+            }
+
+
+
+            registeredTransformObjectKeys.erase(objectKey);
+
+        }
+
+
+
+        bool OnlineGameplayNet::IsTransformObjectKeyRegistered(const std::string& objectKey)
+
+        {
+
+            return !objectKey.empty() && registeredTransformObjectKeys.find(objectKey) != registeredTransformObjectKeys.end();
+
+        }
+
+
+
         bool OnlineGameplayNet::BroadcastTransform(const TransformSnapshot& snapshot)
 
         {
+
+            if (snapshot.objectKey.empty()) {
+
+                RTB_ERROR("OnlineGameplayNet: cannot broadcast transform with an empty objectKey.");
+
+                return false;
+
+            }
+
+
+
+            if (!IsTransformObjectKeyRegistered(snapshot.objectKey)) {
+
+                RTB_ERROR(
+
+                    "OnlineGameplayNet: cannot broadcast transform for unregistered objectKey '" +
+
+                    snapshot.objectKey + "'.");
+
+                return false;
+
+            }
+
+
 
             RegisterEngineHandlers();
 
