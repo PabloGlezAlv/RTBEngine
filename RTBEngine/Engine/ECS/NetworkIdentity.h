@@ -5,6 +5,7 @@
 #include "../Online/OnlineUser.h"
 #include "../Reflection/PropertyMacros.h"
 
+#include <cstdint>
 #include <string>
 
 namespace RTBEngine {
@@ -26,9 +27,15 @@ namespace RTBEngine {
             void SetOwnerUserId(const Online::OnlineUserId& userId);
             void SetNetworkPlayerSlot(int slot);
 
+            void SetNetworkId(std::uint32_t id);
+            std::uint32_t GetNetworkId() const { return networkId; }
+            bool HasNetworkId() const { return networkId != 0; }
+
             bool IsLocallyControlled() const;
             bool IsSimulatedByHost() const;
-            std::string GetNetworkObjectKey() const;
+
+        private:
+            std::uint32_t networkId = 0;
         };
 #pragma warning(pop)
 

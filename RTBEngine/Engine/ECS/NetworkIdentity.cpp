@@ -23,6 +23,11 @@ namespace RTBEngine {
             networkPlayerSlot = slot;
         }
 
+        void NetworkIdentity::SetNetworkId(std::uint32_t id)
+        {
+            networkId = id;
+        }
+
         bool NetworkIdentity::IsLocallyControlled() const
         {
             const Online::OnlineSystem& online = Online::OnlineSystem::GetInstance();
@@ -49,23 +54,6 @@ namespace RTBEngine {
             }
 
             return online.IsLobbyOwner();
-        }
-
-        std::string NetworkIdentity::GetNetworkObjectKey() const
-        {
-            if (networkPlayerSlot >= 0) {
-                return "PlayerSlot_" + std::to_string(networkPlayerSlot);
-            }
-
-            if (!networkOwnerUserId.empty()) {
-                return networkOwnerUserId;
-            }
-
-            if (!owner) {
-                return std::string();
-            }
-
-            return owner->GetUUID().empty() ? owner->GetName() : owner->GetUUID();
         }
 
     }

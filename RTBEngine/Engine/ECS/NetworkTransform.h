@@ -5,8 +5,6 @@
 #include "../Online/OnlineGameplayNet.h"
 #include "../Reflection/PropertyMacros.h"
 
-#include <string>
-
 namespace RTBEngine {
     namespace ECS {
 
@@ -17,7 +15,6 @@ namespace RTBEngine {
             NetworkTransform() = default;
             ~NetworkTransform() override = default;
 
-            std::string objectKey;
             float sendRate = 20.0f;
             float interpolationSpeed = 14.0f;
             bool replicatePosition = true;
@@ -34,12 +31,13 @@ namespace RTBEngine {
 
         private:
             float sendTimer = 0.0f;
-            std::string registeredObjectKey;
+            std::uint32_t registeredNetworkId = Online::OnlineGameplayNet::kInvalidNetworkObjectId;
             bool hasCachedSnapshot = false;
-            bool loggedEmptyObjectKeyError = false;
+            bool loggedMissingNetworkIdError = false;
             Online::OnlineGameplayNet::TransformSnapshot cachedSnapshot;
 
-            void EnsureObjectKeyRegistered();
+            std::uint32_t ResolveNetworkId() const;
+            void EnsureNetworkIdRegistered();
             bool HasSendAuthority() const;
             bool HasReceiveAuthority() const;
             void SendSnapshot(float deltaTime);

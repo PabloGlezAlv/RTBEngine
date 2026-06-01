@@ -1,413 +1,219 @@
 #include "NetworkTransform.h"
 
-
-
 #include "GameObject.h"
-
+#include "NetworkIdentity.h"
 #include "RigidBodyComponent.h"
-
 #include "../Core/Logger.h"
-
 #include "../Math/Quaternions/Quaternion.h"
-
 #include "../Math/Vectors/Vector3.h"
-
 #include "../Online/OnlineGameplayNet.h"
-
 #include "../Online/OnlineSystem.h"
-
 #include "../Reflection/PropertyMacros.h"
-
-
 
 #include <algorithm>
 
-
-
 namespace RTBEngine {
-
     namespace ECS {
 
-
-
         using ThisClass = NetworkTransform;
-
         RTB_REGISTER_COMPONENT(NetworkTransform)
-
-            RTB_PROPERTY(objectKey)
-
             RTB_PROPERTY_RANGE(sendRate, 1.0f, 60.0f)
-
             RTB_PROPERTY_RANGE(interpolationSpeed, 1.0f, 60.0f)
-
             RTB_PROPERTY(replicatePosition)
-
             RTB_PROPERTY(replicateRotation)
-
         RTB_END_REGISTER(NetworkTransform)
-
-
 
         namespace {
 
-
-
             Math::Vector3 LerpVector(
-
                 const Math::Vector3& from,
-
                 const Math::Vector3& to,
-
                 float t)
-
             {
-
                 return from + (to - from) * t;
-
             }
-
-
 
             void SyncRigidBodyIfPresent(
-
                 GameObject* owner,
-
                 const Math::Vector3& position,
-
                 const Math::Quaternion& rotation)
-
             {
-
                 if (!owner) {
-
                     return;
-
                 }
-
-
 
                 auto* rigidBodyComponent = owner->GetComponent<RigidBodyComponent>();
-
                 if (!rigidBodyComponent || !rigidBodyComponent->HasRigidBody() || !rigidBodyComponent->GetRigidBody()) {
-
                     return;
-
                 }
-
-
 
                 rigidBodyComponent->GetRigidBody()->SetWorldTransform(position, rotation);
-
             }
-
-
 
         }
 
+        std::uint32_t NetworkTransform::ResolveNetworkId() const
+        {
+            if (!owner) {
+                return Online::OnlineGameplayNet::kInvalidNetworkObjectId;
+            }
 
+            const NetworkIdentity* identity = owner->GetComponent<NetworkIdentity>();
+            return identity ? identity->GetNetworkId() : Online::OnlineGameplayNet::kInvalidNetworkObjectId;
+        }
 
         void NetworkTransform::OnStart()
-
         {
-
-            EnsureObjectKeyRegistered();
-
+            EnsureNetworkIdRegistered();
             OnValidate();
-
         }
-
-
 
         void NetworkTransform::OnDestroy()
-
         {
-
-            if (!registeredObjectKey.empty()) {
-
-                Online::OnlineGameplayNet::UnregisterTransformObjectKey(registeredObjectKey);
-
-                registeredObjectKey.clear();
-
+            if (registeredNetworkId != Online::OnlineGameplayNet::kInvalidNetworkObjectId) {
+                Online::OnlineGameplayNet::UnregisterNetworkObjectId(registeredNetworkId);
+                registeredNetworkId = Online::OnlineGameplayNet::kInvalidNetworkObjectId;
             }
-
         }
-
-
 
         void NetworkTransform::OnFixedUpdate(float fixedDeltaTime)
-
         {
-
             if (!owner || !Online::OnlineSystem::GetInstance().IsInLobby()) {
-
                 return;
-
             }
 
-
-
-            EnsureObjectKeyRegistered();
-
-
+            EnsureNetworkIdRegistered();
 
             if (HasSendAuthority()) {
-
                 SendSnapshot(fixedDeltaTime);
-
             }
-
         }
-
-
 
         void NetworkTransform::OnLateUpdate(float deltaTime)
-
         {
-
             if (!owner || !Online::OnlineSystem::GetInstance().IsInLobby()) {
-
                 return;
-
             }
 
-
-
-            EnsureObjectKeyRegistered();
-
-
+            EnsureNetworkIdRegistered();
 
             if (HasReceiveAuthority()) {
-
                 ApplyRemoteSnapshot(deltaTime);
-
             }
-
         }
-
-
 
         void NetworkTransform::OnValidate()
-
         {
-
             sendRate = std::clamp(sendRate, 1.0f, 60.0f);
-
             interpolationSpeed = std::clamp(interpolationSpeed, 1.0f, 60.0f);
-
-            EnsureObjectKeyRegistered();
-
+            EnsureNetworkIdRegistered();
         }
 
-
-
-        void NetworkTransform::EnsureObjectKeyRegistered()
-
+        void NetworkTransform::EnsureNetworkIdRegistered()
         {
-
             if (!Online::OnlineSystem::GetInstance().IsInLobby()) {
-
                 return;
-
             }
 
-
-
-            if (objectKey.empty()) {
-
+            const std::uint32_t networkId = ResolveNetworkId();
+            if (networkId == Online::OnlineGameplayNet::kInvalidNetworkObjectId) {
                 return;
-
             }
 
-
-
-            if (registeredObjectKey == objectKey) {
-
+            if (registeredNetworkId == networkId) {
                 return;
-
             }
 
-
-
-            if (!registeredObjectKey.empty()) {
-
-                Online::OnlineGameplayNet::UnregisterTransformObjectKey(registeredObjectKey);
-
-                registeredObjectKey.clear();
-
+            if (registeredNetworkId != Online::OnlineGameplayNet::kInvalidNetworkObjectId) {
+                Online::OnlineGameplayNet::UnregisterNetworkObjectId(registeredNetworkId);
+                registeredNetworkId = Online::OnlineGameplayNet::kInvalidNetworkObjectId;
             }
 
-
-
-            if (!Online::OnlineGameplayNet::RegisterTransformObjectKey(objectKey)) {
-
+            if (!Online::OnlineGameplayNet::RegisterNetworkObjectId(networkId)) {
                 const std::string ownerName = owner ? owner->GetName() : "unknown";
-
                 RTB_ERROR(
-
-                    "NetworkTransform: duplicate objectKey '" + objectKey +
-
-                    "' on '" + ownerName + "'.");
-
+                    "NetworkTransform: duplicate network id " + std::to_string(networkId) +
+                    " on '" + ownerName + "'.");
                 return;
-
             }
 
-
-
-            registeredObjectKey = objectKey;
-
+            registeredNetworkId = networkId;
         }
-
-
 
         bool NetworkTransform::HasSendAuthority() const
-
         {
-
             const Online::OnlineSystem& online = Online::OnlineSystem::GetInstance();
-
             return !online.IsInLobby() || online.IsLobbyOwner();
-
         }
-
-
 
         bool NetworkTransform::HasReceiveAuthority() const
-
         {
-
             const Online::OnlineSystem& online = Online::OnlineSystem::GetInstance();
-
             return online.IsInLobby() && !online.IsLobbyOwner();
-
         }
 
-
-
         void NetworkTransform::SendSnapshot(float deltaTime)
-
         {
-
-            if (objectKey.empty()) {
-
-                if (!loggedEmptyObjectKeyError) {
-
+            const std::uint32_t networkId = ResolveNetworkId();
+            if (networkId == Online::OnlineGameplayNet::kInvalidNetworkObjectId) {
+                if (!loggedMissingNetworkIdError) {
                     const std::string ownerName = owner ? owner->GetName() : "unknown";
-
                     RTB_ERROR(
-
-                        "NetworkTransform: cannot send transform snapshot without objectKey on '" +
-
+                        "NetworkTransform: cannot send transform snapshot without a network id on '" +
                         ownerName + "'.");
-
-                    loggedEmptyObjectKeyError = true;
-
+                    loggedMissingNetworkIdError = true;
                 }
-
                 return;
-
             }
-
-
 
             sendTimer += std::max(0.0f, deltaTime);
-
             const float sendInterval = 1.0f / std::max(1.0f, sendRate);
-
             if (sendTimer < sendInterval) {
-
                 return;
-
             }
-
-
 
             sendTimer = 0.0f;
 
-
-
             Online::OnlineGameplayNet::TransformSnapshot snapshot;
-
-            snapshot.objectKey = objectKey;
-
+            snapshot.networkId = networkId;
             snapshot.position = owner->GetTransform().GetPosition();
-
             snapshot.rotation = owner->GetTransform().GetRotation();
-
             Online::OnlineGameplayNet::BroadcastTransform(snapshot);
-
         }
-
-
 
         void NetworkTransform::ApplyRemoteSnapshot(float deltaTime)
-
         {
-
-            if (objectKey.empty()) {
-
+            const std::uint32_t networkId = ResolveNetworkId();
+            if (networkId == Online::OnlineGameplayNet::kInvalidNetworkObjectId) {
                 return;
-
             }
-
-
 
             Online::OnlineGameplayNet::TransformSnapshot snapshot;
-
-            if (Online::OnlineGameplayNet::TryGetLatestTransform(objectKey, snapshot)) {
-
+            if (Online::OnlineGameplayNet::TryGetLatestTransform(networkId, snapshot)) {
                 cachedSnapshot = snapshot;
-
                 hasCachedSnapshot = true;
-
             } else if (!hasCachedSnapshot) {
-
                 return;
-
             } else {
-
                 snapshot = cachedSnapshot;
-
             }
-
-
 
             const float t = std::clamp(interpolationSpeed * std::max(0.0f, deltaTime), 0.0f, 1.0f);
-
             Math::Vector3 nextPosition = owner->GetTransform().GetPosition();
-
             Math::Quaternion nextRotation = owner->GetTransform().GetRotation();
 
-
-
             if (replicatePosition) {
-
                 nextPosition = LerpVector(nextPosition, snapshot.position, t);
-
                 owner->GetTransform().SetPosition(nextPosition);
-
             }
-
-
 
             if (replicateRotation) {
-
                 nextRotation = Math::Quaternion::Slerp(nextRotation, snapshot.rotation, t);
-
                 owner->GetTransform().SetRotation(nextRotation);
-
             }
 
-
-
             SyncRigidBodyIfPresent(owner, nextPosition, nextRotation);
-
         }
 
-
-
     }
-
 }
-
-
