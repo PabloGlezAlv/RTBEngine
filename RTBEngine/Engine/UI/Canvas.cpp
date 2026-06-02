@@ -17,6 +17,7 @@ namespace RTBEngine {
             RTB_PROPERTY(canvasSize)
 			RTB_PROPERTY_RANGE(pixelsPerUnit, 1.0f, 1000.0f)
             RTB_PROPERTY(sortOrder)
+            RTB_PROPERTY(faceCamera)
         RTB_END_REGISTER(Canvas)
 
 		Canvas::Canvas() {
@@ -121,34 +122,45 @@ namespace RTBEngine {
 		}
 
 		void Canvas::UpdateRectTransforms(const Math::Vector2& screenSize) {
+			if (!owner) {
+				return;
+			}
+
 			const Math::Vector2 rootSize =
 				renderMode == RenderMode::WorldSpace ? canvasSize : screenSize;
 
-			for (UIElement* element : cachedUIElements) {
-				if (!element) continue;
-
-				RectTransform* rt = element->GetRectTransform();
-				if (!rt) continue;
-
-				ECS::GameObject* parentObj = element->GetOwner()->GetParent();
-
-				// Default: canvas is the "root" parent with scale 1.0
-				Math::Vector2 parentWorldPos(0.0f, 0.0f);
-				Math::Vector2 parentWorldSize = rootSize;
-				Math::Vector2 parentLossyScale(1.0f, 1.0f);
-
-				if (parentObj && parentObj != owner) {
-					UIElement* parentUI = parentObj->GetComponent<UIElement>();
-					if (parentUI && parentUI->GetRectTransform()) {
-						RectTransform* parentRT = parentUI->GetRectTransform();
-						// KEY FIX: Use parent's WORLD values (scaled) not layout values (unscaled)
-						parentWorldPos = parentRT->GetWorldPosition();
-						parentWorldSize = parentRT->GetWorldSize();
-						parentLossyScale = parentRT->GetLossyScale();
+			std::function<void(ECS::GameObject*, const Math::Vector2&, const Math::Vector2&, const Math::Vector2&)> updateRecursive =
+				[&](ECS::GameObject* obj, const Math::Vector2& parentWorldPos, const Math::Vector2& parentWorldSize, const Math::Vector2& parentLossyScale) {
+					if (!obj) {
+						return;
 					}
-				}
 
-				rt->CalculateWorldTransform(parentWorldPos, parentWorldSize, parentLossyScale);
+					Math::Vector2 childParentPos = parentWorldPos;
+					Math::Vector2 childParentSize = parentWorldSize;
+					Math::Vector2 childParentLossyScale = parentLossyScale;
+
+					if (obj != owner) {
+						UIElement* uiElement = obj->GetComponent<UIElement>();
+						if (uiElement) {
+							RectTransform* rectTransform = uiElement->GetRectTransform();
+							if (rectTransform) {
+								rectTransform->CalculateWorldTransform(parentWorldPos, parentWorldSize, parentLossyScale);
+								childParentPos = rectTransform->GetWorldPosition();
+								childParentSize = rectTransform->GetWorldSize();
+								childParentLossyScale = rectTransform->GetLossyScale();
+							}
+						}
+					}
+
+					for (ECS::GameObject* child : obj->GetChildren()) {
+						updateRecursive(child, childParentPos, childParentSize, childParentLossyScale);
+					}
+				};
+
+			const Math::Vector2 rootLossyScale(1.0f, 1.0f);
+			const Math::Vector2 rootPos(0.0f, 0.0f);
+			for (ECS::GameObject* child : owner->GetChildren()) {
+				updateRecursive(child, rootPos, rootSize, rootLossyScale);
 			}
 		}
 

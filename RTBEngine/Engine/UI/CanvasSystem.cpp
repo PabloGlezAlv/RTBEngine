@@ -25,6 +25,7 @@
 #include "../Rendering/Texture.h"
 #include <GL/glew.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -147,6 +148,41 @@ namespace RTBEngine {
 					0.0f);
 			}
 
+			Math::Matrix4 BuildFaceCameraModelMatrix(ECS::GameObject* canvasObject, Rendering::Camera* camera) {
+				const Math::Vector3 worldPos = canvasObject->GetWorldPosition();
+				const Math::Vector3 worldScale = canvasObject->GetWorldScale();
+
+				Math::Vector3 forward = camera->GetPosition() - worldPos;
+				if (forward.LengthSquared() < 1e-8f) {
+					forward = camera->GetForward();
+				} else {
+					forward = forward.Normalized();
+				}
+
+				Math::Vector3 upReference = Math::Vector3::Up();
+				Math::Vector3 right = upReference.Cross(forward);
+				if (right.LengthSquared() < 1e-8f) {
+					upReference = Math::Vector3::Forward();
+					right = upReference.Cross(forward);
+				}
+				right = right.Normalized();
+
+				const Math::Vector3 up = forward.Cross(right).Normalized();
+
+				Math::Matrix4 rotation = Math::Matrix4::Identity();
+				rotation.m[0] = right.x;
+				rotation.m[4] = right.y;
+				rotation.m[8] = right.z;
+				rotation.m[1] = up.x;
+				rotation.m[5] = up.y;
+				rotation.m[9] = up.z;
+				rotation.m[2] = forward.x;
+				rotation.m[6] = forward.y;
+				rotation.m[10] = forward.z;
+
+				return Math::Matrix4::Translate(worldPos) * rotation * Math::Matrix4::Scale(worldScale);
+			}
+
 			float GetEffectiveTextFontSize(UIText* text) {
 				Math::Vector2 lossyScale = text->GetRectTransform()->GetLossyScale();
 				// Text size follows UI scale so a scaled RectTransform keeps the same visual proportion.
@@ -181,26 +217,33 @@ namespace RTBEngine {
 				const std::string& value = text->GetText();
 				Math::Vector2 textSize = activeFont->MeasureText(value, effectiveFontSize);
 
-				// Align the text block inside its RectTransform before generating glyph geometry.
 				float cursorX = rect.x;
-				float cursorY = rect.y;
+				float textTopY = rect.y;
 				switch (text->GetAlignment()) {
 				case TextAlignment::Center:
 					cursorX += (rect.z - textSize.x) * 0.5f;
-					cursorY += (rect.w - textSize.y) * 0.5f;
+					textTopY += (rect.w - textSize.y) * 0.5f;
 					break;
 				case TextAlignment::Right:
 					cursorX += rect.z - textSize.x;
-					cursorY += (rect.w - textSize.y) * 0.5f;
+					textTopY += (rect.w - textSize.y) * 0.5f;
 					break;
 				case TextAlignment::Left:
 				default:
-					cursorY += (rect.w - textSize.y) * 0.5f;
+					textTopY += (rect.w - textSize.y) * 0.5f;
 					break;
 				}
 
+				float baselineY = textTopY;
+				if (ImFont* imFont = activeFont->GetImFont(effectiveFontSize)) {
+					if (ImFontBaked* bakedFont = imFont->GetFontBaked(effectiveFontSize)) {
+						const float fontScale = effectiveFontSize / bakedFont->Size;
+						baselineY += bakedFont->Ascent * fontScale;
+					}
+				}
+
 				std::vector<Rendering::FontTextVertex> textVertices;
-				activeFont->BuildTextGeometry(value, effectiveFontSize, Math::Vector2(cursorX, cursorY), textVertices);
+				activeFont->BuildTextGeometry(value, effectiveFontSize, Math::Vector2(cursorX, baselineY), textVertices);
 				if (textVertices.empty()) return;
 
 				const Math::Vector2 canvasSize = canvas->GetCanvasSize();
@@ -336,7 +379,10 @@ namespace RTBEngine {
 
 				// World-space layout still starts from canvas pixels; only the final rendering happens in 3D.
 				canvas->PrepareForHitTest(canvas->GetCanvasSize());
-				shader->SetMatrix4("uModel", canvasObject->GetWorldMatrix());
+				const Math::Matrix4 modelMatrix = canvas->GetFaceCamera()
+					? BuildFaceCameraModelMatrix(canvasObject, camera)
+					: canvasObject->GetWorldMatrix();
+				shader->SetMatrix4("uModel", modelMatrix);
 
 				for (UIElement* element : canvas->GetUIElements()) {
 					RenderWorldSpaceElement(canvas, element, shader);

@@ -58,6 +58,7 @@ namespace RTBEngine {
                 comp->SetCanvasSize(ReadOptionalVector2(L, tableIndex, "canvasSize", comp->GetCanvasSize()));
                 comp->SetPixelsPerUnit(ReadOptionalFloat(L, tableIndex, "pixelsPerUnit", comp->GetPixelsPerUnit()));
                 comp->SetSortOrder(static_cast<int>(ReadOptionalFloat(L, tableIndex, "sortOrder", comp->GetSortOrder())));
+                comp->SetFaceCamera(ReadOptionalBool(L, tableIndex, "faceCamera", comp->GetFaceCamera()));
             }
 
             void SyncUIElementProxies(lua_State* L, int tableIndex, UI::UIElement* comp) {

@@ -38,6 +38,9 @@ namespace RTBEngine {
 			int GetSortOrder() const { return sortOrder; }
 			void SetSortOrder(int order) { sortOrder = order; }
 
+			bool GetFaceCamera() const { return faceCamera; }
+			void SetFaceCamera(bool value) { faceCamera = value; }
+
 			const std::vector<UIElement*>& GetUIElements() const { return cachedUIElements; }
 
 			virtual void OnAwake() override;
@@ -58,6 +61,7 @@ namespace RTBEngine {
 			Math::Vector2 canvasSize;
 			float pixelsPerUnit = 100.0f;
 			int sortOrder = 0;
+			bool faceCamera = false;
 			std::vector<UIElement*> cachedUIElements;
 			bool isInitialized = false;
 			bool hierarchyDirty = true;
