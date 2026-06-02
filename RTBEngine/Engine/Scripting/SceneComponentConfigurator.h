@@ -27,6 +27,7 @@ namespace RTBEngine {
         class UIPanel;
         class UIButton;
         class UIElement;
+        class UILayoutGroup;
     }
 
     namespace Scripting {
@@ -37,6 +38,7 @@ namespace RTBEngine {
             void ConfigureUIImage(lua_State* L, int tableIndex, UI::UIImage* comp);
             void ConfigureUIPanel(lua_State* L, int tableIndex, UI::UIPanel* comp);
             void ConfigureUIButton(lua_State* L, int tableIndex, UI::UIButton* comp);
+            void ConfigureUILayout(lua_State* L, int tableIndex, UI::UILayoutGroup* comp);
             void SyncUIElementProxies(lua_State* L, int tableIndex, UI::UIElement* comp);
 
             void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp);

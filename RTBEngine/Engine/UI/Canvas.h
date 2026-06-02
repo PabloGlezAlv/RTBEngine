@@ -51,6 +51,7 @@ namespace RTBEngine {
 
 		private:
 			void CollectUIElementsIfNeeded();
+			void ApplyLayoutGroups();
 			void UpdateRectTransforms(const Math::Vector2& screenSize);
 
 			RenderMode renderMode = RenderMode::ScreenSpaceOverlay;

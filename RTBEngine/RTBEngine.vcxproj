@@ -237,6 +237,9 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\UI\Elements\UISlider.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIJoystick.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIContainer.cpp" />
+    <ClCompile Include="Engine\UI\Elements\UILayoutGroup.cpp" />
+    <ClCompile Include="Engine\UI\Elements\UIHorizontalLayout.cpp" />
+    <ClCompile Include="Engine\UI\Elements\UIVerticalLayout.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIImage.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIPanel.cpp" />
     <ClCompile Include="Engine\UI\Elements\UIText.cpp" />
@@ -377,6 +380,9 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\UI\Elements\UISlider.h" />
     <ClInclude Include="Engine\UI\Elements\UIJoystick.h" />
     <ClInclude Include="Engine\UI\Elements\UIContainer.h" />
+    <ClInclude Include="Engine\UI\Elements\UILayoutGroup.h" />
+    <ClInclude Include="Engine\UI\Elements\UIHorizontalLayout.h" />
+    <ClInclude Include="Engine\UI\Elements\UIVerticalLayout.h" />
     <ClInclude Include="Engine\UI\Elements\UIImage.h" />
     <ClInclude Include="Engine\UI\Elements\UIPanel.h" />
     <ClInclude Include="Engine\UI\Elements\UIText.h" />

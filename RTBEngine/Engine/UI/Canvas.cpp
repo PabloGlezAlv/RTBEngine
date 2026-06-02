@@ -1,5 +1,8 @@
 #include "Canvas.h"
 #include "UIElement.h"
+#include "Elements/UILayoutGroup.h"
+#include "Elements/UIHorizontalLayout.h"
+#include "Elements/UIVerticalLayout.h"
 #include "../ECS/GameObject.h"
 #include <algorithm>
 #include <functional>
@@ -46,6 +49,7 @@ namespace RTBEngine {
 			if (!owner) return;
 
 			CollectUIElementsIfNeeded();
+			ApplyLayoutGroups();
 			UpdateRectTransforms(screenSize);
 		}
 
@@ -84,6 +88,36 @@ namespace RTBEngine {
 			};
 
 			collectRecursive(owner);
+		}
+
+		void Canvas::ApplyLayoutGroups() {
+			if (!owner) {
+				return;
+			}
+
+			std::function<void(ECS::GameObject*)> applyRecursive = [&](ECS::GameObject* obj) {
+				if (!obj) {
+					return;
+				}
+
+				for (const auto& component : obj->GetComponents()) {
+					if (!component) {
+						continue;
+					}
+
+					if (const UIHorizontalLayout* horizontalLayout = dynamic_cast<const UIHorizontalLayout*>(component.get())) {
+						horizontalLayout->ApplyLayout();
+					} else if (const UIVerticalLayout* verticalLayout = dynamic_cast<const UIVerticalLayout*>(component.get())) {
+						verticalLayout->ApplyLayout();
+					}
+				}
+
+				for (ECS::GameObject* child : obj->GetChildren()) {
+					applyRecursive(child);
+				}
+			};
+
+			applyRecursive(owner);
 		}
 
 		void Canvas::UpdateRectTransforms(const Math::Vector2& screenSize) {

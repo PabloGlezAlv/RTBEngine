@@ -35,6 +35,7 @@
 #include "../UI/Elements/UIImage.h"
 #include "../UI/Elements/UIPanel.h"
 #include "../UI/Elements/UIButton.h"
+#include "../UI/Elements/UILayoutGroup.h"
 
 #include <algorithm>
 #include <cmath>
@@ -68,6 +69,11 @@ namespace RTBEngine {
                 comp->SetSizeDelta(ReadOptionalVector2(L, tableIndex, "sizeDelta", comp->GetSizeDelta()));
                 comp->SetRotation(ReadOptionalFloat(L, tableIndex, "rotation", comp->GetRotation()));
                 comp->SetScale(ReadOptionalVector2(L, tableIndex, "scale", comp->GetScale()));
+            }
+
+            void ConfigureUILayout(lua_State* L, int tableIndex, UI::UILayoutGroup* comp) {
+                comp->padding = ReadOptionalVector2(L, tableIndex, "padding", comp->padding);
+                comp->spacing = ReadOptionalFloat(L, tableIndex, "spacing", comp->spacing);
             }
 
             void ConfigureUIText(lua_State* L, int tableIndex, UI::UIText* comp) {

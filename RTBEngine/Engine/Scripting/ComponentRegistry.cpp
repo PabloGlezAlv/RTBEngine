@@ -25,6 +25,8 @@
 #include "../UI/Elements/UIInputField.h"
 #include "../UI/Elements/UIContainer.h"
 #include "../UI/Elements/UIJoystick.h"
+#include "../UI/Elements/UIHorizontalLayout.h"
+#include "../UI/Elements/UIVerticalLayout.h"
 
 namespace RTBEngine {
     namespace Scripting {
@@ -99,6 +101,8 @@ namespace RTBEngine {
             RegisterComponent("UIButton", []() { return new UI::UIButton(); });
             RegisterComponent("UIInputField", []() { return new UI::UIInputField(); });
             RegisterComponent("UIContainer", []() { return new UI::UIContainer(); });
+            RegisterComponent("UIHorizontalLayout", []() { return new UI::UIHorizontalLayout(); });
+            RegisterComponent("UIVerticalLayout", []() { return new UI::UIVerticalLayout(); });
             RegisterComponent("UIJoystick", []() { return new UI::UIJoystick(); });
         }
 

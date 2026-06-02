@@ -19,6 +19,8 @@
 #include "../UI/Elements/UIPanel.h"
 #include "../UI/Elements/UIButton.h"
 #include "../UI/Elements/UIContainer.h"
+#include "../UI/Elements/UIHorizontalLayout.h"
+#include "../UI/Elements/UIVerticalLayout.h"
 #include "../Physics/PhysicsLayerSettings.h"
 #include "../RTBEngine.h"
 #include <lua.hpp>
@@ -80,6 +82,10 @@ namespace RTBEngine {
                     Scripting::SceneComponentConfigurator::ConfigureUIPanel(L, compTableIndex, static_cast<UI::UIPanel*>(comp));
                 else if (typeName == "UIButton")
                     Scripting::SceneComponentConfigurator::ConfigureUIButton(L, compTableIndex, static_cast<UI::UIButton*>(comp));
+                else if (typeName == "UIHorizontalLayout")
+                    Scripting::SceneComponentConfigurator::ConfigureUILayout(L, compTableIndex, static_cast<UI::UIHorizontalLayout*>(comp));
+                else if (typeName == "UIVerticalLayout")
+                    Scripting::SceneComponentConfigurator::ConfigureUILayout(L, compTableIndex, static_cast<UI::UIVerticalLayout*>(comp));
 
                 comp->OnValidate();
 

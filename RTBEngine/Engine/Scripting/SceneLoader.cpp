@@ -30,6 +30,8 @@
 #include "../UI/Elements/UIPanel.h"
 #include "../UI/Elements/UIButton.h"
 #include "../UI/Elements/UIContainer.h"
+#include "../UI/Elements/UIHorizontalLayout.h"
+#include "../UI/Elements/UIVerticalLayout.h"
 #include "../ECS/CameraComponent.h"
 #include "../ECS/FreeLookCamera.h"
 #include "../Animation/Animator.h"
@@ -384,6 +386,10 @@ namespace RTBEngine {
                     SceneComponentConfigurator::ConfigureUIButton(L, componentTableIndex, static_cast<UI::UIButton*>(comp));
                 else if (componentType == "UIContainer")
                     SceneComponentConfigurator::SyncUIElementProxies(L, componentTableIndex, static_cast<UI::UIElement*>(comp));
+                else if (componentType == "UIHorizontalLayout")
+                    SceneComponentConfigurator::ConfigureUILayout(L, componentTableIndex, static_cast<UI::UIHorizontalLayout*>(comp));
+                else if (componentType == "UIVerticalLayout")
+                    SceneComponentConfigurator::ConfigureUILayout(L, componentTableIndex, static_cast<UI::UIVerticalLayout*>(comp));
                 else if (componentType == "CameraComponent")
                     SceneComponentConfigurator::ConfigureCameraComponent(L, componentTableIndex, static_cast<ECS::CameraComponent*>(comp));
                 else if (componentType == "FreeLookCamera")
