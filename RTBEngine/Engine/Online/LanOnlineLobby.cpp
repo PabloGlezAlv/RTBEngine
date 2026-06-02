@@ -98,6 +98,8 @@ namespace RTBEngine {
             currentLobby.maxMembers = maxMembers;
             currentLobby.availableSlots = maxMembers > 0 ? maxMembers - 1 : 0;
             currentLobby.isOwner = true; // this machine created the session
+            memberDisplayNames.clear();
+            memberDisplayNames[currentLobby.ownerUserId.ToString()] = identity->GetDisplayName();
             searchResults.clear();
             lastError.clear();
             lastAdvertiseTime = {};
@@ -238,6 +240,7 @@ namespace RTBEngine {
             }
 
             currentLobby = {};
+            memberDisplayNames.clear();
             searchResults.clear();
             lastError.clear();
             lastAdvertiseTime = {};
@@ -256,6 +259,7 @@ namespace RTBEngine {
             }
 
             currentLobby = {};
+            memberDisplayNames.clear();
             searchResults.clear();
             lastError.clear();
             lastAdvertiseTime = {};
@@ -301,6 +305,16 @@ namespace RTBEngine {
         void LanOnlineLobby::ClearMemberJoinedListeners()
         {
             memberJoined.Clear();
+        }
+
+        std::string LanOnlineLobby::GetMemberDisplayName(const OnlineUserId& member) const
+        {
+            if (!member.IsValid()) {
+                return {};
+            }
+
+            const auto it = memberDisplayNames.find(member.ToString());
+            return it != memberDisplayNames.end() ? it->second : std::string();
         }
 
         void LanOnlineLobby::SetState(OnlineLobbyState newState)
@@ -442,6 +456,7 @@ namespace RTBEngine {
                         }
 
                         std::string joinedName = displayName.empty() ? memberId : displayName;
+                        memberDisplayNames[remoteMember.ToString()] = joinedName;
                         memberJoined.Invoke({ joinedName });
                     }
 
@@ -481,6 +496,9 @@ namespace RTBEngine {
                     currentLobby.maxMembers = 6;
                     currentLobby.availableSlots = 4;
                     currentLobby.isOwner = false; // joined someone else's lobby
+                    memberDisplayNames.clear();
+                    memberDisplayNames[currentLobby.ownerUserId.ToString()] = "Host";
+                    memberDisplayNames[identity->GetLocalUserId().ToString()] = identity->GetDisplayName();
                     SetState(OnlineLobbyState::InLobby);
                 }
             }

@@ -89,6 +89,7 @@ namespace RTBEngine {
             virtual void ClearLobbyStatusChangedListeners() = 0;
             virtual Core::EventSubscription SubscribeMemberJoined(Core::Event<OnlineLobbyMemberJoinedEvent>::Callback callback) = 0;
             virtual void ClearMemberJoinedListeners() = 0;
+            virtual std::string GetMemberDisplayName(const OnlineUserId& member) const = 0;
 
             bool IsInLobby() const { return GetState() == OnlineLobbyState::InLobby; }
         };

@@ -98,6 +98,8 @@ namespace RTBEngine {
 
         void OnlineSystem::Shutdown()
         {
+            ClearPlayerSessionProfiles();
+
             if (backend) {
                 backend->Shutdown();
                 backend.reset();
@@ -203,6 +205,69 @@ namespace RTBEngine {
             }
 
             return 0;
+        }
+
+        std::string OnlineSystem::GetLobbyMemberDisplayName(const OnlineUserId& member) const
+        {
+            const IOnlineLobby* lobby = GetLobby();
+            return lobby ? lobby->GetMemberDisplayName(member) : std::string();
+        }
+
+        void OnlineSystem::ClearPlayerSessionProfiles()
+        {
+            playerSessionProfiles.clear();
+        }
+
+        void OnlineSystem::SetPlayerSessionProfile(const OnlinePlayerProfile& profile)
+        {
+            if (profile.playerSlot < 0 || profile.displayName.empty()) {
+                return;
+            }
+
+            playerSessionProfiles[profile.playerSlot] = profile;
+        }
+
+        bool OnlineSystem::HasPlayerSessionProfile(int playerSlot) const
+        {
+            return playerSlot >= 0 && playerSessionProfiles.find(playerSlot) != playerSessionProfiles.end();
+        }
+
+        bool OnlineSystem::TryGetPlayerSessionProfile(int playerSlot, OnlinePlayerProfile& outProfile) const
+        {
+            if (playerSlot < 0) {
+                return false;
+            }
+
+            const auto it = playerSessionProfiles.find(playerSlot);
+            if (it == playerSessionProfiles.end()) {
+                return false;
+            }
+
+            outProfile = it->second;
+            return true;
+        }
+
+        std::string OnlineSystem::GetPlayerDisplayName(int playerSlot) const
+        {
+            OnlinePlayerProfile profile;
+            return TryGetPlayerSessionProfile(playerSlot, profile) ? profile.displayName : std::string();
+        }
+
+        std::vector<OnlinePlayerProfile> OnlineSystem::GetPlayerSessionProfiles() const
+        {
+            std::vector<OnlinePlayerProfile> profiles;
+            profiles.reserve(playerSessionProfiles.size());
+
+            for (const auto& entry : playerSessionProfiles) {
+                profiles.push_back(entry.second);
+            }
+
+            std::sort(profiles.begin(), profiles.end(),
+                [](const OnlinePlayerProfile& left, const OnlinePlayerProfile& right) {
+                    return left.playerSlot < right.playerSlot;
+                });
+
+            return profiles;
         }
 
     }

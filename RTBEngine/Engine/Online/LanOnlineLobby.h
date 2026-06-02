@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <string>
+#include <unordered_map>
 
 namespace RTBEngine {
     namespace Online {
@@ -36,6 +37,7 @@ namespace RTBEngine {
             void ClearLobbyStatusChangedListeners() override;
             Core::EventSubscription SubscribeMemberJoined(Core::Event<OnlineLobbyMemberJoinedEvent>::Callback callback) override;
             void ClearMemberJoinedListeners() override;
+            std::string GetMemberDisplayName(const OnlineUserId& member) const override;
 
         private:
             void SetState(OnlineLobbyState newState);
@@ -59,6 +61,7 @@ namespace RTBEngine {
             std::chrono::steady_clock::time_point lastAdvertiseTime{};
             Core::Event<OnlineLobbyStatusChangedEvent> lobbyStatusChanged;
             Core::Event<OnlineLobbyMemberJoinedEvent> memberJoined;
+            std::unordered_map<std::string, std::string> memberDisplayNames;
         };
 #pragma warning(pop)
 

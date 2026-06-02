@@ -7,10 +7,12 @@
 #include "IOnlineTransport.h"
 #include "OnlineTypes.h"
 #include "OnlineUser.h"
+#include "OnlinePlayerProfile.h"
 
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace RTBEngine {
@@ -48,6 +50,14 @@ namespace RTBEngine {
             OnlineUserId GetLocalUserId() const;
             std::vector<OnlineUserId> GetOrderedLobbyMembers() const;
             std::size_t GetLocalPlayerIndex() const;
+            std::string GetLobbyMemberDisplayName(const OnlineUserId& member) const;
+
+            void ClearPlayerSessionProfiles();
+            void SetPlayerSessionProfile(const OnlinePlayerProfile& profile);
+            bool HasPlayerSessionProfile(int playerSlot) const;
+            bool TryGetPlayerSessionProfile(int playerSlot, OnlinePlayerProfile& outProfile) const;
+            std::string GetPlayerDisplayName(int playerSlot) const;
+            std::vector<OnlinePlayerProfile> GetPlayerSessionProfiles() const;
 
         private:
             OnlineSystem() = default;
@@ -62,6 +72,7 @@ namespace RTBEngine {
             OnlineLoginOptions defaultLoginOptions;
             std::string lastError;
             std::unique_ptr<IOnlineBackend> backend;
+            std::unordered_map<int, OnlinePlayerProfile> playerSessionProfiles;
         };
 #pragma warning(pop)
 
