@@ -289,6 +289,11 @@ namespace RTBEngine {
 				}
 
 				if (auto* panel = dynamic_cast<UIPanel*>(element)) {
+					const Math::Vector4 bg = panel->GetBackgroundColor();
+					if (bg.w <= 0.001f && !panel->hasBorder) {
+						return;
+					}
+
 					shader->SetBool("uHasTexture", false);
 					shader->SetVector4("uColor", panel->GetBackgroundColor());
 					GetWorldUIQuadRenderer().Draw(BuildWorldSpaceQuad(canvas, element));

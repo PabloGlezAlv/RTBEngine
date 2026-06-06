@@ -165,7 +165,18 @@ namespace RTBEngine {
 				return 0.0f;
 			}
 
-			return std::max(0.0f, targetPanel->GetSizeDelta().x);
+			const RectTransform* rect = targetPanel->GetRectTransform();
+			if (!rect) {
+				return 0.0f;
+			}
+
+			// Fixed-width anchors: sizeDelta is the track width.
+			// Stretched anchors: layout width already includes the anchor band + sizeDelta.
+			if (rect->GetAnchorMin().x == rect->GetAnchorMax().x) {
+				return std::max(0.0f, rect->GetSize().x);
+			}
+
+			return std::max(0.0f, rect->GetLayoutSize().x);
 		}
 
 	}
