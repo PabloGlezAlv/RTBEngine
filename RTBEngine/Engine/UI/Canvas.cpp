@@ -83,7 +83,7 @@ namespace RTBEngine {
 
 			// Helper for recursive collection
 			std::function<void(ECS::GameObject*)> collectRecursive = [&](ECS::GameObject* obj) {
-				if (!obj || !obj->IsActiveInHierarchy()) {
+				if (!obj) {
 					return;
 				}
 
