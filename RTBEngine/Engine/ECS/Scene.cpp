@@ -19,7 +19,7 @@ namespace {
 				continue;
 			}
 
-			if (requireActive && !gameObject->IsActive()) {
+			if (requireActive && !gameObject->IsActiveInHierarchy()) {
 				continue;
 			}
 
@@ -309,7 +309,7 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 
 	++iterationDepth;
 	for (auto& gameObject : gameObjects) {
-		if (gameObject && gameObject->IsActive()) {
+		if (gameObject && gameObject->IsActiveInHierarchy()) {
 			MeshRenderer* renderer = gameObject->GetComponent<MeshRenderer>();
 			if (renderer && renderer->IsEnabled()) {
 				// Frustum culling
@@ -334,7 +334,7 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 	}
 
 	for (auto& gameObject : gameObjects) {
-		if (gameObject && gameObject->IsActive()) {
+		if (gameObject && gameObject->IsActiveInHierarchy()) {
 			TrailRenderer* trailRenderer = gameObject->GetComponent<TrailRenderer>();
 			if (trailRenderer && trailRenderer->IsEnabled()) {
 				trailRenderer->Render(camera);
@@ -352,7 +352,7 @@ void RTBEngine::ECS::Scene::SetSkyboxCubemap(Rendering::Cubemap* cubemap) {
 uint32_t RTBEngine::ECS::Scene::GetActiveGameObjectCount() const {
 	uint32_t count = 0;
 	for (const auto& go : gameObjects) {
-		if (go && go->IsActive()) count++;
+		if (go && go->IsActiveInHierarchy()) count++;
 	}
 	return count;
 }
@@ -360,7 +360,7 @@ uint32_t RTBEngine::ECS::Scene::GetActiveGameObjectCount() const {
 uint32_t RTBEngine::ECS::Scene::GetActiveComponentCount() const {
 	uint32_t count = 0;
 	for (const auto& go : gameObjects) {
-		if (go && go->IsActive()) {
+		if (go && go->IsActiveInHierarchy()) {
 			count += static_cast<uint32_t>(go->GetComponents().size());
 		}
 	}
@@ -372,7 +372,7 @@ void RTBEngine::ECS::Scene::CollectLights()
 	lights.clear();
 
 	for (auto& gameObject : gameObjects) {
-		if (gameObject && gameObject->IsActive()) {
+		if (gameObject && gameObject->IsActiveInHierarchy()) {
 			LightComponent* lightComp = gameObject->GetComponent<LightComponent>();
 			if (lightComp && lightComp->IsEnabled()) {
 				lights.push_back(lightComp->GetLight());

@@ -139,6 +139,10 @@ namespace RTBEngine {
                 return;
             }
 
+            if (!GetOwner() || !GetOwner()->IsActiveInHierarchy()) {
+                return;
+            }
+
             width = std::max(width, kMinTrailWidth);
 
             if (!EnsureRenderResources()) {

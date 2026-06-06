@@ -60,7 +60,12 @@ namespace RTBEngine {
 			PrepareForHitTest(screenSize);
 
 			for (UIElement* element : cachedUIElements) {
-				if (element && element->IsVisible() && element->IsEnabled()) {
+				ECS::GameObject* elementObject = element ? element->GetOwner() : nullptr;
+				if (!elementObject || !elementObject->IsActiveInHierarchy()) {
+					continue;
+				}
+
+				if (element->IsVisible() && element->IsEnabled()) {
 					element->Render();
 				}
 			}
@@ -78,6 +83,10 @@ namespace RTBEngine {
 
 			// Helper for recursive collection
 			std::function<void(ECS::GameObject*)> collectRecursive = [&](ECS::GameObject* obj) {
+				if (!obj || !obj->IsActiveInHierarchy()) {
+					return;
+				}
+
 				UIElement* uiElem = obj->GetComponent<UIElement>();
 				if (uiElem && uiElem->GetOwner() != owner) {
 					cachedUIElements.push_back(uiElem);
@@ -97,7 +106,7 @@ namespace RTBEngine {
 			}
 
 			std::function<void(ECS::GameObject*)> applyRecursive = [&](ECS::GameObject* obj) {
-				if (!obj) {
+				if (!obj || !obj->IsActiveInHierarchy()) {
 					return;
 				}
 
@@ -131,7 +140,7 @@ namespace RTBEngine {
 
 			std::function<void(ECS::GameObject*, const Math::Vector2&, const Math::Vector2&, const Math::Vector2&)> updateRecursive =
 				[&](ECS::GameObject* obj, const Math::Vector2& parentWorldPos, const Math::Vector2& parentWorldSize, const Math::Vector2& parentLossyScale) {
-					if (!obj) {
+					if (!obj || !obj->IsActiveInHierarchy()) {
 						return;
 					}
 

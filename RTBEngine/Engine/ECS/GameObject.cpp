@@ -106,6 +106,16 @@ namespace RTBEngine {
             this->isActive = active;
         }
 
+        bool GameObject::IsActiveInHierarchy() const
+        {
+            for (const GameObject* node = this; node; node = node->GetParent()) {
+                if (!node->isActive) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         Math::Matrix4 GameObject::GetWorldMatrix() const
         {
             if (parent) {
@@ -144,7 +154,7 @@ namespace RTBEngine {
 
         void GameObject::Update(float deltaTime)
         {
-            if (!isActive) return;
+            if (!IsActiveInHierarchy()) return;
             (void)deltaTime;
 
             if (!started) {
@@ -176,7 +186,7 @@ namespace RTBEngine {
 
         void GameObject::FixedUpdate(float fixedDeltaTime)
         {
-            if (!isActive) return;
+            if (!IsActiveInHierarchy()) return;
 
             for (auto& comp : components) {
                 if (comp->IsEnabled()) {
@@ -187,7 +197,7 @@ namespace RTBEngine {
 
         void GameObject::LateUpdate(float deltaTime)
         {
-            if (!isActive) return;
+            if (!IsActiveInHierarchy()) return;
             (void)deltaTime;
 
             for (auto& comp : components) {

@@ -216,7 +216,7 @@ namespace RTBEngine {
 
             for (const auto& gameObject : gameObjects)
             {
-                if (!gameObject->IsActive())
+                if (!gameObject->IsActiveInHierarchy())
                     continue;
 
                 ECS::RigidBodyComponent* rbComp = gameObject->GetComponent<ECS::RigidBodyComponent>();
@@ -244,7 +244,7 @@ namespace RTBEngine {
 
             for (const auto& gameObject : gameObjects)
             {
-                if (!gameObject->IsActive())
+                if (!gameObject->IsActiveInHierarchy())
                     continue;
 
                 ECS::RigidBodyComponent* rbComp = gameObject->GetComponent<ECS::RigidBodyComponent>();

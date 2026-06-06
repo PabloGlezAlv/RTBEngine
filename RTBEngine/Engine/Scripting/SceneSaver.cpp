@@ -100,6 +100,11 @@ namespace RTBEngine {
             file << ind << "    name = \"" << go->GetName() << "\",\n";
             file << ind << "    uuid = \"" << go->GetUUID() << "\",\n";
 
+            if (!go->IsActive()) {
+                file << ind << "    active = "
+                    << ScenePropertySerializer::FormatBool(go->IsActive()) << ",\n";
+            }
+
             if (go->GetCollisionLayer() != 0) {
                 file << ind << "    collisionLayer = "
                     << ScenePropertySerializer::FormatString(

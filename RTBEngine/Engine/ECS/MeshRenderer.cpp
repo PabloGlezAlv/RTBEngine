@@ -191,7 +191,7 @@ namespace RTBEngine {
 
         void MeshRenderer::Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights)
         {
-            if (!isEnabled || !owner) {
+            if (!isEnabled || !owner || !owner->IsActiveInHierarchy()) {
                 return;
             }
 

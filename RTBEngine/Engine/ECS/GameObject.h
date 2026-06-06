@@ -68,6 +68,7 @@ namespace RTBEngine {
 
             void SetActive(bool active);
             bool IsActive() const { return isActive; }
+            bool IsActiveInHierarchy() const;
             bool IsBeingDestroyed() const { return isBeingDestroyed; }
 
             void SetTransient(bool t) { isTransient = t; }

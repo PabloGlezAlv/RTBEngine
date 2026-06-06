@@ -271,6 +271,10 @@ namespace RTBEngine {
 
 			void RenderWorldSpaceElement(Canvas* canvas, UIElement* element, Rendering::Shader* shader) {
 				if (!canvas || !element || !shader) return;
+
+				ECS::GameObject* elementObject = element->GetOwner();
+				if (!elementObject || !elementObject->IsActiveInHierarchy()) return;
+
 				if (!element->IsVisible() || !element->IsEnabled()) return;
 
 				const Math::Vector4 rect = element->GetRectTransform()->GetWorldRect();
@@ -315,7 +319,7 @@ namespace RTBEngine {
 			for (const auto& objPtr : scene->GetGameObjects()) {
 				ECS::GameObject* obj = objPtr.get();
 				Canvas* canvas = obj->GetComponent<Canvas>();
-				if (canvas && canvas->IsEnabled() && obj->IsActive()) {
+				if (canvas && canvas->IsEnabled() && obj->IsActiveInHierarchy()) {
 					activeCanvases.push_back(canvas);
 				}
 			}
@@ -384,7 +388,7 @@ namespace RTBEngine {
 			for (Canvas* canvas : activeCanvases) {
 				if (!canvas || canvas->GetRenderMode() != Canvas::RenderMode::WorldSpace) continue;
 				ECS::GameObject* canvasObject = canvas->GetOwner();
-				if (!canvasObject || !canvasObject->IsActive()) continue;
+				if (!canvasObject || !canvasObject->IsActiveInHierarchy()) continue;
 
 				// World-space layout still starts from canvas pixels; only the final rendering happens in 3D.
 				canvas->PrepareForHitTest(canvas->GetCanvasSize());
@@ -444,7 +448,10 @@ namespace RTBEngine {
 			for (Canvas* canvas : activeCanvases) {
 				if (canvas->GetRenderMode() == Canvas::RenderMode::WorldSpace) continue;
 				for (UIElement* element : canvas->GetUIElements()) {
-					if (element->GetOwner() == gameObject && element->IsRaycastTarget()) {
+					ECS::GameObject* elementObject = element ? element->GetOwner() : nullptr;
+					if (!elementObject || !elementObject->IsActiveInHierarchy()) continue;
+
+					if (elementObject == gameObject && element->IsRaycastTarget()) {
 						rects.push_back(element->GetRectTransform()->GetWorldRect());
 					}
 				}
@@ -465,6 +472,9 @@ namespace RTBEngine {
 
 				for (auto elemIt = elements.rbegin(); elemIt != elements.rend(); ++elemIt) {
 					UIElement* element = *elemIt;
+					ECS::GameObject* elementObject = element ? element->GetOwner() : nullptr;
+					if (!elementObject || !elementObject->IsActiveInHierarchy()) continue;
+
 					if (!element->IsVisible() || !element->IsEnabled() || !element->IsRaycastTarget()) continue;
 
 					Math::Vector4 screenRect = element->GetRectTransform()->GetWorldRect();

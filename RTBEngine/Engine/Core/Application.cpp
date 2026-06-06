@@ -544,6 +544,8 @@ void RTBEngine::Core::Application::RenderShadowPass(ECS::Scene* scene)
 	shadowShader->Bind();
 
 	for (auto& go : scene->GetGameObjects()) {
+		if (!go || !go->IsActiveInHierarchy()) continue;
+
 		auto* lightComp = go->GetComponent<ECS::LightComponent>();
 		if (!lightComp || !lightComp->GetLight()) continue;
 
@@ -581,6 +583,8 @@ void RTBEngine::Core::Application::RenderShadowPass(ECS::Scene* scene)
 void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader, const Rendering::Frustum& frustum)
 {
 	for (auto& go : scene->GetGameObjects()) {
+		if (!go || !go->IsActiveInHierarchy()) continue;
+
 		auto* meshRenderer = go->GetComponent<ECS::MeshRenderer>();
 		if (!meshRenderer || !meshRenderer->IsEnabled()) continue;
 
@@ -641,6 +645,8 @@ void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Renderi
 	Rendering::DirectionalLight* shadowCastingLight = nullptr;
 
 	for (auto& go : scene->GetGameObjects()) {
+		if (!go || !go->IsActiveInHierarchy()) continue;
+
 		auto* lightComp = go->GetComponent<ECS::LightComponent>();
 		if (!lightComp || !lightComp->GetLight()) continue;
 

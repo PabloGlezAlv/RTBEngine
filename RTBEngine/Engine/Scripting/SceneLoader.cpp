@@ -159,6 +159,8 @@ namespace RTBEngine {
             if (!savedUUID.empty())
                 go->SetUUID(savedUUID);
 
+            go->SetActive(SceneParsingUtils::ReadOptionalBool(L, tableIndex, "active", true));
+
             ReadTransform(L, tableIndex, go);
             ReadCollisionLayer(L, tableIndex, go);
 
@@ -192,6 +194,8 @@ namespace RTBEngine {
             go->SetName(name);
             if (!uuid.empty())
                 go->SetUUID(uuid);
+
+            go->SetActive(SceneParsingUtils::ReadOptionalBool(L, tableIndex, "active", true));
 
             for (ECS::GameObject* child : childGOs) {
                 if (child) {
