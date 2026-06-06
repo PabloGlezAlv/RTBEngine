@@ -37,7 +37,8 @@ namespace RTBEngine {
 			void UpdateAllRectTransforms(const Math::Vector2& screenSize);
 			void ProcessInput(const Math::Vector2& mousePos);
 			void RenderWorldSpace(Rendering::Camera* camera);
-			void RenderToDrawList(ImDrawList* drawList, const Math::Vector2& screenSize, const Math::Vector2& offset);
+			void RenderToDrawList(ImDrawList* drawList, const Math::Vector2& screenSize, const Math::Vector2& offset, float scale = 1.0f);
+			void RenderToDrawList(ImDrawList* drawList, const Math::Vector2& screenSize, const Math::Vector2& offset, const Math::Vector2& scale);
 			void ClearState();
 
 			Math::Vector2 GetScreenSize() const { return screenSize; }

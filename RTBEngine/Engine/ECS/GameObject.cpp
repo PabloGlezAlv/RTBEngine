@@ -62,6 +62,11 @@ namespace RTBEngine {
         {
             isBeingDestroyed = true;
 
+            if (parent) {
+                parent->RemoveChild(this);
+                parent = nullptr;
+            }
+
             for (auto& comp : components) {
                 comp->OnDestroy();
             }

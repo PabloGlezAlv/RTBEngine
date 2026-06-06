@@ -53,10 +53,14 @@ namespace RTBEngine {
             void MarkSceneDirty();
             void ClearSceneDirty();
             bool IsSceneDirty() const { return sceneDirty; }
+            bool IsSceneUnloading() const { return sceneUnloadDepth > 0; }
 
         private:
             SceneManager();
             ~SceneManager();
+
+            void BeginSceneUnload();
+            void EndSceneUnload();
 
             std::unique_ptr<Scene> activeScene;
             std::string activeScenePath;
@@ -64,6 +68,7 @@ namespace RTBEngine {
             bool sceneDirty = false;
             bool hasPendingSceneLoad = false;
             bool isSceneTransitioning = false;
+            int sceneUnloadDepth = 0;
 
             std::function<void(Scene*)> onSceneLoaded;
             std::function<void(Scene*)> onSceneUnloading;

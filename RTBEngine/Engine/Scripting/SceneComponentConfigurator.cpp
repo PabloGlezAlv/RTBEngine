@@ -140,6 +140,7 @@ namespace RTBEngine {
                 comp->SetDisabledColor(ReadOptionalVector4(L, tableIndex, "disabledColor", comp->disabledColor));
                 // Assign directly to avoid UpdateVisuals() side-effect during scene load
                 comp->interactable = ReadOptionalBool(L, tableIndex, "interactable", comp->interactable);
+                comp->enableDefaultHoverVisuals = ReadOptionalBool(L, tableIndex, "enableDefaultHoverVisuals", comp->enableDefaultHoverVisuals);
             }
 
             void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp) {

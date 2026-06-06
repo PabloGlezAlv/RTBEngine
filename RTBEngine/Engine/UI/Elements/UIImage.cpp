@@ -47,10 +47,11 @@ namespace RTBEngine {
 			Math::Vector4 screenRect = rectTransform.GetWorldRect();
 
 			ImDrawList* drawList = UIRenderContext::GetDrawList();
-			Math::Vector2 offset = UIRenderContext::Offset;
+			Math::Vector2 minPt = UIRenderContext::MapPoint(screenRect.x, screenRect.y);
+			Math::Vector2 maxPt = UIRenderContext::MapPoint(screenRect.x + screenRect.z, screenRect.y + screenRect.w);
 
-			ImVec2 min(screenRect.x + offset.x, screenRect.y + offset.y);
-			ImVec2 max(screenRect.x + screenRect.z + offset.x, screenRect.y + screenRect.w + offset.y);
+			ImVec2 min(minPt.x, minPt.y);
+			ImVec2 max(maxPt.x, maxPt.y);
 
 			ImVec2 uv0(0.0f, 1.0f);
 			ImVec2 uv1(1.0f, 0.0f);

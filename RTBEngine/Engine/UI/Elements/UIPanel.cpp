@@ -73,15 +73,15 @@ namespace RTBEngine {
 
 		void UIPanel::Render() {
 			if (!isVisible) return;
+			if (backgroundColor.w <= 0.001f && !hasBorder) return;
 
 			Math::Vector4 screenRect = rectTransform.GetWorldRect();
 
 			ImDrawList* drawList = UIRenderContext::GetDrawList();
-			Math::Vector2 offset = UIRenderContext::Offset;
-			float rx = screenRect.x + offset.x;
-			float ry = screenRect.y + offset.y;
-			float rw = screenRect.z;
-			float rh = screenRect.w;
+			float rx = UIRenderContext::MapPoint(screenRect.x, screenRect.y).x;
+			float ry = UIRenderContext::MapPoint(screenRect.x, screenRect.y).y;
+			float rw = UIRenderContext::MapSizeX(screenRect.z);
+			float rh = UIRenderContext::MapSizeY(screenRect.w);
 
 			ImVec2 min(rx, ry);
 			ImVec2 max(rx + rw, ry + rh);

@@ -105,7 +105,51 @@ RTBEngine::ECS::Scene::Scene(const std::string& name) : name(name)
 
 RTBEngine::ECS::Scene::~Scene()
 {
-	gameObjects.clear();
+	// Destroy leaf nodes first so parent OnDestroy() does not touch freed children.
+	while (!gameObjects.empty()) {
+		size_t leafIndex = gameObjects.size();
+
+		for (size_t i = 0; i < gameObjects.size(); ++i) {
+			GameObject* candidate = gameObjects[i].get();
+			if (!candidate) {
+				leafIndex = i;
+				break;
+			}
+
+			bool hasChildInScene = false;
+			for (GameObject* child : candidate->GetChildren()) {
+				if (!child) {
+					continue;
+				}
+
+				const auto childIt = std::find_if(
+					gameObjects.begin(),
+					gameObjects.end(),
+					[child](const std::unique_ptr<GameObject>& obj) {
+						return obj.get() == child;
+					});
+
+				if (childIt != gameObjects.end()) {
+					hasChildInScene = true;
+					break;
+				}
+			}
+
+			if (!hasChildInScene) {
+				leafIndex = i;
+				break;
+			}
+		}
+
+		if (leafIndex >= gameObjects.size()) {
+			gameObjects.clear();
+			break;
+		}
+
+		gameObjects.erase(gameObjects.begin() + static_cast<std::ptrdiff_t>(leafIndex));
+	}
+
+	pendingAdds.clear();
 }
 
 void RTBEngine::ECS::Scene::AddGameObject(GameObject* gameObject)

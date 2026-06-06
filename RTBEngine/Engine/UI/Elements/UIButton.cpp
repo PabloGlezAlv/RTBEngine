@@ -58,6 +58,10 @@ namespace RTBEngine {
 		}
 
 		void UIButton::UpdateVisuals() {
+			if (!enableDefaultHoverVisuals) {
+				return;
+			}
+
 			ResolveTarget();
 			Math::Vector4 color = GetCurrentColor();
 			if (targetImage) {
@@ -77,7 +81,9 @@ namespace RTBEngine {
 			else if (state == ButtonState::Disabled) {
 				state = ButtonState::Normal;
 			}
-			UpdateVisuals();
+			if (enableDefaultHoverVisuals) {
+				UpdateVisuals();
+			}
 		}
 
 		void UIButton::OnPointerEnter(const PointerEventData& eventData) {

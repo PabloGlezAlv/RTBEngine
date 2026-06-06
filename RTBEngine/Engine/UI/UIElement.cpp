@@ -1,5 +1,6 @@
 ﻿#include "UIElement.h"
 #include "../ECS/GameObject.h"
+#include "../ECS/SceneManager.h"
 
 namespace RTBEngine {
 	namespace UI {
@@ -11,10 +12,19 @@ namespace RTBEngine {
 		}
 
 		void UIElement::PropagateDirtyToChildren() {
-			if (!GetOwner()) return;
+			if (ECS::SceneManager::GetInstance().IsSceneUnloading()) {
+				return;
+			}
 
-			for (ECS::GameObject* child : GetOwner()->GetChildren()) {
-				if (!child) continue;
+			ECS::GameObject* owner = GetOwner();
+			if (!owner || owner->IsBeingDestroyed()) {
+				return;
+			}
+
+			for (ECS::GameObject* child : owner->GetChildren()) {
+				if (!child || child->IsBeingDestroyed()) {
+					continue;
+				}
 
 				UIElement* childUI = child->GetComponent<UIElement>();
 				if (childUI) {
@@ -58,6 +68,9 @@ namespace RTBEngine {
 
 		void UIElement::SetScale(const Math::Vector2& value) {
 			rectTransform.SetScale(value);
+			if (ECS::SceneManager::GetInstance().IsSceneUnloading()) {
+				return;
+			}
 			PropagateDirtyToChildren();
 		}
 

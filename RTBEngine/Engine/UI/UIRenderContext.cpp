@@ -7,6 +7,8 @@ namespace RTBEngine {
 		// Static member definitions
 		ImDrawList* UIRenderContext::CurrentDrawList = nullptr;
 		Math::Vector2 UIRenderContext::Offset = Math::Vector2(0.0f, 0.0f);
+		float UIRenderContext::ScaleX = 1.0f;
+		float UIRenderContext::ScaleY = 1.0f;
 		bool UIRenderContext::IsValid = false;
 
 		ImDrawList* UIRenderContext::GetDrawList() {

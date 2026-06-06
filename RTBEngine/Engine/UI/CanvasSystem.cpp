@@ -328,8 +328,12 @@ namespace RTBEngine {
 			}
 		}
 
-		void CanvasSystem::RenderToDrawList(ImDrawList* drawList, const Math::Vector2& renderScreenSize, const Math::Vector2& offset) {
-			UIRenderContext::Begin(drawList, offset);
+		void CanvasSystem::RenderToDrawList(ImDrawList* drawList, const Math::Vector2& renderScreenSize, const Math::Vector2& offset, float scale) {
+			RenderToDrawList(drawList, renderScreenSize, offset, Math::Vector2(scale, scale));
+		}
+
+		void CanvasSystem::RenderToDrawList(ImDrawList* drawList, const Math::Vector2& renderScreenSize, const Math::Vector2& offset, const Math::Vector2& scale) {
+			UIRenderContext::Begin(drawList, offset, scale);
 
 			for (Canvas* canvas : activeCanvases) {
 				// World-space canvases have their own 3D pass and must not be duplicated as HUD overlay.

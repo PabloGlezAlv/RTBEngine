@@ -61,13 +61,13 @@ namespace RTBEngine {
 
 			Math::Vector4 screenRect = rectTransform.GetWorldRect();
 			ImDrawList* drawList = UIRenderContext::GetDrawList();
-			Math::Vector2 offset = UIRenderContext::Offset;
 			Math::Vector2 lossyScale = rectTransform.GetLossyScale();
+			const float uiScale = UIRenderContext::IsValid ? UIRenderContext::UniformScale() : 1.0f;
 			float effectiveScale = std::abs(lossyScale.y);
 			if (effectiveScale < 0.01f) {
 				effectiveScale = 0.01f;
 			}
-			float effectiveFontSize = fontSize * effectiveScale;
+			float effectiveFontSize = fontSize * effectiveScale * uiScale;
 			if (effectiveFontSize < 1.0f) {
 				effectiveFontSize = 1.0f;
 			}
@@ -88,20 +88,23 @@ namespace RTBEngine {
 
 			ImVec2 textSize = imFont->CalcTextSizeA(effectiveFontSize, FLT_MAX, 0.0f, text.c_str());
 
-			ImVec2 textPos(screenRect.x + offset.x, screenRect.y + offset.y);
+			ImVec2 textPos(UIRenderContext::MapPoint(screenRect.x, screenRect.y).x,
+			               UIRenderContext::MapPoint(screenRect.x, screenRect.y).y);
+			const float scaledWidth = UIRenderContext::MapSizeX(screenRect.z);
+			const float scaledHeight = UIRenderContext::MapSizeY(screenRect.w);
 
 			switch (alignment) {
 			case TextAlignment::Center:
-				textPos.x += (screenRect.z - textSize.x) * 0.5f;
-				textPos.y += (screenRect.w - textSize.y) * 0.5f;
+				textPos.x += (scaledWidth - textSize.x) * 0.5f;
+				textPos.y += (scaledHeight - textSize.y) * 0.5f;
 				break;
 			case TextAlignment::Right:
-				textPos.x += screenRect.z - textSize.x;
-				textPos.y += (screenRect.w - textSize.y) * 0.5f;
+				textPos.x += scaledWidth - textSize.x;
+				textPos.y += (scaledHeight - textSize.y) * 0.5f;
 				break;
 			case TextAlignment::Left:
 			default:
-				textPos.y += (screenRect.w - textSize.y) * 0.5f;
+				textPos.y += (scaledHeight - textSize.y) * 0.5f;
 				break;
 			}
 

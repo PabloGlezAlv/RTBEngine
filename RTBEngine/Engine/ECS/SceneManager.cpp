@@ -89,6 +89,16 @@ namespace RTBEngine {
             Shutdown();
         }
 
+        void SceneManager::BeginSceneUnload() {
+            ++sceneUnloadDepth;
+        }
+
+        void SceneManager::EndSceneUnload() {
+            if (sceneUnloadDepth > 0) {
+                --sceneUnloadDepth;
+            }
+        }
+
         bool SceneManager::Initialize() {
             return true;
         }
@@ -137,7 +147,11 @@ namespace RTBEngine {
                 onSceneUnloading(previousScene.get());
             }
 
-            previousScene.reset();
+            if (previousScene) {
+                BeginSceneUnload();
+                previousScene.reset();
+                EndSceneUnload();
+            }
             activeScene.reset(newScene);
             activeScenePath = path;
             sceneDirty = false;
@@ -199,7 +213,9 @@ namespace RTBEngine {
                 onSceneUnloading(activeScene.get());
             }
 
+            BeginSceneUnload();
             activeScene.reset();
+            EndSceneUnload();
             activeScenePath.clear();
             sceneDirty = false;
             isSceneTransitioning = false;
