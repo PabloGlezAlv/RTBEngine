@@ -83,6 +83,7 @@ namespace RTBEngine {
 
             state = OnlineState::Initialized;
             RTB_INFO(std::string("OnlineSystem: initialized with backend ") + backend->GetName() + ".");
+
             return true;
         }
 

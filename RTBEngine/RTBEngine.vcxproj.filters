@@ -267,6 +267,9 @@
     <ClCompile Include="Engine\Online\OnlineGameplayNet.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Online\OnlineHttpClient.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Online\OnlineSystem.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
@@ -516,6 +519,9 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Online\OnlineGameplayNet.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Online\OnlineHttpClient.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Online\OnlineSystem.h">

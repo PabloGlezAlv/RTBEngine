@@ -129,7 +129,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>lua54.lib;LinearMath_Debug.lib;BulletCollision_Debug.lib;BulletDynamics_Debug.lib;assimp-vc145-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;fmod_vc.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lua54.lib;LinearMath_Debug.lib;BulletCollision_Debug.lib;BulletDynamics_Debug.lib;assimp-vc145-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;fmod_vc.lib;Ws2_32.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>if exist "$(ProjectDir)ThirdParty\lua\lua54.dll" xcopy /y /d "$(ProjectDir)ThirdParty\lua\lua54.dll" "$(OutDir)"
@@ -163,7 +163,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)ThirdParty\assimp\lib\Release\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>lua54.lib;LinearMath.lib;BulletCollision.lib;BulletDynamics.lib;assimp-vc145-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;fmod_vc.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lua54.lib;LinearMath.lib;BulletCollision.lib;BulletDynamics.lib;assimp-vc145-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;fmod_vc.lib;Ws2_32.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>if exist "$(ProjectDir)ThirdParty\lua\lua54.dll" xcopy /y /d "$(ProjectDir)ThirdParty\lua\lua54.dll" "$(OutDir)"
@@ -279,6 +279,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Online\IOnlineLobby.cpp" />
     <ClCompile Include="Engine\Online\OnlineResult.cpp" />
     <ClCompile Include="Engine\Online\OnlineGameplayNet.cpp" />
+    <ClCompile Include="Engine\Online\OnlineHttpClient.cpp" />
     <ClCompile Include="Engine\Online\OnlineMessageBus.cpp" />
     <ClCompile Include="Engine\Online\OnlineMessageCodec.cpp" />
     <ClCompile Include="Engine\Online\OnlineSystem.cpp" />
@@ -314,6 +315,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Online\OnlineConfig.h" />
     <ClInclude Include="Engine\Online\OnlineResult.h" />
     <ClInclude Include="Engine\Online\OnlineGameplayNet.h" />
+    <ClInclude Include="Engine\Online\OnlineHttpClient.h" />
     <ClInclude Include="Engine\Online\OnlineMessageBus.h" />
     <ClInclude Include="Engine\Online\OnlineMessageCodec.h" />
     <ClInclude Include="Engine\Online\OnlineSystem.h" />

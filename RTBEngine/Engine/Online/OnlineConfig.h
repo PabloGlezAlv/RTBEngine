@@ -22,6 +22,8 @@ namespace RTBEngine {
             std::uint16_t lanDiscoveryPort = 27016;
             std::string defaultHostAddress;
 
+            std::string relayMatchmakingUrl; // e.g. http://localhost:8080/api/v1
+
             bool isServer = false;
             bool loadingInEditor = false;
             std::string cacheDirectory;
