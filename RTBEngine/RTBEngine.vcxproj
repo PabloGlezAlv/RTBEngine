@@ -270,6 +270,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_opengl3.cpp" />
     <ClCompile Include="Engine\ECS\Transform.cpp" />
     <ClCompile Include="Engine\Core\Logger.cpp" />
+    <ClCompile Include="Engine\Online\CompositeOnlineBackend.cpp" />
     <ClCompile Include="Engine\Online\LanOnlineBackend.cpp" />
     <ClCompile Include="Engine\Online\LanOnlineIdentity.cpp" />
     <ClCompile Include="Engine\Online\LanOnlineLobby.cpp" />
@@ -279,7 +280,11 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Online\IOnlineLobby.cpp" />
     <ClCompile Include="Engine\Online\OnlineResult.cpp" />
     <ClCompile Include="Engine\Online\OnlineGameplayNet.cpp" />
+    <ClCompile Include="Engine\Online\OnlineEditorBridge.cpp" />
     <ClCompile Include="Engine\Online\OnlineHttpClient.cpp" />
+    <ClCompile Include="Engine\Online\OnlineJson.cpp" />
+    <ClCompile Include="Engine\Online\RelayOnlineBackend.cpp" />
+    <ClCompile Include="Engine\Online\RelayOnlineLobby.cpp" />
     <ClCompile Include="Engine\Online\OnlineMessageBus.cpp" />
     <ClCompile Include="Engine\Online\OnlineMessageCodec.cpp" />
     <ClCompile Include="Engine\Online\OnlineSystem.cpp" />
@@ -303,6 +308,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Rendering\Cubemap.h" />
     <ClInclude Include="Engine\Rendering\FrameBuffer.h" />
     <ClInclude Include="Engine\RTBEngine.h" />
+    <ClInclude Include="Engine\Online\CompositeOnlineBackend.h" />
     <ClInclude Include="Engine\Online\LanOnlineBackend.h" />
     <ClInclude Include="Engine\Online\LanOnlineIdentity.h" />
     <ClInclude Include="Engine\Online\LanOnlineLobby.h" />
@@ -315,7 +321,11 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Online\OnlineConfig.h" />
     <ClInclude Include="Engine\Online\OnlineResult.h" />
     <ClInclude Include="Engine\Online\OnlineGameplayNet.h" />
+    <ClInclude Include="Engine\Online\OnlineEditorBridge.h" />
     <ClInclude Include="Engine\Online\OnlineHttpClient.h" />
+    <ClInclude Include="Engine\Online\OnlineJson.h" />
+    <ClInclude Include="Engine\Online\RelayOnlineBackend.h" />
+    <ClInclude Include="Engine\Online\RelayOnlineLobby.h" />
     <ClInclude Include="Engine\Online\OnlineMessageBus.h" />
     <ClInclude Include="Engine\Online\OnlineMessageCodec.h" />
     <ClInclude Include="Engine\Online\OnlineSystem.h" />

@@ -39,6 +39,8 @@ namespace RTBEngine {
                 return "Invalid";
             case OnlineUserIdType::Local:
                 return "Local"; // this machine's logged-in user
+            case OnlineUserIdType::RelayPeer:
+                return "RelayPeer"; // remote player via relay memberId
             case OnlineUserIdType::NetworkPeer:
                 return "NetworkPeer"; // remote UDP endpoint identity
             default:

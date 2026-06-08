@@ -32,7 +32,11 @@ namespace RTBEngine {
             bool IsEnabled() const { return enabled; }
             bool IsInitialized() const { return state == OnlineState::Initialized; }
             OnlineState GetState() const { return state; }
-            OnlineBackendType GetBackendType() const { return OnlineBackendType::LAN; }
+            OnlineBackendType GetDefaultLobbyBackend() const { return defaultLobbyBackend; }
+            OnlineBackendType GetActiveLobbyBackend() const;
+            OnlineBackendType GetBackendType() const { return GetActiveLobbyBackend(); }
+            const char* GetActiveBackendName() const;
+            bool IsLobbyBackendReady(OnlineBackendType backend) const;
             const std::string& GetLastError() const { return lastError; }
             const OnlineLoginOptions& GetDefaultLoginOptions() const { return defaultLoginOptions; }
             void SetSessionDisplayName(const std::string& name);
@@ -42,6 +46,8 @@ namespace RTBEngine {
             const IOnlineIdentity* GetIdentity() const;
             IOnlineLobby* GetLobby();
             const IOnlineLobby* GetLobby() const;
+            IOnlineLobby* GetLobby(OnlineBackendType backend);
+            const IOnlineLobby* GetLobby(OnlineBackendType backend) const;
             IOnlineTransport* GetTransport();
             const IOnlineTransport* GetTransport() const;
 
@@ -68,6 +74,7 @@ namespace RTBEngine {
 
             bool enabled = false;
             bool failApplicationOnError = false;
+            OnlineBackendType defaultLobbyBackend = OnlineBackendType::Lan;
             OnlineState state = OnlineState::Disabled;
             OnlineLoginOptions defaultLoginOptions;
             std::string lastError;

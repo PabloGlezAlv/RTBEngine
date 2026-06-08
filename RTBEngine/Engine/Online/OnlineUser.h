@@ -10,6 +10,7 @@ namespace RTBEngine {
         enum class OnlineUserIdType {
             Invalid,
             Local,        // this machine's logged-in user
+            RelayPeer,    // remote player as relay memberId hex
             NetworkPeer   // remote machine as host:port (LAN transport addressing)
         };
 

@@ -6,8 +6,10 @@ namespace RTBEngine {
         const char* ToString(OnlineBackendType backend)
         {
             switch (backend) {
-            case OnlineBackendType::LAN:
+            case OnlineBackendType::Lan:
                 return "LAN";
+            case OnlineBackendType::RelayOnline:
+                return "Relay";
             default:
                 return "Unknown";
             }

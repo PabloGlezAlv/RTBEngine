@@ -267,7 +267,19 @@
     <ClCompile Include="Engine\Online\OnlineGameplayNet.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Online\OnlineEditorBridge.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Online\OnlineHttpClient.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Online\OnlineJson.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Online\RelayOnlineBackend.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Online\RelayOnlineLobby.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Online\OnlineSystem.cpp">
@@ -521,7 +533,19 @@
     <ClInclude Include="Engine\Online\OnlineGameplayNet.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Online\OnlineEditorBridge.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Online\OnlineHttpClient.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Online\OnlineJson.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Online\RelayOnlineBackend.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Online\RelayOnlineLobby.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Online\OnlineSystem.h">

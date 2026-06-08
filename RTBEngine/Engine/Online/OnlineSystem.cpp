@@ -1,6 +1,6 @@
 #include "OnlineSystem.h"
 
-#include "LanOnlineBackend.h"
+#include "CompositeOnlineBackend.h"
 #include "IOnlineBackend.h"
 #include "OnlineConfig.h"
 #include "OnlineGameplayNet.h"
@@ -57,6 +57,7 @@ namespace RTBEngine {
 
             enabled = config.enabled;
             failApplicationOnError = config.failApplicationOnError;
+            defaultLobbyBackend = config.backendType;
             defaultLoginOptions.type = config.loginType;
             defaultLoginOptions.displayName = config.loginDisplayName;
             lastError.clear();
@@ -67,7 +68,11 @@ namespace RTBEngine {
                 return true;
             }
 
-            backend = std::make_unique<LanOnlineBackend>();
+            RTB_INFO(
+                std::string("OnlineSystem: initializing LAN and Relay stacks (default lobby backend: ") +
+                ToString(config.backendType) + ").");
+
+            backend = std::make_unique<CompositeOnlineBackend>();
 
             if (!backend->Initialize(config)) {
                 state = OnlineState::Error;
@@ -108,6 +113,7 @@ namespace RTBEngine {
 
             enabled = false;
             failApplicationOnError = false;
+            defaultLobbyBackend = OnlineBackendType::Lan;
             defaultLoginOptions = OnlineLoginOptions();
             state = OnlineState::Disabled;
         }
@@ -122,6 +128,57 @@ namespace RTBEngine {
             return defaultLoginOptions.displayName;
         }
 
+        namespace {
+
+            CompositeOnlineBackend* AsCompositeBackend(IOnlineBackend* onlineBackend)
+            {
+                return static_cast<CompositeOnlineBackend*>(onlineBackend);
+            }
+
+            const CompositeOnlineBackend* AsCompositeBackend(const IOnlineBackend* onlineBackend)
+            {
+                return static_cast<const CompositeOnlineBackend*>(onlineBackend);
+            }
+
+        }
+
+        OnlineBackendType OnlineSystem::GetActiveLobbyBackend() const
+        {
+            const CompositeOnlineBackend* compositeBackend = AsCompositeBackend(backend.get());
+            return compositeBackend
+                ? compositeBackend->GetActiveLobbyBackend()
+                : defaultLobbyBackend;
+        }
+
+        bool OnlineSystem::IsLobbyBackendReady(OnlineBackendType lobbyBackend) const
+        {
+            const CompositeOnlineBackend* compositeBackend = AsCompositeBackend(backend.get());
+            return compositeBackend && compositeBackend->IsLobbyBackendReady(lobbyBackend);
+        }
+
+        const char* OnlineSystem::GetActiveBackendName() const
+        {
+            if (!backend) {
+                return "None";
+            }
+
+            const CompositeOnlineBackend* compositeBackend = AsCompositeBackend(backend.get());
+            if (!compositeBackend) {
+                return backend->GetName();
+            }
+
+            const OnlineBackendType activeLobbyBackend = compositeBackend->GetActiveLobbyBackend();
+            const bool inLobby =
+                compositeBackend->GetLobby(activeLobbyBackend) &&
+                !compositeBackend->GetLobby(activeLobbyBackend)->GetCurrentLobby().lobbyId.empty();
+
+            if (inLobby) {
+                return ToString(activeLobbyBackend);
+            }
+
+            return backend->GetName();
+        }
+
         IOnlineIdentity* OnlineSystem::GetIdentity()
         {
             return backend ? backend->GetIdentity() : nullptr;
@@ -130,6 +187,17 @@ namespace RTBEngine {
         const IOnlineIdentity* OnlineSystem::GetIdentity() const
         {
             return backend ? backend->GetIdentity() : nullptr;
+        }
+
+        IOnlineLobby* OnlineSystem::GetLobby(OnlineBackendType lobbyBackend)
+        {
+            CompositeOnlineBackend* compositeBackend = AsCompositeBackend(backend.get());
+            return compositeBackend ? compositeBackend->GetLobby(lobbyBackend) : nullptr;
+        }
+
+        const IOnlineLobby* OnlineSystem::GetLobby(OnlineBackendType lobbyBackend) const
+        {
+            return const_cast<OnlineSystem*>(this)->GetLobby(lobbyBackend);
         }
 
         IOnlineLobby* OnlineSystem::GetLobby()
