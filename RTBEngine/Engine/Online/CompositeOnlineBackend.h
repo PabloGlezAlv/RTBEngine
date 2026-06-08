@@ -5,6 +5,7 @@
 #include "OnlineTypes.h"
 #include "LanOnlineIdentity.h"
 #include "LanOnlineLobby.h"
+#include "RelayNetworkTransport.h"
 #include "RelayOnlineLobby.h"
 #include "UdpNetworkTransport.h"
 
@@ -39,6 +40,7 @@ namespace RTBEngine {
 
         private:
             OnlineBackendType ResolveActiveLobbyBackend() const;
+            void SyncRelayTransport();
 
             bool initialized = false;
             bool lanReady = false;
@@ -47,6 +49,7 @@ namespace RTBEngine {
             std::string lastError;
             LanOnlineIdentity identity;
             UdpNetworkTransport lanTransport;
+            RelayNetworkTransport relayTransport;
             LanOnlineLobby lanLobby;
             RelayOnlineLobby relayLobby;
         };

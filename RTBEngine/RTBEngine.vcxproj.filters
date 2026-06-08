@@ -282,6 +282,12 @@
     <ClCompile Include="Engine\Online\RelayOnlineLobby.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Online\RelayNetworkTransport.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Online\RelayWire.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Online\OnlineSystem.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
@@ -546,6 +552,12 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Online\RelayOnlineLobby.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Online\RelayNetworkTransport.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Online\RelayWire.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Online\OnlineSystem.h">

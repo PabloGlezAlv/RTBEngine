@@ -283,8 +283,10 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Online\OnlineEditorBridge.cpp" />
     <ClCompile Include="Engine\Online\OnlineHttpClient.cpp" />
     <ClCompile Include="Engine\Online\OnlineJson.cpp" />
+    <ClCompile Include="Engine\Online\RelayNetworkTransport.cpp" />
     <ClCompile Include="Engine\Online\RelayOnlineBackend.cpp" />
     <ClCompile Include="Engine\Online\RelayOnlineLobby.cpp" />
+    <ClCompile Include="Engine\Online\RelayWire.cpp" />
     <ClCompile Include="Engine\Online\OnlineMessageBus.cpp" />
     <ClCompile Include="Engine\Online\OnlineMessageCodec.cpp" />
     <ClCompile Include="Engine\Online\OnlineSystem.cpp" />
@@ -324,8 +326,10 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Online\OnlineEditorBridge.h" />
     <ClInclude Include="Engine\Online\OnlineHttpClient.h" />
     <ClInclude Include="Engine\Online\OnlineJson.h" />
+    <ClInclude Include="Engine\Online\RelayNetworkTransport.h" />
     <ClInclude Include="Engine\Online\RelayOnlineBackend.h" />
     <ClInclude Include="Engine\Online\RelayOnlineLobby.h" />
+    <ClInclude Include="Engine\Online\RelayWire.h" />
     <ClInclude Include="Engine\Online\OnlineMessageBus.h" />
     <ClInclude Include="Engine\Online\OnlineMessageCodec.h" />
     <ClInclude Include="Engine\Online\OnlineSystem.h" />

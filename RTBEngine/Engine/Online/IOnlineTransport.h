@@ -28,7 +28,7 @@ namespace RTBEngine {
             virtual ~IOnlineTransport() = default;
 
             virtual bool IsAvailable() const = 0;
-            // remoteUserId must be NetworkPeer:host:port for LAN UDP sends.
+            // LAN: NetworkPeer:host:port. Relay: RelayPeer:memberIdHex.
             virtual OnlineResult SendPacket(
                 const OnlineUserId& remoteUserId,
                 std::uint8_t channel,

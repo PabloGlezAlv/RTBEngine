@@ -79,6 +79,13 @@ namespace RTBEngine {
 
             if (relayReady) {
                 relayLobby.Tick(deltaTime);
+                SyncRelayTransport();
+                if (relayTransport.IsConnected()) {
+                    relayTransport.PumpIncoming();
+                    relayTransport.TickKeepalive(deltaTime);
+                }
+            } else {
+                relayTransport.Disconnect();
             }
         }
 
@@ -92,6 +99,7 @@ namespace RTBEngine {
                 relayLobby.LeaveLobby();
             }
 
+            relayTransport.Disconnect();
             lanTransport.Unbind();
             initialized = false;
             lanReady = false;
@@ -152,7 +160,7 @@ namespace RTBEngine {
         IOnlineTransport* CompositeOnlineBackend::GetTransport()
         {
             if (IsRelayBackend(ResolveActiveLobbyBackend())) {
-                return nullptr;
+                return relayTransport.IsConnected() ? &relayTransport : nullptr;
             }
 
             if (lanReady) {
@@ -198,6 +206,27 @@ namespace RTBEngine {
             }
 
             return defaultLobbyBackend;
+        }
+
+        void CompositeOnlineBackend::SyncRelayTransport()
+        {
+            const bool inRelayLobby =
+                relayLobby.GetState() == OnlineLobbyState::InLobby &&
+                !relayLobby.GetCurrentLobby().lobbyId.empty();
+
+            if (!inRelayLobby) {
+                relayTransport.Disconnect();
+                return;
+            }
+
+            if (relayTransport.IsConnected()) {
+                return;
+            }
+
+            std::string connectError;
+            if (!relayTransport.Connect(relayLobby.GetRelaySessionInfo(), connectError)) {
+                RTB_WARN("CompositeOnlineBackend: relay transport connect failed. " + connectError);
+            }
         }
 
     }
