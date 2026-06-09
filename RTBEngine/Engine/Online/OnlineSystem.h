@@ -67,6 +67,7 @@ namespace RTBEngine {
 
             void ClearPlayerSessionProfiles();
             void SetPlayerSessionProfile(const OnlinePlayerProfile& profile);
+            void RemovePlayerSessionProfile(int playerSlot);
             bool HasPlayerSessionProfile(int playerSlot) const;
             bool TryGetPlayerSessionProfile(int playerSlot, OnlinePlayerProfile& outProfile) const;
             std::string GetPlayerDisplayName(int playerSlot) const;

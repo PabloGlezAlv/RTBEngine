@@ -342,6 +342,15 @@ namespace RTBEngine {
             playerSessionProfiles[profile.playerSlot] = profile;
         }
 
+        void OnlineSystem::RemovePlayerSessionProfile(int playerSlot)
+        {
+            if (playerSlot < 0) {
+                return;
+            }
+
+            playerSessionProfiles.erase(playerSlot);
+        }
+
         bool OnlineSystem::HasPlayerSessionProfile(int playerSlot) const
         {
             return playerSlot >= 0 && playerSessionProfiles.find(playerSlot) != playerSessionProfiles.end();
