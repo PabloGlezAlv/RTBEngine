@@ -35,6 +35,7 @@ namespace RTBEngine {
             const std::string& GetTextInput() const { return textInput; }
 
             void SetMouseRelativeMode(bool enabled);
+            bool IsMouseRelativeModeEnabled() const;
             void SetMousePosition(int x, int y);
 
         private:

@@ -136,6 +136,10 @@ namespace RTBEngine {
             SDL_ShowCursor(enabled ? SDL_DISABLE : SDL_ENABLE);
         }
 
+        bool InputManager::IsMouseRelativeModeEnabled() const {
+            return SDL_GetRelativeMouseMode() == SDL_TRUE;
+        }
+
         void InputManager::SetMousePosition(int x, int y) {
             SDL_WarpMouseInWindow(nullptr, x, y);
         }
