@@ -41,6 +41,13 @@ namespace RTBEngine {
             const OnlineLoginOptions& GetDefaultLoginOptions() const { return defaultLoginOptions; }
             void SetSessionDisplayName(const std::string& name);
             const std::string& GetSessionDisplayName() const;
+            // UI navigation preference only; LAN and Relay stacks stay initialized together.
+            void SetSessionLobbyBackend(OnlineBackendType backend);
+            void ClearSessionLobbyBackend();
+            bool HasSessionLobbyBackend() const;
+            OnlineBackendType GetSessionLobbyBackend() const;
+            bool IsLanLobbyReady() const;
+            bool IsRelayLobbyReady() const;
 
             IOnlineIdentity* GetIdentity();
             const IOnlineIdentity* GetIdentity() const;
@@ -75,6 +82,8 @@ namespace RTBEngine {
             bool enabled = false;
             bool failApplicationOnError = false;
             OnlineBackendType defaultLobbyBackend = OnlineBackendType::Lan;
+            OnlineBackendType sessionLobbyBackend = OnlineBackendType::Lan;
+            bool hasSessionLobbyBackend = false;
             OnlineState state = OnlineState::Disabled;
             OnlineLoginOptions defaultLoginOptions;
             std::string lastError;

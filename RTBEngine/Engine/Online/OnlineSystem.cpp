@@ -114,6 +114,8 @@ namespace RTBEngine {
             enabled = false;
             failApplicationOnError = false;
             defaultLobbyBackend = OnlineBackendType::Lan;
+            hasSessionLobbyBackend = false;
+            sessionLobbyBackend = OnlineBackendType::Lan;
             defaultLoginOptions = OnlineLoginOptions();
             state = OnlineState::Disabled;
         }
@@ -126,6 +128,27 @@ namespace RTBEngine {
         const std::string& OnlineSystem::GetSessionDisplayName() const
         {
             return defaultLoginOptions.displayName;
+        }
+
+        void OnlineSystem::SetSessionLobbyBackend(OnlineBackendType backend)
+        {
+            sessionLobbyBackend = backend;
+            hasSessionLobbyBackend = true;
+        }
+
+        void OnlineSystem::ClearSessionLobbyBackend()
+        {
+            hasSessionLobbyBackend = false;
+        }
+
+        bool OnlineSystem::HasSessionLobbyBackend() const
+        {
+            return hasSessionLobbyBackend;
+        }
+
+        OnlineBackendType OnlineSystem::GetSessionLobbyBackend() const
+        {
+            return sessionLobbyBackend;
         }
 
         namespace {
@@ -145,15 +168,38 @@ namespace RTBEngine {
         OnlineBackendType OnlineSystem::GetActiveLobbyBackend() const
         {
             const CompositeOnlineBackend* compositeBackend = AsCompositeBackend(backend.get());
-            return compositeBackend
-                ? compositeBackend->GetActiveLobbyBackend()
-                : defaultLobbyBackend;
+            if (!compositeBackend) {
+                return hasSessionLobbyBackend ? sessionLobbyBackend : defaultLobbyBackend;
+            }
+
+            const OnlineBackendType resolvedBackend = compositeBackend->GetActiveLobbyBackend();
+
+            const IOnlineLobby* lanLobby = compositeBackend->GetLobby(OnlineBackendType::Lan);
+            const IOnlineLobby* relayLobby = compositeBackend->GetLobby(OnlineBackendType::RelayOnline);
+            const bool lanInLobby = lanLobby && !lanLobby->GetCurrentLobby().lobbyId.empty();
+            const bool relayInLobby = relayLobby && !relayLobby->GetCurrentLobby().lobbyId.empty();
+
+            if (!lanInLobby && !relayInLobby && hasSessionLobbyBackend) {
+                return sessionLobbyBackend;
+            }
+
+            return resolvedBackend;
         }
 
         bool OnlineSystem::IsLobbyBackendReady(OnlineBackendType lobbyBackend) const
         {
             const CompositeOnlineBackend* compositeBackend = AsCompositeBackend(backend.get());
             return compositeBackend && compositeBackend->IsLobbyBackendReady(lobbyBackend);
+        }
+
+        bool OnlineSystem::IsLanLobbyReady() const
+        {
+            return IsLobbyBackendReady(OnlineBackendType::Lan);
+        }
+
+        bool OnlineSystem::IsRelayLobbyReady() const
+        {
+            return IsLobbyBackendReady(OnlineBackendType::RelayOnline);
         }
 
         const char* OnlineSystem::GetActiveBackendName() const
