@@ -55,6 +55,7 @@
 #include "ECS/CapsuleColliderComponent.h"
 #include "ECS/CameraComponent.h"
 #include "ECS/TrailRenderer.h"
+#include "ECS/ParticleSystem.h"
 
 // UI
 #include "UI/Canvas.h"

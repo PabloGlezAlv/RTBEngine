@@ -689,7 +689,7 @@ void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Renderi
 
 	scene->Render(camera);
 
-	// Render skybox after geometry (uses GL_LEQUAL depth test)
+	// Render skybox after opaque geometry (uses GL_LEQUAL depth test)
 	if (skybox && skybox->IsEnabled() && scene->IsSkyboxEnabled()) {
 		// Use scene-specific cubemap if available, otherwise use default
 		Rendering::Cubemap* sceneCubemap = scene->GetSkyboxCubemap();
@@ -701,6 +701,9 @@ void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Renderi
 		}
 		skybox->Render(camera);
 	}
+
+	// Transparent effects must render after the skybox because they skip depth writes.
+	scene->RenderTransparentEffects(camera);
 
 	auto& canvasSystem = UI::CanvasSystem::GetInstance();
 	canvasSystem.Update(scene);

@@ -6,6 +6,7 @@
 #include "MeshRenderer.h"
 #include "CameraComponent.h"
 #include "TrailRenderer.h"
+#include "ParticleSystem.h"
 #include "../Core/Logger.h"
 
 namespace {
@@ -333,11 +334,29 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 		}
 	}
 
+	--iterationDepth;
+	FlushPendingCommands();
+}
+
+void RTBEngine::ECS::Scene::RenderTransparentEffects(Rendering::Camera* camera)
+{
+	if (!camera) return;
+
+	++iterationDepth;
 	for (auto& gameObject : gameObjects) {
 		if (gameObject && gameObject->IsActiveInHierarchy()) {
 			TrailRenderer* trailRenderer = gameObject->GetComponent<TrailRenderer>();
 			if (trailRenderer && trailRenderer->IsEnabled()) {
 				trailRenderer->Render(camera);
+			}
+		}
+	}
+
+	for (auto& gameObject : gameObjects) {
+		if (gameObject && gameObject->IsActiveInHierarchy()) {
+			ParticleSystem* particleSystem = gameObject->GetComponent<ParticleSystem>();
+			if (particleSystem && particleSystem->IsEnabled()) {
+				particleSystem->Render(camera);
 			}
 		}
 	}

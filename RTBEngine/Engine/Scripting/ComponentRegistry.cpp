@@ -91,6 +91,7 @@ namespace RTBEngine {
             RegisterComponent("CameraComponent", []() { return new ECS::CameraComponent(); });
             RegisterComponent("FreeLookCamera", []() { return new ECS::FreeLookCamera(); });
             RegisterComponent("TrailRenderer", []() { return new ECS::TrailRenderer(); });
+            RegisterComponent("ParticleSystem", []() { return new ECS::ParticleSystem(); });
             RegisterComponent("NetworkIdentity", []() { return new ECS::NetworkIdentity(); });
             RegisterComponent("NetworkTransform", []() { return new ECS::NetworkTransform(); });
             RegisterComponent("Animator", []() { return new Animation::Animator(); });

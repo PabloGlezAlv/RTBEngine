@@ -40,6 +40,7 @@ namespace RTBEngine {
             void FixedUpdate(float fixedDeltaTime);
             void LateUpdate(float deltaTime);
             void Render(Rendering::Camera* camera);
+            void RenderTransparentEffects(Rendering::Camera* camera);
 
             // Skybox management (per-scene override)
             void SetSkyboxCubemap(Rendering::Cubemap* cubemap);
