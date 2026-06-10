@@ -115,7 +115,6 @@ namespace RTBEngine {
 
             GLuint instanceVbo = 0;
             Rendering::Shader* shader = nullptr;
-            Rendering::Texture* runtimeTexture = nullptr;
             int activeInstanceCount = 0;
             int totalEmitted = 0;
         };

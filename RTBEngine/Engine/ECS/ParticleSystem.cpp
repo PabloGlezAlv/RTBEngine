@@ -54,6 +54,8 @@ namespace RTBEngine {
                 return Math::Vector3(radius * std::cos(theta), z, radius * std::sin(theta));
             }
 
+            // Creates the engine-wide unit quad VAO/VBO used by every ParticleSystem instance.
+            // Attributes 0 (corner) and 1 (uv) are per-vertex; instance data is bound separately.
             bool EnsureSharedQuadResources()
             {
                 if (g_particleShared.quadVao != 0 && g_particleShared.quadVbo != 0) {
@@ -86,6 +88,7 @@ namespace RTBEngine {
                 return g_particleShared.quadVao != 0;
             }
 
+            // Destroys the shared quad when no ParticleSystem still references it.
             void ReleaseSharedQuadResources()
             {
                 if (g_particleShared.refCount > 0) {
@@ -100,42 +103,6 @@ namespace RTBEngine {
                     glDeleteBuffers(1, &g_particleShared.quadVbo);
                     g_particleShared.quadVbo = 0;
                 }
-            }
-
-            Rendering::Texture* CreateDefaultParticleTexture()
-            {
-                constexpr int size = 64;
-                std::vector<unsigned char> pixels(static_cast<std::size_t>(size * size * 4));
-
-                const float center = (static_cast<float>(size) - 1.0f) * 0.5f;
-                const float radius = center;
-
-                for (int y = 0; y < size; ++y) {
-                    for (int x = 0; x < size; ++x) {
-                        const float dx = static_cast<float>(x) - center;
-                        const float dy = static_cast<float>(y) - center;
-                        const float dist = std::sqrt(dx * dx + dy * dy) / radius;
-                        const float alpha = std::clamp(1.0f - dist, 0.0f, 1.0f);
-                        const float softAlpha = alpha * alpha;
-
-                        const std::size_t index = static_cast<std::size_t>((y * size + x) * 4);
-                        pixels[index + 0] = 255;
-                        pixels[index + 1] = 255;
-                        pixels[index + 2] = 255;
-                        pixels[index + 3] = static_cast<unsigned char>(softAlpha * 255.0f);
-                    }
-                }
-
-                auto* texture = new Rendering::Texture();
-                if (!texture->LoadFromMemory(pixels.data(), size, size, 4)) {
-                    delete texture;
-                    return nullptr;
-                }
-
-                texture->SetFilter(Rendering::TextureFilter::Linear, Rendering::TextureFilter::Linear);
-                texture->SetWrap(Rendering::TextureWrap::ClampToEdge, Rendering::TextureWrap::ClampToEdge);
-                Core::ResourceManager::GetInstance().RegisterTexture("__particle_default__", texture);
-                return texture;
             }
         }
 
@@ -173,21 +140,25 @@ namespace RTBEngine {
             ReleaseRenderResources();
         }
 
+        // Allocates the CPU particle pool to match maxParticles.
         void ParticleSystem::OnAwake()
         {
             ResizePool();
         }
 
+        // Starts playback when playOnAwake is set and the user has not called Stop().
         void ParticleSystem::OnStart()
         {
             ApplyPlaybackSettings();
         }
 
+        // Advances simulation and refreshes the GPU instance buffer each frame.
         void ParticleSystem::OnUpdate(float deltaTime)
         {
             Tick(deltaTime);
         }
 
+        // Clamps reflected ranges, resizes the pool, and reapplies playback settings.
         void ParticleSystem::OnValidate()
         {
             maxParticles = std::clamp(maxParticles, kMinMaxParticles, kMaxMaxParticles);
@@ -210,6 +181,7 @@ namespace RTBEngine {
             ReleaseRenderResources();
         }
 
+        // Marks every slot as dead (lifetime == 0) and clears the active instance count.
         void ParticleSystem::KillAllParticles()
         {
             for (Rendering::Particle& particle : particles) {
@@ -226,6 +198,7 @@ namespace RTBEngine {
             }
         }
 
+        // Grows or shrinks the CPU pool and parallel instanceData array; new slots start dead.
         void ParticleSystem::ResizePool()
         {
             const int clampedMax = std::clamp(maxParticles, kMinMaxParticles, kMaxMaxParticles);
@@ -241,6 +214,7 @@ namespace RTBEngine {
             }
         }
 
+        // Resumes emission without clearing particles already alive in the pool.
         void ParticleSystem::Play()
         {
             userStopped = false;
@@ -248,6 +222,7 @@ namespace RTBEngine {
             paused = false;
         }
 
+        // Clears the pool, resets counters, and blocks playOnAwake until the next validate/load.
         void ParticleSystem::Stop()
         {
             userStopped = true;
@@ -259,6 +234,7 @@ namespace RTBEngine {
             UploadInstanceBuffer();
         }
 
+        // Freezes simulation while keeping visible particles in the pool.
         void ParticleSystem::Pause()
         {
             if (playing) {
@@ -266,6 +242,7 @@ namespace RTBEngine {
             }
         }
 
+        // Spawns count particles immediately (burst); also forces playback on.
         void ParticleSystem::Emit(int count)
         {
             if (count <= 0) {
@@ -291,6 +268,7 @@ namespace RTBEngine {
             return count;
         }
 
+        // Editor-only: ticks emitters with simulateInEditMode while not in Play mode.
         void ParticleSystem::TickScenePreview(Scene* scene, float deltaTime)
         {
             if (!scene || deltaTime <= 0.0f) {
@@ -316,6 +294,7 @@ namespace RTBEngine {
             }
         }
 
+        // Returns the first pool index with lifetime == 0, or -1 when the pool is full.
         int ParticleSystem::FindDeadParticleIndex() const
         {
             for (int i = 0; i < static_cast<int>(particles.size()); ++i) {
@@ -326,23 +305,23 @@ namespace RTBEngine {
             return -1;
         }
 
+        // Uniform random direction inside a cone around local +Y; angle 0 emits along +Y only.
         Math::Vector3 ParticleSystem::SampleConeDirection() const
         {
             const float halfAngleRad = std::max(coneAngle, 0.0f) * 0.5f * 3.1415926535f / 180.0f;
             const float cosHalfAngle = std::cos(halfAngleRad);
 
-            // coneAngle == 0 -> emit exactly along local +Y (transformed to world on spawn).
             if (cosHalfAngle >= 1.0f - 1e-6f) {
                 return Math::Vector3(0.0f, 1.0f, 0.0f);
             }
 
-            // Uniform random direction inside the cone aperture around +Y.
             const float cosTheta = RandomRange(cosHalfAngle, 1.0f);
             const float sinTheta = std::sqrt(std::max(0.0f, 1.0f - cosTheta * cosTheta));
             const float phi = RandomRange(0.0f, 6.28318530718f);
             return Math::Vector3(sinTheta * std::cos(phi), cosTheta, sinTheta * std::sin(phi));
         }
 
+        // Local-space spawn offset based on the selected emitter shape.
         Math::Vector3 ParticleSystem::SampleSpawnPosition() const
         {
             switch (emitterShape) {
@@ -369,6 +348,7 @@ namespace RTBEngine {
             }
         }
 
+        // Local-space initial velocity direction before startSpeed is applied.
         Math::Vector3 ParticleSystem::SampleSpawnDirection() const
         {
             switch (emitterShape) {
@@ -386,6 +366,7 @@ namespace RTBEngine {
             }
         }
 
+        // Converts a local particle position to world space when worldSimulation is false.
         Math::Vector3 ParticleSystem::ToWorldPosition(const Math::Vector3& localOrWorld) const
         {
             if (worldSimulation || !GetOwner()) {
@@ -398,6 +379,7 @@ namespace RTBEngine {
             return Math::Vector3(worldPos.x, worldPos.y, worldPos.z);
         }
 
+        // Converts a local direction to world space when worldSimulation is false.
         Math::Vector3 ParticleSystem::ToWorldDirection(const Math::Vector3& localOrWorld) const
         {
             if (worldSimulation || !GetOwner()) {
@@ -412,6 +394,7 @@ namespace RTBEngine {
             return result;
         }
 
+        // Claims a dead pool slot and initializes position, velocity, lifetime, size, and color.
         void ParticleSystem::SpawnParticle()
         {
             const int slot = FindDeadParticleIndex();
@@ -448,6 +431,7 @@ namespace RTBEngine {
             ++totalEmitted;
         }
 
+        // Emits new particles, integrates gravity/velocity, lerps size/color, then uploads GPU data.
         void ParticleSystem::Tick(float deltaTime)
         {
             if (!playing || paused || deltaTime <= 0.0f) {
@@ -498,6 +482,7 @@ namespace RTBEngine {
             UploadInstanceBuffer();
         }
 
+        // Packs alive particles into instanceData and uploads them to the per-emitter instance VBO.
         void ParticleSystem::UploadInstanceBuffer()
         {
             activeInstanceCount = 0;
@@ -518,6 +503,7 @@ namespace RTBEngine {
                 return;
             }
 
+            // Replace the instance buffer contents for this frame (position, color, size per particle).
             glBindBuffer(GL_ARRAY_BUFFER, instanceVbo);
             if (activeInstanceCount > 0) {
                 glBufferData(
@@ -528,6 +514,7 @@ namespace RTBEngine {
             }
         }
 
+        // Loads the particle shader, shared quad VAO, and wires instance attributes 2-4 with divisor 1.
         bool ParticleSystem::EnsureRenderResources()
         {
             if (!shader) {
@@ -551,12 +538,12 @@ namespace RTBEngine {
                 glBindBuffer(GL_ARRAY_BUFFER, instanceVbo);
                 glBufferData(GL_ARRAY_BUFFER, sizeof(ParticleInstanceData), nullptr, GL_DYNAMIC_DRAW);
 
+                // Instance attributes advance once per particle, not once per quad vertex.
                 const GLsizei stride = static_cast<GLsizei>(sizeof(ParticleInstanceData));
                 glEnableVertexAttribArray(2);
                 glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
                 glEnableVertexAttribArray(3);
                 glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, color));
-                glEnableVertexAttribArray(4);
                 glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, size));
 
                 glVertexAttribDivisor(2, 1);
@@ -569,19 +556,10 @@ namespace RTBEngine {
                 ++g_particleShared.refCount;
             }
 
-            if (!runtimeTexture) {
-                runtimeTexture = textureRef;
-                if (!runtimeTexture) {
-                    runtimeTexture = Core::ResourceManager::GetInstance().GetTexture("__particle_default__");
-                    if (!runtimeTexture) {
-                        runtimeTexture = CreateDefaultParticleTexture();
-                    }
-                }
-            }
-
             return true;
         }
 
+        // Deletes this emitter's instance VBO and drops the shared quad ref-count.
         void ParticleSystem::ReleaseRenderResources()
         {
             if (instanceVbo != 0) {
@@ -595,12 +573,13 @@ namespace RTBEngine {
 
             ReleaseSharedQuadResources();
             shader = nullptr;
-            runtimeTexture = nullptr;
         }
 
+        // Draws one shared quad (6 vertices) instanced activeInstanceCount times as camera-facing billboards.
         void ParticleSystem::DrawInstances()
         {
             glBindVertexArray(g_particleShared.quadVao);
+            // Re-bind instance pointers after glBufferData may have changed the active ARRAY_BUFFER.
             glBindBuffer(GL_ARRAY_BUFFER, instanceVbo);
             const GLsizei stride = static_cast<GLsizei>(sizeof(ParticleInstanceData));
             glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
@@ -610,6 +589,7 @@ namespace RTBEngine {
             glBindVertexArray(0);
         }
 
+        // Renders billboard particles in two passes: depth silhouette, then alpha-blended color.
         void ParticleSystem::Render(Rendering::Camera* camera)
         {
             if (!isEnabled || !visible || !camera || activeInstanceCount <= 0) {
@@ -624,14 +604,7 @@ namespace RTBEngine {
                 return;
             }
 
-            runtimeTexture = textureRef ? textureRef : runtimeTexture;
-            if (!runtimeTexture) {
-                runtimeTexture = Core::ResourceManager::GetInstance().GetTexture("__particle_default__");
-                if (!runtimeTexture) {
-                    runtimeTexture = CreateDefaultParticleTexture();
-                }
-            }
-
+            // Preserve GL state so later renderers (UI, ImGui) are unaffected.
             const GLboolean wasBlendEnabled = glIsEnabled(GL_BLEND);
             const GLboolean wasDepthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
             const GLboolean wasCullFaceEnabled = glIsEnabled(GL_CULL_FACE);
@@ -643,28 +616,29 @@ namespace RTBEngine {
             glGetIntegerv(GL_DEPTH_FUNC, &previousDepthFunc);
 
             glEnable(GL_DEPTH_TEST);
-            glDisable(GL_CULL_FACE);
+            glDisable(GL_CULL_FACE); // Billboards must be visible from both sides.
             glDepthFunc(GL_LESS);
 
+            // Vertex shader builds each quad from uCameraRight/Up; fragment shader multiplies by instance color.
             shader->Bind();
             shader->SetMatrix4("uView", camera->GetViewMatrix());
             shader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
             shader->SetVector3("uCameraRight", camera->GetRight());
             shader->SetVector3("uCameraUp", camera->GetUp());
-            shader->SetBool("uHasTexture", runtimeTexture != nullptr);
+            shader->SetBool("uHasTexture", textureRef != nullptr);
 
-            if (runtimeTexture) {
-                runtimeTexture->Bind(0);
+            if (textureRef) {
+                textureRef->Bind(0);
                 shader->SetInt("uDiffuse", 0);
             }
 
-            // Pass 1: write depth for visible particle fragments so opaque meshes occlude correctly.
+            // Pass 1: color mask off, depth write on — record particle silhouettes in the Z-buffer.
             glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
             glDepthMask(GL_TRUE);
             glDisable(GL_BLEND);
             DrawInstances();
 
-            // Pass 2: draw color with depth test against meshes and the particle depth silhouette.
+            // Pass 2: color on, depth write off, GL_LEQUAL — blend against opaque geometry and pass-1 depth.
             glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
             glDepthMask(GL_FALSE);
             glDepthFunc(GL_LEQUAL);
@@ -672,11 +646,12 @@ namespace RTBEngine {
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             DrawInstances();
 
-            if (runtimeTexture) {
-                runtimeTexture->Unbind();
+            if (textureRef) {
+                textureRef->Unbind();
             }
             shader->Unbind();
 
+            // Restore the previous GL state after drawing particles.
             glDepthFunc(previousDepthFunc);
             glColorMask(
                 previousColorMask[0],

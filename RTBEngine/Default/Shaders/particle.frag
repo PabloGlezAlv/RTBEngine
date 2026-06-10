@@ -12,7 +12,6 @@ void main()
 {
     vec4 texColor = uHasTexture ? texture(uDiffuse, vUV) : vec4(1.0);
     FragColor = texColor * vColor;
-    // Use a higher cutout threshold for depth writes so soft edges do not flatten depth.
     if (FragColor.a < 0.15) {
         discard;
     }

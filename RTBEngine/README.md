@@ -37,6 +37,7 @@ This document covers every subsystem in depth — public API, internal design, d
    - 7.8 [SphereColliderComponent](#78-spherecollidercomponent)
    - 7.9 [NetworkIdentity](#79-networkidentity)
    - 7.10 [NetworkTransform](#710-networktransform)
+   - 7.11 [ParticleSystem](#711-particlesystem)
 8. [Rendering Subsystem](#8-rendering-subsystem)
    - 8.1 [Camera](#81-camera)
    - 8.2 [Shader](#82-shader)
@@ -154,6 +155,8 @@ RTBEngine/
 │   │   │   ├── RigidBodyComponent.h / .cpp
 │   │   │   ├── BoxColliderComponent.h / .cpp
 │   │   │   ├── AudioSourceComponent.h / .cpp
+│   │   │   ├── TrailRenderer.h / .cpp
+│   │   │   ├── ParticleSystem.h / .cpp
 │   │   │   ├── FreeLookCamera.h / .cpp
 │   │   │   ├── MissingComponent.h
 │   │   │   ├── Prefab.h / .cpp
@@ -175,6 +178,7 @@ RTBEngine/
 │   │   │   ├── Cubemap.h / .cpp
 │   │   │   ├── Frustum.h / .cpp
 │   │   │   ├── FbxBinding.h / .cpp
+│   │   │   ├── ParticleTypes.h
 │   │   │   └── Lighting/
 │   │   │       ├── Light.h
 │   │   │       ├── DirectionalLight.h / .cpp
@@ -457,13 +461,14 @@ void RenderGeometryPass(ECS::Scene* scene, Rendering::Camera* camera);
 2. For each shadow-casting `DirectionalLight`, calls `RenderShadowPass`.
 3. Calls `RenderGeometryPass` with the active camera.
 4. Renders the `Skybox` after opaque geometry.
-5. Renders `Canvas::WorldSpace` UI through the 3D pipeline.
-6. Renders screen-space UI and ImGui overlays.
-7. Calls `Window::SwapBuffers()`.
+5. Renders transparent effects (`TrailRenderer`, `ParticleSystem`) via `Scene::RenderTransparentEffects`.
+6. Renders `Canvas::WorldSpace` UI through the 3D pipeline.
+7. Renders screen-space UI and ImGui overlays.
+8. Calls `Window::SwapBuffers()`.
 
 `RenderShadowPass` binds the light's `ShadowMap` framebuffer, sets the depth-only shader, and renders every `MeshRenderer` with `RenderSceneDepthOnly()`.
 
-`RenderGeometryPass` binds the screen framebuffer, uploads all light data to the lit shader, uploads the shadow map texture and light-space matrix, then calls `Scene::Render(camera)` which delegates to each `MeshRenderer`. After scene geometry and skybox rendering, it calls `CanvasSystem::RenderWorldSpace(camera)` so world-space UI is depth-tested against the 3D scene before the ImGui HUD is drawn.
+`RenderGeometryPass` binds the screen framebuffer, uploads all light data to the lit shader, uploads the shadow map texture and light-space matrix, then calls `Scene::Render(camera)` which delegates to each `MeshRenderer`. After the skybox, it calls `Scene::RenderTransparentEffects(camera)` for trails and particles, then `CanvasSystem::RenderWorldSpace(camera)` so world-space UI is depth-tested against the 3D scene before the ImGui HUD is drawn.
 
 **Physics helpers:**
 
@@ -955,9 +960,12 @@ const std::vector<std::unique_ptr<GameObject>>& GetGameObjects() const;
 void Update(float deltaTime);    // Propagates to all active root GameObjects
 void FixedUpdate();
 void Render(Rendering::Camera* camera);
+void RenderTransparentEffects(Rendering::Camera* camera);
 ```
 
 Update is called on all root-level `GameObject` instances (those without a parent). Each `GameObject::Update` recurses into its children.
+
+`RenderTransparentEffects` walks every active `GameObject` and draws enabled `TrailRenderer` and `ParticleSystem` components. `Application::RenderGeometryPass` calls it after the skybox so billboards and trails are not covered by the cubemap and still depth-test against opaque geometry.
 
 **Camera:**
 
@@ -1513,6 +1521,132 @@ bool        replicatePosition = true;
 bool        replicateRotation = true;
 ```
 
+### 7.11 ParticleSystem
+
+`Engine/ECS/ParticleSystem.h` — CPU-simulated, GPU-instanced billboard particle emitter. Each alive particle becomes one camera-facing quad with per-instance position, color, size, and an optional diffuse texture.
+
+**Types** (`Engine/Rendering/ParticleTypes.h`):
+
+```cpp
+struct Particle {
+    Math::Vector3 position;
+    Math::Vector3 velocity;
+    Math::Color   color;
+    float         size     = 1.0f;
+    float         lifetime = 0.0f;
+    float         age      = 0.0f;
+
+    bool IsAlive() const;   // lifetime > 0 && age < lifetime
+};
+
+enum class ParticleEmitterShape { Point, Sphere, Cone, Box };
+```
+
+**Playback API:**
+
+```cpp
+void Play();
+void Stop();
+void Pause();
+bool IsPlaying() const;
+bool IsPaused() const;
+
+void Emit(int count);
+int  GetActiveParticleCount() const;
+
+void Tick(float deltaTime);
+void Render(Rendering::Camera* camera);
+
+static void TickScenePreview(Scene* scene, float deltaTime);
+```
+
+| Method | Behaviour |
+|--------|-----------|
+| `Play()` | Starts emission; keeps existing alive particles |
+| `Stop()` | Clears the pool, resets counters, and blocks `playOnAwake` until the next validate/load cycle |
+| `Pause()` | Freezes simulation while alive particles remain visible |
+| `Emit(count)` | Spawns `count` particles immediately (burst) |
+
+**Simulation:**
+
+- Fixed-size pool sized by `maxParticles`. Dead slots use `lifetime == 0`.
+- While playing and not paused, `emissionRate` particles per second are spawned when free slots exist.
+- Each frame integrates velocity with `gravity`, advances position, and lerps `size` and `color` using `t = age / lifetime`.
+- When `loop` is false and every spawned particle has died, playback stops automatically.
+- `worldSimulation == true`: spawn position and velocity are transformed by the owner world matrix; `gravity` is world-space.
+- `worldSimulation == false`: particles simulate in emitter-local space; `gravity` is converted to local space each tick.
+
+**Emitter shapes:**
+
+| Shape | Spawn position | Initial direction |
+|-------|----------------|-------------------|
+| `Point` | Origin | Random unit vector |
+| `Sphere` | Random point inside `shapeRadius` | Random outward unit vector |
+| `Cone` | Random offset along a direction inside `coneAngle` (degrees) around local +Y, scaled by `shapeRadius` | Same cone sample; `coneAngle == 0` emits along +Y only |
+| `Box` | Random point inside `boxSize` centered on the origin | Random unit vector |
+
+**Rendering:**
+
+- Shared unit-quad VAO plus a per-component instance VBO (`position`, `color`, `size`).
+- Shaders: `Default/Shaders/particle.vert` / `particle.frag`. The vertex shader builds billboards from `uCameraRight` and `uCameraUp`.
+- Two-pass draw: depth-only (color mask off, depth write on), then color (alpha blend, depth write off, `GL_LEQUAL`) so opaque meshes occlude particles correctly.
+- Without `textureRef`, the fragment shader uses `vec4(1.0)` so quads render as flat colored squares.
+- Drawn from `Scene::RenderTransparentEffects` after the skybox (see [§8.13](#813-rendering-pipeline)).
+
+**Lifecycle:**
+
+- `OnAwake`: resizes the particle pool.
+- `OnStart`: calls `Play()` when `playOnAwake` is true and the user has not called `Stop()`.
+- `OnUpdate`: runs `Tick(deltaTime)`.
+- `OnValidate`: clamps reflected ranges, resizes the pool, reapplies playback settings.
+- `OnDestroy`: releases GPU buffers.
+
+**Reflected properties:**
+
+```cpp
+int                   maxParticles      = 256;
+float                 emissionRate      = 40.0f;
+ParticleEmitterShape  emitterShape      = ParticleEmitterShape::Cone;
+float                 shapeRadius       = 0.5f;
+float                 coneAngle         = 25.0f;
+Math::Vector3         boxSize           = {1.0f, 1.0f, 1.0f};
+
+float                 startLifetime     = 1.5f;
+float                 startSpeed        = 2.0f;
+float                 startSize         = 0.3f;
+float                 endSize           = 0.05f;
+Math::Color           startColor        = Math::Color::White();
+Math::Color           endColor          = Math::Color(1.0f, 1.0f, 1.0f, 0.0f);
+
+Math::Vector3         gravity           = {0.0f, -2.0f, 0.0f};
+bool                  worldSimulation   = true;
+
+Rendering::Texture*   textureRef        = nullptr;
+bool                  visible             = true;
+
+bool                  loop                = true;
+bool                  playOnAwake         = true;
+bool                  simulateInEditMode  = true;
+
+int                   burstCount          = 10;
+```
+
+**Editor preview:**
+
+`TickScenePreview(scene, deltaTime)` advances every enabled `ParticleSystem` with `simulateInEditMode && IsPlaying()` while the editor is not in Play mode. The editor calls it from `EditorApplication::Update()` so particles appear in Scene View without entering Play.
+
+**Example:**
+
+```cpp
+auto* sparks = scene->AddGameObject("Sparks");
+auto* particles = sparks->AddComponent<ParticleSystem>();
+particles->emitterShape = Rendering::ParticleEmitterShape::Cone;
+particles->emissionRate = 80.0f;
+particles->startColor = Math::Color(1.0f, 0.8f, 0.2f, 1.0f);
+particles->endColor   = Math::Color(1.0f, 0.4f, 0.0f, 0.0f);
+particles->Play();
+```
+
 ---
 
 ## 8. Rendering Subsystem
@@ -1996,14 +2130,19 @@ The full render pipeline executed each frame by `Application::Render()`:
    └── GL_LEQUAL depth test, no depth write
    └── View matrix stripped of translation
 
-7. CanvasSystem::RenderWorldSpace(camera)
+7. Scene::RenderTransparentEffects(camera)
+   └── TrailRenderer::Render for each enabled trail
+   └── ParticleSystem::Render for each enabled particle system
+   └── alpha-blended billboards; two-pass depth + color for particles
+
+8. CanvasSystem::RenderWorldSpace(camera)
    - renders Canvas::WorldSpace UIImage/UIPanel/UIText quads with ui_world shader
    - depth test enabled, alpha blending enabled, depth writes disabled
    - does not participate in the shadow pass
 
-8. ImGui::Render()
+9. ImGui::Render()
 
-9. Window::SwapBuffers()
+10. Window::SwapBuffers()
 ```
 
 ### 8.14 Frustum

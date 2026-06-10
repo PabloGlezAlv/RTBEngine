@@ -19,7 +19,6 @@ void main()
     vec3 offset = (uCameraRight * aCorner.x + uCameraUp * aCorner.y) * aInstanceSize;
     vec3 worldPos = aInstancePos + offset;
     gl_Position = uProjection * uView * vec4(worldPos, 1.0);
-    // Slight bias toward the camera to reduce z-fighting with nearby opaque meshes.
     gl_Position.z -= 0.002 * gl_Position.w;
     vUV = aUV;
     vColor = aInstanceColor;
