@@ -54,6 +54,7 @@ namespace RTBEngine {
             std::vector<LoadedMaterial> materials;
             std::vector<EmbeddedTexture> embeddedTextures;
             std::string modelDirectory;
+            std::string modelAssetPath;
             std::unique_ptr<NodeData> rootNode;
         };
 
@@ -76,6 +77,12 @@ namespace RTBEngine {
 
             static std::vector<Mesh*> LoadModel(const std::string& path);
 
+            // Resolve a material texture path from FBX metadata to a loadable project path.
+            static std::string ResolveExternalTexturePath(
+                const std::string& modelDirectory,
+                const std::string& modelAssetPath,
+                const std::string& texturePathFromMaterial);
+
         private:
             static std::unique_ptr<NodeData> ProcessNode(const aiNode* node, const aiScene* scene,
                 std::vector<Mesh*>& meshes, std::vector<std::string>& meshNames,
@@ -97,7 +104,6 @@ namespace RTBEngine {
 
             // Material extraction
             static void ExtractMaterials(const aiScene* scene, ModelData& outData);
-            static std::string ResolvePath(const std::string& modelDir, const std::string& texPath);
         };
 
     }

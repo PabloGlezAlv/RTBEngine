@@ -82,6 +82,40 @@ namespace RTBEngine {
             return fsPath.lexically_normal().string();
         }
 
+        std::string ResourceManager::TryMakeAssetRelativePath(const std::string& path) const
+        {
+            if (path.empty() || assetRootPath.empty()) {
+                return "";
+            }
+
+            std::filesystem::path fsPath(path);
+            const std::string assetDirectoryName = assetRootPath.filename().generic_string();
+
+            if (IsAssetReferencePath(fsPath, assetDirectoryName)) {
+                return fsPath.generic_string();
+            }
+
+            if (!fsPath.is_absolute()) {
+                return "";
+            }
+
+            std::error_code ec;
+            const std::filesystem::path normalizedAbsolute = fsPath.lexically_normal();
+            const std::filesystem::path relative =
+                std::filesystem::relative(normalizedAbsolute, assetRootPath, ec);
+
+            if (ec || relative.empty()) {
+                return "";
+            }
+
+            const std::string relativeString = relative.generic_string();
+            if (relativeString.rfind("..", 0) == 0) {
+                return "";
+            }
+
+            return (std::filesystem::path(assetDirectoryName) / relative).generic_string();
+        }
+
 
         Rendering::Shader* ResourceManager::GetShader(const std::string& name)
         {
@@ -144,6 +178,14 @@ namespace RTBEngine {
             return texturePtr;
         }
 
+
+        Rendering::Texture* ResourceManager::LoadModelTexture(const std::string& path)
+        {
+            // Model UVs are already flipped to OpenGL space by aiProcess_FlipUVs in ModelLoader,
+            // so the source image must be loaded without an additional vertical flip. Flipping
+            // here as well would double-flip and misalign atlas/palette textures.
+            return LoadTexture(path, false);
+        }
 
         Rendering::Texture* ResourceManager::LoadTextureAsset(const std::string& textureFilePath)
         {

@@ -32,14 +32,21 @@ namespace RTBEngine {
             glBindTexture(GL_TEXTURE_2D, textureID);
 
             GLenum format = GL_RGB;
-            if (channels == 1)
+            GLenum internalFormat = GL_RGB;
+            if (channels == 1) {
                 format = GL_RED;
-            else if (channels == 3)
+                internalFormat = GL_RED;
+            }
+            else if (channels == 3) {
                 format = GL_RGB;
-            else if (channels == 4)
+                internalFormat = GL_SRGB8;
+            }
+            else if (channels == 4) {
                 format = GL_RGBA;
+                internalFormat = GL_SRGB8_ALPHA8;
+            }
 
-            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
             glGenerateMipmap(GL_TEXTURE_2D);
 
             SetFilter(TextureFilter::Linear, TextureFilter::Linear);
@@ -65,14 +72,21 @@ namespace RTBEngine {
             glBindTexture(GL_TEXTURE_2D, textureID);
 
             GLenum format = GL_RGB;
-            if (channels == 1)
+            GLenum internalFormat = GL_RGB;
+            if (channels == 1) {
                 format = GL_RED;
-            else if (channels == 3)
+                internalFormat = GL_RED;
+            }
+            else if (channels == 3) {
                 format = GL_RGB;
-            else if (channels == 4)
+                internalFormat = GL_SRGB8;
+            }
+            else if (channels == 4) {
                 format = GL_RGBA;
+                internalFormat = GL_SRGB8_ALPHA8;
+            }
 
-            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
             glGenerateMipmap(GL_TEXTURE_2D);
 
             SetFilter(TextureFilter::Linear, TextureFilter::Linear);
@@ -103,14 +117,21 @@ namespace RTBEngine {
             glBindTexture(GL_TEXTURE_2D, textureID);
 
             GLenum format = GL_RGB;
-            if (channels == 1)
+            GLenum internalFormat = GL_RGB;
+            if (channels == 1) {
                 format = GL_RED;
-            else if (channels == 3)
+                internalFormat = GL_RED;
+            }
+            else if (channels == 3) {
                 format = GL_RGB;
-            else if (channels == 4)
+                internalFormat = GL_SRGB8;
+            }
+            else if (channels == 4) {
                 format = GL_RGBA;
+                internalFormat = GL_SRGB8_ALPHA8;
+            }
 
-            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, pixels);
+            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, pixels);
             glGenerateMipmap(GL_TEXTURE_2D);
 
             SetFilter(TextureFilter::Linear, TextureFilter::Linear);

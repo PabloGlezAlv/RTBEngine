@@ -95,15 +95,21 @@ void main() {
     vec3 result = ambient + (1.0 - shadow) * dirLightContrib + pointLightContrib + spotLightContrib;
 
     vec4 texColor = uHasTexture ? texture(uTexture, vTexCoords) : vec4(1.0);
-    FragColor = vec4(result * uDiffuseColor, 1.0) * texColor * uColor;
+    if (uHasTexture && texColor.a < 0.01) {
+        discard;
+    }
+    FragColor = vec4(result * uDiffuseColor * texColor.rgb, 1.0) * uColor;
 }
 
 
 vec3 CalcDirectionalLight(DirectionalLight light, vec3 normal, vec3 viewDir) {
     vec3 lightDir = normalize(-light.direction);
     
-    // Diffuse
-    float diff = max(dot(normal, lightDir), 0.0);
+    // Diffuse (half-lambert softens the terminator so flat/stylized palette
+    // textures shade smoothly instead of looking blotchy)
+    float ndotl = dot(normal, lightDir);
+    float diff = ndotl * 0.5 + 0.5;
+    diff *= diff;
     vec3 diffuse = diff * light.color * light.intensity;
     
     // Specular

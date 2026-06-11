@@ -9,6 +9,191 @@
 namespace RTBEngine {
     namespace Rendering {
 
+        Texture* LoadExternalTexture(const FbxBindingContext& ctx, const std::string& path)
+        {
+            if (path.empty()) {
+                return nullptr;
+            }
+
+            const std::string modelAssetPath = !ctx.modelData.modelAssetPath.empty()
+                ? ctx.modelData.modelAssetPath
+                : ctx.modelPath;
+
+            const std::string resolvedPath = ModelLoader::ResolveExternalTexturePath(
+                ctx.modelData.modelDirectory, modelAssetPath, path);
+
+            if (resolvedPath.empty()) {
+                return nullptr;
+            }
+
+            // UVs are already converted to OpenGL space by aiProcess_FlipUVs in ModelLoader.
+            // Do not flip the image again (double-flip misaligns palette/atlas textures).
+            return ctx.resources.LoadModelTexture(resolvedPath);
+        }
+
+        FbxBindingResult BuildMeshesAndMaterials(const FbxBindingContext& ctx)
+        {
+            FbxBindingResult result;
+            result.meshes = ctx.modelData.meshes;
+
+            const std::string resolvedModelPath = ctx.resources.ResolvePathForRead(ctx.modelPath);
+            const std::filesystem::path resolvedModelFile(resolvedModelPath);
+            const std::string fbxStem = resolvedModelFile.stem().string();
+            const std::filesystem::path fbxDir = resolvedModelFile.parent_path();
+
+            std::vector<std::string> texNames(ctx.modelData.embeddedTextures.size());
+            for (size_t i = 0; i < ctx.modelData.materials.size(); i++) {
+                int idx = ctx.modelData.materials[i].embeddedTextureIndex;
+                if (idx < 0 || idx >= static_cast<int>(texNames.size())) continue;
+                if (!texNames[idx].empty()) continue;
+                std::string matName = ctx.modelData.materials[i].name;
+                for (char& c : matName)
+                    if (c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') c = '_';
+                texNames[idx] = matName.empty() ? ("tex_" + std::to_string(idx)) : matName;
+            }
+
+            std::vector<Texture*> embeddedTextures;
+            embeddedTextures.reserve(ctx.modelData.embeddedTextures.size());
+
+            for (size_t i = 0; i < ctx.modelData.embeddedTextures.size(); i++) {
+                const EmbeddedTexture& embTex = ctx.modelData.embeddedTextures[i];
+                std::string name = texNames[i].empty()
+                    ? (fbxStem + "_tex" + std::to_string(i))
+                    : (fbxStem + "_" + texNames[i]);
+
+                Texture* tex = nullptr;
+                const std::string textureAssetPath = (fbxDir / (name + ".texture")).string();
+                if (std::filesystem::exists(ctx.resources.ResolvePathForRead(textureAssetPath))) {
+                    tex = ctx.resources.LoadTextureAsset(textureAssetPath);
+                }
+
+                if (!tex) {
+                    for (const char* ext : { ".png", ".jpg" }) {
+                        std::filesystem::path candidateTextureAssetPath = fbxDir / (name + ext);
+                        candidateTextureAssetPath.replace_extension(".texture");
+                        const std::string candidateTextureAssetPathString = candidateTextureAssetPath.string();
+                        if (std::filesystem::exists(
+                                ctx.resources.ResolvePathForRead(candidateTextureAssetPathString))) {
+                            tex = ctx.resources.LoadTextureAsset(candidateTextureAssetPathString);
+                            if (tex) break;
+                        }
+                    }
+                }
+
+                if (!tex) {
+                    tex = new Texture();
+                    bool loaded = false;
+
+                    if (embTex.isCompressed) {
+                        loaded = tex->LoadFromCompressedMemory(
+                            embTex.data.data(),
+                            static_cast<int>(embTex.data.size()));
+                    }
+                    else {
+                        loaded = tex->LoadFromMemory(
+                            embTex.data.data(),
+                            embTex.width,
+                            embTex.height,
+                            embTex.channels);
+                    }
+
+                    if (loaded) {
+                        std::string syntheticPath = ctx.modelPath + "#" + name;
+                        ctx.resources.RegisterTexture(syntheticPath, tex);
+                    }
+                    else {
+                        RTB_WARN("[FbxBinding] Failed to load embedded texture for model: " + ctx.modelPath);
+                        delete tex;
+                        tex = nullptr;
+                    }
+                }
+
+                embeddedTextures.push_back(tex);
+            }
+
+            result.embeddedTextureObjects = embeddedTextures;
+
+            std::unordered_map<int, Material*> materialCache;
+            result.meshMaterials.reserve(ctx.modelData.meshes.size());
+            result.ownedMaterials.reserve(ctx.modelData.materials.size());
+
+            Shader* defaultShader = nullptr;
+
+            auto applyLoadedMaterialTexture = [&](Material* mat, const LoadedMaterial& loadedMat) -> bool {
+                if (!mat) {
+                    return false;
+                }
+
+                bool hasTexture = false;
+
+                if (loadedMat.embeddedTextureIndex >= 0 &&
+                    loadedMat.embeddedTextureIndex < static_cast<int>(embeddedTextures.size()) &&
+                    embeddedTextures[loadedMat.embeddedTextureIndex]) {
+                    mat->SetTexture(embeddedTextures[loadedMat.embeddedTextureIndex]);
+                    hasTexture = true;
+                }
+                else if (!loadedMat.diffuseTexturePath.empty()) {
+                    Texture* tex = LoadExternalTexture(ctx, loadedMat.diffuseTexturePath);
+                    if (tex) {
+                        mat->SetTexture(tex);
+                        hasTexture = true;
+                    }
+                    else {
+                        RTB_WARN("[FbxBinding] Failed to load diffuse texture for model '" +
+                                 ctx.modelPath + "'. FBX path: " + loadedMat.diffuseTexturePath);
+                    }
+                }
+
+                if (hasTexture) {
+                    mat->SetDiffuseColor(Math::Vector3(1.0f, 1.0f, 1.0f));
+                }
+                else if (!mat->GetTexture()) {
+                    mat->SetDiffuseColor(loadedMat.diffuseColor);
+                }
+
+                return hasTexture;
+            };
+
+            for (Mesh* mesh : ctx.modelData.meshes) {
+                if (!mesh) {
+                    result.meshMaterials.push_back(nullptr);
+                    continue;
+                }
+
+                const int matIdx = mesh->GetMaterialIndex();
+                if (matIdx < 0 || matIdx >= static_cast<int>(ctx.modelData.materials.size())) {
+                    result.meshMaterials.push_back(nullptr);
+                    continue;
+                }
+
+                const LoadedMaterial& loadedMat = ctx.modelData.materials[matIdx];
+
+                Material* mat = nullptr;
+                auto cacheIt = materialCache.find(matIdx);
+                if (cacheIt != materialCache.end()) {
+                    mat = cacheIt->second;
+                }
+
+                if (!mat) {
+                    result.ownedMaterials.push_back(std::make_unique<Material>(defaultShader));
+                    mat = result.ownedMaterials.back().get();
+
+                    if (!applyLoadedMaterialTexture(mat, loadedMat)) {
+                        const std::string label = loadedMat.name.empty()
+                            ? "FBX material"
+                            : ("FBX material '" + loadedMat.name + "'");
+                        RTB_WARN("[FbxBinding] " + label + " has no diffuse texture or embedded texture");
+                    }
+
+                    materialCache[matIdx] = mat;
+                }
+
+                result.meshMaterials.push_back(mat);
+            }
+
+            return result;
+        }
+
         static void ApplyNodeTransform(ECS::GameObject* go, const NodeData* node)
         {
             if (!go || !node) {
@@ -86,6 +271,39 @@ namespace RTBEngine {
             }
         }
 
+        void AttachFbxMeshesToHierarchy(
+            ECS::Scene* scene,
+            ECS::GameObject* rootGO,
+            const ModelData& modelData,
+            const FbxBindingResult& binding,
+            Rendering::Shader* basicShader)
+        {
+            if (!scene || !rootGO || modelData.meshes.empty()) {
+                return;
+            }
+
+            for (Rendering::Material* mat : binding.meshMaterials) {
+                if (mat && !mat->GetShader() && basicShader) {
+                    mat->SetShader(basicShader);
+                }
+            }
+
+            if (modelData.meshes.size() == 1) {
+                AddMeshRendererToGO(rootGO, 0, modelData, binding, basicShader, "");
+                return;
+            }
+
+            if (!modelData.rootNode) {
+                return;
+            }
+
+            for (int meshIdx : modelData.rootNode->meshIndices) {
+                AddMeshRendererToGO(rootGO, meshIdx, modelData, binding, basicShader, "");
+            }
+
+            BuildNodeHierarchy(modelData.rootNode.get(), rootGO, scene, modelData, binding, basicShader, "");
+        }
+
         ECS::GameObject* BuildFbxHierarchy(
             ECS::Scene* scene,
             const ModelData& modelData,
@@ -104,20 +322,12 @@ namespace RTBEngine {
 
             Rendering::Shader* basicShader = resources.GetShader("basic");
 
-            for (Rendering::Material* mat : binding.meshMaterials) {
-                if (mat && !mat->GetShader() && basicShader) {
-                    mat->SetShader(basicShader);
-                }
-            }
-
-            //Root GameObject
             ECS::GameObject* root = new ECS::GameObject(stem);
             scene->AddGameObject(root);
             if (modelData.rootNode) {
                 ApplyNodeTransform(root, modelData.rootNode.get());
             }
 
-            //Animator on root
             if (modelData.skeleton || !modelData.animations.empty()) {
                 auto* animator = new Animation::Animator();
                 if (modelData.skeleton) {
@@ -134,21 +344,7 @@ namespace RTBEngine {
                 animator->CreateBoneGameObjects(scene);
             }
 
-            //Single-mesh FBX: put MeshRenderer on root directly
-            if (modelData.meshes.size() == 1) {
-                AddMeshRendererToGO(root, 0, modelData, binding, basicShader, fbxPath);
-                return root;
-            }
-
-            //Multi-mesh FBX: build full node hierarchy
-            if (modelData.rootNode) {
-                // Meshes on root node itself
-                for (int meshIdx : modelData.rootNode->meshIndices) {
-                    AddMeshRendererToGO(root, meshIdx, modelData, binding, basicShader, fbxPath);
-                }
-
-                BuildNodeHierarchy(modelData.rootNode.get(), root, scene, modelData, binding, basicShader, fbxPath);
-            }
+            AttachFbxMeshesToHierarchy(scene, root, modelData, binding, basicShader);
 
             return root;
         }

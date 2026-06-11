@@ -46,9 +46,13 @@ namespace RTBEngine {
             // Texture management
             Rendering::Texture* GetTexture(const std::string& path);
             Rendering::Texture* LoadTexture(const std::string& path, bool flipVertically = true);
+            // Textures referenced by imported models (FBX/OBJ) must NOT be flipped again:
+            // ModelLoader already converts UVs to OpenGL space via aiProcess_FlipUVs.
+            Rendering::Texture* LoadModelTexture(const std::string& path);
             Rendering::Texture* LoadTextureAsset(const std::string& textureFilePath);
             void SetAssetRootPath(const std::filesystem::path& path);
             std::string ResolvePathForRead(const std::string& path) const;
+            std::string TryMakeAssetRelativePath(const std::string& path) const;
 
 			// Model management (single mesh - backwards compatible)
             Rendering::Mesh* GetModel(const std::string& path);

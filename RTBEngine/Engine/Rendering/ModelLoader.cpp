@@ -7,12 +7,153 @@
 #include <iostream>
 #include <cfloat>
 #include <algorithm>
+#include <filesystem>
 #include <unordered_map>
 #include "../Core/ResourceManager.h"
 #include "../RTBEngine.h"
 
 namespace RTBEngine {
     namespace Rendering {
+
+        namespace {
+            bool IsAbsolutePathReference(const std::string& path)
+            {
+                if (path.empty()) {
+                    return false;
+                }
+
+                if (path.size() > 1 && path[1] == ':') {
+                    return true;
+                }
+
+                return path[0] == '/' || path[0] == '\\';
+            }
+
+            void TryAssignMaterialTexture(
+                aiMaterial* mat,
+                const aiScene* scene,
+                const std::string& modelDirectory,
+                aiTextureType textureType,
+                LoadedMaterial& loadedMat,
+                const std::string& modelAssetPath)
+            {
+                if (loadedMat.embeddedTextureIndex >= 0) {
+                    return;
+                }
+
+                if (!loadedMat.diffuseTexturePath.empty()) {
+                    const std::string existingResolved = ModelLoader::ResolveExternalTexturePath(
+                        modelDirectory, modelAssetPath, loadedMat.diffuseTexturePath);
+                    if (!existingResolved.empty()) {
+                        loadedMat.diffuseTexturePath = existingResolved;
+                        return;
+                    }
+                }
+
+                loadedMat.diffuseTexturePath.clear();
+
+                if (mat->GetTextureCount(textureType) == 0) {
+                    return;
+                }
+
+                aiString texPath;
+                if (mat->GetTexture(textureType, 0, &texPath) != AI_SUCCESS) {
+                    return;
+                }
+
+                std::string texPathStr = texPath.C_Str();
+                if (texPathStr.empty()) {
+                    return;
+                }
+
+                if (texPathStr[0] == '*') {
+                    int embeddedIndex = std::atoi(texPathStr.c_str() + 1);
+                    if (embeddedIndex >= 0 && embeddedIndex < static_cast<int>(scene->mNumTextures)) {
+                        loadedMat.embeddedTextureIndex = embeddedIndex;
+                    }
+                    return;
+                }
+
+                const aiTexture* embeddedTex = scene->GetEmbeddedTexture(texPath.C_Str());
+                if (embeddedTex) {
+                    for (unsigned int t = 0; t < scene->mNumTextures; t++) {
+                        if (scene->mTextures[t] == embeddedTex) {
+                            loadedMat.embeddedTextureIndex = static_cast<int>(t);
+                            break;
+                        }
+                    }
+                    return;
+                }
+
+                loadedMat.diffuseTexturePath = ModelLoader::ResolveExternalTexturePath(
+                    modelDirectory, modelAssetPath, texPathStr);
+            }
+        }
+
+        std::string ModelLoader::ResolveExternalTexturePath(
+            const std::string& modelDirectory,
+            const std::string& modelAssetPath,
+            const std::string& texturePathFromMaterial)
+        {
+            if (texturePathFromMaterial.empty()) {
+                return "";
+            }
+
+            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
+
+            std::filesystem::path modelDir;
+            if (!modelDirectory.empty()) {
+                modelDir = std::filesystem::path(modelDirectory);
+            }
+            else if (!modelAssetPath.empty()) {
+                modelDir = std::filesystem::path(resources.ResolvePathForRead(modelAssetPath)).parent_path();
+            }
+
+            const std::filesystem::path fileName =
+                std::filesystem::path(texturePathFromMaterial).filename();
+            if (fileName.empty()) {
+                return "";
+            }
+
+            auto finalizeReference = [&](const std::filesystem::path& onDiskPath) -> std::string {
+                if (onDiskPath.empty()) {
+                    return "";
+                }
+
+                const std::filesystem::path normalized = onDiskPath.lexically_normal();
+                if (!std::filesystem::exists(normalized)) {
+                    return "";
+                }
+
+                const std::string normalizedString = normalized.string();
+                const std::string assetRelative = resources.TryMakeAssetRelativePath(normalizedString);
+                return assetRelative.empty() ? normalizedString : assetRelative;
+            };
+
+            // Relocated FBX imports keep textures beside the model file. Ignore stale
+            // absolute paths from the exporter machine and match by filename first.
+            if (!modelDir.empty()) {
+                const std::string besideModel = finalizeReference(modelDir / fileName);
+                if (!besideModel.empty()) {
+                    return besideModel;
+                }
+
+                if (!IsAbsolutePathReference(texturePathFromMaterial)) {
+                    const std::string relativeToModel =
+                        finalizeReference(modelDir / std::filesystem::path(texturePathFromMaterial));
+                    if (!relativeToModel.empty()) {
+                        return relativeToModel;
+                    }
+                }
+            }
+
+            if (!IsAbsolutePathReference(texturePathFromMaterial)) {
+                return finalizeReference(
+                    std::filesystem::path(resources.ResolvePathForRead(texturePathFromMaterial)));
+            }
+
+            return "";
+        }
 
         Math::Matrix4 ModelLoader::ConvertMatrix(const aiMatrix4x4& from)
         {
@@ -46,13 +187,12 @@ namespace RTBEngine {
         {
             ModelData result;
             result.skeleton = std::make_shared<Animation::Skeleton>();
+            result.modelAssetPath = path;
             const std::string resolvedPath = Core::ResourceManager::GetInstance().ResolvePathForRead(path);
 
             // Extract model directory for texture path resolution
-            size_t lastSlash = resolvedPath.find_last_of("/\\");
-            if (lastSlash != std::string::npos) {
-                result.modelDirectory = resolvedPath.substr(0, lastSlash);
-            }
+            result.modelDirectory =
+                std::filesystem::path(resolvedPath).parent_path().lexically_normal().string();
 
             // Use Assimp C++ API to set import properties
             Assimp::Importer importer;
@@ -426,30 +566,6 @@ namespace RTBEngine {
             return clip;
         }
 
-        std::string ModelLoader::ResolvePath(const std::string& modelDir, const std::string& texPath)
-        {
-            if (texPath.empty()) {
-                return "";
-            }
-
-            // Handle absolute paths
-            if (texPath.find(':') != std::string::npos || texPath[0] == '/' || texPath[0] == '\\') {
-                return texPath;
-            }
-
-            // Combine with model directory
-            std::string fullPath = modelDir;
-            if (!fullPath.empty() && fullPath.back() != '/' && fullPath.back() != '\\') {
-                fullPath += '/';
-            }
-            fullPath += texPath;
-
-            // Normalize path separators to forward slashes
-            std::replace(fullPath.begin(), fullPath.end(), '\\', '/');
-
-            return fullPath;
-        }
-
         void ModelLoader::ExtractMaterials(const aiScene* scene, ModelData& outData)
         {
             // First, extract all embedded textures
@@ -510,39 +626,10 @@ namespace RTBEngine {
                     loadedMat.opacity = opacity;
                 }
 
-                // Diffuse texture
-                if (mat->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
-                    aiString texPath;
-                    if (mat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS) {
-                        std::string texPathStr = texPath.C_Str();
-
-                        // Check if it's an embedded texture reference (starts with *)
-                        if (!texPathStr.empty() && texPathStr[0] == '*') {
-                            // Embedded texture - parse index
-                            int embeddedIndex = std::atoi(texPathStr.c_str() + 1);
-                            if (embeddedIndex >= 0 && embeddedIndex < static_cast<int>(outData.embeddedTextures.size())) {
-                                loadedMat.embeddedTextureIndex = embeddedIndex;
-                            }
-                        }
-                        else {
-                            // Try to find embedded texture by path using Assimp's GetEmbeddedTexture
-                            const aiTexture* embeddedTex = scene->GetEmbeddedTexture(texPath.C_Str());
-                            if (embeddedTex) {
-                                // Find the index of this embedded texture
-                                for (unsigned int t = 0; t < scene->mNumTextures; t++) {
-                                    if (scene->mTextures[t] == embeddedTex) {
-                                        loadedMat.embeddedTextureIndex = static_cast<int>(t);
-                                        break;
-                                    }
-                                }
-                            }
-                            else {
-                                // External texture file
-                                loadedMat.diffuseTexturePath = ResolvePath(outData.modelDirectory, texPathStr);
-                            }
-                        }
-                    }
-                }
+                // Albedo / diffuse texture slots (PBR then legacy)
+                TryAssignMaterialTexture(mat, scene, outData.modelDirectory, aiTextureType_BASE_COLOR, loadedMat, outData.modelAssetPath);
+                TryAssignMaterialTexture(mat, scene, outData.modelDirectory, aiTextureType_DIFFUSE, loadedMat, outData.modelAssetPath);
+                TryAssignMaterialTexture(mat, scene, outData.modelDirectory, aiTextureType_MAYA_BASE, loadedMat, outData.modelAssetPath);
 
                 outData.materials.push_back(loadedMat);
             }

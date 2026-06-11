@@ -440,6 +440,7 @@ namespace RTBEngine {
             struct RebuildEntry {
                 ECS::GameObject* go;
                 Animation::Animator* animator;
+                Rendering::ModelData modelData;
             };
             std::vector<RebuildEntry> multiMeshRebuild;
 
@@ -459,7 +460,7 @@ namespace RTBEngine {
 
                 Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(animator->modelRef);
                 if (modelData.meshes.size() > 1 && modelData.rootNode) {
-                    multiMeshRebuild.push_back({ go.get(), animator });
+                    multiMeshRebuild.push_back({ go.get(), animator, std::move(modelData) });
                 }
             }
 
@@ -467,96 +468,18 @@ namespace RTBEngine {
             for (auto& entry : multiMeshRebuild) {
                 ECS::GameObject* go = entry.go;
                 Animation::Animator* animator = entry.animator;
+                Rendering::ModelData& modelData = entry.modelData;
 
-                Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(animator->modelRef);
                 resources.RegisterMeshes(animator->modelRef, modelData.meshes);
 
                 Rendering::FbxBindingContext ctx{ resources, animator->modelRef, modelData };
                 Rendering::FbxBindingResult binding = Rendering::BuildMeshesAndMaterials(ctx);
                 Rendering::Shader* basicShader = resources.GetShader("basic");
 
-                for (Rendering::Material* mat : binding.meshMaterials) {
-                    if (mat && !mat->GetShader() && basicShader)
-                        mat->SetShader(basicShader);
-                }
-
-                // Remove root MeshRenderer (will be replaced by hierarchy)
                 auto* rootRenderer = go->GetComponent<ECS::MeshRenderer>();
                 if (rootRenderer) go->RemoveComponent(rootRenderer);
 
-                // Meshes on root node
-                for (int meshIdx : modelData.rootNode->meshIndices) {
-                    if (meshIdx < 0 || meshIdx >= static_cast<int>(modelData.meshes.size()))
-                        continue;
-                    auto* renderer = new ECS::MeshRenderer();
-                    renderer->meshIndex = meshIdx;
-                    renderer->SetMesh(modelData.meshes[meshIdx]);
-                    if (meshIdx < static_cast<int>(binding.meshMaterials.size()) && binding.meshMaterials[meshIdx]) {
-                        if (basicShader) binding.meshMaterials[meshIdx]->SetShader(basicShader);
-                        renderer->SetMaterial(binding.meshMaterials[meshIdx]);
-                    } else if (basicShader) {
-                        renderer->SetShader(basicShader);
-                    }
-                    go->AddComponent(renderer);
-                }
-
-                // Recursively build child GOs
-                std::function<void(const Rendering::NodeData*, ECS::GameObject*)> buildChildren;
-                buildChildren = [&](const Rendering::NodeData* node, ECS::GameObject* parentGO) {
-                    for (const auto& child : node->children) {
-                        std::string childName = child->name.empty() ? "Node" : child->name;
-                        auto* childGO = new ECS::GameObject(childName);
-                        scene->AddGameObject(childGO);
-                        childGO->SetParent(parentGO);
-
-                        Math::Vector3 position;
-                        Math::Quaternion rotation;
-                        Math::Vector3 scale;
-                        child->localTransform.Decompose(position, rotation, scale);
-                        childGO->GetTransform().SetPosition(position);
-                        childGO->GetTransform().SetRotation(rotation);
-                        childGO->GetTransform().SetScale(scale);
-
-                        if (!child->meshIndices.empty()) {
-                            int firstIdx = child->meshIndices[0];
-                            if (firstIdx >= 0 && firstIdx < static_cast<int>(modelData.meshes.size())) {
-                                auto* renderer = new ECS::MeshRenderer();
-                                renderer->meshIndex = firstIdx;
-                                renderer->SetMesh(modelData.meshes[firstIdx]);
-                                if (firstIdx < static_cast<int>(binding.meshMaterials.size()) && binding.meshMaterials[firstIdx]) {
-                                    if (basicShader) binding.meshMaterials[firstIdx]->SetShader(basicShader);
-                                    renderer->SetMaterial(binding.meshMaterials[firstIdx]);
-                                } else if (basicShader) {
-                                    renderer->SetShader(basicShader);
-                                }
-                                childGO->AddComponent(renderer);
-                            }
-
-                            for (size_t m = 1; m < child->meshIndices.size(); m++) {
-                                int idx = child->meshIndices[m];
-                                if (idx < 0 || idx >= static_cast<int>(modelData.meshes.size())) continue;
-                                std::string extraName = childName + "_Mesh" + std::to_string(m);
-                                auto* extraGO = new ECS::GameObject(extraName);
-                                scene->AddGameObject(extraGO);
-                                extraGO->SetParent(childGO);
-                                auto* renderer = new ECS::MeshRenderer();
-                                renderer->meshIndex = idx;
-                                renderer->SetMesh(modelData.meshes[idx]);
-                                if (idx < static_cast<int>(binding.meshMaterials.size()) && binding.meshMaterials[idx]) {
-                                    if (basicShader) binding.meshMaterials[idx]->SetShader(basicShader);
-                                    renderer->SetMaterial(binding.meshMaterials[idx]);
-                                } else if (basicShader) {
-                                    renderer->SetShader(basicShader);
-                                }
-                                extraGO->AddComponent(renderer);
-                            }
-                        }
-
-                        buildChildren(child.get(), childGO);
-                    }
-                };
-
-                buildChildren(modelData.rootNode.get(), go);
+                Rendering::AttachFbxMeshesToHierarchy(scene, go, modelData, binding, basicShader);
             }
 
             // Pass 2: Create bone GameObjects for all Animators with skeletons

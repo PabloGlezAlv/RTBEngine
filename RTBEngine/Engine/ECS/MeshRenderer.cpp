@@ -12,6 +12,18 @@
 namespace RTBEngine {
     namespace ECS {
 
+        namespace {
+            Animation::Animator* FindAnimatorInAncestors(GameObject* start)
+            {
+                for (GameObject* current = start; current; current = current->GetParent()) {
+                    if (auto* animator = current->GetComponent<Animation::Animator>()) {
+                        return animator;
+                    }
+                }
+                return nullptr;
+            }
+        }
+
         uint32_t MeshRenderer::drawCallCount = 0;
         uint32_t MeshRenderer::triangleCount = 0;
         uint32_t MeshRenderer::culledObjectCount = 0;
@@ -78,10 +90,16 @@ namespace RTBEngine {
                 mesh = meshRef;
             }
 
-            // Sync material properties from reflected proxies
+            // Sync material properties from reflected proxies.
+            // Never clear an FBX-assigned texture when textureRef is still null.
             if (material) {
-                if (material->GetTexture() != textureRef) {
-                    material->SetTexture(textureRef);
+                if (textureRef) {
+                    if (material->GetTexture() != textureRef) {
+                        material->SetTexture(textureRef);
+                    }
+                }
+                else if (material->GetTexture()) {
+                    textureRef = material->GetTexture();
                 }
                 material->SetColor(colorRef);
             }
@@ -226,11 +244,8 @@ namespace RTBEngine {
                 shader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
                 shader->SetVector3("uViewPos", camera->GetPosition());
 
-                // Skeletal animation: look on own GameObject first, then parent
-                Animation::Animator* animator = owner->GetComponent<Animation::Animator>();
-                if (!animator && owner->GetParent()) {
-                    animator = owner->GetParent()->GetComponent<Animation::Animator>();
-                }
+                // Skeletal animation: walk up hierarchy (KayKit/multi-mesh FBX children)
+                Animation::Animator* animator = FindAnimatorInAncestors(owner);
 
                 if (animator && animator->HasBones()) {
                     shader->SetBool("uHasAnimation", true);
@@ -316,8 +331,7 @@ namespace RTBEngine {
             shader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
             shader->SetVector3("uViewPos", camera->GetPosition());
 
-            // Skeletal animation: Animator is on the same GO in multi-mesh mode
-            Animation::Animator* animator = owner->GetComponent<Animation::Animator>();
+            Animation::Animator* animator = FindAnimatorInAncestors(owner);
 
             if (animator && animator->HasBones()) {
                 shader->SetBool("uHasAnimation", true);

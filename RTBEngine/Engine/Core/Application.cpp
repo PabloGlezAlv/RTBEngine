@@ -76,6 +76,16 @@ namespace {
 			CollectHierarchy(child, outHierarchy);
 		}
 	}
+
+	RTBEngine::Animation::Animator* FindAnimatorInAncestors(RTBEngine::ECS::GameObject* start)
+	{
+		for (RTBEngine::ECS::GameObject* current = start; current; current = current->GetParent()) {
+			if (auto* animator = current->GetComponent<RTBEngine::Animation::Animator>()) {
+				return animator;
+			}
+		}
+		return nullptr;
+	}
 }
 
 RTBEngine::Core::Application::Application(const ApplicationConfig& cfg)
@@ -600,10 +610,7 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rende
 		Math::Matrix4 modelMatrix = go->GetWorldMatrix();
 		shader->SetMatrix4("uModel", modelMatrix);
 
-		auto* animator = go->GetComponent<Animation::Animator>();
-		if (!animator && go->GetParent()) {
-			animator = go->GetParent()->GetComponent<Animation::Animator>();
-		}
+		Animation::Animator* animator = FindAnimatorInAncestors(go.get());
 		if (animator && animator->HasBones()) {
 			shader->SetBool("uHasAnimation", true);
 			const auto& boneTransforms = animator->GetBoneTransforms();
