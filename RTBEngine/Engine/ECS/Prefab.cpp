@@ -197,12 +197,17 @@ namespace RTBEngine {
                 }
                 else if (prop->type == Reflection::PropertyType::TextureRef)
                 {
-                    // .texture assets carry flip metadata; raw images use default flip
                     Rendering::Texture* tex = nullptr;
                     if (!path.empty()) {
-                        tex = (path.size() > 8 && path.substr(path.size() - 8) == ".texture")
-                            ? resources.LoadTextureAsset(path)
-                            : resources.LoadTexture(path);
+                        if (path.size() > 8 && path.substr(path.size() - 8) == ".texture") {
+                            tex = resources.LoadTextureAsset(path);
+                        }
+                        else if (dynamic_cast<MeshRenderer*>(target)) {
+                            tex = resources.LoadModelTexture(path);
+                        }
+                        else {
+                            tex = resources.LoadTexture(path);
+                        }
                     }
                     std::memcpy(dst, &tex, sizeof(Rendering::Texture*));
                 }

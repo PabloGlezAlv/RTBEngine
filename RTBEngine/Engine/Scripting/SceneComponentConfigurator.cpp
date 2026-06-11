@@ -189,7 +189,7 @@ namespace RTBEngine {
                 if (!texturePath.empty()) {
                     Rendering::Texture* tex = (texturePath.size() > 8 && texturePath.substr(texturePath.size() - 8) == ".texture")
                         ? resources.LoadTextureAsset(texturePath)
-                        : resources.LoadTexture(texturePath);
+                        : resources.LoadModelTexture(texturePath);
                     if (tex) comp->SetTexture(tex);
                 }
             }

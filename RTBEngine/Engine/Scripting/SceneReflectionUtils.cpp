@@ -161,9 +161,16 @@ namespace RTBEngine {
                             const std::string path = lua_tostring(L, -1);
                             if (!path.empty()) {
                                 auto& rm = Core::ResourceManager::GetInstance();
-                                auto* tex = (path.size() > 8 && path.substr(path.size() - 8) == ".texture")
-                                    ? rm.LoadTextureAsset(path)
-                                    : rm.LoadTexture(path);
+                                Rendering::Texture* tex = nullptr;
+                                if (path.size() > 8 && path.substr(path.size() - 8) == ".texture") {
+                                    tex = rm.LoadTextureAsset(path);
+                                }
+                                else if (componentTypeName && std::string(componentTypeName) == "MeshRenderer") {
+                                    tex = rm.LoadModelTexture(path);
+                                }
+                                else {
+                                    tex = rm.LoadTexture(path);
+                                }
                                 WriteValue<void*>(dst, tex);
                             }
                         }

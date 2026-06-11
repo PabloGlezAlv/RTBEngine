@@ -11,6 +11,15 @@
 namespace RTBEngine {
     namespace Core {
 
+        namespace {
+            constexpr char kNoFlipCacheSuffix[] = "\x1fnoflip";
+
+            std::string TextureCacheKey(const std::string& path, bool flipVertically)
+            {
+                return flipVertically ? path : (path + kNoFlipCacheSuffix);
+            }
+        }
+
         std::vector<Rendering::Mesh*> ResourceManager::emptyMeshVector;
 
         ResourceManager& ResourceManager::GetInstance()
@@ -149,21 +158,27 @@ namespace RTBEngine {
 
         Rendering::Texture* ResourceManager::GetTexture(const std::string& path)
         {
-            auto it = textures.find(path);
+            auto it = textures.find(TextureCacheKey(path, true));
             if (it != textures.end()) {
                 return it->second.get();
             }
+
+            it = textures.find(TextureCacheKey(path, false));
+            if (it != textures.end()) {
+                return it->second.get();
+            }
+
             return nullptr;
         }
 
         Rendering::Texture* ResourceManager::LoadTexture(const std::string& path, bool flipVertically)
         {
-            auto existing = GetTexture(path);
-            if (existing) {
-                return existing;
+            const std::string cacheKey = TextureCacheKey(path, flipVertically);
+            auto it = textures.find(cacheKey);
+            if (it != textures.end()) {
+                return it->second.get();
             }
 
-            // Create new texture
             auto texture = std::make_unique<Rendering::Texture>();
             const std::string resolvedPath = ResolvePathForRead(path);
             if (!texture->LoadFromFile(resolvedPath, flipVertically)) {
@@ -171,10 +186,9 @@ namespace RTBEngine {
                 return nullptr;
             }
 
-            // Store and return
             Rendering::Texture* texturePtr = texture.get();
-            textures[path] = std::move(texture);
-            texturePathMap[texturePtr] = path; 
+            textures[cacheKey] = std::move(texture);
+            texturePathMap[texturePtr] = path;
             return texturePtr;
         }
 

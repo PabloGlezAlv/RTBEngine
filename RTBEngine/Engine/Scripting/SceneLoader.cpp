@@ -427,6 +427,57 @@ namespace RTBEngine {
             }
         }
 
+        namespace {
+            Animation::Animator* FindAnimatorInAncestors(ECS::GameObject* start)
+            {
+                for (ECS::GameObject* current = start; current; current = current->GetParent()) {
+                    if (auto* animator = current->GetComponent<Animation::Animator>()) {
+                        return animator;
+                    }
+                }
+                return nullptr;
+            }
+
+            // Props parented under the saved Rig_Medium bone tree must be moved to the
+            // transient bone GOs that Animator syncs each frame.
+            void ReparentBoneAttachments(ECS::Scene* scene)
+            {
+                struct ReparentRequest {
+                    ECS::GameObject* child;
+                    ECS::GameObject* newParent;
+                };
+                std::vector<ReparentRequest> requests;
+
+                for (const auto& goPtr : scene->GetGameObjects()) {
+                    ECS::GameObject* go = goPtr.get();
+                    ECS::GameObject* staticBone = go->GetParent();
+                    if (!staticBone || staticBone->IsTransient()) {
+                        continue;
+                    }
+
+                    Animation::Animator* animator = FindAnimatorInAncestors(staticBone);
+                    if (!animator || !animator->AreBoneGOsCreated()) {
+                        continue;
+                    }
+
+                    ECS::GameObject* animatedBone = animator->GetBoneGameObject(staticBone->GetName());
+                    if (!animatedBone || animatedBone == staticBone) {
+                        continue;
+                    }
+
+                    if (!go->GetComponent<ECS::MeshRenderer>()) {
+                        continue;
+                    }
+
+                    requests.push_back({ go, animatedBone });
+                }
+
+                for (const auto& req : requests) {
+                    req.child->SetParent(req.newParent);
+                }
+            }
+        }
+
         void SceneLoader::RebuildFbxHierarchies(ECS::Scene* scene)
         {
             if (!scene) return;
@@ -496,6 +547,8 @@ namespace RTBEngine {
             for (auto* animator : animatorsNeedingBones) {
                 animator->CreateBoneGameObjects(scene);
             }
+
+            ReparentBoneAttachments(scene);
         }
 
     }
