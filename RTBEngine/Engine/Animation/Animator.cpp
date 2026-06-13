@@ -5,7 +5,6 @@
 #include "../Core/ResourceManager.h"
 #include "../ECS/MeshRenderer.h"
 #include "../ECS/GameObject.h"
-#include "../ECS/Scene.h"
 #include "../ECS/SceneManager.h"
 #include "../Math/Quaternions/Quaternion.h"
 #include <cmath>
@@ -21,6 +20,98 @@ namespace RTBEngine {
                     delete mesh;
                 }
                 data.meshes.clear();
+            }
+
+            ECS::GameObject* FindDescendantByName(ECS::GameObject* root, const std::string& name)
+            {
+                if (!root) {
+                    return nullptr;
+                }
+                if (root->GetName() == name) {
+                    return root;
+                }
+                for (ECS::GameObject* child : root->GetChildren()) {
+                    if (ECS::GameObject* found = FindDescendantByName(child, name)) {
+                        return found;
+                    }
+                }
+                return nullptr;
+            }
+
+            void SetLocalFromWorld(ECS::GameObject* go, const Math::Matrix4& worldMatrix, ECS::GameObject* parent)
+            {
+                Math::Matrix4 localMatrix = worldMatrix;
+                if (parent) {
+                    localMatrix = parent->GetWorldMatrix().Inverse() * worldMatrix;
+                }
+
+                Math::Vector3 localPos, localScale;
+                Math::Quaternion localRot;
+                localMatrix.Decompose(localPos, localRot, localScale);
+                go->GetTransform().SetPosition(localPos);
+                go->GetTransform().SetRotation(localRot);
+                go->GetTransform().SetScale(localScale);
+            }
+
+            void ReparentPreserveWorld(ECS::GameObject* go, ECS::GameObject* newParent)
+            {
+                if (!go || go->GetParent() == newParent) {
+                    return;
+                }
+
+                Math::Matrix4 worldMatrix = go->GetWorldMatrix();
+                go->SetParent(newParent);
+                SetLocalFromWorld(go, worldMatrix, newParent);
+            }
+
+            void BakeBoneOffsetIntoChildren(ECS::GameObject* boneGO)
+            {
+                if (!boneGO || boneGO->GetChildren().empty()) {
+                    return;
+                }
+
+                const Math::Matrix4 boneLocal = boneGO->GetTransform().GetModelMatrix();
+                const Math::Vector3 bonePos = boneGO->GetTransform().GetPosition();
+                const Math::Quaternion boneRot = boneGO->GetTransform().GetRotation();
+                const Math::Vector3 boneScale = boneGO->GetTransform().GetScale();
+                const bool hasOffset =
+                    bonePos.LengthSquared() > 1e-8f ||
+                    std::abs(boneRot.w - 1.0f) > 1e-4f || std::abs(boneRot.x) > 1e-4f ||
+                    std::abs(boneRot.y) > 1e-4f || std::abs(boneRot.z) > 1e-4f ||
+                    std::abs(boneScale.x - 1.0f) > 1e-4f ||
+                    std::abs(boneScale.y - 1.0f) > 1e-4f ||
+                    std::abs(boneScale.z - 1.0f) > 1e-4f;
+                if (!hasOffset) {
+                    return;
+                }
+
+                for (ECS::GameObject* child : boneGO->GetChildren()) {
+                    if (!child) {
+                        continue;
+                    }
+                    Math::Matrix4 combined = boneLocal * child->GetTransform().GetModelMatrix();
+                    Math::Vector3 localPos, localScale;
+                    Math::Quaternion localRot;
+                    combined.Decompose(localPos, localRot, localScale);
+                    child->GetTransform().SetPosition(localPos);
+                    child->GetTransform().SetRotation(localRot);
+                    child->GetTransform().SetScale(localScale);
+                }
+            }
+
+            void ApplyBindPose(ECS::GameObject* boneGO, const Bone* bone)
+            {
+                if (!boneGO || !bone) {
+                    return;
+                }
+
+                Math::Vector3 pos;
+                Math::Quaternion rot;
+                Math::Vector3 scale;
+                bone->localBindTransform.Decompose(pos, rot, scale);
+                boneGO->GetTransform().SetPosition(pos);
+                boneGO->GetTransform().SetRotation(rot);
+                boneGO->GetTransform().SetScale(scale);
             }
         }
 
@@ -132,6 +223,15 @@ namespace RTBEngine {
             UpdateBoneTransforms();
         }
 
+        void Animator::OnLateUpdate(float deltaTime)
+        {
+            (void)deltaTime;
+            // Re-sync bone GOs after gameplay scripts may have called Play() in OnUpdate.
+            if (playing && !paused && currentClip && skeleton && boneGOsCreated) {
+                SyncBoneGameObjects();
+            }
+        }
+
         void Animator::SetSkeleton(std::shared_ptr<Skeleton> skel)
         {
             skeleton = skel;
@@ -169,13 +269,39 @@ namespace RTBEngine {
                 return false;
             }
 
-            Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(sourceFbx);
-            if (modelData.animations.empty() || !modelData.animations.front()) {
+            std::string modelPath = sourceFbx;
+            std::string clipName;
+            const size_t clipSeparator = sourceFbx.find('|');
+            if (clipSeparator != std::string::npos) {
+                modelPath = sourceFbx.substr(0, clipSeparator);
+                clipName = sourceFbx.substr(clipSeparator + 1);
+            }
+
+            Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelPath);
+            if (modelData.animations.empty()) {
                 ReleaseLoadedModelMeshes(modelData);
                 return false;
             }
 
-            AddClip(alias, modelData.animations.front());
+            std::shared_ptr<AnimationClip> selectedClip;
+            if (clipName.empty()) {
+                selectedClip = modelData.animations.front();
+            }
+            else {
+                for (const auto& clip : modelData.animations) {
+                    if (clip && clip->GetName() == clipName) {
+                        selectedClip = clip;
+                        break;
+                    }
+                }
+            }
+
+            if (!selectedClip) {
+                ReleaseLoadedModelMeshes(modelData);
+                return false;
+            }
+
+            AddClip(alias, selectedClip);
             ReleaseLoadedModelMeshes(modelData);
             return true;
         }
@@ -288,44 +414,88 @@ namespace RTBEngine {
 
         void Animator::CreateBoneGameObjects(ECS::Scene* scene)
         {
-            if (!skeleton || !owner || boneGOsCreated) return;
+            if (!skeleton || !owner || boneGOsCreated || !scene) {
+                return;
+            }
 
-            size_t boneCount = skeleton->GetBoneCount();
-            boneGameObjects.resize(boneCount, nullptr);
+            const size_t boneCount = skeleton->GetBoneCount();
+            boneGameObjects.assign(boneCount, nullptr);
 
-            for (size_t i = 0; i < boneCount; i++) {
-                const Bone* bone = skeleton->GetBone(static_cast<int>(i));
-                if (!bone) continue;
+            std::vector<bool> assigned(boneCount, false);
+            size_t remaining = boneCount;
 
-                auto* boneGO = new ECS::GameObject(bone->name);
-                boneGO->SetTransient(true);
+            while (remaining > 0) {
+                size_t progress = 0;
 
-                // Parent to owner (root bone) or to parent bone GO
-                if (bone->parentIndex < 0) {
-                    boneGO->SetParent(owner);
+                for (size_t i = 0; i < boneCount; ++i) {
+                    if (assigned[i]) {
+                        continue;
+                    }
+
+                    const Bone* bone = skeleton->GetBone(static_cast<int>(i));
+                    if (!bone) {
+                        assigned[i] = true;
+                        --remaining;
+                        ++progress;
+                        continue;
+                    }
+
+                    if (bone->parentIndex >= 0) {
+                        if (bone->parentIndex >= static_cast<int>(boneCount) || !assigned[bone->parentIndex]) {
+                            continue;
+                        }
+                    }
+
+                    ECS::GameObject* parentGO = owner;
+                    if (bone->parentIndex >= 0) {
+                        parentGO = boneGameObjects[bone->parentIndex];
+                    }
+                    if (!parentGO) {
+                        continue;
+                    }
+
+                    ECS::GameObject* boneGO = FindDescendantByName(owner, bone->name);
+                    const bool createdNew = boneGO == nullptr;
+                    if (createdNew) {
+                        boneGO = new ECS::GameObject(bone->name);
+                        scene->AddGameObject(boneGO);
+                        ApplyBindPose(boneGO, bone);
+                    }
+                    else {
+                        BakeBoneOffsetIntoChildren(boneGO);
+                    }
+
+                    ReparentPreserveWorld(boneGO, parentGO);
+                    if (createdNew) {
+                        ApplyBindPose(boneGO, bone);
+                    }
+
+                    boneGameObjects[i] = boneGO;
+                    assigned[i] = true;
+                    --remaining;
+                    ++progress;
                 }
-                else if (bone->parentIndex < static_cast<int>(boneGameObjects.size()) && boneGameObjects[bone->parentIndex]) {
-                    boneGO->SetParent(boneGameObjects[bone->parentIndex]);
+
+                if (progress == 0) {
+                    RTB_WARN("[Animator] Failed to resolve full bone hierarchy for \"" + owner->GetName() + "\".");
+                    break;
                 }
-                else {
-                    boneGO->SetParent(owner);
-                }
-
-                scene->AddGameObject(boneGO);
-
-                // Set initial transform from bind pose
-                Math::Vector3 pos;
-                Math::Quaternion rot;
-                Math::Vector3 scale;
-                bone->localBindTransform.Decompose(pos, rot, scale);
-                boneGO->GetTransform().SetPosition(pos);
-                boneGO->GetTransform().SetRotation(rot);
-                boneGO->GetTransform().SetScale(scale);
-
-                boneGameObjects[i] = boneGO;
             }
 
             boneGOsCreated = true;
+
+            if (!currentClip && !currentClipName.empty()) {
+                currentClip = GetClip(currentClipName);
+            }
+            if (!currentClip && !defaultClip.empty()) {
+                currentClip = GetClip(defaultClip);
+                if (currentClip) {
+                    currentClipName = defaultClip;
+                }
+            }
+            if (currentClip) {
+                UpdateBoneTransforms();
+            }
         }
 
         void Animator::SyncBoneGameObjects()

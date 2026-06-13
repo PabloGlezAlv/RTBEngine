@@ -144,6 +144,12 @@ namespace RTBEngine {
 
             auto prefab = std::make_unique<ECS::Prefab>(nodeName);
 
+            lua_getfield(L, nodeTableIndex, "uuid");
+            if (lua_isstring(L, -1)) {
+                prefab->SetSourceUuid(lua_tostring(L, -1));
+            }
+            lua_pop(L, 1);
+
             LoadTransform(L, nodeTableIndex, *prefab);
             LoadCollisionLayer(L, nodeTableIndex, *prefab);
             LoadComponents(L, nodeTableIndex, *prefab);

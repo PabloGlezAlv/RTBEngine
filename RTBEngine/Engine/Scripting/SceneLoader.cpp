@@ -5,6 +5,7 @@
 #include "../ECS/Component.h"
 #include "../ECS/MissingComponent.h"
 #include "../ECS/MeshRenderer.h"
+#include "../Animation/Animator.h"
 #include "../ECS/LightComponent.h"
 #include "../ECS/AudioSourceComponent.h"
 #include "../ECS/RigidBodyComponent.h"
@@ -428,53 +429,25 @@ namespace RTBEngine {
         }
 
         namespace {
-            Animation::Animator* FindAnimatorInAncestors(ECS::GameObject* start)
+            bool ChildUsesAnimatorModel(ECS::GameObject* child, const std::string& animatorModelPath)
             {
-                for (ECS::GameObject* current = start; current; current = current->GetParent()) {
-                    if (auto* animator = current->GetComponent<Animation::Animator>()) {
-                        return animator;
-                    }
-                }
-                return nullptr;
-            }
-
-            // Props parented under the saved Rig_Medium bone tree must be moved to the
-            // transient bone GOs that Animator syncs each frame.
-            void ReparentBoneAttachments(ECS::Scene* scene)
-            {
-                struct ReparentRequest {
-                    ECS::GameObject* child;
-                    ECS::GameObject* newParent;
-                };
-                std::vector<ReparentRequest> requests;
-
-                for (const auto& goPtr : scene->GetGameObjects()) {
-                    ECS::GameObject* go = goPtr.get();
-                    ECS::GameObject* staticBone = go->GetParent();
-                    if (!staticBone || staticBone->IsTransient()) {
-                        continue;
-                    }
-
-                    Animation::Animator* animator = FindAnimatorInAncestors(staticBone);
-                    if (!animator || !animator->AreBoneGOsCreated()) {
-                        continue;
-                    }
-
-                    ECS::GameObject* animatedBone = animator->GetBoneGameObject(staticBone->GetName());
-                    if (!animatedBone || animatedBone == staticBone) {
-                        continue;
-                    }
-
-                    if (!go->GetComponent<ECS::MeshRenderer>()) {
-                        continue;
-                    }
-
-                    requests.push_back({ go, animatedBone });
+                if (!child) {
+                    return false;
                 }
 
-                for (const auto& req : requests) {
-                    req.child->SetParent(req.newParent);
+                auto* renderer = child->GetComponent<ECS::MeshRenderer>();
+                if (!renderer || !renderer->meshRef) {
+                    return false;
                 }
+
+                Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
+                const std::string meshPath = resources.GetMeshPath(renderer->meshRef);
+                if (meshPath.empty() || animatorModelPath.empty()) {
+                    return false;
+                }
+
+                return resources.ResolvePathForRead(meshPath) ==
+                    resources.ResolvePathForRead(animatorModelPath);
             }
         }
 
@@ -499,10 +472,13 @@ namespace RTBEngine {
                 auto* animator = go->GetComponent<Animation::Animator>();
                 if (!animator || animator->modelRef.empty()) continue;
 
-                // Check if already has non-transient mesh children
+                // Skip auto-rebuild when the scene already defines character mesh parts.
                 bool hasMeshChildren = false;
                 for (const auto* child : go->GetChildren()) {
-                    if (child && !child->IsTransient() && const_cast<ECS::GameObject*>(child)->GetComponent<ECS::MeshRenderer>()) {
+                    if (!child) {
+                        continue;
+                    }
+                    if (ChildUsesAnimatorModel(const_cast<ECS::GameObject*>(child), animator->modelRef)) {
                         hasMeshChildren = true;
                         break;
                     }
@@ -510,7 +486,7 @@ namespace RTBEngine {
                 if (hasMeshChildren) continue;
 
                 Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(animator->modelRef);
-                if (modelData.meshes.size() > 1 && modelData.rootNode) {
+                if (!modelData.meshes.empty()) {
                     multiMeshRebuild.push_back({ go.get(), animator, std::move(modelData) });
                 }
             }
@@ -547,8 +523,6 @@ namespace RTBEngine {
             for (auto* animator : animatorsNeedingBones) {
                 animator->CreateBoneGameObjects(scene);
             }
-
-            ReparentBoneAttachments(scene);
         }
 
     }

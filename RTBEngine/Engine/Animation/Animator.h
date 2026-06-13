@@ -33,6 +33,7 @@ namespace RTBEngine {
             virtual void OnAwake() override;
             virtual void OnStart() override;
             virtual void OnUpdate(float deltaTime) override;
+            virtual void OnLateUpdate(float deltaTime) override;
             virtual void OnValidate() override;
 
             // Skeleton

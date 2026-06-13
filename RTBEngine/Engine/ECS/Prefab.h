@@ -56,6 +56,9 @@ namespace RTBEngine {
             int GetCollisionLayer() const { return collisionLayer; }
             void SetCollisionLayer(int layerIndex) { collisionLayer = layerIndex; }
 
+            void SetSourceUuid(const std::string& uuid) { sourceUuid = uuid; }
+            const std::string& GetSourceUuid() const { return sourceUuid; }
+
             static void ApplySnapshot(Component* target, const ComponentSnapshot& snap);
 
             static void SnapshotComponent(ComponentSnapshot& snap, const Component* comp);

@@ -277,6 +277,7 @@ namespace RTBEngine {
                 go->SetCollisionLayer(nodePrefab.collisionLayer);
 
                 if (!nodePrefab.sourceUuid.empty()) {
+                    go->SetUUID(nodePrefab.sourceUuid);
                     context.sourceUuidToInstance[nodePrefab.sourceUuid] = go;
                 }
 
