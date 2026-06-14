@@ -136,6 +136,10 @@ namespace RTBEngine {
 
 
         void SceneSaver::WriteTransform(std::ofstream& file, const ECS::GameObject* go, int indent) {
+            if (go->IsAnimatorBone()) {
+                return;
+            }
+
             std::string ind = ScenePropertySerializer::Indent(indent);
             const auto& transform = go->GetTransform();
 

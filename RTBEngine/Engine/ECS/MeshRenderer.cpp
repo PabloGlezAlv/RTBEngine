@@ -247,7 +247,7 @@ namespace RTBEngine {
                 // Skeletal animation: walk up hierarchy (KayKit/multi-mesh FBX children)
                 Animation::Animator* animator = FindAnimatorInAncestors(owner);
 
-                if (animator && animator->HasBones()) {
+                if (animator && animator->ShouldSkinMesh()) {
                     shader->SetBool("uHasAnimation", true);
                     const std::vector<Math::Matrix4>& boneTransforms = animator->GetBoneTransforms();
                     for (size_t j = 0; j < boneTransforms.size() && j < 100; j++) {
@@ -333,7 +333,7 @@ namespace RTBEngine {
 
             Animation::Animator* animator = FindAnimatorInAncestors(owner);
 
-            if (animator && animator->HasBones()) {
+            if (animator && animator->ShouldSkinMesh()) {
                 shader->SetBool("uHasAnimation", true);
                 const std::vector<Math::Matrix4>& boneTransforms = animator->GetBoneTransforms();
                 for (size_t j = 0; j < boneTransforms.size() && j < 100; j++) {

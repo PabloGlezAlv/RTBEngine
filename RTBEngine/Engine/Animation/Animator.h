@@ -65,6 +65,7 @@ namespace RTBEngine {
             // Bone transforms for shader
             const std::vector<Math::Matrix4>& GetBoneTransforms() const { return finalBoneTransforms; }
             bool HasBones() const { return skeleton && skeleton->GetBoneCount() > 0; }
+            bool ShouldSkinMesh() const { return playing && HasBones() && !finalBoneTransforms.empty(); }
 
             // Loaded meshes with bone data
             void SetMeshes(const std::vector<Rendering::Mesh*>& loadedMeshes) { meshes = loadedMeshes; }
@@ -77,6 +78,8 @@ namespace RTBEngine {
             ECS::GameObject* GetBoneGameObject(const std::string& boneName) const;
             ECS::GameObject* GetBoneGameObject(int boneIndex) const;
             bool AreBoneGOsCreated() const { return boneGOsCreated; }
+            bool IsBoneGameObject(const ECS::GameObject* go) const;
+            void SelectClip(const std::string& clipName, bool loop = true);
 
             // Reflected properties (Proxy)
             std::string modelRef;
@@ -101,12 +104,22 @@ namespace RTBEngine {
             std::vector<Rendering::Mesh*> meshes;
 
             //Bone GO sync
+            struct LocalTransformSnapshot {
+                Math::Vector3 position = Math::Vector3::Zero();
+                Math::Quaternion rotation = Math::Quaternion::Identity();
+                Math::Vector3 scale = Math::Vector3(1.0f, 1.0f, 1.0f);
+            };
+
             std::vector<Math::Matrix4> currentLocalTransforms;
             std::vector<ECS::GameObject*> boneGameObjects;
+            std::unordered_map<ECS::GameObject*, LocalTransformSnapshot> attachmentLocalSnapshots;
             bool boneGOsCreated = false;
 
             void EnsureModelDataLoaded();
             void UpdateBoneTransforms();
+            void ApplyBindPoseTransforms();
+            void CaptureBoneAttachmentTransforms();
+            void RestoreBoneAttachmentTransforms();
         };
 #pragma warning(pop)
 

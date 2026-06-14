@@ -74,6 +74,9 @@ namespace RTBEngine {
             void SetTransient(bool t) { isTransient = t; }
             bool IsTransient() const { return isTransient; }
 
+            void SetAnimatorBone(bool value) { isAnimatorBone = value; }
+            bool IsAnimatorBone() const { return isAnimatorBone; }
+
             int GetCollisionLayer() const { return collisionLayer; }
             void SetCollisionLayer(int layerIndex);
             void SetCollisionLayerByName(const std::string& layerName);
@@ -99,6 +102,7 @@ namespace RTBEngine {
             bool started;
             bool isBeingDestroyed = false;
             bool isTransient = false;
+            bool isAnimatorBone = false;
             int collisionLayer = 0;
 
             GameObject* parent = nullptr;

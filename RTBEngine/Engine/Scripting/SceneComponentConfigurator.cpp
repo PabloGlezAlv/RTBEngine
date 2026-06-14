@@ -386,19 +386,32 @@ namespace RTBEngine {
                 clipName = StripPrefix(clipName);
                 bool loop = ReadOptionalBool(L, tableIndex, "looping", true);
                 if (!loop) loop = ReadOptionalBool(L, tableIndex, "loop", true);
+                const bool shouldPlay = ReadOptionalBool(L, tableIndex, "playing", false);
+                comp->SetSpeed(ReadOptionalFloat(L, tableIndex, "speed", 1.0f));
+                comp->looping = loop;
+                comp->playing = false;
+
                 if (!clipName.empty() && comp->GetClip(clipName) != nullptr) {
-                    comp->Play(clipName, loop);
+                    if (shouldPlay) {
+                        comp->Play(clipName, loop);
+                    } else {
+                        comp->SelectClip(clipName, loop);
+                    }
                 } else {
-                    // Clip name not found (e.g. stale "mixamo.com" name) or no clip specified —
-                    // fall back to first available clip so the mesh is visible in edit mode
                     auto clipNames = comp->GetClipNames();
                     if (!clipNames.empty()) {
-                        comp->Play(clipNames[0], loop);
+                        if (shouldPlay) {
+                            comp->Play(clipNames[0], loop);
+                        } else {
+                            comp->SelectClip(clipNames[0], loop);
+                        }
                     }
                 }
 
-                comp->playing = ReadOptionalBool(L, tableIndex, "playing", false);
-                comp->SetSpeed(ReadOptionalFloat(L, tableIndex, "speed", 1.0f));
+                comp->playing = shouldPlay;
+                if (!shouldPlay) {
+                    comp->paused = false;
+                }
             }
 
         }
