@@ -136,8 +136,6 @@ namespace RTBEngine {
             ResolveParenting(scene, parentingRequests);
             ResolveUUIDRefs(scene, uuidRefRequests);
 
-            RebuildFbxHierarchies(scene);
-
             lua_close(L);
             return scene;
         }
@@ -364,6 +362,7 @@ namespace RTBEngine {
                 }
 
                 SceneReflectionUtils::ApplyLuaTableToComponent(L, componentTableIndex, componentType.c_str(), comp);
+                SceneReflectionUtils::ClearReferenceProperties(comp, registeredTypeInfo);
 
                 if (componentType == "MeshRenderer")
                     SceneComponentConfigurator::ConfigureMeshRenderer(L, componentTableIndex, static_cast<ECS::MeshRenderer*>(comp));
@@ -402,14 +401,12 @@ namespace RTBEngine {
                 else if (componentType == "Animator")
                     SceneComponentConfigurator::ConfigureAnimator(L, componentTableIndex, static_cast<Animation::Animator*>(comp));
 
-                comp->OnValidate();
-
-                const Reflection::TypeInfo* typeInfo = registeredTypeInfo;
-                if (!typeInfo) {
-                    typeInfo = comp->GetTypeInfo();
-                }
+                const Reflection::TypeInfo* typeInfo = registeredTypeInfo ? registeredTypeInfo : comp->GetTypeInfo();
                 if (typeInfo) {
                     for (const auto* prop : typeInfo->GetSerializableProperties()) {
+                        if (!prop) {
+                            continue;
+                        }
                         if (prop->type == Reflection::PropertyType::GameObjectRef ||
                             prop->type == Reflection::PropertyType::ComponentRef)
                         {

@@ -19,8 +19,11 @@ namespace RTBEngine {
 
         class SceneLoader {
         public:
-            // Load scene from Lua file
+            // Load scene from Lua file (deserialize + wire only; lifecycle runs in SceneManager).
             static ECS::Scene* LoadScene(const std::string& filePath);
+
+            // Post-deserialize content that needs an active scene (FBX hierarchies, bone GOs).
+            static void RebuildFbxHierarchies(ECS::Scene* scene);
 
         private:
             struct UUIDRefRequest {
@@ -54,8 +57,6 @@ namespace RTBEngine {
 
             static void ResolveUUIDRefs(ECS::Scene* scene,
                 const std::vector<UUIDRefRequest>& uuidRefRequests);
-
-            static void RebuildFbxHierarchies(ECS::Scene* scene);
         };
 
     }

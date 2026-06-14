@@ -3,6 +3,10 @@
 struct lua_State;
 
 namespace RTBEngine {
+    namespace Reflection {
+        class TypeInfo;
+    }
+
     namespace ECS {
         class Component;
     }
@@ -18,7 +22,9 @@ namespace RTBEngine {
             // from a Lua table (ints, floats, bools, strings, vectors, color, quaternion).
             void ApplyLuaTableToComponent(lua_State* L, int tableIndex, ECS::Component* component);
 
+            // GameObjectRef / ComponentRef values are resolved later; keep pointers null until then.
+            void ClearReferenceProperties(ECS::Component* component, const Reflection::TypeInfo* typeInfo = nullptr);
+
         }
     }
 }
-

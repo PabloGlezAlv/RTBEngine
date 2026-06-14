@@ -1,4 +1,5 @@
 #include "GameObject.h"
+#include "SceneLifecycle.h"
 #include "../Core/Time.h"
 #include "../Reflection/TypeInfo.h"
 #include "../Core/Logger.h"
@@ -30,7 +31,6 @@ namespace RTBEngine {
             , uuid(GenerateUUID())
             , transform()
             , isActive(true)
-            , started(false)
         {
         }
 
@@ -62,10 +62,17 @@ namespace RTBEngine {
         {
             isBeingDestroyed = true;
 
-            if (parent) {
-                parent->RemoveChild(this);
-                parent = nullptr;
+            for (GameObject* child : children) {
+                if (child) {
+                    child->parent = nullptr;
+                }
             }
+            children.clear();
+
+            if (parent && !parent->IsBeingDestroyed()) {
+                parent->RemoveChild(this);
+            }
+            parent = nullptr;
 
             for (auto& comp : components) {
                 comp->OnDestroy();
@@ -80,11 +87,16 @@ namespace RTBEngine {
 
         void GameObject::AddComponent(Component* component, const RTBEngine::Reflection::TypeInfo* typeInfoOverride)
         {
-            if (component) {
-                component->SetOwner(this);
-                auto deleter = MakeComponentDeleter(component, typeInfoOverride);
-                components.push_back(std::unique_ptr<Component, std::function<void(Component*)>>(component, std::move(deleter)));
-                component->OnAwake();
+            if (!component) {
+                return;
+            }
+
+            component->SetOwner(this);
+            auto deleter = MakeComponentDeleter(component, typeInfoOverride);
+            components.push_back(std::unique_ptr<Component, std::function<void(Component*)>>(component, std::move(deleter)));
+
+            if (lifecycleInitialized) {
+                SceneLifecycle::InvokeAwakeAndValidate(component);
             }
         }
 
@@ -103,7 +115,16 @@ namespace RTBEngine {
 
         void GameObject::SetActive(bool active)
         {
+            const bool wasActive = isActive;
             this->isActive = active;
+
+            if (!wasActive && active && lifecycleInitialized) {
+                for (auto& component : components) {
+                    if (component) {
+                        component->TryInvokeStart();
+                    }
+                }
+            }
         }
 
         bool GameObject::IsActiveInHierarchy() const
@@ -157,20 +178,10 @@ namespace RTBEngine {
             if (!IsActiveInHierarchy()) return;
             (void)deltaTime;
 
-            if (!started) {
-                for (size_t i = 0; i < components.size(); ++i) {
-                    Component* component = components[i].get();
-
-                    if (!component) {
-                        RTB_WARN("GameObject::Update encountered null component during OnStart.");
-                        continue;
-                    }
-
-                    if (component->IsEnabled()) {
-                        component->OnStart();
-                    }
+            for (auto& component : components) {
+                if (component) {
+                    component->TryInvokeStart();
                 }
-                started = true;
             }
 
             for (auto& comp : components) {

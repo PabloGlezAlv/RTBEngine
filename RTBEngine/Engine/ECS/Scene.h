@@ -31,8 +31,11 @@ namespace RTBEngine {
             Scene(const Scene&) = delete;
             Scene& operator=(const Scene&) = delete;
 
-            void AddGameObject(GameObject* gameObject);
+            void AddGameObject(GameObject* gameObject, bool queueLifecycle = true);
             void RemoveGameObject(GameObject* gameObject);
+            void BringGameObjectToLife(GameObject* root);
+            bool IsLifecycleComplete() const { return lifecycleComplete; }
+            void SetLifecycleComplete(bool complete) { lifecycleComplete = complete; }
             GameObject* FindGameObject(const std::string& name);
             GameObject* FindGameObjectByUUID(const std::string& uuid);
 
@@ -66,6 +69,8 @@ namespace RTBEngine {
         private:
             //Deferred command buffer
             void FlushPendingCommands();
+            void QueueLifecycleInitialization(GameObject* root);
+            void FlushPendingLifecycle();
 
             std::string name;
             std::vector<std::unique_ptr<GameObject>> gameObjects;
@@ -73,7 +78,10 @@ namespace RTBEngine {
 
             std::vector<std::unique_ptr<GameObject>> pendingAdds;
             std::vector<GameObject*> pendingRemoves;
+            std::vector<GameObject*> pendingLifecycleRoots;
             int iterationDepth = 0;
+
+            bool lifecycleComplete = false;
 
             // Skybox settings
             Rendering::Cubemap* skyboxCubemap = nullptr;

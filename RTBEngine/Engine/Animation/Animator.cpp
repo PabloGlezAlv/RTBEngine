@@ -312,6 +312,7 @@ namespace RTBEngine {
             currentClip = clip;
             currentClipName = clipName;
             currentTime = 0.0f;
+            paused = false;
             looping = loop;
         }
 
@@ -467,6 +468,23 @@ namespace RTBEngine {
                 child->GetTransform().SetRotation(snapshot.rotation);
                 child->GetTransform().SetScale(snapshot.scale);
             }
+        }
+
+        void Animator::RefreshBoneAttachmentTransform(ECS::GameObject* attachment)
+        {
+            if (!attachment) {
+                return;
+            }
+
+            const auto it = attachmentLocalSnapshots.find(attachment);
+            if (it == attachmentLocalSnapshots.end()) {
+                return;
+            }
+
+            LocalTransformSnapshot& snapshot = it->second;
+            snapshot.position = attachment->GetTransform().GetPosition();
+            snapshot.rotation = attachment->GetTransform().GetRotation();
+            snapshot.scale = attachment->GetTransform().GetScale();
         }
 
         bool Animator::IsBoneGameObject(const ECS::GameObject* go) const

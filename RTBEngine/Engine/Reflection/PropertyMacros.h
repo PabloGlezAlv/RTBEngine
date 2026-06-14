@@ -367,6 +367,7 @@ extern "C" void RTBScripts_RegisterLocalProperty(const char* ownerType, const RT
             _rtb_type_desc.destroyComponent = [](void* component) {                           \
                 delete static_cast<ClassName*>(static_cast<RTBEngine::ECS::Component*>(component)); \
             };                                                                                \
+            _rtb_type_desc.instanceSize = sizeof(ClassName);                                \
             RTBScripts_RegisterLocalType(&_rtb_type_desc);                                    \
         }                                                                                     \
     };                                                                                        \

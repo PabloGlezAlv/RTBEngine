@@ -7,6 +7,7 @@
 #include "SceneManager.h"
 #include "../Reflection/TypeInfo.h"
 #include "../Scripting/ComponentRegistry.h"
+#include "../Scripting/SceneReflectionUtils.h"
 #include "../Core/ResourceManager.h"
 #include "../Core/Logger.h"
 #include "../Rendering/Mesh.h"
@@ -292,6 +293,7 @@ namespace RTBEngine {
                         registeredTypeInfo ? registeredTypeInfo : comp->GetTypeInfo();
 
                     ApplySnapshot(comp, snap);
+                    Scripting::SceneReflectionUtils::ClearReferenceProperties(comp, registeredTypeInfo);
                     go->AddComponent(comp, registeredTypeInfo);
                     context.createdComponents.push_back(comp);
 
@@ -386,12 +388,6 @@ namespace RTBEngine {
                     if (data) {
                         *static_cast<Component**>(data) = resolvedComponent;
                     }
-                }
-            }
-
-            for (Component* component : context.createdComponents) {
-                if (component) {
-                    component->OnValidate();
                 }
             }
 

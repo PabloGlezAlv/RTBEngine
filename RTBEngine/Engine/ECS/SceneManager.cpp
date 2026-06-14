@@ -5,6 +5,7 @@
 #include "GameObject.h"
 #include "Prefab.h"
 #include "Scene.h"
+#include "SceneLifecycle.h"
 
 #include <vector>
 
@@ -19,12 +20,14 @@ namespace {
             return nullptr;
         }
 
-        scene->AddGameObject(root);
+        scene->AddGameObject(root, false);
         for (RTBEngine::ECS::GameObject* child : children) {
             if (child) {
-                scene->AddGameObject(child);
+                scene->AddGameObject(child, false);
             }
         }
+
+        RTBEngine::ECS::SceneLifecycle::BringHierarchyToLife(scene, root);
 
         if (onHierarchyAdded) {
             onHierarchyAdded(root);
@@ -155,6 +158,8 @@ namespace RTBEngine {
             activeScene.reset(newScene);
             activeScenePath = path;
             sceneDirty = false;
+
+            SceneLifecycle::BringSceneToLife(activeScene.get());
 
             if (onSceneLoaded) {
                 onSceneLoaded(activeScene.get());

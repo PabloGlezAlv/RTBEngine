@@ -1,4 +1,5 @@
 #include "Scene.h"
+#include "SceneLifecycle.h"
 #include <algorithm>
 #include <unordered_set>
 
@@ -106,61 +107,100 @@ RTBEngine::ECS::Scene::Scene(const std::string& name) : name(name)
 
 RTBEngine::ECS::Scene::~Scene()
 {
-	// Destroy leaf nodes first so parent OnDestroy() does not touch freed children.
 	while (!gameObjects.empty()) {
-		size_t leafIndex = gameObjects.size();
+		GameObject* root = nullptr;
 
-		for (size_t i = 0; i < gameObjects.size(); ++i) {
-			GameObject* candidate = gameObjects[i].get();
+		for (const auto& gameObject : gameObjects) {
+			GameObject* candidate = gameObject.get();
 			if (!candidate) {
-				leafIndex = i;
-				break;
+				continue;
 			}
 
-			bool hasChildInScene = false;
-			for (GameObject* child : candidate->GetChildren()) {
-				if (!child) {
-					continue;
-				}
+			GameObject* parent = candidate->GetParent();
+			const bool parentInScene = parent && std::any_of(
+				gameObjects.begin(),
+				gameObjects.end(),
+				[parent](const std::unique_ptr<GameObject>& obj) {
+					return obj.get() == parent;
+				});
 
-				const auto childIt = std::find_if(
-					gameObjects.begin(),
-					gameObjects.end(),
-					[child](const std::unique_ptr<GameObject>& obj) {
-						return obj.get() == child;
-					});
-
-				if (childIt != gameObjects.end()) {
-					hasChildInScene = true;
-					break;
-				}
-			}
-
-			if (!hasChildInScene) {
-				leafIndex = i;
+			if (!parentInScene) {
+				root = candidate;
 				break;
 			}
 		}
 
-		if (leafIndex >= gameObjects.size()) {
+		if (!root) {
 			gameObjects.clear();
 			break;
 		}
 
-		gameObjects.erase(gameObjects.begin() + static_cast<std::ptrdiff_t>(leafIndex));
+		std::vector<GameObject*> hierarchy;
+		CollectHierarchyPostOrder(root, hierarchy);
+
+		for (GameObject* node : hierarchy) {
+			if (node && node->GetParent()) {
+				node->SetParent(nullptr);
+			}
+		}
+
+		for (GameObject* node : hierarchy) {
+			DestroyOwnedGameObject(gameObjects, node);
+		}
 	}
 
 	pendingAdds.clear();
 }
 
-void RTBEngine::ECS::Scene::AddGameObject(GameObject* gameObject)
+void RTBEngine::ECS::Scene::AddGameObject(GameObject* gameObject, bool queueLifecycle)
 {
 	if (iterationDepth > 0) {
 		pendingAdds.push_back(std::unique_ptr<GameObject>(gameObject));
 	} else {
 		gameObjects.push_back(std::unique_ptr<GameObject>(gameObject));
 	}
+
+	if (queueLifecycle && lifecycleComplete && gameObject) {
+		QueueLifecycleInitialization(gameObject);
+	}
+
 	pendingRenderLog = true;
+}
+
+void RTBEngine::ECS::Scene::BringGameObjectToLife(GameObject* root)
+{
+	if (!root) {
+		return;
+	}
+
+	SceneLifecycle::BringHierarchyToLife(this, root);
+}
+
+void RTBEngine::ECS::Scene::QueueLifecycleInitialization(GameObject* root)
+{
+	if (!root) {
+		return;
+	}
+
+	if (std::find(pendingLifecycleRoots.begin(), pendingLifecycleRoots.end(), root) == pendingLifecycleRoots.end()) {
+		pendingLifecycleRoots.push_back(root);
+	}
+}
+
+void RTBEngine::ECS::Scene::FlushPendingLifecycle()
+{
+	if (!lifecycleComplete || pendingLifecycleRoots.empty()) {
+		return;
+	}
+
+	std::vector<GameObject*> roots = std::move(pendingLifecycleRoots);
+	pendingLifecycleRoots.clear();
+
+	for (GameObject* root : roots) {
+		if (root) {
+			SceneLifecycle::BringHierarchyToLife(this, root);
+		}
+	}
 }
 
 void RTBEngine::ECS::Scene::RemoveGameObject(GameObject* gameObject)
@@ -272,6 +312,8 @@ RTBEngine::ECS::GameObject* RTBEngine::ECS::Scene::FindGameObjectByUUID(const st
 
 void RTBEngine::ECS::Scene::Update(float deltaTime)
 {
+	FlushPendingLifecycle();
+
 	++iterationDepth;
 	for (auto& gameObject : gameObjects) {
 		if (gameObject) gameObject->Update(deltaTime);

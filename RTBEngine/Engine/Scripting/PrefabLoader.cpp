@@ -23,11 +23,40 @@
 #include "../UI/Elements/UIVerticalLayout.h"
 #include "../Physics/PhysicsLayerSettings.h"
 #include "../RTBEngine.h"
+#include "../Reflection/TypeInfo.h"
 #include <lua.hpp>
 #include <LuaBridge/LuaBridge.h>
 
 namespace RTBEngine {
     namespace Scripting {
+
+        static void CaptureLuaReferenceProperties(lua_State* L,
+            int compTableIndex,
+            ECS::Component* comp,
+            ECS::ComponentSnapshot& snap)
+        {
+            const Reflection::TypeInfo* typeInfo = comp->GetTypeInfo();
+            if (!typeInfo) {
+                return;
+            }
+
+            for (const Reflection::PropertyInfo* prop : typeInfo->GetSerializableProperties()) {
+                if (!prop ||
+                    (prop->type != Reflection::PropertyType::GameObjectRef &&
+                     prop->type != Reflection::PropertyType::ComponentRef)) {
+                    continue;
+                }
+
+                lua_getfield(L, compTableIndex, prop->name.c_str());
+                if (lua_isstring(L, -1)) {
+                    const char* refValue = lua_tostring(L, -1);
+                    if (refValue && refValue[0] != '\0') {
+                        snap.ptrPathData[prop->offset] = refValue;
+                    }
+                }
+                lua_pop(L, 1);
+            }
+        }
 
         //Internal helpers
         static void LoadComponents(lua_State* L, int nodeTableIndex, ECS::Prefab& prefab)
@@ -91,6 +120,7 @@ namespace RTBEngine {
 
                 ECS::ComponentSnapshot snap;
                 ECS::Prefab::SnapshotComponent(snap, comp);
+                CaptureLuaReferenceProperties(L, compTableIndex, comp, snap);
                 prefab.AddSnapshot(std::move(snap));
 
                 ComponentRegistry::GetInstance().DestroyComponent(typeName, comp);

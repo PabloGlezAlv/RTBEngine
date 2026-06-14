@@ -91,6 +91,9 @@ namespace RTBEngine {
             void LateUpdate(float deltaTime);
             void Render(Rendering::Camera* camera);
 
+            bool IsLifecycleInitialized() const { return lifecycleInitialized; }
+            void SetLifecycleInitialized(bool initialized) { lifecycleInitialized = initialized; }
+
         private:
             std::string name;
             std::string uuid;
@@ -99,7 +102,7 @@ namespace RTBEngine {
             Transform transform;
             std::vector<ComponentPtr> components;
             bool isActive;
-            bool started;
+            bool lifecycleInitialized = false;
             bool isBeingDestroyed = false;
             bool isTransient = false;
             bool isAnimatorBone = false;

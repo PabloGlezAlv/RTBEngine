@@ -409,9 +409,6 @@ namespace RTBEngine {
                 }
 
                 comp->playing = shouldPlay;
-                if (!shouldPlay) {
-                    comp->paused = false;
-                }
             }
 
         }

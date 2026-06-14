@@ -28,7 +28,7 @@ namespace RTBEngine {
             Component(const Component&) = delete;
             Component& operator=(const Component&) = delete;
 
-            //Loop methods
+            // Lifecycle hooks (orchestrated by SceneLifecycle — do not call manually).
             virtual void OnAwake() {}
             virtual void OnStart() {}
             virtual void OnUpdate(float deltaTime) {}
@@ -65,6 +65,11 @@ namespace RTBEngine {
             void SetTimeMode(ComponentTimeMode mode);
             ComponentTimeMode GetTimeMode() const { return timeMode; }
 
+            bool HasAwakeBeenInvoked() const { return awakeInvoked; }
+            bool HasStartBeenInvoked() const { return startInvoked; }
+            void InvokeAwakeIfNeeded();
+            void TryInvokeStart();
+
             virtual const char* GetTypeName() const = 0;
 
             // Multiple inheritance reflection fix
@@ -79,6 +84,8 @@ namespace RTBEngine {
             bool isEnabled;
             bool updateTickEnabled;
             ComponentTimeMode timeMode;
+            bool awakeInvoked = false;
+            bool startInvoked = false;
         };
 
     }

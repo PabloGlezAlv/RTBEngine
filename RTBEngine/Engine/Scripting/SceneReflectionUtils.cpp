@@ -206,6 +206,39 @@ namespace RTBEngine {
                 ApplyLuaTableToComponent(L, tableIndex, component ? component->GetTypeName() : nullptr, component);
             }
 
+            void ClearReferenceProperties(ECS::Component* component, const Reflection::TypeInfo* typeInfoOverride)
+            {
+                const Reflection::TypeInfo* typeInfo = typeInfoOverride;
+                if (!typeInfo && component) {
+                    typeInfo = component->GetTypeInfo();
+                }
+                if (!typeInfo) {
+                    return;
+                }
+
+                for (const Reflection::PropertyInfo* prop : typeInfo->GetSerializableProperties()) {
+                    if (!prop) {
+                        continue;
+                    }
+
+                    if (prop->type != PropertyType::GameObjectRef &&
+                        prop->type != PropertyType::ComponentRef) {
+                        continue;
+                    }
+
+                    void* data = component ? prop->GetMutableData(component) : nullptr;
+                    if (!data) {
+                        continue;
+                    }
+
+                    if (prop->type == PropertyType::GameObjectRef) {
+                        *static_cast<ECS::GameObject**>(data) = nullptr;
+                    } else {
+                        *static_cast<ECS::Component**>(data) = nullptr;
+                    }
+                }
+            }
+
         }
     }
 }

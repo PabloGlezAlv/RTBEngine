@@ -59,6 +59,7 @@ namespace RTBEngine {
         static RTBEngine::Reflection::TypeInfo* s_pendingInfo = nullptr;
         static std::string                       s_pendingTypeName;
         static size_t                            s_pendingPropIndex = 0;
+        static size_t                            s_pendingInstanceSize = 0;
         static std::vector<std::string>         s_pendingTypes;
 
         static int ExpectedDebugFlag()
@@ -184,6 +185,7 @@ namespace RTBEngine {
             s_pendingInfo = const_cast<RTBEngine::Reflection::TypeInfo*>(reg.GetTypeInfo(typeName));
             s_pendingTypeName = typeName ? typeName : "";
             s_pendingPropIndex = 0;
+            s_pendingInstanceSize = (desc && desc->instanceSize > 0) ? desc->instanceSize : 0;
             s_pendingTypes.push_back(typeName);
         }
 
@@ -223,6 +225,17 @@ namespace RTBEngine {
                 return;
             }
 
+            if (s_pendingInstanceSize > 0 && prop.offset + prop.size > s_pendingInstanceSize) {
+                RTB_ERROR(
+                    "ScriptManager: Property '" + prop.name + "' on type '" + s_pendingTypeName +
+                    "' is out of bounds (offset=" + std::to_string(prop.offset) +
+                    ", size=" + std::to_string(prop.size) +
+                    ", instanceSize=" + std::to_string(s_pendingInstanceSize) +
+                    "). Rebuild GameScripts against the current RTBEngine SDK headers.");
+                ++s_pendingPropIndex;
+                return;
+            }
+
             s_pendingInfo->AddProperty(prop);
             ++s_pendingPropIndex;
         }
@@ -232,6 +245,7 @@ namespace RTBEngine {
             s_pendingInfo = nullptr;
             s_pendingTypeName.clear();
             s_pendingPropIndex = 0;
+            s_pendingInstanceSize = 0;
         }
 
         void ScriptManager::ScriptTypeReceiver(const char* /*name*/, const RTBEngine::Reflection::TypeInfo& /*info*/)

@@ -79,6 +79,7 @@ namespace RTBEngine {
             ECS::GameObject* GetBoneGameObject(int boneIndex) const;
             bool AreBoneGOsCreated() const { return boneGOsCreated; }
             bool IsBoneGameObject(const ECS::GameObject* go) const;
+            void RefreshBoneAttachmentTransform(ECS::GameObject* attachment);
             void SelectClip(const std::string& clipName, bool loop = true);
 
             // Reflected properties (Proxy)

@@ -219,6 +219,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\ECS\TrailRenderer.cpp" />
     <ClCompile Include="Engine\ECS\ParticleSystem.cpp" />
     <ClCompile Include="Engine\ECS\Scene.cpp" />
+    <ClCompile Include="Engine\ECS\SceneLifecycle.cpp" />
     <ClCompile Include="Engine\Rendering\Lighting\Light.cpp" />
     <ClCompile Include="Engine\ECS\LightComponent.cpp" />
     <ClCompile Include="Engine\Core\ResourceManager.cpp" />
@@ -379,6 +380,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\ECS\ParticleSystem.h" />
     <ClInclude Include="Engine\Rendering\ParticleTypes.h" />
     <ClInclude Include="Engine\ECS\Scene.h" />
+    <ClInclude Include="Engine\ECS\SceneLifecycle.h" />
     <ClInclude Include="Engine\Rendering\Lighting\Light.h" />
     <ClInclude Include="Engine\ECS\LightComponent.h" />
     <ClInclude Include="Engine\Core\ResourceManager.h" />
