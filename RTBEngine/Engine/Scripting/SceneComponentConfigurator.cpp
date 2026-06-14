@@ -397,7 +397,7 @@ namespace RTBEngine {
                     }
                 }
 
-                comp->playing = ReadOptionalBool(L, tableIndex, "playing", true);
+                comp->playing = ReadOptionalBool(L, tableIndex, "playing", false);
                 comp->SetSpeed(ReadOptionalFloat(L, tableIndex, "speed", 1.0f));
             }
 

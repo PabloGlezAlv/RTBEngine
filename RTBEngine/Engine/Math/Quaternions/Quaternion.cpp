@@ -167,23 +167,22 @@ namespace RTBEngine {
             return result;
         }
 
+        namespace {
+            float WrapRadians(float radians)
+            {
+                constexpr float kTwoPi = 6.283185307179586f;
+                float wrapped = std::fmod(radians + 3.14159265358979323846f, kTwoPi);
+                if (wrapped < 0.0f) {
+                    wrapped += kTwoPi;
+                }
+                return wrapped - 3.14159265358979323846f;
+            }
+        }
+
         Vector3 Quaternion::ToEulerAngles() const {
             Vector3 euler;
 
             // YXZ rotation order - inverse of FromEulerAngles
-            // Convert rotation matrix elements from quaternion
-
-            // From quaternion to rotation matrix elements we need:
-            // R00 = 1 - 2(y² + z²)
-            // R01 = 2(xy - wz)
-            // R02 = 2(xz + wy)
-            // R10 = 2(xy + wz)
-            // R11 = 1 - 2(x² + z²)
-            // R12 = 2(yz - wx)
-            // R20 = 2(xz - wy)
-            // R21 = 2(yz + wx)
-            // R22 = 1 - 2(x² + y²)
-
             float r21 = 2.0f * (y * z + w * x);  // sin(pitch)
             float r22 = 1.0f - 2.0f * (x * x + y * y);  // cos(pitch) * cos(yaw)
             float r20 = 2.0f * (x * z - w * y);  // -cos(pitch) * sin(yaw)
@@ -201,6 +200,10 @@ namespace RTBEngine {
                 euler.y = -std::atan2(-r20, r22);
                 euler.z = std::atan2(-r01, r11);
             }
+
+            euler.x = WrapRadians(euler.x);
+            euler.y = WrapRadians(euler.y);
+            euler.z = WrapRadians(euler.z);
 
             return euler;
         }
