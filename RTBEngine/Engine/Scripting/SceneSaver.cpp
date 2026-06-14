@@ -91,8 +91,82 @@ namespace RTBEngine {
             file << "        }\n";
         }
 
-        void SceneSaver::WriteGameObject(std::ofstream& file, const ECS::GameObject* go, int indent) {
-            if (go->IsTransient()) return;
+        namespace {
+            const ECS::Prefab* FindDirectChildPrefab(const ECS::Prefab* prefab, const std::string& childName)
+            {
+                if (!prefab) {
+                    return nullptr;
+                }
+
+                for (const auto& childPrefab : prefab->GetChildPrefabs()) {
+                    if (childPrefab && childPrefab->GetName() == childName) {
+                        return childPrefab.get();
+                    }
+                }
+                return nullptr;
+            }
+
+            bool HasSceneOnlyChild(const ECS::GameObject* go, const ECS::Prefab* baselinePrefab)
+            {
+                if (!go || !baselinePrefab) {
+                    return false;
+                }
+
+                for (ECS::GameObject* child : go->GetChildren()) {
+                    if (!child) {
+                        continue;
+                    }
+                    if (!FindDirectChildPrefab(baselinePrefab, child->GetName())) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            bool HasTransformOverride(const ECS::GameObject* go, const ECS::Prefab* baselinePrefab)
+            {
+                if (!go || !baselinePrefab) {
+                    return false;
+                }
+
+                const auto& transform = go->GetTransform();
+                return transform.GetPosition() != baselinePrefab->GetPosition()
+                    || transform.GetRotation() != baselinePrefab->GetRotation()
+                    || transform.GetScale() != baselinePrefab->GetScale();
+            }
+
+            bool ShouldPersistPrefabChild(const ECS::GameObject* go, const ECS::Prefab* baselinePrefab)
+            {
+                if (!go || !baselinePrefab) {
+                    return true;
+                }
+
+                if (HasSceneOnlyChild(go, baselinePrefab)) {
+                    return true;
+                }
+
+                if (HasTransformOverride(go, baselinePrefab)) {
+                    return true;
+                }
+
+                if (!go->GetComponents().empty() && baselinePrefab->GetSnapshots().empty()) {
+                    return true;
+                }
+
+                return false;
+            }
+        }
+
+        void SceneSaver::WriteGameObject(std::ofstream& file, const ECS::GameObject* go, int indent,
+            const ECS::Prefab* baselinePrefab)
+        {
+            if (go->IsTransient()) {
+                return;
+            }
+
+            if (baselinePrefab && !ShouldPersistPrefabChild(go, baselinePrefab)) {
+                return;
+            }
 
             std::string ind = ScenePropertySerializer::Indent(indent);
 
@@ -125,11 +199,22 @@ namespace RTBEngine {
                 WriteComponents(file, go, indent + 1);
             }
 
+            const ECS::Prefab* instancePrefab = nullptr;
+            if (go->IsPrefabInstance() && ECS::PrefabRegistry::GetInstance().Has(go->GetPrefabName())) {
+                instancePrefab = ECS::PrefabRegistry::GetInstance().Get(go->GetPrefabName());
+            }
+
             const auto& children = go->GetChildren();
             if (!children.empty()) {
                 file << ind << "    children = {\n";
                 for (const auto* child : children) {
-                    WriteGameObject(file, child, indent + 2);
+                    const ECS::Prefab* childBaseline = nullptr;
+                    if (instancePrefab) {
+                        childBaseline = FindDirectChildPrefab(instancePrefab, child->GetName());
+                    } else if (baselinePrefab) {
+                        childBaseline = FindDirectChildPrefab(baselinePrefab, child->GetName());
+                    }
+                    WriteGameObject(file, child, indent + 2, childBaseline);
                 }
                 file << ind << "    }\n";
             }

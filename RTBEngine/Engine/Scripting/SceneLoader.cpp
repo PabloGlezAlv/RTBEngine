@@ -277,10 +277,16 @@ namespace RTBEngine {
                             break;
                         }
                     }
-                } else {
+                }
+
+                if (!existing && !childName.empty()) {
                     existing = FindDirectChild(parent, "", childName);
                 }
+
                 if (existing) {
+                    if (!childUuid.empty() && existing->GetUUID() != childUuid) {
+                        existing->SetUUID(childUuid);
+                    }
                     ApplySceneGameObjectFromTable(L, childTableIndex, scene, existing, parentingRequests, uuidRefRequests);
                 } else {
                     ECS::GameObject* child = ProcessGameObject(L, childTableIndex, scene, parentingRequests, uuidRefRequests);
