@@ -112,7 +112,10 @@ namespace RTBEngine {
                     << ",\n";
             }
 
-            if (go->IsPrefabInstance())
+            const bool hasRegisteredPrefab = go->IsPrefabInstance() &&
+                ECS::PrefabRegistry::GetInstance().Has(go->GetPrefabName());
+
+            if (hasRegisteredPrefab)
             {
                 WritePrefabInstance(file, go, indent);
             }

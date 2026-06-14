@@ -9,7 +9,6 @@
 #include "../Math/Quaternions/Quaternion.h"
 #include <cmath>
 #include <algorithm>
-#include <unordered_set>
 
 namespace RTBEngine {
     namespace Animation {
@@ -158,10 +157,20 @@ namespace RTBEngine {
                 }
             }
 
-            if (!defaultClip.empty() && GetClip(defaultClip) != nullptr) {
-                Play(defaultClip, true);
+            if (!currentClipName.empty() && GetClip(currentClipName) != nullptr) {
+                if (playing) {
+                    Play(currentClipName, looping);
+                } else {
+                    SelectClip(currentClipName, looping);
+                }
+            } else if (!defaultClip.empty() && GetClip(defaultClip) != nullptr) {
+                if (playing) {
+                    Play(defaultClip, looping);
+                } else {
+                    SelectClip(defaultClip, looping);
+                }
             } else if (playing && !clips.empty()) {
-                Play(clips.begin()->first, true);
+                Play(clips.begin()->first, looping);
             }
         }
 
@@ -414,79 +423,6 @@ namespace RTBEngine {
             SyncBoneGameObjects();
         }
 
-        void Animator::CaptureBoneAttachmentTransforms()
-        {
-            attachmentLocalSnapshots.clear();
-            if (!skeleton || !owner) {
-                return;
-            }
-
-            std::unordered_set<std::string> boneNames;
-            const size_t boneCount = skeleton->GetBoneCount();
-            boneNames.reserve(boneCount);
-            for (size_t i = 0; i < boneCount; ++i) {
-                if (const Bone* bone = skeleton->GetBone(static_cast<int>(i))) {
-                    boneNames.insert(bone->name);
-                }
-            }
-
-            for (size_t i = 0; i < boneCount; ++i) {
-                const Bone* bone = skeleton->GetBone(static_cast<int>(i));
-                if (!bone) {
-                    continue;
-                }
-
-                ECS::GameObject* boneGO = FindDescendantByName(owner, bone->name);
-                if (!boneGO) {
-                    continue;
-                }
-
-                for (ECS::GameObject* child : boneGO->GetChildren()) {
-                    if (!child || boneNames.count(child->GetName()) > 0) {
-                        continue;
-                    }
-
-                    LocalTransformSnapshot snapshot;
-                    snapshot.position = child->GetTransform().GetPosition();
-                    snapshot.rotation = child->GetTransform().GetRotation();
-                    snapshot.scale = child->GetTransform().GetScale();
-                    attachmentLocalSnapshots[child] = snapshot;
-                }
-            }
-        }
-
-        void Animator::RestoreBoneAttachmentTransforms()
-        {
-            for (const auto& entry : attachmentLocalSnapshots) {
-                ECS::GameObject* child = entry.first;
-                if (!child) {
-                    continue;
-                }
-
-                const LocalTransformSnapshot& snapshot = entry.second;
-                child->GetTransform().SetPosition(snapshot.position);
-                child->GetTransform().SetRotation(snapshot.rotation);
-                child->GetTransform().SetScale(snapshot.scale);
-            }
-        }
-
-        void Animator::RefreshBoneAttachmentTransform(ECS::GameObject* attachment)
-        {
-            if (!attachment) {
-                return;
-            }
-
-            const auto it = attachmentLocalSnapshots.find(attachment);
-            if (it == attachmentLocalSnapshots.end()) {
-                return;
-            }
-
-            LocalTransformSnapshot& snapshot = it->second;
-            snapshot.position = attachment->GetTransform().GetPosition();
-            snapshot.rotation = attachment->GetTransform().GetRotation();
-            snapshot.scale = attachment->GetTransform().GetScale();
-        }
-
         bool Animator::IsBoneGameObject(const ECS::GameObject* go) const
         {
             if (!go) {
@@ -506,8 +442,6 @@ namespace RTBEngine {
             if (!skeleton || !owner || boneGOsCreated || !scene) {
                 return;
             }
-
-            CaptureBoneAttachmentTransforms();
 
             const size_t boneCount = skeleton->GetBoneCount();
             boneGameObjects.assign(boneCount, nullptr);
@@ -584,8 +518,6 @@ namespace RTBEngine {
             }
             if (currentClip && playing) {
                 UpdateBoneTransforms();
-            } else {
-                RestoreBoneAttachmentTransforms();
             }
         }
 
@@ -607,8 +539,6 @@ namespace RTBEngine {
                 boneGO->GetTransform().SetRotation(rot);
                 boneGO->GetTransform().SetScale(scale);
             }
-
-            RestoreBoneAttachmentTransforms();
         }
 
         ECS::GameObject* Animator::GetBoneGameObject(const std::string& boneName) const

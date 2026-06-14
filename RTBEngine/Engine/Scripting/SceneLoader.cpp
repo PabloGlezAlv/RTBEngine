@@ -151,8 +151,13 @@ namespace RTBEngine {
             std::string savedUUID = SceneParsingUtils::ReadOptionalString(L, tableIndex, "uuid", "");
             std::string prefabName = SceneParsingUtils::ReadOptionalString(L, tableIndex, "prefab", "");
 
-            if (!prefabName.empty())
-                return ProcessPrefabInstance(L, tableIndex, scene, name, savedUUID, uuidRefRequests);
+            if (!prefabName.empty() && ECS::PrefabRegistry::GetInstance().Has(prefabName)) {
+                return ProcessPrefabInstance(L, tableIndex, scene, name, savedUUID, parentingRequests, uuidRefRequests);
+            }
+
+            if (!prefabName.empty()) {
+                RTB_WARN("SceneLoader: Prefab '" + prefabName + "' not found for '" + name + "' — loading as plain GameObject");
+            }
 
             ECS::GameObject* go = new ECS::GameObject(name);
             if (!savedUUID.empty())
@@ -177,15 +182,135 @@ namespace RTBEngine {
             return go;
         }
 
+        ECS::GameObject* SceneLoader::FindDirectChild(ECS::GameObject* parent,
+            const std::string& uuid, const std::string& name)
+        {
+            if (!parent) {
+                return nullptr;
+            }
+
+            if (!uuid.empty()) {
+                for (ECS::GameObject* child : parent->GetChildren()) {
+                    if (child && child->GetUUID() == uuid) {
+                        return child;
+                    }
+                }
+            }
+
+            if (!name.empty()) {
+                for (ECS::GameObject* child : parent->GetChildren()) {
+                    if (child && child->GetName() == name) {
+                        return child;
+                    }
+                }
+            }
+
+            return nullptr;
+        }
+
+        void SceneLoader::ApplySceneGameObjectFromTable(lua_State* L, int tableIndex, ECS::Scene* scene,
+            ECS::GameObject* go,
+            std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests,
+            std::vector<UUIDRefRequest>& uuidRefRequests)
+        {
+            if (!go) {
+                return;
+            }
+
+            go->SetActive(SceneParsingUtils::ReadOptionalBool(L, tableIndex, "active", go->IsActive()));
+            ReadTransform(L, tableIndex, go);
+            ReadCollisionLayer(L, tableIndex, go);
+
+            lua_getfield(L, tableIndex, "overrides");
+            if (lua_istable(L, -1)) {
+                int overridesIndex = lua_gettop(L);
+                lua_getfield(L, overridesIndex, "components");
+                if (lua_istable(L, -1)) {
+                    ProcessComponents(L, lua_gettop(L), go, uuidRefRequests);
+                }
+                lua_pop(L, 1);
+            }
+            lua_pop(L, 1);
+
+            lua_getfield(L, tableIndex, "components");
+            if (lua_istable(L, -1)) {
+                ProcessComponents(L, lua_gettop(L), go, uuidRefRequests);
+            }
+            lua_pop(L, 1);
+
+            MergeSceneChildren(L, tableIndex, scene, go, parentingRequests, uuidRefRequests);
+        }
+
+        void SceneLoader::MergeSceneChildren(lua_State* L, int tableIndex, ECS::Scene* scene,
+            ECS::GameObject* parent,
+            std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests,
+            std::vector<UUIDRefRequest>& uuidRefRequests)
+        {
+            if (!parent) {
+                return;
+            }
+
+            lua_getfield(L, tableIndex, "children");
+            if (!lua_istable(L, -1)) {
+                lua_pop(L, 1);
+                return;
+            }
+
+            const int childrenTableIndex = lua_gettop(L);
+            const int count = luaL_len(L, childrenTableIndex);
+            for (int c = 1; c <= count; ++c) {
+                lua_geti(L, childrenTableIndex, c);
+                if (!lua_istable(L, -1)) {
+                    lua_pop(L, 1);
+                    continue;
+                }
+
+                const int childTableIndex = lua_gettop(L);
+                const std::string childUuid = SceneParsingUtils::ReadOptionalString(L, childTableIndex, "uuid", "");
+                const std::string childName = SceneParsingUtils::ReadOptionalString(L, childTableIndex, "name", "");
+
+                ECS::GameObject* existing = nullptr;
+                if (!childUuid.empty()) {
+                    for (ECS::GameObject* child : parent->GetChildren()) {
+                        if (child && child->GetUUID() == childUuid) {
+                            existing = child;
+                            break;
+                        }
+                    }
+                } else {
+                    existing = FindDirectChild(parent, "", childName);
+                }
+                if (existing) {
+                    ApplySceneGameObjectFromTable(L, childTableIndex, scene, existing, parentingRequests, uuidRefRequests);
+                } else {
+                    ECS::GameObject* child = ProcessGameObject(L, childTableIndex, scene, parentingRequests, uuidRefRequests);
+                    if (child) {
+                        scene->AddGameObject(child);
+                        child->SetParent(parent);
+                    }
+                }
+
+                lua_pop(L, 1);
+            }
+
+            lua_pop(L, 1);
+        }
+
         ECS::GameObject* SceneLoader::ProcessPrefabInstance(lua_State* L, int tableIndex, ECS::Scene* scene,
             const std::string& name, const std::string& uuid,
+            std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests,
             std::vector<UUIDRefRequest>& uuidRefRequests)
         {
             std::string prefabName = SceneParsingUtils::ReadOptionalString(L, tableIndex, "prefab", "");
             const ECS::Prefab* prefab = ECS::PrefabRegistry::GetInstance().Get(prefabName);
             if (!prefab) {
                 RTB_WARN("SceneLoader: Prefab '" + prefabName + "' not found — creating empty GO");
-                return new ECS::GameObject(name);
+                ECS::GameObject* go = new ECS::GameObject(name);
+                if (!uuid.empty()) {
+                    go->SetUUID(uuid);
+                }
+                ApplySceneGameObjectFromTable(L, tableIndex, scene, go, parentingRequests, uuidRefRequests);
+                return go;
             }
 
             std::vector<ECS::GameObject*> childGOs;
@@ -213,6 +338,8 @@ namespace RTBEngine {
                 lua_pop(L, 1);
             }
             lua_pop(L, 1);
+
+            MergeSceneChildren(L, tableIndex, scene, go, parentingRequests, uuidRefRequests);
 
             return go;
         }

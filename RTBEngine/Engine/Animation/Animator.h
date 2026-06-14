@@ -79,7 +79,6 @@ namespace RTBEngine {
             ECS::GameObject* GetBoneGameObject(int boneIndex) const;
             bool AreBoneGOsCreated() const { return boneGOsCreated; }
             bool IsBoneGameObject(const ECS::GameObject* go) const;
-            void RefreshBoneAttachmentTransform(ECS::GameObject* attachment);
             void SelectClip(const std::string& clipName, bool loop = true);
 
             // Reflected properties (Proxy)
@@ -104,23 +103,13 @@ namespace RTBEngine {
             std::vector<Math::Matrix4> finalBoneTransforms;
             std::vector<Rendering::Mesh*> meshes;
 
-            //Bone GO sync
-            struct LocalTransformSnapshot {
-                Math::Vector3 position = Math::Vector3::Zero();
-                Math::Quaternion rotation = Math::Quaternion::Identity();
-                Math::Vector3 scale = Math::Vector3(1.0f, 1.0f, 1.0f);
-            };
-
             std::vector<Math::Matrix4> currentLocalTransforms;
             std::vector<ECS::GameObject*> boneGameObjects;
-            std::unordered_map<ECS::GameObject*, LocalTransformSnapshot> attachmentLocalSnapshots;
             bool boneGOsCreated = false;
 
             void EnsureModelDataLoaded();
             void UpdateBoneTransforms();
             void ApplyBindPoseTransforms();
-            void CaptureBoneAttachmentTransforms();
-            void RestoreBoneAttachmentTransforms();
         };
 #pragma warning(pop)
 

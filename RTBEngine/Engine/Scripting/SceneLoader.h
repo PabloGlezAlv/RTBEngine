@@ -40,6 +40,7 @@ namespace RTBEngine {
 
             static ECS::GameObject* ProcessPrefabInstance(lua_State* L, int tableIndex, ECS::Scene* scene,
                 const std::string& name, const std::string& uuid,
+                std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests,
                 std::vector<UUIDRefRequest>& uuidRefRequests);
 
             static void ProcessComponents(lua_State* L, int arrayIndex, ECS::GameObject* gameObject,
@@ -51,6 +52,19 @@ namespace RTBEngine {
                 ECS::GameObject* parent,
                 std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests,
                 std::vector<UUIDRefRequest>& uuidRefRequests);
+
+            static void MergeSceneChildren(lua_State* L, int tableIndex, ECS::Scene* scene,
+                ECS::GameObject* parent,
+                std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests,
+                std::vector<UUIDRefRequest>& uuidRefRequests);
+
+            static void ApplySceneGameObjectFromTable(lua_State* L, int tableIndex, ECS::Scene* scene,
+                ECS::GameObject* go,
+                std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests,
+                std::vector<UUIDRefRequest>& uuidRefRequests);
+
+            static ECS::GameObject* FindDirectChild(ECS::GameObject* parent,
+                const std::string& uuid, const std::string& name);
 
             static void ResolveParenting(ECS::Scene* scene,
                 const std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests);
