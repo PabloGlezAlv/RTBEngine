@@ -25,6 +25,11 @@ namespace RTBEngine {
             return std::string(buf);
         }
 
+        std::string GameObject::GenerateNewUUID()
+        {
+            return GenerateUUID();
+        }
+
 
         GameObject::GameObject(const std::string& name)
             : name(name)

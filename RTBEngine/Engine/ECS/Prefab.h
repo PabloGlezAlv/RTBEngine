@@ -37,9 +37,9 @@ namespace RTBEngine {
             // Instantiates the root GameObject and all its children recursively.
             // outChildren receives every child GO in scene-flat order so the caller
             // can add them to the scene (same pattern as SceneLoader::ProcessChildren).
-            GameObject* Instantiate(GameObject* parent, std::vector<GameObject*>& outChildren) const;
+            GameObject* Instantiate(GameObject* parent, std::vector<GameObject*>& outChildren, bool regenerateUuids = false) const;
             // Convenience overload for flat prefabs (no children).
-            GameObject* Instantiate(GameObject* parent = nullptr) const;
+            GameObject* Instantiate(GameObject* parent = nullptr, bool regenerateUuids = false) const;
 
             const std::string& GetName() const { return name; }
             const std::vector<ComponentSnapshot>& GetSnapshots() const { return componentSnapshots; }

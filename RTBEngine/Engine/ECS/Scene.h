@@ -71,6 +71,7 @@ namespace RTBEngine {
             void FlushPendingCommands();
             void QueueLifecycleInitialization(GameObject* root);
             void FlushPendingLifecycle();
+            bool OwnsGameObject(GameObject* target) const;
 
             std::string name;
             std::vector<std::unique_ptr<GameObject>> gameObjects;

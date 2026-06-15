@@ -51,6 +51,7 @@ namespace RTBEngine {
 
             const std::string& GetUUID() const { return uuid; }
             void SetUUID(const std::string& id) { uuid = id; }
+            static std::string GenerateNewUUID();
 
             const std::string& GetPrefabName() const { return prefabName; }
             void SetPrefabName(const std::string& name) { prefabName = name; }

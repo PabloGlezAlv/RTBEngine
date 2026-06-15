@@ -249,7 +249,7 @@ namespace RTBEngine {
             return prefab;
         }
 
-        GameObject* Prefab::Instantiate(GameObject* parent, std::vector<GameObject*>& outChildren) const
+        GameObject* Prefab::Instantiate(GameObject* parent, std::vector<GameObject*>& outChildren, bool regenerateUuids) const
         {
             struct PendingReferencePatch {
                 Component* component = nullptr;
@@ -259,6 +259,7 @@ namespace RTBEngine {
 
             struct InstantiateContext {
                 std::unordered_map<std::string, GameObject*> sourceUuidToInstance;
+                std::unordered_map<std::string, std::string> uuidRemap;
                 std::vector<PendingReferencePatch> pendingReferencePatches;
                 std::vector<Component*> createdComponents;
                 Scene* activeScene = nullptr;
@@ -266,6 +267,14 @@ namespace RTBEngine {
 
             InstantiateContext context;
             context.activeScene = SceneManager::GetInstance().GetActiveScene();
+
+            auto resolveReferenceUuid = [&](const std::string& referenceUuid) -> std::string {
+                auto remapIt = context.uuidRemap.find(referenceUuid);
+                if (remapIt != context.uuidRemap.end()) {
+                    return remapIt->second;
+                }
+                return referenceUuid;
+            };
 
             std::function<GameObject*(const Prefab&, GameObject*)> instantiateNode =
                 [&](const Prefab& nodePrefab, GameObject* nodeParent) -> GameObject*
@@ -277,9 +286,17 @@ namespace RTBEngine {
                 go->GetTransform().SetScale(nodePrefab.scale);
                 go->SetCollisionLayer(nodePrefab.collisionLayer);
 
-                if (!nodePrefab.sourceUuid.empty()) {
-                    go->SetUUID(nodePrefab.sourceUuid);
-                    context.sourceUuidToInstance[nodePrefab.sourceUuid] = go;
+                std::string instanceUuid = nodePrefab.sourceUuid;
+                if (regenerateUuids || instanceUuid.empty()) {
+                    instanceUuid = GameObject::GenerateNewUUID();
+                }
+
+                if (!instanceUuid.empty()) {
+                    if (regenerateUuids && !nodePrefab.sourceUuid.empty()) {
+                        context.uuidRemap[nodePrefab.sourceUuid] = instanceUuid;
+                    }
+                    go->SetUUID(instanceUuid);
+                    context.sourceUuidToInstance[instanceUuid] = go;
                 }
 
                 for (const ComponentSnapshot& snap : nodePrefab.componentSnapshots)
@@ -342,12 +359,13 @@ namespace RTBEngine {
 
                 if (patch.property->type == Reflection::PropertyType::GameObjectRef) {
                     GameObject* resolvedObject = nullptr;
+                    const std::string resolvedUuid = resolveReferenceUuid(patch.referenceValue);
 
-                    auto localIt = context.sourceUuidToInstance.find(patch.referenceValue);
+                    auto localIt = context.sourceUuidToInstance.find(resolvedUuid);
                     if (localIt != context.sourceUuidToInstance.end()) {
                         resolvedObject = localIt->second;
                     } else if (context.activeScene) {
-                        resolvedObject = context.activeScene->FindGameObjectByUUID(patch.referenceValue);
+                        resolvedObject = context.activeScene->FindGameObjectByUUID(resolvedUuid);
                     }
 
                     void* data = patch.property->GetMutableData(patch.component);
@@ -363,7 +381,7 @@ namespace RTBEngine {
                         continue;
                     }
 
-                    const std::string targetUuid = patch.referenceValue.substr(0, slash);
+                    const std::string targetUuid = resolveReferenceUuid(patch.referenceValue.substr(0, slash));
                     const std::string targetType = patch.referenceValue.substr(slash + 1);
 
                     GameObject* targetGameObject = nullptr;
@@ -394,10 +412,10 @@ namespace RTBEngine {
             return root;
         }
 
-        GameObject* Prefab::Instantiate(GameObject* parent) const
+        GameObject* Prefab::Instantiate(GameObject* parent, bool regenerateUuids) const
         {
             std::vector<GameObject*> discarded;
-            return Instantiate(parent, discarded);
+            return Instantiate(parent, discarded, regenerateUuids);
         }
 
     }

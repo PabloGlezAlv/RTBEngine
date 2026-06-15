@@ -100,3 +100,19 @@ imgui.ini
 
 # SDK Output
 RTBEngine_SDK/
+
+# -----------------------------------------------------------------------------
+# Engine Assets/ — always versioned in git.
+# Overrides Visual Studio [Oo]bj/, [Bb]in/, *.obj and similar rules above.
+# -----------------------------------------------------------------------------
+!RTBEngine/Assets/
+!RTBEngine/Assets/**
+!RTBEngine/Assets/**/obj/
+!RTBEngine/Assets/**/obj/**
+!RTBEngine/Assets/**/bin/
+!RTBEngine/Assets/**/bin/**
+!RTBEngine/Assets/**/*.obj
+!RTBEngine/Assets/**/*.meta
+
+# Engine asset temp/backup files (never commit)
+RTBEngine/Assets/**/*.tmp

@@ -99,6 +99,38 @@ namespace {
 
 		return false;
 	}
+
+	bool OwnsGameObject(
+		const std::vector<std::unique_ptr<RTBEngine::ECS::GameObject>>& objects,
+		RTBEngine::ECS::GameObject* target)
+	{
+		if (!target) {
+			return false;
+		}
+
+		return std::any_of(objects.begin(), objects.end(),
+			[target](const std::unique_ptr<RTBEngine::ECS::GameObject>& obj) {
+				return obj.get() == target;
+			});
+	}
+
+	void PrunePendingLifecycleRoots(
+		std::vector<RTBEngine::ECS::GameObject*>& pendingLifecycleRoots,
+		const std::unordered_set<RTBEngine::ECS::GameObject*>& removed)
+	{
+		if (removed.empty() || pendingLifecycleRoots.empty()) {
+			return;
+		}
+
+		pendingLifecycleRoots.erase(
+			std::remove_if(
+				pendingLifecycleRoots.begin(),
+				pendingLifecycleRoots.end(),
+				[&removed](RTBEngine::ECS::GameObject* root) {
+					return !root || removed.find(root) != removed.end();
+				}),
+			pendingLifecycleRoots.end());
+	}
 }
 
 RTBEngine::ECS::Scene::Scene(const std::string& name) : name(name)
@@ -187,6 +219,19 @@ void RTBEngine::ECS::Scene::QueueLifecycleInitialization(GameObject* root)
 	}
 }
 
+bool RTBEngine::ECS::Scene::OwnsGameObject(GameObject* target) const
+{
+	if (!target) {
+		return false;
+	}
+
+	if (OwnsGameObject(gameObjects, target)) {
+		return true;
+	}
+
+	return OwnsGameObject(pendingAdds, target);
+}
+
 void RTBEngine::ECS::Scene::FlushPendingLifecycle()
 {
 	if (!lifecycleComplete || pendingLifecycleRoots.empty()) {
@@ -197,9 +242,11 @@ void RTBEngine::ECS::Scene::FlushPendingLifecycle()
 	pendingLifecycleRoots.clear();
 
 	for (GameObject* root : roots) {
-		if (root) {
-			SceneLifecycle::BringHierarchyToLife(this, root);
+		if (!root || !OwnsGameObject(root)) {
+			continue;
 		}
+
+		SceneLifecycle::BringHierarchyToLife(this, root);
 	}
 }
 
@@ -222,6 +269,8 @@ void RTBEngine::ECS::Scene::RemoveGameObject(GameObject* gameObject)
 	}
 
 	const std::unordered_set<GameObject*> hierarchySet(hierarchy.begin(), hierarchy.end());
+
+	PrunePendingLifecycleRoots(pendingLifecycleRoots, hierarchySet);
 
 	pendingRemoves.erase(
 		std::remove_if(
