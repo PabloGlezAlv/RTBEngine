@@ -100,7 +100,7 @@ namespace {
 		return false;
 	}
 
-	bool OwnsGameObject(
+	bool ContainsGameObject(
 		const std::vector<std::unique_ptr<RTBEngine::ECS::GameObject>>& objects,
 		RTBEngine::ECS::GameObject* target)
 	{
@@ -225,11 +225,11 @@ bool RTBEngine::ECS::Scene::OwnsGameObject(GameObject* target) const
 		return false;
 	}
 
-	if (OwnsGameObject(gameObjects, target)) {
+	if (ContainsGameObject(gameObjects, target)) {
 		return true;
 	}
 
-	return OwnsGameObject(pendingAdds, target);
+	return ContainsGameObject(pendingAdds, target);
 }
 
 void RTBEngine::ECS::Scene::FlushPendingLifecycle()

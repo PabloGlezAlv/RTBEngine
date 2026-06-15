@@ -21,6 +21,7 @@ namespace RTBEngine {
             Math::Vector3 GetSize() const { return boxSize; }
 
             void FitToMesh(Rendering::Mesh* mesh);
+            void FitToLocalBounds(const Math::Vector3& localMin, const Math::Vector3& localMax);
 
         private:
             void UpdateShape();

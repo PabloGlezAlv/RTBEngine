@@ -4,7 +4,10 @@
 #include "RigidBodyComponent.h"
 #include "SphereColliderComponent.h"
 #include "CapsuleColliderComponent.h"
+#include "MeshRenderer.h"
 #include "GameObject.h"
+#include <algorithm>
+#include <cmath>
 
 namespace {
 	template <typename ColliderComponent>
@@ -91,19 +94,69 @@ namespace RTBEngine {
 			ownsBulletObject = takeOwnership;
 		}
 
-		void BoxColliderComponent::SetSize(const Math::Vector3& size)
+		void BoxColliderComponent::SetSize(const Math::Vector3& newSize)
 		{
+			this->size = newSize;
 			if (boxCollider) {
-				boxCollider->SetSize(size);
+				boxCollider->SetSize(newSize);
 			}
 		}
 
 		Math::Vector3 BoxColliderComponent::GetSize() const
 		{
+			return size;
+		}
+
+		Math::Vector3 BoxColliderComponent::GetCenterOffset() const
+		{
 			if (boxCollider) {
-				return boxCollider->GetSize();
+				return boxCollider->GetCenter();
 			}
-			return Math::Vector3(1.0f, 1.0f, 1.0f);
+
+			return Math::Vector3(0.0f, 0.0f, 0.0f);
+		}
+
+		void BoxColliderComponent::FitToOwnerMesh()
+		{
+			if (!owner || !boxCollider) {
+				return;
+			}
+
+			MeshRenderer* meshRenderer = owner->GetComponent<MeshRenderer>();
+			if (!meshRenderer) {
+				return;
+			}
+
+			if (!meshRenderer->IsMultiMesh()) {
+				Rendering::Mesh* mesh = meshRenderer->GetMesh();
+				if (!mesh) {
+					return;
+				}
+
+				boxCollider->FitToMesh(mesh);
+			} else {
+				Math::Vector3 localMin;
+				Math::Vector3 localMax;
+				meshRenderer->GetCombinedAABB(localMin, localMax);
+				if (localMin == localMax) {
+					return;
+				}
+
+				boxCollider->FitToLocalBounds(localMin, localMax);
+			}
+
+			const Math::Vector3 objectScale = owner->GetTransform().GetScale();
+			const Math::Vector3 fittedSize = boxCollider->GetSize();
+			const Math::Vector3 fittedCenter = boxCollider->GetCenter();
+
+			SetSize(Math::Vector3(
+				std::max(std::abs(fittedSize.x * objectScale.x), 0.001f),
+				std::max(std::abs(fittedSize.y * objectScale.y), 0.001f),
+				std::max(std::abs(fittedSize.z * objectScale.z), 0.001f)));
+			boxCollider->SetCenter(Math::Vector3(
+				fittedCenter.x * objectScale.x,
+				fittedCenter.y * objectScale.y,
+				fittedCenter.z * objectScale.z));
 		}
 
 		void BoxColliderComponent::SetIsTrigger(bool trigger)

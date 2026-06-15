@@ -32,8 +32,20 @@ namespace RTBEngine {
 
         void BoxCollider::FitToMesh(Rendering::Mesh* mesh) {
             if (mesh) {
-                boxSize = mesh->GetAABBSize();
+                FitToLocalBounds(mesh->GetAABBMin(), mesh->GetAABBMax());
+                return;
             }
+
+            UpdateShape();
+        }
+
+        void BoxCollider::FitToLocalBounds(const Math::Vector3& localMin, const Math::Vector3& localMax) {
+            const Math::Vector3 extent = localMax - localMin;
+            boxSize = Math::Vector3(
+                std::max(std::abs(extent.x), 0.001f),
+                std::max(std::abs(extent.y), 0.001f),
+                std::max(std::abs(extent.z), 0.001f));
+            SetCenter((localMin + localMax) * 0.5f);
             UpdateShape();
         }
 

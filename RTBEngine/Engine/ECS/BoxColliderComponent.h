@@ -29,6 +29,10 @@ namespace RTBEngine {
 			// Size
 			void SetSize(const Math::Vector3& size);
 			Math::Vector3 GetSize() const;
+			Math::Vector3 GetCenterOffset() const;
+
+			// Fits size/center to the owner's MeshRenderer bounds in local space.
+			void FitToOwnerMesh();
 
 			// Trigger mode
 			void SetIsTrigger(bool trigger);
