@@ -21,6 +21,7 @@ namespace RTBEngine {
         }
 
         std::vector<Rendering::Mesh*> ResourceManager::emptyMeshVector;
+        Rendering::ModelData ResourceManager::emptyModelData;
 
         ResourceManager& ResourceManager::GetInstance()
         {
@@ -329,6 +330,41 @@ namespace RTBEngine {
             modelMeshPtrs[path] = meshPtrs;
 
             return modelMeshPtrs[path];
+        }
+
+        const Rendering::ModelData& ResourceManager::GetModelData(const std::string& path)
+        {
+            auto it = modelDataCache.find(path);
+            if (it != modelDataCache.end()) {
+                return it->second;
+            }
+            return emptyModelData;
+        }
+
+        const Rendering::ModelData& ResourceManager::LoadModelData(const std::string& path)
+        {
+            if (path.empty()) {
+                return emptyModelData;
+            }
+
+            auto it = modelDataCache.find(path);
+            if (it != modelDataCache.end()) {
+                return it->second;
+            }
+
+            Rendering::ModelData loaded =
+                Rendering::ModelLoader::LoadModelWithAnimations(ResolvePathForRead(path));
+            if (loaded.meshes.empty()) {
+                RTB_ERROR("ResourceManager: Failed to load model data: " + path);
+                return emptyModelData;
+            }
+
+            RegisterMeshes(path, loaded.meshes);
+            loaded.meshes = modelMeshPtrs[path];
+            loaded.modelAssetPath = path;
+
+            auto [insertedIt, inserted] = modelDataCache.emplace(path, std::move(loaded));
+            return insertedIt->second;
         }
 
         void ResourceManager::RegisterMeshes(const std::string& path, const std::vector<Rendering::Mesh*>& meshes)
@@ -642,6 +678,7 @@ namespace RTBEngine {
             textures.clear();
             modelMeshPtrs.clear();
             modelMeshes.clear();
+            modelDataCache.clear();
             audioClips.clear();
             fonts.clear();
             scenes.clear();

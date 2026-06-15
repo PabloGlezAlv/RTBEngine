@@ -14,14 +14,6 @@ namespace RTBEngine {
     namespace Animation {
 
         namespace {
-            void ReleaseLoadedModelMeshes(Rendering::ModelData& data)
-            {
-                for (Rendering::Mesh* mesh : data.meshes) {
-                    delete mesh;
-                }
-                data.meshes.clear();
-            }
-
             ECS::GameObject* FindDescendantByName(ECS::GameObject* root, const std::string& name)
             {
                 if (!root) {
@@ -105,14 +97,13 @@ namespace RTBEngine {
             if (!modelRef.empty() && !skeleton && clips.empty()) {
                 auto& resources = Core::ResourceManager::GetInstance();
 
-                Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelRef);
+                const Rendering::ModelData& modelData = resources.LoadModelData(modelRef);
 
                 if (modelData.skeleton) {
                     SetSkeleton(modelData.skeleton);
                 }
 
                 if (!modelData.meshes.empty()) {
-                    resources.RegisterMeshes(modelRef, modelData.meshes);
                     SetMeshes(modelData.meshes);
                 }
 
@@ -252,9 +243,9 @@ namespace RTBEngine {
                 clipName = sourceFbx.substr(clipSeparator + 1);
             }
 
-            Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelPath);
+            auto& resources = Core::ResourceManager::GetInstance();
+            const Rendering::ModelData& modelData = resources.LoadModelData(modelPath);
             if (modelData.animations.empty()) {
-                ReleaseLoadedModelMeshes(modelData);
                 return false;
             }
 
@@ -272,12 +263,10 @@ namespace RTBEngine {
             }
 
             if (!selectedClip) {
-                ReleaseLoadedModelMeshes(modelData);
                 return false;
             }
 
             AddClip(alias, selectedClip);
-            ReleaseLoadedModelMeshes(modelData);
             return true;
         }
 

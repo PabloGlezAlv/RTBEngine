@@ -157,12 +157,10 @@ namespace RTBEngine {
                     Rendering::Mesh* mesh = nullptr;
                     if (!path.empty())
                     {
-                        Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(path);
+                        const Rendering::ModelData& modelData = resources.LoadModelData(path);
 
                         if (!modelData.meshes.empty())
                         {
-                            resources.RegisterMeshes(path, modelData.meshes);
-
                             auto* meshRenderer = dynamic_cast<MeshRenderer*>(target);
 
                             Rendering::FbxBindingContext ctx{ resources, path, modelData };

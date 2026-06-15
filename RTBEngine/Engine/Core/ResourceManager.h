@@ -63,6 +63,10 @@ namespace RTBEngine {
             const std::vector<Rendering::Mesh*>& LoadModelMeshes(const std::string& path);
             void RegisterMeshes(const std::string& path, const std::vector<Rendering::Mesh*>& meshes);
 
+            // Full model data (meshes, skeleton, animations) — cached after first load.
+            const Rendering::ModelData& GetModelData(const std::string& path);
+            const Rendering::ModelData& LoadModelData(const std::string& path);
+
             // Audio management
             Audio::AudioClip* GetAudioClip(const std::string& path);
             Audio::AudioClip* LoadAudioClip(const std::string& path, bool stream = false);
@@ -115,7 +119,9 @@ namespace RTBEngine {
 
             // Cache for raw pointers (for GetModelMeshes return)
             std::unordered_map<std::string, std::vector<Rendering::Mesh*>> modelMeshPtrs;
+            std::unordered_map<std::string, Rendering::ModelData> modelDataCache;
             static std::vector<Rendering::Mesh*> emptyMeshVector;
+            static Rendering::ModelData emptyModelData;
 			std::unordered_map<std::string, std::unique_ptr<Rendering::Font>> fonts;
             std::unordered_map<std::string, std::unique_ptr<ECS::Scene>> scenes;
 			Rendering::Font* defaultFont = nullptr;
