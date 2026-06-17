@@ -3,11 +3,13 @@
 #include "Transform.h"
 #include "Component.h"
 #include "../Rendering/Camera.h"
+#include "../Reflection/TypeInfo.h"
 #include <string>
 #include <vector>
 #include <memory>
 #include <functional>
-#include <typeinfo>
+#include <unordered_map>
+#include <type_traits>
 
 namespace RTBEngine {
     namespace Reflection {
@@ -96,12 +98,16 @@ namespace RTBEngine {
             void SetLifecycleInitialized(bool initialized) { lifecycleInitialized = initialized; }
 
         private:
+            void RegisterComponentType(Component* component, const Reflection::TypeInfo* typeInfoOverride);
+            void UnregisterComponentType(Component* component);
+
             std::string name;
             std::string uuid;
             std::string prefabName;
 
             Transform transform;
             std::vector<ComponentPtr> components;
+            std::unordered_map<const Reflection::TypeInfo*, Component*> componentsByType;
             bool isActive;
             bool lifecycleInitialized = false;
             bool isBeingDestroyed = false;
@@ -114,12 +120,55 @@ namespace RTBEngine {
         };
         #pragma warning(pop)
 
+        namespace ComponentLookup {
+
+            template<typename T, typename = void>
+            struct HasStaticTypeInfo : std::false_type {};
+
+            template<typename T>
+            struct HasStaticTypeInfo<T, std::void_t<decltype(T::StaticTypeInfo())>> : std::true_type {};
+
+            template<typename T, typename = void>
+            struct HasStaticComponentTypeName : std::false_type {};
+
+            template<typename T>
+            struct HasStaticComponentTypeName<T, std::void_t<decltype(T::StaticComponentTypeName())>> : std::true_type {};
+
+            template<typename T>
+            const Reflection::TypeInfo* ResolveTypeInfo()
+            {
+                if constexpr (HasStaticTypeInfo<T>::value) {
+                    return &T::StaticTypeInfo();
+                }
+                if constexpr (HasStaticComponentTypeName<T>::value) {
+                    return Reflection::TypeRegistry::GetInstance().GetTypeInfo(T::StaticComponentTypeName());
+                }
+                return nullptr;
+            }
+
+            template<typename T>
+            T* FromCachedComponent(Component* component)
+            {
+                return component ? static_cast<T*>(component->GetActualObject()) : nullptr;
+            }
+
+        } // namespace ComponentLookup
+
         template<typename T>
         T* GameObject::GetComponent()
         {
+            if (const Reflection::TypeInfo* const targetType = ComponentLookup::ResolveTypeInfo<T>()) {
+                const auto it = componentsByType.find(targetType);
+                if (it != componentsByType.end()) {
+                    return ComponentLookup::FromCachedComponent<T>(it->second);
+                }
+                return nullptr;
+            }
+
+            // Fallback needed for abstract base classes and types without RTB_COMPONENT metadata
+            // (e.g. UIElement, CharacterBase): exact TypeInfo lookup cannot match derived instances.
             for (auto& comp : components) {
-                T* castedComp = dynamic_cast<T*>(comp.get());
-                if (castedComp != nullptr) {
+                if (T* castedComp = dynamic_cast<T*>(comp.get())) {
                     return castedComp;
                 }
             }

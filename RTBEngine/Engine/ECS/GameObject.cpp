@@ -83,11 +83,52 @@ namespace RTBEngine {
                 comp->OnDestroy();
             }
             components.clear();
+            componentsByType.clear();
         }
 
         void GameObject::AddComponent(Component* component)
         {
             AddComponent(component, nullptr);
+        }
+
+        void GameObject::RegisterComponentType(Component* component, const RTBEngine::Reflection::TypeInfo* typeInfoOverride)
+        {
+            if (!component) {
+                return;
+            }
+
+            const RTBEngine::Reflection::TypeInfo* typeInfo = typeInfoOverride ? typeInfoOverride : component->GetTypeInfo();
+            if (!typeInfo) {
+                return;
+            }
+
+            componentsByType.emplace(typeInfo, component);
+        }
+
+        void GameObject::UnregisterComponentType(Component* component)
+        {
+            if (!component) {
+                return;
+            }
+
+            const RTBEngine::Reflection::TypeInfo* typeInfo = component->GetTypeInfo();
+            if (!typeInfo) {
+                return;
+            }
+
+            const auto cached = componentsByType.find(typeInfo);
+            if (cached == componentsByType.end() || cached->second != component) {
+                return;
+            }
+
+            componentsByType.erase(cached);
+
+            for (const auto& comp : components) {
+                if (comp && comp->GetTypeInfo() == typeInfo) {
+                    componentsByType.emplace(typeInfo, comp.get());
+                    break;
+                }
+            }
         }
 
         void GameObject::AddComponent(Component* component, const RTBEngine::Reflection::TypeInfo* typeInfoOverride)
@@ -99,6 +140,7 @@ namespace RTBEngine {
             component->SetOwner(this);
             auto deleter = MakeComponentDeleter(component, typeInfoOverride);
             components.push_back(std::unique_ptr<Component, std::function<void(Component*)>>(component, std::move(deleter)));
+            RegisterComponentType(component, typeInfoOverride);
 
             if (lifecycleInitialized) {
                 SceneLifecycle::InvokeAwakeAndValidate(component);
@@ -108,11 +150,12 @@ namespace RTBEngine {
         void GameObject::RemoveComponent(Component* component)
         {
             auto it = std::find_if(components.begin(), components.end(),
-                [component](const std::unique_ptr<Component, std::function<void(Component*)>>& comp) {
+                [component]( const std::unique_ptr<Component, std::function<void(Component*)>>& comp) {
                     return comp.get() == component;
                 });
 
             if (it != components.end()) {
+                UnregisterComponentType(component);
                 (*it)->OnDestroy();
                 components.erase(it);
             }

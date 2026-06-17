@@ -54,6 +54,7 @@
 #define RTB_COMPONENT(ClassName)                                                        \
 public:                                                                                 \
     virtual const char* GetTypeName() const override { return #ClassName; }             \
+    static constexpr const char* StaticComponentTypeName() { return #ClassName; }       \
     virtual void* GetActualObject() override { return this; }                           \
     virtual const void* GetActualObject() const override { return this; }               \
     virtual const RTBEngine::Reflection::TypeInfo* GetTypeInfo() const override {       \
@@ -64,6 +65,7 @@ private:
 #define RTB_COMPONENT(ClassName)                                                        \
 public:                                                                                 \
     virtual const char* GetTypeName() const override { return #ClassName; }             \
+    static constexpr const char* StaticComponentTypeName() { return #ClassName; }       \
     virtual void* GetActualObject() override { return this; }                           \
     virtual const void* GetActualObject() const override { return this; }               \
     virtual const RTBEngine::Reflection::TypeInfo* GetTypeInfo() const override {       \
