@@ -42,6 +42,9 @@
 // Physics layers
 #include "Physics/PhysicsLayerSettings.h"
 
+// Navigation
+#include "Navigation/NavPathService.h"
+
 // Built-in Components
 #include "ECS/MissingComponent.h"
 #include "ECS/MeshRenderer.h"
@@ -53,6 +56,8 @@
 #include "ECS/BoxColliderComponent.h"
 #include "ECS/SphereColliderComponent.h"
 #include "ECS/CapsuleColliderComponent.h"
+#include "ECS/NavGridComponent.h"
+#include "ECS/NavAgentComponent.h"
 #include "ECS/CameraComponent.h"
 #include "ECS/TrailRenderer.h"
 #include "ECS/ParticleSystem.h"

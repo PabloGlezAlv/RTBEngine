@@ -67,6 +67,7 @@ namespace RTBEngine {
 
             bool HasAwakeBeenInvoked() const { return awakeInvoked; }
             bool HasStartBeenInvoked() const { return startInvoked; }
+            void ResetStartInvocation() { startInvoked = false; }
             void InvokeAwakeIfNeeded();
             void TryInvokeStart();
 

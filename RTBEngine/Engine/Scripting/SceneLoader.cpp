@@ -1,3 +1,4 @@
+#include "../ECS/NavGridComponent.h"
 #include "SceneLoader.h"
 #include "ComponentRegistry.h"
 #include "../ECS/Scene.h"
@@ -134,6 +135,7 @@ namespace RTBEngine {
             lua_pop(L, 1);
 
             ResolveParenting(scene, parentingRequests);
+            ECS::NavGridComponent::FinalizeImportsForScene(scene);
             ResolveUUIDRefs(scene, uuidRefRequests);
 
             lua_close(L);
@@ -533,6 +535,8 @@ namespace RTBEngine {
                     SceneComponentConfigurator::ConfigureFreeLookCamera(L, componentTableIndex, static_cast<ECS::FreeLookCamera*>(comp));
                 else if (componentType == "Animator")
                     SceneComponentConfigurator::ConfigureAnimator(L, componentTableIndex, static_cast<Animation::Animator*>(comp));
+                else if (componentType == "NavGridComponent")
+                    SceneComponentConfigurator::ConfigureNavGrid(L, componentTableIndex, static_cast<ECS::NavGridComponent*>(comp));
 
                 const Reflection::TypeInfo* typeInfo = registeredTypeInfo ? registeredTypeInfo : comp->GetTypeInfo();
                 if (typeInfo) {

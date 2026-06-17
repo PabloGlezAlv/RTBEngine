@@ -220,5 +220,27 @@ namespace RTBEngine {
             scene->SetLifecycleComplete(true);
         }
 
+        void SceneLifecycle::InvokeStartForHierarchy(GameObject* root)
+        {
+            if (!root) {
+                return;
+            }
+
+            std::vector<GameObject*> hierarchy;
+            CollectHierarchyPreOrder(root, hierarchy);
+
+            for (GameObject* gameObject : hierarchy) {
+                if (!gameObject || !gameObject->IsLifecycleInitialized()) {
+                    continue;
+                }
+
+                for (const auto& component : gameObject->GetComponents()) {
+                    if (component) {
+                        component->TryInvokeStart();
+                    }
+                }
+            }
+        }
+
     }
 }

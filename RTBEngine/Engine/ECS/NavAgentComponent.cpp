@@ -1,0 +1,318 @@
+#include "NavAgentComponent.h"
+
+#include "../Navigation/NavPathService.h"
+#include "../Physics/PhysicsWorld.h"
+#include "BoxColliderComponent.h"
+#include "CapsuleColliderComponent.h"
+#include "GameObject.h"
+#include "RigidBodyComponent.h"
+#include "SceneManager.h"
+#include "Scene.h"
+#include "SphereColliderComponent.h"
+#include "../Math/Math.h"
+#include "../Core/Logger.h"
+#include "../Reflection/PropertyMacros.h"
+#include <algorithm>
+
+namespace {
+    RTBEngine::Physics::PhysicsWorld* ResolvePhysicsWorldFromGameObject(RTBEngine::ECS::GameObject* gameObject)
+    {
+        if (!gameObject) {
+            return nullptr;
+        }
+
+        if (auto* rigidBody = gameObject->GetComponent<RTBEngine::ECS::RigidBodyComponent>()) {
+            if (rigidBody->GetRigidBody() && rigidBody->GetRigidBody()->GetPhysicsWorld()) {
+                return rigidBody->GetRigidBody()->GetPhysicsWorld();
+            }
+        }
+
+        if (auto* boxCollider = gameObject->GetComponent<RTBEngine::ECS::BoxColliderComponent>()) {
+            if (boxCollider->GetPhysicsWorld()) {
+                return boxCollider->GetPhysicsWorld();
+            }
+        }
+
+        if (auto* sphereCollider = gameObject->GetComponent<RTBEngine::ECS::SphereColliderComponent>()) {
+            if (sphereCollider->GetPhysicsWorld()) {
+                return sphereCollider->GetPhysicsWorld();
+            }
+        }
+
+        if (auto* capsuleCollider = gameObject->GetComponent<RTBEngine::ECS::CapsuleColliderComponent>()) {
+            if (capsuleCollider->GetPhysicsWorld()) {
+                return capsuleCollider->GetPhysicsWorld();
+            }
+        }
+
+        return nullptr;
+    }
+}
+
+namespace RTBEngine {
+    namespace ECS {
+
+        using ThisClass = NavAgentComponent;
+        RTB_REGISTER_COMPONENT(NavAgentComponent)
+            RTB_PROPERTY_RANGE(recalcInterval, 0.05f, 5.0f)
+            RTB_PROPERTY_RANGE(targetMoveThreshold, 0.1f, 5.0f)
+            RTB_PROPERTY_RANGE(waypointReachDistance, 0.05f, 3.0f)
+        RTB_END_REGISTER(NavAgentComponent)
+
+        NavAgentComponent::NavAgentComponent() = default;
+
+        NavAgentComponent::~NavAgentComponent()
+        {
+            Navigation::NavPathService::GetInstance().UnregisterAgent(this);
+        }
+
+        void NavAgentComponent::OnAwake()
+        {
+            ClampSettings();
+            Navigation::NavPathService::GetInstance().RegisterAgent(this);
+        }
+
+        void NavAgentComponent::OnFixedUpdate(float fixedDeltaTime)
+        {
+            if (!owner || !IsEnabled() || !owner->IsActiveInHierarchy()) {
+                return;
+            }
+
+            const Math::Vector3 ownerPosition = owner->GetWorldPosition();
+            recalcTimer = std::max(0.0f, recalcTimer - fixedDeltaTime);
+
+            if (hasDestination) {
+                RequestPathIfNeeded(ownerPosition);
+                AdvanceWaypoint(ownerPosition);
+            }
+        }
+
+        void NavAgentComponent::OnDestroy()
+        {
+            Navigation::NavPathService::GetInstance().UnregisterAgent(this);
+        }
+
+        void NavAgentComponent::OnValidate()
+        {
+            ClampSettings();
+        }
+
+        void NavAgentComponent::SetDestination(const Math::Vector3& worldDestination)
+        {
+            const float targetMoved = PlanarDistance(worldDestination, lastRequestedDestination);
+            destination = worldDestination;
+            hasDestination = true;
+
+            if (targetMoved >= targetMoveThreshold) {
+                pathRequestQueued = false;
+                hasActivePath = false;
+                waypoints.clear();
+                currentWaypointIndex = 0;
+            }
+
+            if (waypoints.empty() && Navigation::NavPathService::GetInstance().GetActiveGrid()) {
+                pathRequestQueued = false;
+                Navigation::NavPathService::GetInstance().ProcessAgentPathNow(this);
+            }
+        }
+
+        void NavAgentComponent::ClearDestination()
+        {
+            hasDestination = false;
+            hasActivePath = false;
+            waypoints.clear();
+            currentWaypointIndex = 0;
+            pathRequestQueued = false;
+        }
+
+        void NavAgentComponent::EnsurePathReady()
+        {
+            if (!hasDestination || !owner) {
+                return;
+            }
+
+            if (!Navigation::NavPathService::GetInstance().GetActiveGrid()) {
+                return;
+            }
+
+            if (!waypoints.empty() && hasActivePath) {
+                return;
+            }
+
+            pathRequestQueued = false;
+            Navigation::NavPathService::GetInstance().ProcessAgentPathNow(this);
+        }
+
+        bool NavAgentComponent::HasMoveDirection() const
+        {
+            return hasActivePath && !waypoints.empty() &&
+                   currentWaypointIndex < static_cast<int>(waypoints.size());
+        }
+
+        Math::Vector3 NavAgentComponent::GetPlanarMoveDirection(const Math::Vector3& ownerWorldPosition) const
+        {
+            if (!hasActivePath || waypoints.empty() ||
+                currentWaypointIndex >= static_cast<int>(waypoints.size())) {
+                return Math::Vector3::Zero();
+            }
+
+            const int targetIndex = std::clamp(
+                currentWaypointIndex,
+                0,
+                static_cast<int>(waypoints.size()) - 1);
+
+            Math::Vector3 toWaypoint =
+                waypoints[static_cast<size_t>(targetIndex)] - ownerWorldPosition;
+            toWaypoint.y = 0.0f;
+
+            if (toWaypoint.LengthSquared() < 0.0001f) {
+                return Math::Vector3::Zero();
+            }
+
+            return toWaypoint.Normalized();
+        }
+
+        void NavAgentComponent::ProcessPathRequest(const Navigation::NavGrid& grid,
+                                                   Navigation::NavPathfinder& pathfinder,
+                                                   Physics::PhysicsWorld* physicsWorld)
+        {
+            pathRequestQueued = false;
+
+            if (!owner || !hasDestination) {
+                return;
+            }
+
+            Physics::PhysicsWorld* world = physicsWorld ? physicsWorld : ResolvePhysicsWorld();
+
+            std::vector<Math::Vector3> newWaypoints;
+            const Math::Vector3 start = owner->GetWorldPosition();
+            if (!pathfinder.FindPath(grid, start, destination, newWaypoints, world)) {
+                hasActivePath = false;
+                waypoints.clear();
+                currentWaypointIndex = 0;
+
+                if (!hasLoggedFirstPathDebug) {
+                    hasLoggedFirstPathDebug = true;
+                    RTB_WARN("[NavAgentComponent] First path FAILED for '" +
+                        (owner ? owner->GetName() : std::string("unknown")) +
+                        "' start=(" + std::to_string(start.x) + ", " + std::to_string(start.y) + ", " +
+                        std::to_string(start.z) + ") destination=(" +
+                        std::to_string(destination.x) + ", " + std::to_string(destination.y) + ", " +
+                        std::to_string(destination.z) + ") activeGrid=" +
+                        (Navigation::NavPathService::GetInstance().GetActiveGrid() ? "set" : "missing") + ".");
+                }
+                return;
+            }
+
+            waypoints = std::move(newWaypoints);
+            currentWaypointIndex = waypoints.size() > 1 ? 1 : 0;
+            hasActivePath = !waypoints.empty();
+            lastRequestedDestination = destination;
+            recalcTimer = recalcInterval;
+
+            Navigation::NavPathService::GetInstance().SetDebugAgent(this);
+
+            if (!hasLoggedFirstPathDebug) {
+                hasLoggedFirstPathDebug = true;
+                const std::string agentName = owner ? owner->GetName() : "unknown";
+                RTB_INFO("[NavAgentComponent] First path for '" + agentName + "' -> destination (" +
+                    std::to_string(destination.x) + ", " + std::to_string(destination.y) + ", " +
+                    std::to_string(destination.z) + "), waypoints=" + std::to_string(waypoints.size()) + ":");
+                for (size_t waypointIndex = 0; waypointIndex < waypoints.size(); ++waypointIndex) {
+                    const Math::Vector3& waypoint = waypoints[waypointIndex];
+                    RTB_INFO("[NavAgentComponent]   [" + std::to_string(waypointIndex) + "] (" +
+                        std::to_string(waypoint.x) + ", " + std::to_string(waypoint.y) + ", " +
+                        std::to_string(waypoint.z) + ")");
+                }
+            }
+        }
+
+        void NavAgentComponent::ClampSettings()
+        {
+            recalcInterval = std::max(recalcInterval, 0.05f);
+            targetMoveThreshold = std::max(targetMoveThreshold, 0.1f);
+            waypointReachDistance = std::max(waypointReachDistance, 0.05f);
+        }
+
+        void NavAgentComponent::AdvanceWaypoint(const Math::Vector3& ownerWorldPosition)
+        {
+            if (!hasActivePath || waypoints.empty()) {
+                return;
+            }
+
+            while (currentWaypointIndex < static_cast<int>(waypoints.size())) {
+                if (PlanarDistance(ownerWorldPosition, waypoints[static_cast<size_t>(currentWaypointIndex)]) >
+                    waypointReachDistance) {
+                    break;
+                }
+
+                ++currentWaypointIndex;
+            }
+
+            if (currentWaypointIndex >= static_cast<int>(waypoints.size())) {
+                hasActivePath = false;
+                return;
+            }
+
+            hasActivePath = !waypoints.empty();
+        }
+
+        void NavAgentComponent::RequestPathIfNeeded(const Math::Vector3& ownerWorldPosition)
+        {
+            if (!Navigation::NavPathService::GetInstance().GetActiveGrid()) {
+                return;
+            }
+
+            const float targetMoved = PlanarDistance(destination, lastRequestedDestination);
+            const bool targetMovedEnough = targetMoved >= targetMoveThreshold;
+            const bool pathMissing = waypoints.empty();
+            const bool pathExhausted =
+                !waypoints.empty() &&
+                currentWaypointIndex >= static_cast<int>(waypoints.size());
+            const bool needsInitialPath = !hasActivePath && (pathMissing || pathExhausted);
+            const bool timerElapsed = recalcTimer <= 0.0f;
+
+            if (!needsInitialPath && !timerElapsed && !targetMovedEnough && !pathExhausted) {
+                return;
+            }
+
+            (void)ownerWorldPosition;
+
+            if (pathRequestQueued) {
+                return;
+            }
+
+            pathRequestQueued = true;
+            Navigation::NavPathService::GetInstance().QueuePathRequest(this);
+        }
+
+        Physics::PhysicsWorld* NavAgentComponent::ResolvePhysicsWorld() const
+        {
+            if (Physics::PhysicsWorld* world = ResolvePhysicsWorldFromGameObject(owner)) {
+                return world;
+            }
+
+            if (Scene* scene = SceneManager::GetInstance().GetActiveScene()) {
+                for (const auto& gameObject : scene->GetGameObjects()) {
+                    if (!gameObject) {
+                        continue;
+                    }
+
+                    if (Physics::PhysicsWorld* world = ResolvePhysicsWorldFromGameObject(gameObject.get())) {
+                        return world;
+                    }
+                }
+            }
+
+            return nullptr;
+        }
+
+        float NavAgentComponent::PlanarDistance(const Math::Vector3& a, const Math::Vector3& b) const
+        {
+            const float dx = a.x - b.x;
+            const float dz = a.z - b.z;
+            return std::sqrt(dx * dx + dz * dz);
+        }
+
+    }
+}

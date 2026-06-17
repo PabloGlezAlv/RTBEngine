@@ -14,6 +14,7 @@
 #include "../ECS/CapsuleColliderComponent.h"
 #include "../ECS/CameraComponent.h"
 #include "../ECS/FreeLookCamera.h"
+#include "../ECS/NavGridComponent.h"
 
 #include "../Animation/Animator.h"
 
@@ -409,6 +410,13 @@ namespace RTBEngine {
                 }
 
                 comp->playing = shouldPlay;
+            }
+
+            void ConfigureNavGrid(lua_State* L, int tableIndex, ECS::NavGridComponent* comp) {
+                (void)L;
+                (void)tableIndex;
+                (void)comp;
+                // Navigation bake is loaded from the companion .navmesh file next to the scene.
             }
 
         }

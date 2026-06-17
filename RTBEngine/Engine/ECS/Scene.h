@@ -66,6 +66,9 @@ namespace RTBEngine {
             CameraComponent* GetMainCamera() const;
             Rendering::Camera* GetActiveCamera();
 
+            // Resets OnStart invocation flags so Play mode can invoke OnStart again.
+            void PrepareForPlayMode();
+
         private:
             //Deferred command buffer
             void FlushPendingCommands();

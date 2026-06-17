@@ -27,6 +27,7 @@ namespace RTBEngine {
 
             static void BringHierarchyToLife(Scene* scene, GameObject* root);
             static void BringSceneToLife(Scene* scene);
+            static void InvokeStartForHierarchy(GameObject* root);
         };
 
     }

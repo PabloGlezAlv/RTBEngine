@@ -1,6 +1,8 @@
 #include "Scene.h"
 #include "SceneLifecycle.h"
+#include "../Navigation/NavPathService.h"
 #include <algorithm>
+#include <functional>
 #include <unordered_set>
 
 #include "GameObject.h"
@@ -348,15 +350,73 @@ RTBEngine::ECS::GameObject* RTBEngine::ECS::Scene::FindGameObject(const std::str
 	return nullptr;
 }
 
+namespace {
+	RTBEngine::ECS::GameObject* FindGameObjectByUUIDInHierarchy(
+		RTBEngine::ECS::GameObject* root,
+		const std::string& uuid)
+	{
+		if (!root || uuid.empty()) {
+			return nullptr;
+		}
+
+		if (root->GetUUID() == uuid) {
+			return root;
+		}
+
+		for (RTBEngine::ECS::GameObject* child : root->GetChildren()) {
+			if (RTBEngine::ECS::GameObject* match = FindGameObjectByUUIDInHierarchy(child, uuid)) {
+				return match;
+			}
+		}
+
+		return nullptr;
+	}
+}
+
 RTBEngine::ECS::GameObject* RTBEngine::ECS::Scene::FindGameObjectByUUID(const std::string& uuid)
 {
+	if (uuid.empty()) {
+		return nullptr;
+	}
+
 	for (auto& obj : gameObjects) {
-		if (obj && obj->GetUUID() == uuid) return obj.get();
+		if (RTBEngine::ECS::GameObject* match = FindGameObjectByUUIDInHierarchy(obj.get(), uuid)) {
+			return match;
+		}
 	}
 	for (auto& obj : pendingAdds) {
-		if (obj && obj->GetUUID() == uuid) return obj.get();
+		if (RTBEngine::ECS::GameObject* match = FindGameObjectByUUIDInHierarchy(obj.get(), uuid)) {
+			return match;
+		}
 	}
 	return nullptr;
+}
+
+void RTBEngine::ECS::Scene::PrepareForPlayMode()
+{
+	std::function<void(GameObject*)> visitHierarchy = [&](GameObject* gameObject) {
+		if (!gameObject) {
+			return;
+		}
+
+		for (const auto& component : gameObject->GetComponents()) {
+			if (component) {
+				component->ResetStartInvocation();
+			}
+		}
+
+		for (GameObject* child : gameObject->GetChildren()) {
+			visitHierarchy(child);
+		}
+	};
+
+	for (const auto& gameObject : gameObjects) {
+		visitHierarchy(gameObject.get());
+	}
+
+	for (const auto& gameObject : pendingAdds) {
+		visitHierarchy(gameObject.get());
+	}
 }
 
 void RTBEngine::ECS::Scene::Update(float deltaTime)
@@ -373,12 +433,16 @@ void RTBEngine::ECS::Scene::Update(float deltaTime)
 
 void RTBEngine::ECS::Scene::FixedUpdate(float fixedDeltaTime)
 {
+	Navigation::ProcessSceneNavigationFixedUpdate(this);
+
 	++iterationDepth;
 	for (auto& gameObject : gameObjects) {
 		if (gameObject) gameObject->FixedUpdate(fixedDeltaTime);
 	}
 	--iterationDepth;
 	FlushPendingCommands();
+
+	Navigation::ProcessSceneNavigationFixedUpdate(this);
 }
 
 void RTBEngine::ECS::Scene::LateUpdate(float deltaTime)

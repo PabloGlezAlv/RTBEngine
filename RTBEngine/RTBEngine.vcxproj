@@ -228,6 +228,13 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Physics\BoxCollider.cpp" />
     <ClCompile Include="Engine\Physics\SphereCollider.cpp" />
     <ClCompile Include="Engine\Physics\PhysicsWorld.cpp" />
+    <ClCompile Include="Engine\Navigation\NavGrid.cpp" />
+    <ClCompile Include="Engine\Navigation\NavPathfinder.cpp" />
+    <ClCompile Include="Engine\Navigation\NavGridBaker.cpp" />
+    <ClCompile Include="Engine\Navigation\NavMeshFile.cpp" />
+    <ClCompile Include="Engine\Navigation\NavPathService.cpp" />
+    <ClCompile Include="Engine\ECS\NavGridComponent.cpp" />
+    <ClCompile Include="Engine\ECS\NavAgentComponent.cpp" />
     <ClCompile Include="Engine\Physics\PhysicsSystem.cpp" />
     <ClCompile Include="Engine\Physics\PhysicsLayerSettings.cpp" />
     <ClCompile Include="Engine\Rendering\Lighting\PointLight.cpp" />
@@ -390,6 +397,13 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Physics\CapsuleCollider.h" />
     <ClInclude Include="Engine\Physics\SphereCollider.h" />
     <ClInclude Include="Engine\Physics\PhysicsWorld.h" />
+    <ClInclude Include="Engine\Navigation\NavGrid.h" />
+    <ClInclude Include="Engine\Navigation\NavPathfinder.h" />
+    <ClInclude Include="Engine\Navigation\NavGridBaker.h" />
+    <ClInclude Include="Engine\Navigation\NavMeshFile.h" />
+    <ClInclude Include="Engine\Navigation\NavPathService.h" />
+    <ClInclude Include="Engine\ECS\NavGridComponent.h" />
+    <ClInclude Include="Engine\ECS\NavAgentComponent.h" />
     <ClInclude Include="Engine\Physics\PhysicsLayerSettings.h" />
     <ClInclude Include="Engine\Physics\PhysicsSystem.h" />
     <ClInclude Include="Engine\Physics\PhysicsUtils.h" />

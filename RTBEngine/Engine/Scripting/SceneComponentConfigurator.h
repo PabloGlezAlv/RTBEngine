@@ -14,6 +14,7 @@ namespace RTBEngine {
         class CapsuleColliderComponent;
         class CameraComponent;
         class FreeLookCamera;
+        class NavGridComponent;
     }
 
     namespace Animation {
@@ -51,6 +52,7 @@ namespace RTBEngine {
             void ConfigureCameraComponent(lua_State* L, int tableIndex, ECS::CameraComponent* comp);
             void ConfigureFreeLookCamera(lua_State* L, int tableIndex, ECS::FreeLookCamera* comp);
             void ConfigureAnimator(lua_State* L, int tableIndex, Animation::Animator* comp);
+            void ConfigureNavGrid(lua_State* L, int tableIndex, ECS::NavGridComponent* comp);
 
         }
     }

@@ -13,6 +13,8 @@
 #include "../ECS/BoxColliderComponent.h"
 #include "../ECS/SphereColliderComponent.h"
 #include "../ECS/CapsuleColliderComponent.h"
+#include "../ECS/NavGridComponent.h"
+#include "../ECS/NavAgentComponent.h"
 #include "../ECS/CameraComponent.h"
 #include "../ECS/FreeLookCamera.h"
 #include "../ECS/TrailRenderer.h"
@@ -88,6 +90,8 @@ namespace RTBEngine {
             RegisterComponent("BoxColliderComponent", []() { return new ECS::BoxColliderComponent(); });
             RegisterComponent("SphereColliderComponent", []() { return new ECS::SphereColliderComponent(); });
             RegisterComponent("CapsuleColliderComponent", []() { return new ECS::CapsuleColliderComponent(); });
+            RegisterComponent("NavGridComponent", []() { return new ECS::NavGridComponent(); });
+            RegisterComponent("NavAgentComponent", []() { return new ECS::NavAgentComponent(); });
             RegisterComponent("CameraComponent", []() { return new ECS::CameraComponent(); });
             RegisterComponent("FreeLookCamera", []() { return new ECS::FreeLookCamera(); });
             RegisterComponent("TrailRenderer", []() { return new ECS::TrailRenderer(); });

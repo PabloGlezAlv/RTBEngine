@@ -6,6 +6,7 @@
 #include "Prefab.h"
 #include "Scene.h"
 #include "SceneLifecycle.h"
+#include "NavGridComponent.h"
 
 #include <vector>
 
@@ -28,6 +29,7 @@ namespace {
         }
 
         RTBEngine::ECS::SceneLifecycle::BringHierarchyToLife(scene, root);
+        RTBEngine::ECS::SceneLifecycle::InvokeStartForHierarchy(root);
 
         if (onHierarchyAdded) {
             onHierarchyAdded(root);
@@ -62,7 +64,15 @@ namespace {
             root->GetTransform().SetRotation(*rotationOverride);
         }
 
-        return FinalizeInstantiation(scene, root, children, onHierarchyAdded);
+        RTBEngine::ECS::GameObject* instantiated = FinalizeInstantiation(scene, root, children, onHierarchyAdded);
+        if (instantiated) {
+            const RTBEngine::Math::Vector3 position = instantiated->GetWorldPosition();
+            RTB_INFO("SceneManager: Instantiated prefab '" + prefab.GetName() + "' as '" +
+                instantiated->GetName() + "' at (" + std::to_string(position.x) + ", " +
+                std::to_string(position.y) + ", " + std::to_string(position.z) + ").");
+        }
+
+        return instantiated;
     }
 
     void SetHierarchyActive(RTBEngine::ECS::GameObject* root, bool active)
@@ -159,7 +169,9 @@ namespace RTBEngine {
             activeScenePath = path;
             sceneDirty = false;
 
+            NavGridComponent::LoadNavMeshForScene(path, activeScene.get());
             SceneLifecycle::BringSceneToLife(activeScene.get());
+            NavGridComponent::ActivateAllBakedInScene(activeScene.get());
 
             if (onSceneLoaded) {
                 onSceneLoaded(activeScene.get());
