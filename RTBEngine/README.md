@@ -35,6 +35,8 @@ This document covers every subsystem in depth — public API, internal design, d
    - 7.6 [AudioSourceComponent](#76-audiosourcecomponent)
    - 7.7 [FreeLookCamera](#77-freelookcamera)
    - 7.8 [SphereColliderComponent](#78-spherecollidercomponent)
+   - 7.9 [NavGridComponent](#79-navgridcomponent)
+   - 7.10 [NavAgentComponent](#710-navagentcomponent)
    - 7.9 [NetworkIdentity](#79-networkidentity)
    - 7.10 [NetworkTransform](#710-networktransform)
    - 7.11 [ParticleSystem](#711-particlesystem)
@@ -125,7 +127,14 @@ This document covers every subsystem in depth — public API, internal design, d
    - 18.10 [LAN vs Internet Relay](#1810-lan-vs-internet-relay)
    - 18.11 [Game Network Messages](#1811-game-network-messages)
    - 18.12 [Engine Online Files](#1812-engine-online-files)
-19. [Code Conventions](#19-code-conventions)
+19. [Navigation Subsystem](#19-navigation-subsystem)
+   - 19.1 [Overview](#191-overview)
+   - 19.2 [NavGrid and Baking](#192-navgrid-and-baking)
+   - 19.3 [NavGridComponent and NavAgentComponent](#193-navgridcomponent-and-navagentcomponent)
+   - 19.4 [NavPathService and Pathfinding](#194-navpathservice-and-pathfinding)
+   - 19.5 [Persistence (.navmesh)](#195-persistence-navmesh)
+   - 19.6 [Engine Navigation Files](#196-engine-navigation-files)
+20. [Code Conventions](#20-code-conventions)
 
 ---
 
@@ -167,7 +176,17 @@ RTBEngine/
 │   │   │   ├── MissingComponent.h
 │   │   │   ├── Prefab.h / .cpp
 │   │   │   ├── PrefabRegistry.h / .cpp
+│   │   │   ├── NavGridComponent.h / .cpp
+│   │   │   ├── NavAgentComponent.h / .cpp
+│   │   │   ├── PhysicsWorldResolver.h / .cpp
 │   │   │   └── SphereColliderComponent.h / .cpp
+│   │   │
+│   │   ├── Navigation/
+│   │   │   ├── NavGrid.h / .cpp
+│   │   │   ├── NavGridBaker.h / .cpp
+│   │   │   ├── NavPathfinder.h / .cpp
+│   │   │   ├── NavPathService.h / .cpp
+│   │   │   └── NavMeshFile.h / .cpp
 │   │   │
 │   │   ├── Rendering/
 │   │   │   ├── Camera.h / .cpp
@@ -1652,6 +1671,50 @@ particles->startColor = Math::Color(1.0f, 0.8f, 0.2f, 1.0f);
 particles->endColor   = Math::Color(1.0f, 0.4f, 0.0f, 0.0f);
 particles->Play();
 ```
+
+### 7.9 NavGridComponent
+
+`Engine/ECS/NavGridComponent.h` — Scene-level 2D navigation surface in world XZ. The editor bakes walkability from physics geometry; at runtime the baked grid is registered with `NavPathService` so `NavAgentComponent` instances can pathfind.
+
+**Key properties:**
+
+| Property | Default | Purpose |
+|----------|---------|---------|
+| `origin` | `(-16, 0, -16)` | Grid corner in owner local space |
+| `size` | `(32, 0, 32)` | Extents in local XZ |
+| `cellSize` | `0.5` | World size of each cell |
+| `agentRadius` | `0.4` | Clearance used during bake |
+| `groundProbeHeight` | `4.0` | Vertical raycast range for floor/ceiling |
+
+**Workflow:**
+
+```cpp
+auto* nav = navigationObject->GetComponent<NavGridComponent>();
+nav->BakeGrid();              // Raycast-based bake via NavGridBaker
+nav->ActivateBakedGrid();     // Registers grid with NavPathService
+```
+
+Bake and activation also run from the editor Inspector. Baked data is saved beside the scene as a `.navmesh` file (see [§19.5](#195-persistence-navmesh)).
+
+### 7.10 NavAgentComponent
+
+`Engine/ECS/NavAgentComponent.h` — Per-actor navigation driver. Gameplay sets destinations; the component owns waypoints and requests A* paths on the active scene grid.
+
+```cpp
+auto* agent = enemy->GetComponent<NavAgentComponent>();
+agent->SetDestination(targetPosition);
+agent->EnsurePathReady();   // Immediate solve on spawn / chase start
+
+Math::Vector3 moveDir = agent->GetPlanarMoveDirection(enemy->GetWorldPosition());
+```
+
+| Property | Default | Purpose |
+|----------|---------|---------|
+| `recalcInterval` | `0.5` | Seconds between path recomputes while chasing |
+| `targetMoveThreshold` | `0.75` | Re-path when destination moves beyond this distance |
+| `waypointReachDistance` | `0.35` | Planar distance to advance to next waypoint |
+
+Path requests are queued through `NavPathService` and processed in `Scene::FixedUpdate` (budget: 2 agents per physics frame). `EnsurePathReady()` bypasses the queue for the first solve when waypoints are empty.
 
 ---
 
@@ -4249,7 +4312,95 @@ Match exit: host despawns the leaving player's pawn and broadcasts ID 77; other 
 
 ---
 
-## 19. Code Conventions
+## 19. Navigation Subsystem
+
+RTBEngine provides **grid-based 2D navigation** on the world XZ plane: editor-time baking from physics geometry, scene-side persistence, and runtime A* pathfinding with string pulling. This is not a triangle navmesh — walkability is stored per cell in a `NavGrid`.
+
+Editor bake controls, debug overlay, and Scene View visualization are documented in `RTBEngineEditor/README.md` [§26](../../RTBEngineEditor/RTBEngineEditor/README.md#26-optional-windows-and-navigation-debug).
+
+### 19.1 Overview
+
+```
+NavGridComponent (scene)
+  └─ BakeGrid() → NavGridBaker (raycasts) → NavGrid walkability
+  └─ ActivateBakedGrid() → NavPathService::SetActiveGrid()
+
+NavAgentComponent (per actor)
+  └─ SetDestination() → NavPathService::QueuePathRequest()
+  └─ ProcessPathRequest() → NavPathfinder::FindPath() + SmoothPath()
+```
+
+| Piece | Role |
+|-------|------|
+| `NavGrid` | Cell walkability, world ↔ cell mapping |
+| `NavGridBaker` | Samples floor/ceiling/obstacles via physics raycasts |
+| `NavPathfinder` | 8-direction A*, partial paths, reusable search buffers |
+| `NavPathService` | Active grid, agent registry, path request budget |
+| `NavMeshFile` | Load/save `.navmesh` next to the scene asset |
+| `PhysicsWorldResolver` | Shared helper to obtain `PhysicsWorld` for bake/path context |
+
+`ProcessSceneNavigationFixedUpdate(scene)` is called from `Scene::FixedUpdate` to drain queued path requests.
+
+### 19.2 NavGrid and Baking
+
+`Engine/Navigation/NavGrid.h` stores a dense `width × height` walkability bitmap in owner-local XZ space.
+
+```cpp
+grid.Configure(origin, size, cellSize);
+grid.SetWalkable(cellX, cellZ, true);
+grid.WorldToCell(worldPos, cellX, cellZ);
+grid.WorldToCellClamped(worldPos, cellX, cellZ);  // Nearest border cell if OOB
+grid.CellToWorld(cellX, cellZ, worldPos);
+```
+
+`NavGridBaker` marks each cell walkable when floor is found, ceiling is high enough, and horizontal clearance passes for `agentRadius`. Baking requires an initialized `PhysicsWorld` on the scene.
+
+### 19.3 NavGridComponent and NavAgentComponent
+
+See [§7.9](#79-navgridcomponent) and [§7.10](#710-navagentcomponent).
+
+On Play, `Scene::PrepareForPlayMode()` activates baked grids in the scene. `NavGridComponent::OnStart` registers the active grid when `ActivateBakedGrid()` has been called.
+
+### 19.4 NavPathService and Pathfinding
+
+`Engine/Navigation/NavPathService.h` — singleton coordinating runtime navigation.
+
+```cpp
+Navigation::NavPathService& service = Navigation::NavPathService::GetInstance();
+service.SetActiveGrid(&navGridComponent->GetGrid());
+service.RegisterAgent(navAgent);
+service.QueuePathRequest(navAgent);
+service.ProcessAgentPathNow(navAgent);  // Synchronous — spawn / first destination
+```
+
+`NavPathfinder::FindPath` runs octile-heuristic A* on 8-connected cells, returns a **partial path** toward the goal when the goal cell is unreachable, then applies **string pulling** (`SmoothPath`) to reduce waypoint count.
+
+### 19.5 Persistence (.navmesh)
+
+`Engine/Navigation/NavMeshFile.h` — binary sidecar files:
+
+```
+Assets/Scenes/DefaultScene.lua  →  Assets/Scenes/DefaultScene.navmesh
+```
+
+`SaveSceneNavMesh` / `LoadSceneNavMesh` are invoked when baking in the editor and when loading scenes. Each record stores the owning `NavGridComponent` UUID, grid dimensions, `cellSize`, and walkability bytes.
+
+### 19.6 Engine Navigation Files
+
+| File | Role |
+|------|------|
+| `NavGrid.*` | Walkability grid data structure |
+| `NavGridBaker.*` | Editor/runtime bake from physics |
+| `NavPathfinder.*` | A* + string pulling |
+| `NavPathService.*` | Active grid, agents, request queue |
+| `NavMeshFile.*` | `.navmesh` serialization |
+| `NavGridComponent.*` | ECS scene surface + bake API |
+| `NavAgentComponent.*` | ECS per-actor path follower |
+| `PhysicsWorldResolver.*` | Resolve `PhysicsWorld` from scene/context |
+
+---
+
+## 20. Code Conventions
 
 ### Naming
 
