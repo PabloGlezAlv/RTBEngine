@@ -16,6 +16,7 @@
 #include <vector>
 
 namespace {
+    // Binary sidecar format: Assets/Scenes/MyScene.navmesh next to MyScene.lua
     constexpr char kNavMeshMagic[8] = { 'R', 'T', 'B', 'N', 'A', 'V', 'M', '\0' };
     constexpr uint32_t kNavMeshVersion = 1;
 

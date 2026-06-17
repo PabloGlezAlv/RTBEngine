@@ -1,77 +1,15 @@
 #include "NavPathService.h"
 
 #include "../ECS/NavAgentComponent.h"
-#include "../ECS/BoxColliderComponent.h"
-#include "../ECS/CapsuleColliderComponent.h"
-#include "../ECS/GameObject.h"
-#include "../ECS/RigidBodyComponent.h"
 #include "../ECS/Scene.h"
-#include "../ECS/SphereColliderComponent.h"
 
 #include <algorithm>
 
 namespace RTBEngine {
     namespace Navigation {
         namespace {
+            // Cap synchronous A* work spread across agents each physics frame.
             constexpr int kMaxPathRequestsPerFrame = 2;
-
-            RTBEngine::Physics::PhysicsWorld* ResolvePhysicsWorldFromGameObject(ECS::GameObject* gameObject)
-            {
-                if (!gameObject) {
-                    return nullptr;
-                }
-
-                if (auto* rigidBody = gameObject->GetComponent<ECS::RigidBodyComponent>()) {
-                    if (rigidBody->GetRigidBody() && rigidBody->GetRigidBody()->GetPhysicsWorld()) {
-                        return rigidBody->GetRigidBody()->GetPhysicsWorld();
-                    }
-                }
-
-                if (auto* boxCollider = gameObject->GetComponent<ECS::BoxColliderComponent>()) {
-                    if (boxCollider->GetPhysicsWorld()) {
-                        return boxCollider->GetPhysicsWorld();
-                    }
-                }
-
-                if (auto* sphereCollider = gameObject->GetComponent<ECS::SphereColliderComponent>()) {
-                    if (sphereCollider->GetPhysicsWorld()) {
-                        return sphereCollider->GetPhysicsWorld();
-                    }
-                }
-
-                if (auto* capsuleCollider = gameObject->GetComponent<ECS::CapsuleColliderComponent>()) {
-                    if (capsuleCollider->GetPhysicsWorld()) {
-                        return capsuleCollider->GetPhysicsWorld();
-                    }
-                }
-
-                for (ECS::GameObject* child : gameObject->GetChildren()) {
-                    if (RTBEngine::Physics::PhysicsWorld* world = ResolvePhysicsWorldFromGameObject(child)) {
-                        return world;
-                    }
-                }
-
-                return nullptr;
-            }
-
-            RTBEngine::Physics::PhysicsWorld* ResolvePhysicsWorldFromScene(ECS::Scene* scene)
-            {
-                if (!scene) {
-                    return nullptr;
-                }
-
-                for (const auto& gameObject : scene->GetGameObjects()) {
-                    if (!gameObject) {
-                        continue;
-                    }
-
-                    if (RTBEngine::Physics::PhysicsWorld* world = ResolvePhysicsWorldFromGameObject(gameObject.get())) {
-                        return world;
-                    }
-                }
-
-                return nullptr;
-            }
         }
 
         NavPathService& NavPathService::GetInstance()
@@ -83,6 +21,7 @@ namespace RTBEngine {
         void NavPathService::SetActiveGrid(NavGrid* grid)
         {
             activeGrid = grid;
+            // Stale queued requests would reference the previous grid's cell layout.
             pendingRequests.clear();
         }
 
@@ -127,25 +66,11 @@ namespace RTBEngine {
             pendingRequests.push_back(agent);
         }
 
-        void NavPathService::ProcessFixedUpdate(Physics::PhysicsWorld* physicsWorld)
+        void NavPathService::ProcessFixedUpdate()
         {
             if (!activeGrid) {
                 pendingRequests.clear();
                 return;
-            }
-
-            Physics::PhysicsWorld* world = physicsWorld;
-            if (!world) {
-                for (ECS::NavAgentComponent* agent : agents) {
-                    if (!agent) {
-                        continue;
-                    }
-
-                    world = agent->ResolvePhysicsWorld();
-                    if (world) {
-                        break;
-                    }
-                }
             }
 
             int processed = 0;
@@ -158,29 +83,23 @@ namespace RTBEngine {
                     continue;
                 }
 
-                agent->ProcessPathRequest(*activeGrid, pathfinder, world);
+                agent->ProcessPathRequest(*activeGrid, pathfinder);
                 ++processed;
             }
         }
 
-        void NavPathService::ProcessAgentPathNow(ECS::NavAgentComponent* agent,
-                                                 Physics::PhysicsWorld* physicsWorld)
+        void NavPathService::ProcessAgentPathNow(ECS::NavAgentComponent* agent)
         {
             if (!agent || !activeGrid) {
                 return;
             }
 
-            Physics::PhysicsWorld* world = physicsWorld;
-            if (!world) {
-                world = agent->ResolvePhysicsWorld();
-            }
-
-            agent->ProcessPathRequest(*activeGrid, pathfinder, world);
+            agent->ProcessPathRequest(*activeGrid, pathfinder);
         }
 
-        void ProcessSceneNavigationFixedUpdate(ECS::Scene* scene)
+        void ProcessSceneNavigationFixedUpdate(ECS::Scene* /*scene*/)
         {
-            NavPathService::GetInstance().ProcessFixedUpdate(ResolvePhysicsWorldFromScene(scene));
+            NavPathService::GetInstance().ProcessFixedUpdate();
         }
 
         void NavPathService::SetDebugEnabled(bool enabled)

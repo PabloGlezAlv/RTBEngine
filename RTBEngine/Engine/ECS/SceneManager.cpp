@@ -29,6 +29,7 @@ namespace {
         }
 
         RTBEngine::ECS::SceneLifecycle::BringHierarchyToLife(scene, root);
+        // Runtime spawns (e.g. RoundManager enemies) must receive OnStart without waiting a frame.
         RTBEngine::ECS::SceneLifecycle::InvokeStartForHierarchy(root);
 
         if (onHierarchyAdded) {

@@ -222,6 +222,7 @@ namespace RTBEngine {
 
         void SceneLifecycle::InvokeStartForHierarchy(GameObject* root)
         {
+            // Prefab spawns during Play need OnStart immediately (Awake already ran in BringHierarchyToLife).
             if (!root) {
                 return;
             }

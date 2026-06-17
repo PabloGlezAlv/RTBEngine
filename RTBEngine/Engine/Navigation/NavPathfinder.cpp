@@ -1,7 +1,5 @@
 #include "NavPathfinder.h"
 
-#include "../Physics/PhysicsWorld.h"
-
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -32,7 +30,6 @@ namespace RTBEngine {
                 float cost;
             };
 
-            // 8-direction neighbors; diagonals cost sqrt(2).
             constexpr NeighborOffset kNeighbors[] = {
                 { 1, 0, 1.0f },
                 { -1, 0, 1.0f },
@@ -44,7 +41,7 @@ namespace RTBEngine {
                 { -1, -1, kSqrt2 },
             };
 
-            // Walks grid cells between (x0,z0) and (x1,z1) with Bresenham; all must be walkable.
+            // Bresenham walk on grid cells (string pulling).
             bool HasGridLineOfSight(const NavGrid& grid, int x0, int z0, int x1, int z1)
             {
                 int currentX = x0;
@@ -118,6 +115,7 @@ namespace RTBEngine {
                                     const Math::Vector3& referenceWorld,
                                     float maxSnapCells)
             {
+                // Snap start/goal to the nearest walkable cell within maxSnapCells.
                 const int originalCellX = inOutCellX;
                 const int originalCellZ = inOutCellZ;
 
@@ -147,9 +145,9 @@ namespace RTBEngine {
 
         }
 
-        // Octile heuristic: admissible for 8-directional movement with costs 1 and sqrt(2).
         float NavPathfinder::OctileHeuristic(int dx, int dz)
         {
+            // Admissible for 8-neighbour grid with costs 1 (axis) and sqrt(2) (diagonal).
             const int absDx = std::abs(dx);
             const int absDz = std::abs(dz);
             const int minAxis = std::min(absDx, absDz);
@@ -157,121 +155,30 @@ namespace RTBEngine {
             return static_cast<float>(minAxis) * kSqrt2 + static_cast<float>(maxAxis - minAxis);
         }
 
-        bool NavPathfinder::FindPath(const NavGrid& grid,
-                                     const Math::Vector3& startWorld,
-                                     const Math::Vector3& goalWorld,
-                                     std::vector<Math::Vector3>& outWaypoints,
-                                     Physics::PhysicsWorld* /*physicsWorld*/) const
+        void NavPathfinder::EnsureSearchBuffers(int cellCount) const
+        {
+            const size_t bufferSize = static_cast<size_t>(cellCount);
+            if (gScoreBuffer.size() != bufferSize) {
+                gScoreBuffer.resize(bufferSize);
+                cameFromBuffer.resize(bufferSize);
+                closedBuffer.resize(bufferSize);
+            }
+
+            std::fill(gScoreBuffer.begin(), gScoreBuffer.end(), std::numeric_limits<float>::max());
+            std::fill(cameFromBuffer.begin(), cameFromBuffer.end(), -1);
+            std::fill(closedBuffer.begin(), closedBuffer.end(), static_cast<uint8_t>(0));
+        }
+
+        bool NavPathfinder::RebuildWaypointsFromCells(const NavGrid& grid,
+                                                      const std::vector<int>& cellIndices,
+                                                      const Math::Vector3& startWorld,
+                                                      const Math::Vector3& goalWorld,
+                                                      std::vector<Math::Vector3>& outWaypoints) const
         {
             outWaypoints.clear();
+            outWaypoints.reserve(cellIndices.size());
 
-            if (!grid.IsConfigured()) {
-                return false;
-            }
-
-            int startX = 0;
-            int startZ = 0;
-            int goalX = 0;
-            int goalZ = 0;
-            if (!grid.WorldToCell(startWorld, startX, startZ) ||
-                !grid.WorldToCell(goalWorld, goalX, goalZ)) {
-                return false;
-            }
-
-            constexpr float kMaxSnapCells = 2.0f;
-            if (!SnapToWalkableCell(grid, startX, startZ, startWorld, kMaxSnapCells) ||
-                !SnapToWalkableCell(grid, goalX, goalZ, goalWorld, kMaxSnapCells)) {
-                return false;
-            }
-
-            const int startIndex = grid.CellToIndex(startX, startZ);
-            const int goalIndex = grid.CellToIndex(goalX, goalZ);
-
-            if (startIndex == goalIndex) {
-                Math::Vector3 waypoint;
-                if (grid.CellToWorld(goalX, goalZ, waypoint)) {
-                    waypoint.y = goalWorld.y;
-                    outWaypoints.push_back(waypoint);
-                }
-                return true;
-            }
-
-            // A* over the baked grid.
-            const int cellCount = grid.GetWidth() * grid.GetHeight();
-            std::vector<float> gScore(static_cast<size_t>(cellCount), std::numeric_limits<float>::max());
-            std::vector<int> cameFrom(static_cast<size_t>(cellCount), -1);
-            std::vector<uint8_t> closed(static_cast<size_t>(cellCount), 0);
-
-            std::priority_queue<AStarNode, std::vector<AStarNode>, AStarNodeCompare> openSet;
-            gScore[static_cast<size_t>(startIndex)] = 0.0f;
-            openSet.push({ startIndex, OctileHeuristic(goalX - startX, goalZ - startZ) });
-
-            bool found = false;
-
-            while (!openSet.empty()) {
-                const AStarNode current = openSet.top();
-                openSet.pop();
-
-                if (closed[static_cast<size_t>(current.index)] != 0) {
-                    continue;
-                }
-
-                if (current.index == goalIndex) {
-                    found = true;
-                    break;
-                }
-
-                closed[static_cast<size_t>(current.index)] = 1;
-
-                int currentX = 0;
-                int currentZ = 0;
-                grid.IndexToCell(current.index, currentX, currentZ);
-
-                for (const NeighborOffset& neighbor : kNeighbors) {
-                    const int nextX = currentX + neighbor.dx;
-                    const int nextZ = currentZ + neighbor.dz;
-                    if (!grid.IsWalkable(nextX, nextZ)) {
-                        continue;
-                    }
-
-                    // Prevent cutting corners on diagonal moves.
-                    if (neighbor.dx != 0 && neighbor.dz != 0) {
-                        if (!grid.IsWalkable(currentX + neighbor.dx, currentZ) ||
-                            !grid.IsWalkable(currentX, currentZ + neighbor.dz)) {
-                            continue;
-                        }
-                    }
-
-                    const int nextIndex = grid.CellToIndex(nextX, nextZ);
-                    if (closed[static_cast<size_t>(nextIndex)] != 0) {
-                        continue;
-                    }
-
-                    const float tentativeG = gScore[static_cast<size_t>(current.index)] + neighbor.cost;
-                    if (tentativeG >= gScore[static_cast<size_t>(nextIndex)]) {
-                        continue;
-                    }
-
-                    cameFrom[static_cast<size_t>(nextIndex)] = current.index;
-                    gScore[static_cast<size_t>(nextIndex)] = tentativeG;
-                    const float fScore = tentativeG + OctileHeuristic(goalX - nextX, goalZ - nextZ);
-                    openSet.push({ nextIndex, fScore });
-                }
-            }
-
-            if (!found) {
-                return false;
-            }
-
-            // Rebuild polyline from cell indices.
-            std::vector<int> reversed;
-            for (int current = goalIndex; current != -1; current = cameFrom[static_cast<size_t>(current)]) {
-                reversed.push_back(current);
-            }
-            std::reverse(reversed.begin(), reversed.end());
-
-            outWaypoints.reserve(reversed.size());
-            for (int cellIndex : reversed) {
+            for (int cellIndex : cellIndices) {
                 int cellX = 0;
                 int cellZ = 0;
                 grid.IndexToCell(cellIndex, cellX, cellZ);
@@ -289,26 +196,163 @@ namespace RTBEngine {
                 outWaypoints.back().y = goalWorld.y;
             }
 
-            // Remove redundant waypoints while staying on walkable cells.
-            SmoothPath(grid, nullptr, outWaypoints);
+            return !outWaypoints.empty();
+        }
+
+        bool NavPathfinder::FindPath(const NavGrid& grid,
+                                     const Math::Vector3& startWorld,
+                                     const Math::Vector3& goalWorld,
+                                     std::vector<Math::Vector3>& outWaypoints) const
+        {
+            outWaypoints.clear();
+
+            if (!grid.IsConfigured()) {
+                return false;
+            }
+
+            int startX = 0;
+            int startZ = 0;
+            int goalX = 0;
+            int goalZ = 0;
+
+            if (!grid.WorldToCell(startWorld, startX, startZ)) {
+                return false;
+            }
+
+            // Goal may be outside the baked bounds (e.g. player near the edge); clamp to border cell.
+            if (!grid.WorldToCell(goalWorld, goalX, goalZ)) {
+                if (!grid.WorldToCellClamped(goalWorld, goalX, goalZ)) {
+                    return false;
+                }
+            }
+
+            constexpr float kMaxSnapCells = 2.0f;
+            if (!SnapToWalkableCell(grid, startX, startZ, startWorld, kMaxSnapCells) ||
+                !SnapToWalkableCell(grid, goalX, goalZ, goalWorld, kMaxSnapCells)) {
+                return false;
+            }
+
+            const int startIndex = grid.CellToIndex(startX, startZ);
+            int goalIndex = grid.CellToIndex(goalX, goalZ);
+
+            if (startIndex == goalIndex) {
+                Math::Vector3 waypoint;
+                if (grid.CellToWorld(goalX, goalZ, waypoint)) {
+                    waypoint.y = goalWorld.y;
+                    outWaypoints.push_back(waypoint);
+                }
+                return true;
+            }
+
+            const int cellCount = grid.GetWidth() * grid.GetHeight();
+            EnsureSearchBuffers(cellCount);
+
+            std::priority_queue<AStarNode, std::vector<AStarNode>, AStarNodeCompare> openSet;
+            gScoreBuffer[static_cast<size_t>(startIndex)] = 0.0f;
+            openSet.push({ startIndex, OctileHeuristic(goalX - startX, goalZ - startZ) });
+
+            bool foundGoal = false;
+            // If the goal cell is blocked, track the explored node closest to it (partial path).
+            int bestPartialIndex = startIndex;
+            float bestPartialHeuristic = OctileHeuristic(goalX - startX, goalZ - startZ);
+
+            while (!openSet.empty()) {
+                const AStarNode current = openSet.top();
+                openSet.pop();
+
+                if (closedBuffer[static_cast<size_t>(current.index)] != 0) {
+                    continue;
+                }
+
+                if (current.index == goalIndex) {
+                    foundGoal = true;
+                    break;
+                }
+
+                closedBuffer[static_cast<size_t>(current.index)] = 1;
+
+                int currentX = 0;
+                int currentZ = 0;
+                grid.IndexToCell(current.index, currentX, currentZ);
+
+                const float partialHeuristic = OctileHeuristic(goalX - currentX, goalZ - currentZ);
+                if (partialHeuristic < bestPartialHeuristic) {
+                    bestPartialHeuristic = partialHeuristic;
+                    bestPartialIndex = current.index;
+                }
+
+                for (const NeighborOffset& neighbor : kNeighbors) {
+                    const int nextX = currentX + neighbor.dx;
+                    const int nextZ = currentZ + neighbor.dz;
+                    if (!grid.IsWalkable(nextX, nextZ)) {
+                        continue;
+                    }
+
+                    if (neighbor.dx != 0 && neighbor.dz != 0) {
+                        // Block corner-cutting: both adjacent axis cells must be walkable.
+                        if (!grid.IsWalkable(currentX + neighbor.dx, currentZ) ||
+                            !grid.IsWalkable(currentX, currentZ + neighbor.dz)) {
+                            continue;
+                        }
+                    }
+
+                    const int nextIndex = grid.CellToIndex(nextX, nextZ);
+                    if (closedBuffer[static_cast<size_t>(nextIndex)] != 0) {
+                        continue;
+                    }
+
+                    const float tentativeG =
+                        gScoreBuffer[static_cast<size_t>(current.index)] + neighbor.cost;
+                    if (tentativeG >= gScoreBuffer[static_cast<size_t>(nextIndex)]) {
+                        continue;
+                    }
+
+                    cameFromBuffer[static_cast<size_t>(nextIndex)] = current.index;
+                    gScoreBuffer[static_cast<size_t>(nextIndex)] = tentativeG;
+                    const float fScore = tentativeG + OctileHeuristic(goalX - nextX, goalZ - nextZ);
+                    openSet.push({ nextIndex, fScore });
+                }
+            }
+
+            const bool isPartialPath = !foundGoal;
+            if (!foundGoal) {
+                if (bestPartialIndex < 0 || bestPartialIndex == startIndex) {
+                    return false;
+                }
+
+                goalIndex = bestPartialIndex;
+            }
+
+            std::vector<int> reversed;
+            for (int current = goalIndex; current != -1; current = cameFromBuffer[static_cast<size_t>(current)]) {
+                reversed.push_back(current);
+            }
+            std::reverse(reversed.begin(), reversed.end());
+
+            if (!RebuildWaypointsFromCells(grid, reversed, startWorld, goalWorld, outWaypoints)) {
+                return false;
+            }
+
+            SmoothPath(grid, outWaypoints);
 
             if (outWaypoints.empty()) {
                 return false;
             }
 
-            constexpr float kMaxGoalReachCells = 2.5f;
-            const Math::Vector3& pathEnd = outWaypoints.back();
-            if (!IsWithinPlanarReach(grid, pathEnd, goalWorld, kMaxGoalReachCells)) {
-                outWaypoints.clear();
-                return false;
+            if (!isPartialPath) {
+                // Full paths must end near the requested world goal; partial paths skip this check.
+                constexpr float kMaxGoalReachCells = 2.5f;
+                const Math::Vector3& pathEnd = outWaypoints.back();
+                if (!IsWithinPlanarReach(grid, pathEnd, goalWorld, kMaxGoalReachCells)) {
+                    outWaypoints.clear();
+                    return false;
+                }
             }
 
             return true;
         }
 
-        // Grid string pulling: skip intermediate waypoints when the cell line is walkable.
         void NavPathfinder::SmoothPath(const NavGrid& grid,
-                                       Physics::PhysicsWorld* /*physicsWorld*/,
                                        std::vector<Math::Vector3>& inOutWaypoints) const
         {
             if (inOutWaypoints.size() < 3) {
@@ -322,6 +366,7 @@ namespace RTBEngine {
             size_t anchorIndex = 0;
             while (anchorIndex + 1 < inOutWaypoints.size()) {
                 size_t farthestVisible = anchorIndex + 1;
+                // Greedy string pull: keep skipping to the farthest waypoint with grid LOS.
                 for (size_t candidate = anchorIndex + 2; candidate < inOutWaypoints.size(); ++candidate) {
                     if (HasGridLineOfSight(grid,
                                            inOutWaypoints[anchorIndex],

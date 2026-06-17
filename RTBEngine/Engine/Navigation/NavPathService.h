@@ -14,12 +14,9 @@ namespace RTBEngine {
         class Scene;
     }
 
-    namespace Physics {
-        class PhysicsWorld;
-    }
-
     namespace Navigation {
 
+        // Central navigation runtime: active grid, registered agents, path request budget.
         class RTB_API NavPathService {
         public:
             static NavPathService& GetInstance();
@@ -30,9 +27,12 @@ namespace RTBEngine {
             void RegisterAgent(ECS::NavAgentComponent* agent);
             void UnregisterAgent(ECS::NavAgentComponent* agent);
 
+            // Throttled async path work (processed in Scene::FixedUpdate).
             void QueuePathRequest(ECS::NavAgentComponent* agent);
-            void ProcessFixedUpdate(Physics::PhysicsWorld* physicsWorld);
-            void ProcessAgentPathNow(ECS::NavAgentComponent* agent, Physics::PhysicsWorld* physicsWorld = nullptr);
+            void ProcessFixedUpdate();
+
+            // Immediate path solve — used on spawn / first SetDestination when waypoints are empty.
+            void ProcessAgentPathNow(ECS::NavAgentComponent* agent);
 
             const std::vector<ECS::NavAgentComponent*>& GetRegisteredAgents() const { return agents; }
 

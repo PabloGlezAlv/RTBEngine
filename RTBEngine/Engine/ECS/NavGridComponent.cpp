@@ -2,13 +2,10 @@
 
 #include "../Navigation/NavPathService.h"
 #include "../Physics/PhysicsWorld.h"
-#include "BoxColliderComponent.h"
-#include "CapsuleColliderComponent.h"
 #include "GameObject.h"
-#include "RigidBodyComponent.h"
+#include "PhysicsWorldResolver.h"
 #include "SceneManager.h"
 #include "Scene.h"
-#include "SphereColliderComponent.h"
 #include "../Reflection/PropertyMacros.h"
 #include "../Core/Logger.h"
 #include <algorithm>
@@ -32,64 +29,6 @@ namespace {
         }
 
         return -1;
-    }
-
-    RTBEngine::Physics::PhysicsWorld* ResolvePhysicsWorldFromGameObject(RTBEngine::ECS::GameObject* gameObject)
-    {
-        if (!gameObject) {
-            return nullptr;
-        }
-
-        if (auto* rigidBody = gameObject->GetComponent<RTBEngine::ECS::RigidBodyComponent>()) {
-            if (rigidBody->GetRigidBody() && rigidBody->GetRigidBody()->GetPhysicsWorld()) {
-                return rigidBody->GetRigidBody()->GetPhysicsWorld();
-            }
-        }
-
-        if (auto* boxCollider = gameObject->GetComponent<RTBEngine::ECS::BoxColliderComponent>()) {
-            if (boxCollider->GetPhysicsWorld()) {
-                return boxCollider->GetPhysicsWorld();
-            }
-        }
-
-        if (auto* sphereCollider = gameObject->GetComponent<RTBEngine::ECS::SphereColliderComponent>()) {
-            if (sphereCollider->GetPhysicsWorld()) {
-                return sphereCollider->GetPhysicsWorld();
-            }
-        }
-
-        if (auto* capsuleCollider = gameObject->GetComponent<RTBEngine::ECS::CapsuleColliderComponent>()) {
-            if (capsuleCollider->GetPhysicsWorld()) {
-                return capsuleCollider->GetPhysicsWorld();
-            }
-        }
-
-        for (RTBEngine::ECS::GameObject* child : gameObject->GetChildren()) {
-            if (RTBEngine::Physics::PhysicsWorld* world = ResolvePhysicsWorldFromGameObject(child)) {
-                return world;
-            }
-        }
-
-        return nullptr;
-    }
-
-    RTBEngine::Physics::PhysicsWorld* ResolvePhysicsWorldFromScene(RTBEngine::ECS::Scene* scene)
-    {
-        if (!scene) {
-            return nullptr;
-        }
-
-        for (const auto& gameObject : scene->GetGameObjects()) {
-            if (!gameObject) {
-                continue;
-            }
-
-            if (RTBEngine::Physics::PhysicsWorld* world = ResolvePhysicsWorldFromGameObject(gameObject.get())) {
-                return world;
-            }
-        }
-
-        return nullptr;
     }
 
     void ActivateNavGridOnGameObject(RTBEngine::ECS::GameObject* gameObject)
@@ -160,7 +99,12 @@ namespace RTBEngine {
 
         int NavGridComponent::GetWalkableCellCount() const
         {
+            if (cachedWalkableCellCount >= 0) {
+                return cachedWalkableCellCount;
+            }
+
             if (!grid.IsConfigured()) {
+                cachedWalkableCellCount = 0;
                 return 0;
             }
 
@@ -170,11 +114,14 @@ namespace RTBEngine {
                     ++count;
                 }
             }
+
+            cachedWalkableCellCount = count;
             return count;
         }
 
         Math::Vector3 NavGridComponent::GetWorldOrigin() const
         {
+            // origin is local to the owner; pathfinding always uses world-space cell bounds.
             Math::Vector3 worldOrigin = origin;
             if (owner) {
                 const Math::Vector3 ownerPosition = owner->GetWorldPosition();
@@ -201,6 +148,7 @@ namespace RTBEngine {
             grid.ClearWalkability();
             bakeFingerprint = {};
             cachedWalkableHex.clear();
+            cachedWalkableCellCount = -1;
 
             if (Navigation::NavPathService::GetInstance().GetActiveGrid() == &grid) {
                 Navigation::NavPathService::GetInstance().SetActiveGrid(nullptr);
@@ -247,6 +195,7 @@ namespace RTBEngine {
                 }
             }
 
+            // Publish this component's grid as the scene-wide navigation field.
             auto& pathService = Navigation::NavPathService::GetInstance();
             if (pathService.GetActiveGrid() != &grid) {
                 pathService.SetActiveGrid(&grid);
@@ -337,6 +286,8 @@ namespace RTBEngine {
                 return false;
             }
 
+            cachedWalkableCellCount = -1;
+
             int width = expectedWidth;
             int height = expectedHeight;
             if (width <= 0 || height <= 0) {
@@ -392,6 +343,7 @@ namespace RTBEngine {
 
             baked = true;
             cachedWalkableHex = ExportWalkableHex();
+            cachedWalkableCellCount = GetWalkableCellCount();
             StoreBakeFingerprint();
             ActivateBakedGrid();
             RTB_INFO("[NavGridComponent] Imported navigation grid (" +
@@ -441,6 +393,8 @@ namespace RTBEngine {
             if (!grid.SetWalkabilityData(walkableData)) {
                 RebuildGridFromCache();
             }
+
+            cachedWalkableCellCount = -1;
         }
 
         void NavGridComponent::RefreshBakedGridState()
@@ -486,6 +440,7 @@ namespace RTBEngine {
 
             const Math::Vector3 worldOrigin = GetWorldOrigin();
             grid.Configure(worldOrigin, size, cellSize);
+            cachedWalkableCellCount = -1;
 
             Navigation::NavGridBakeSettings settings;
             settings.agentRadius = agentRadius;
@@ -507,6 +462,7 @@ namespace RTBEngine {
 
             baked = true;
             cachedWalkableHex = ExportWalkableHex();
+            cachedWalkableCellCount = walkableCells;
             StoreBakeFingerprint();
             ActivateBakedGrid();
             if (Scene* scene = SceneManager::GetInstance().GetActiveScene()) {
@@ -604,6 +560,7 @@ namespace RTBEngine {
 
             baked = true;
             cachedWalkableHex = ExportWalkableHex();
+            cachedWalkableCellCount = GetWalkableCellCount();
             StoreBakeFingerprint();
             ActivateBakedGrid();
             return true;

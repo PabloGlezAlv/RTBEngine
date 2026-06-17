@@ -235,6 +235,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Navigation\NavPathService.cpp" />
     <ClCompile Include="Engine\ECS\NavGridComponent.cpp" />
     <ClCompile Include="Engine\ECS\NavAgentComponent.cpp" />
+    <ClCompile Include="Engine\ECS\PhysicsWorldResolver.cpp" />
     <ClCompile Include="Engine\Physics\PhysicsSystem.cpp" />
     <ClCompile Include="Engine\Physics\PhysicsLayerSettings.cpp" />
     <ClCompile Include="Engine\Rendering\Lighting\PointLight.cpp" />
@@ -404,6 +405,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Navigation\NavPathService.h" />
     <ClInclude Include="Engine\ECS\NavGridComponent.h" />
     <ClInclude Include="Engine\ECS\NavAgentComponent.h" />
+    <ClInclude Include="Engine\ECS\PhysicsWorldResolver.h" />
     <ClInclude Include="Engine\Physics\PhysicsLayerSettings.h" />
     <ClInclude Include="Engine\Physics\PhysicsSystem.h" />
     <ClInclude Include="Engine\Physics\PhysicsUtils.h" />

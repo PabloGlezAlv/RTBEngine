@@ -8,6 +8,7 @@
 namespace RTBEngine {
     namespace Navigation {
 
+        // 2D walkability grid in world XZ. Baked by NavGridBaker, persisted in NavMeshFile (.navmesh).
         class RTB_API NavGrid {
         public:
             void Configure(const Math::Vector3& gridOrigin,
@@ -27,6 +28,8 @@ namespace RTBEngine {
             bool IsWalkableIndex(int index) const;
 
             bool WorldToCell(const Math::Vector3& worldPosition, int& outCellX, int& outCellZ) const;
+            // Projects out-of-bounds world positions onto the nearest border cell.
+            bool WorldToCellClamped(const Math::Vector3& worldPosition, int& outCellX, int& outCellZ) const;
             bool CellToWorld(int cellX, int cellZ, Math::Vector3& outWorld) const;
             int CellToIndex(int cellX, int cellZ) const;
             void IndexToCell(int index, int& outCellX, int& outCellZ) const;

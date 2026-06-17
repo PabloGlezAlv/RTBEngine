@@ -64,8 +64,25 @@ namespace RTBEngine {
                 return false;
             }
 
+            // Cell centers sit at (cell + 0.5) * cellSize from origin.
             outCellX = std::clamp(static_cast<int>(localX / cellSize), 0, width - 1);
             outCellZ = std::clamp(static_cast<int>(localZ / cellSize), 0, height - 1);
+            return true;
+        }
+
+        bool NavGrid::WorldToCellClamped(const Math::Vector3& worldPosition, int& outCellX, int& outCellZ) const
+        {
+            if (!IsConfigured()) {
+                return false;
+            }
+
+            const float localX = worldPosition.x - origin.x;
+            const float localZ = worldPosition.z - origin.z;
+            const float clampedX = std::clamp(localX, 0.0f, std::max(size.x - 0.0001f, 0.0f));
+            const float clampedZ = std::clamp(localZ, 0.0f, std::max(size.z - 0.0001f, 0.0f));
+
+            outCellX = std::clamp(static_cast<int>(clampedX / cellSize), 0, width - 1);
+            outCellZ = std::clamp(static_cast<int>(clampedZ / cellSize), 0, height - 1);
             return true;
         }
 
@@ -98,6 +115,7 @@ namespace RTBEngine {
                 return true;
             }
 
+            // Expand in Manhattan rings until we hit a walkable cell or exhaust maxRadius.
             for (int radius = 1; radius <= maxRadius; ++radius) {
                 for (int dz = -radius; dz <= radius; ++dz) {
                     for (int dx = -radius; dx <= radius; ++dx) {

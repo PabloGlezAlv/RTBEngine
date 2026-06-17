@@ -394,6 +394,8 @@ RTBEngine::ECS::GameObject* RTBEngine::ECS::Scene::FindGameObjectByUUID(const st
 
 void RTBEngine::ECS::Scene::PrepareForPlayMode()
 {
+	// Editor keeps the same scene between Play sessions; reset OnStart so RoundManager,
+	// UI handlers, etc. run again when entering Play mode.
 	std::function<void(GameObject*)> visitHierarchy = [&](GameObject* gameObject) {
 		if (!gameObject) {
 			return;

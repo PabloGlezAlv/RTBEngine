@@ -42,6 +42,8 @@ namespace RTBEngine {
 
 #pragma warning(disable: 4251)
 
+        // Scene-level navigation surface. Editor bakes walkability; runtime registers the grid
+        // with NavPathService so NavAgentComponents can pathfind.
         class RTB_API NavGridComponent : public Component {
 
         public:
@@ -142,8 +144,7 @@ namespace RTBEngine {
 
             };
 
-
-
+            // Detects stale .navmesh data when origin/size/cellSize change in the inspector.
             void ClampSettings();
 
             bool TryBakeGrid();
@@ -178,6 +179,8 @@ namespace RTBEngine {
 
             std::string cachedWalkableHex;
 
+            // -1 = invalid; recomputed after bake/import to avoid O(n) scans during activation.
+            mutable int cachedWalkableCellCount = -1;
         };
 
 #pragma warning(pop)

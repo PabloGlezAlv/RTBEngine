@@ -12,14 +12,12 @@ namespace RTBEngine {
         class NavPathfinder;
     }
 
-    namespace Physics {
-        class PhysicsWorld;
-    }
-
     namespace ECS {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
+        // Per-actor navigation driver. Gameplay sets destinations; this component owns waypoints
+        // and asks NavPathService to run A* on the active scene grid.
         class RTB_API NavAgentComponent : public Component {
         public:
             NavAgentComponent();
@@ -36,6 +34,7 @@ namespace RTBEngine {
 
             void SetDestination(const Math::Vector3& worldDestination);
             void ClearDestination();
+            // Forces an immediate path solve when waypoints are missing (spawn / chase kickoff).
             void EnsurePathReady();
 
             bool HasActivePath() const { return hasActivePath; }
@@ -47,11 +46,8 @@ namespace RTBEngine {
             const std::vector<Math::Vector3>& GetWaypoints() const { return waypoints; }
             int GetCurrentWaypointIndex() const { return currentWaypointIndex; }
 
-            Physics::PhysicsWorld* ResolvePhysicsWorld() const;
-
             void ProcessPathRequest(const Navigation::NavGrid& grid,
-                                    Navigation::NavPathfinder& pathfinder,
-                                    Physics::PhysicsWorld* physicsWorld);
+                                    Navigation::NavPathfinder& pathfinder);
 
             RTB_COMPONENT(NavAgentComponent)
 
@@ -70,7 +66,7 @@ namespace RTBEngine {
             int currentWaypointIndex = 0;
             bool hasActivePath = false;
             bool pathRequestQueued = false;
-            bool hasLoggedFirstPathDebug = false;
+            bool hasLoggedFirstPathDebug = false; // One-shot spawn diagnostics per agent instance.
         };
 #pragma warning(pop)
 

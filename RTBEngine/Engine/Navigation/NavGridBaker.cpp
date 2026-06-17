@@ -36,6 +36,7 @@ namespace RTBEngine {
                                      float maxStepHeight,
                                      float minGroundNormalY)
             {
+                // Only static colliders count as ground or blocking geometry during bake.
                 if (!IsStaticObstacle(hit)) {
                     return false;
                 }
@@ -95,6 +96,7 @@ namespace RTBEngine {
                                         float clearanceHeight,
                                         const ECS::GameObject* ignoredGround)
             {
+                // Vertical ray from feet to clearanceHeight — low ceilings mark the cell blocked.
                 const Math::Vector3 start(
                     feetPosition.x,
                     feetPosition.y + agentRadius * 0.1f,
@@ -117,6 +119,7 @@ namespace RTBEngine {
                                           float agentRadius,
                                           const ECS::GameObject* ignoredGround)
             {
+                // Eight horizontal rays at agent height, length = agentRadius.
                 static const std::array<Math::Vector3, kHorizontalDirectionCount> directions = {{
                     Math::Vector3(1.0f, 0.0f, 0.0f),
                     Math::Vector3(-1.0f, 0.0f, 0.0f),
@@ -211,6 +214,7 @@ namespace RTBEngine {
                                     float agentRadius,
                                     std::array<Math::Vector3, kSampleCount>& outOffsets)
             {
+                // Center + four inset corners; all five must pass for the cell to be walkable.
                 const float halfCell = cellSize * 0.5f;
                 const float inset = std::min(agentRadius, halfCell * 0.85f);
 
@@ -247,6 +251,7 @@ namespace RTBEngine {
 
             int walkableCells = 0;
 
+            // Per cell: ground ray down, ceiling ray up, eight horizontal clearance rays (x5 sample points).
             for (int z = 0; z < grid.GetHeight(); ++z) {
                 for (int x = 0; x < grid.GetWidth(); ++x) {
                     Math::Vector3 cellCenter;

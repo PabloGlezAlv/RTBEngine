@@ -66,7 +66,7 @@ namespace RTBEngine {
             CameraComponent* GetMainCamera() const;
             Rendering::Camera* GetActiveCamera();
 
-            // Resets OnStart invocation flags so Play mode can invoke OnStart again.
+            // Editor Play: allow OnStart to fire again without reloading the scene.
             void PrepareForPlayMode();
 
         private:

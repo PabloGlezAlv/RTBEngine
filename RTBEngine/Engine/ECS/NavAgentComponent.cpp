@@ -1,53 +1,11 @@
 #include "NavAgentComponent.h"
 
 #include "../Navigation/NavPathService.h"
-#include "../Physics/PhysicsWorld.h"
-#include "BoxColliderComponent.h"
-#include "CapsuleColliderComponent.h"
 #include "GameObject.h"
-#include "RigidBodyComponent.h"
-#include "SceneManager.h"
-#include "Scene.h"
-#include "SphereColliderComponent.h"
 #include "../Math/Math.h"
 #include "../Core/Logger.h"
 #include "../Reflection/PropertyMacros.h"
 #include <algorithm>
-
-namespace {
-    RTBEngine::Physics::PhysicsWorld* ResolvePhysicsWorldFromGameObject(RTBEngine::ECS::GameObject* gameObject)
-    {
-        if (!gameObject) {
-            return nullptr;
-        }
-
-        if (auto* rigidBody = gameObject->GetComponent<RTBEngine::ECS::RigidBodyComponent>()) {
-            if (rigidBody->GetRigidBody() && rigidBody->GetRigidBody()->GetPhysicsWorld()) {
-                return rigidBody->GetRigidBody()->GetPhysicsWorld();
-            }
-        }
-
-        if (auto* boxCollider = gameObject->GetComponent<RTBEngine::ECS::BoxColliderComponent>()) {
-            if (boxCollider->GetPhysicsWorld()) {
-                return boxCollider->GetPhysicsWorld();
-            }
-        }
-
-        if (auto* sphereCollider = gameObject->GetComponent<RTBEngine::ECS::SphereColliderComponent>()) {
-            if (sphereCollider->GetPhysicsWorld()) {
-                return sphereCollider->GetPhysicsWorld();
-            }
-        }
-
-        if (auto* capsuleCollider = gameObject->GetComponent<RTBEngine::ECS::CapsuleColliderComponent>()) {
-            if (capsuleCollider->GetPhysicsWorld()) {
-                return capsuleCollider->GetPhysicsWorld();
-            }
-        }
-
-        return nullptr;
-    }
-}
 
 namespace RTBEngine {
     namespace ECS {
@@ -103,6 +61,7 @@ namespace RTBEngine {
             destination = worldDestination;
             hasDestination = true;
 
+            // Moving target invalidated the old polyline — schedule a fresh search.
             if (targetMoved >= targetMoveThreshold) {
                 pathRequestQueued = false;
                 hasActivePath = false;
@@ -110,6 +69,7 @@ namespace RTBEngine {
                 currentWaypointIndex = 0;
             }
 
+            // First destination after spawn: solve synchronously so AI can move same frame.
             if (waypoints.empty() && Navigation::NavPathService::GetInstance().GetActiveGrid()) {
                 pathRequestQueued = false;
                 Navigation::NavPathService::GetInstance().ProcessAgentPathNow(this);
@@ -173,8 +133,7 @@ namespace RTBEngine {
         }
 
         void NavAgentComponent::ProcessPathRequest(const Navigation::NavGrid& grid,
-                                                   Navigation::NavPathfinder& pathfinder,
-                                                   Physics::PhysicsWorld* physicsWorld)
+                                                   Navigation::NavPathfinder& pathfinder)
         {
             pathRequestQueued = false;
 
@@ -182,11 +141,9 @@ namespace RTBEngine {
                 return;
             }
 
-            Physics::PhysicsWorld* world = physicsWorld ? physicsWorld : ResolvePhysicsWorld();
-
             std::vector<Math::Vector3> newWaypoints;
             const Math::Vector3 start = owner->GetWorldPosition();
-            if (!pathfinder.FindPath(grid, start, destination, newWaypoints, world)) {
+            if (!pathfinder.FindPath(grid, start, destination, newWaypoints)) {
                 hasActivePath = false;
                 waypoints.clear();
                 currentWaypointIndex = 0;
@@ -205,6 +162,7 @@ namespace RTBEngine {
             }
 
             waypoints = std::move(newWaypoints);
+            // Index 0 is the start cell; agents steer toward the next corner when possible.
             currentWaypointIndex = waypoints.size() > 1 ? 1 : 0;
             hasActivePath = !waypoints.empty();
             lastRequestedDestination = destination;
@@ -283,28 +241,8 @@ namespace RTBEngine {
             }
 
             pathRequestQueued = true;
+            // Recurring target updates go through the per-frame budget in NavPathService.
             Navigation::NavPathService::GetInstance().QueuePathRequest(this);
-        }
-
-        Physics::PhysicsWorld* NavAgentComponent::ResolvePhysicsWorld() const
-        {
-            if (Physics::PhysicsWorld* world = ResolvePhysicsWorldFromGameObject(owner)) {
-                return world;
-            }
-
-            if (Scene* scene = SceneManager::GetInstance().GetActiveScene()) {
-                for (const auto& gameObject : scene->GetGameObjects()) {
-                    if (!gameObject) {
-                        continue;
-                    }
-
-                    if (Physics::PhysicsWorld* world = ResolvePhysicsWorldFromGameObject(gameObject.get())) {
-                        return world;
-                    }
-                }
-            }
-
-            return nullptr;
         }
 
         float NavAgentComponent::PlanarDistance(const Math::Vector3& a, const Math::Vector3& b) const
