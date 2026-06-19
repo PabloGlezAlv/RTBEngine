@@ -249,10 +249,7 @@ namespace RTBEngine {
 
                 if (animator && animator->ShouldSkinMesh()) {
                     shader->SetBool("uHasAnimation", true);
-                    const std::vector<Math::Matrix4>& boneTransforms = animator->GetBoneTransforms();
-                    for (size_t j = 0; j < boneTransforms.size() && j < 100; j++) {
-                        shader->SetMatrix4("uBoneTransforms[" + std::to_string(j) + "]", boneTransforms[j]);
-                    }
+                    shader->SetBoneTransforms(animator->GetBoneTransforms());
                 }
                 else {
                     shader->SetBool("uHasAnimation", false);
@@ -335,10 +332,7 @@ namespace RTBEngine {
 
             if (animator && animator->ShouldSkinMesh()) {
                 shader->SetBool("uHasAnimation", true);
-                const std::vector<Math::Matrix4>& boneTransforms = animator->GetBoneTransforms();
-                for (size_t j = 0; j < boneTransforms.size() && j < 100; j++) {
-                    shader->SetMatrix4("uBoneTransforms[" + std::to_string(j) + "]", boneTransforms[j]);
-                }
+                shader->SetBoneTransforms(animator->GetBoneTransforms());
             }
             else {
                 shader->SetBool("uHasAnimation", false);

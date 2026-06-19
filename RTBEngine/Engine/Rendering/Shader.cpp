@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 #include "../RTBEngine.h"
 
 namespace RTBEngine {
@@ -88,6 +89,28 @@ namespace RTBEngine {
             glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, value.m);
         }
 
+        void Shader::SetBoneTransforms(const std::vector<Math::Matrix4>& transforms)
+        {
+            const size_t count = std::min(transforms.size(), boneTransformUniformLocations.size());
+            for (size_t i = 0; i < count; ++i) {
+                const GLint location = boneTransformUniformLocations[i];
+                if (location >= 0) {
+                    glUniformMatrix4fv(location, 1, GL_FALSE, transforms[i].m);
+                }
+            }
+        }
+
+        void Shader::PrecacheBoneTransformUniforms()
+        {
+            boneTransformUniformLocations.resize(MaxBoneTransforms);
+            for (int i = 0; i < MaxBoneTransforms; ++i) {
+                const std::string name = "uBoneTransforms[" + std::to_string(i) + "]";
+                const GLint location = glGetUniformLocation(programID, name.c_str());
+                boneTransformUniformLocations[static_cast<size_t>(i)] = location;
+                uniformCache[name] = location;
+            }
+        }
+
         GLuint Shader::CompileShader(GLenum type, const std::string& source) {
             GLuint shader = glCreateShader(type);
             const char* src = source.c_str();
@@ -125,6 +148,10 @@ namespace RTBEngine {
                 programID = 0;
                 return false;
             }
+
+            uniformCache.clear();
+            boneTransformUniformLocations.clear();
+            PrecacheBoneTransformUniforms();
 
             return true;
         }

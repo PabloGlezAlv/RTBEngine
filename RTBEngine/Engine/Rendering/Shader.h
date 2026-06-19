@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include "../Math/Math.h"
 
 namespace RTBEngine {
@@ -12,6 +13,8 @@ namespace RTBEngine {
 #pragma warning(disable: 4251)
         class RTB_API Shader {
         public:
+            static constexpr int MaxBoneTransforms = 100;
+
             Shader();
             ~Shader();
 
@@ -34,8 +37,10 @@ namespace RTBEngine {
             void SetVector3(const std::string& name, const Math::Vector3& value);
             void SetVector4(const std::string& name, const Math::Vector4& value);
             void SetMatrix4(const std::string& name, const Math::Matrix4& value);
+            void SetBoneTransforms(const std::vector<Math::Matrix4>& transforms);
 
         private:
+            void PrecacheBoneTransformUniforms();
             GLuint CompileShader(GLenum type, const std::string& source);
             bool LinkProgram(GLuint vertexShader, GLuint fragmentShader);
             std::string ReadFile(const std::string& filePath);
@@ -44,6 +49,7 @@ namespace RTBEngine {
             GLuint programID;
             bool isCompiled;
             std::unordered_map<std::string, GLint> uniformCache;
+            std::vector<GLint> boneTransformUniformLocations;
         };
 #pragma warning(pop)
 

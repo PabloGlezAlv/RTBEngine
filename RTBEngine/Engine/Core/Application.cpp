@@ -614,10 +614,7 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rende
 		Animation::Animator* animator = FindAnimatorInAncestors(go.get());
 		if (animator && animator->ShouldSkinMesh()) {
 			shader->SetBool("uHasAnimation", true);
-			const auto& boneTransforms = animator->GetBoneTransforms();
-			for (size_t i = 0; i < boneTransforms.size() && i < 100; ++i) {
-				shader->SetMatrix4("uBoneTransforms[" + std::to_string(i) + "]", boneTransforms[i]);
-			}
+			shader->SetBoneTransforms(animator->GetBoneTransforms());
 		}
 		else {
 			shader->SetBool("uHasAnimation", false);
