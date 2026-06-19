@@ -1,7 +1,6 @@
 #pragma once
 #include "../../RTBEngineAPI.h"
 #include "Light.h"
-#include "../Shader.h"
 #include "../ShadowMap.h"
 
 #include <memory>
@@ -19,9 +18,6 @@ namespace RTBEngine {
 
             void SetDirection(const Math::Vector3& direction) { this->direction = direction.Normalized(); }
             Math::Vector3 GetDirection() const { return direction; }
-
-            void ApplyToShader(Shader* shader) override;
-
 
             void SetCastShadows(bool enabled);
             bool GetCastShadows() const { return castShadows; }

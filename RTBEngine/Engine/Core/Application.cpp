@@ -28,6 +28,8 @@
 #include "../ECS/SceneManager.h"
 #include "../Rendering/Skybox.h"
 #include "../Rendering/Cubemap.h"
+#include "../Rendering/Lighting/LightingUBO.h"
+#include "../Rendering/Lighting/DirectionalLight.h"
 #include "../Rendering/Frustum.h"
 #include "../Online/OnlineSystem.h"
 
@@ -645,36 +647,29 @@ void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Renderi
 
 	shader->Bind();
 
-	int pointLightIndex = 0;
-	int spotLightIndex = 0;
+	std::vector<Rendering::Light*> activeLights;
+	activeLights.reserve(scene->GetCachedLightComponents().size());
 	Rendering::DirectionalLight* shadowCastingLight = nullptr;
 
 	for (ECS::LightComponent* lightComp : scene->GetCachedLightComponents()) {
-		if (!lightComp || !lightComp->GetLight()) continue;
+		if (!lightComp || !lightComp->IsEnabled() || !lightComp->GetLight()) continue;
 
 		ECS::GameObject* go = lightComp->GetOwner();
 		if (!go || !go->IsActiveInHierarchy()) continue;
 
 		Rendering::Light* light = lightComp->GetLight();
+		activeLights.push_back(light);
 
 		if (light->GetType() == Rendering::LightType::Directional) {
-			light->ApplyToShader(shader);
-
 			auto* dirLight = static_cast<Rendering::DirectionalLight*>(light);
 			if (dirLight->GetCastShadows()) {
 				shadowCastingLight = dirLight;
 			}
 		}
-		else if (light->GetType() == Rendering::LightType::Point) {
-			static_cast<Rendering::PointLight*>(light)->ApplyToShader(shader, pointLightIndex++);
-		}
-		else if (light->GetType() == Rendering::LightType::Spot) {
-			static_cast<Rendering::SpotLight*>(light)->ApplyToShader(shader, spotLightIndex++);
-		}
 	}
 
-	shader->SetInt("numPointLights", pointLightIndex);
-	shader->SetInt("numSpotLights", spotLightIndex);
+	Rendering::LightingUBO::GetInstance().Upload(activeLights);
+	Rendering::LightingUBO::GetInstance().Bind();
 
 	if (shadowCastingLight) {
 		shader->SetBool("uHasShadows", true);

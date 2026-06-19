@@ -24,8 +24,6 @@ namespace RTBEngine {
             void SetIntensity(float intensity) { this->intensity = intensity; }
             float GetIntensity() const { return intensity; }
 
-            virtual void ApplyToShader(class Shader* shader) = 0;
-
         protected:
             LightType type;
             Math::Vector3 color;

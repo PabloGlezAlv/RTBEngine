@@ -2,7 +2,6 @@
 #include "../RTBEngineAPI.h"
 #include "GameObject.h"
 #include "../Rendering/Camera.h"
-#include "../Rendering/Lighting/Light.h"
 #include "LightComponent.h"
 #include <vector>
 #include <memory>
@@ -65,8 +64,6 @@ namespace RTBEngine {
 
             const std::string& GetName() const { return name; }
             void SetName(const std::string& newName) { name = newName; }
-            void CollectLights();
-            const std::vector<Rendering::Light*>& GetLights() const { return lights; }
             const std::vector<std::unique_ptr<GameObject>>& GetGameObjects() const { return gameObjects; }
 
             void InvalidateComponentCaches();
@@ -99,7 +96,6 @@ namespace RTBEngine {
 
             std::string name;
             std::vector<std::unique_ptr<GameObject>> gameObjects;
-            std::vector<Rendering::Light*> lights;
 
             std::vector<std::unique_ptr<GameObject>> pendingAdds;
             std::vector<GameObject*> pendingRemoves;

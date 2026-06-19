@@ -147,17 +147,6 @@ namespace RTBEngine {
                 hasActivePath = false;
                 waypoints.clear();
                 currentWaypointIndex = 0;
-
-                if (!hasLoggedFirstPathDebug) {
-                    hasLoggedFirstPathDebug = true;
-                    RTB_WARN("[NavAgentComponent] First path FAILED for '" +
-                        (owner ? owner->GetName() : std::string("unknown")) +
-                        "' start=(" + std::to_string(start.x) + ", " + std::to_string(start.y) + ", " +
-                        std::to_string(start.z) + ") destination=(" +
-                        std::to_string(destination.x) + ", " + std::to_string(destination.y) + ", " +
-                        std::to_string(destination.z) + ") activeGrid=" +
-                        (Navigation::NavPathService::GetInstance().GetActiveGrid() ? "set" : "missing") + ".");
-                }
                 return;
             }
 
@@ -169,20 +158,6 @@ namespace RTBEngine {
             recalcTimer = recalcInterval;
 
             Navigation::NavPathService::GetInstance().SetDebugAgent(this);
-
-            if (!hasLoggedFirstPathDebug) {
-                hasLoggedFirstPathDebug = true;
-                const std::string agentName = owner ? owner->GetName() : "unknown";
-                RTB_INFO("[NavAgentComponent] First path for '" + agentName + "' -> destination (" +
-                    std::to_string(destination.x) + ", " + std::to_string(destination.y) + ", " +
-                    std::to_string(destination.z) + "), waypoints=" + std::to_string(waypoints.size()) + ":");
-                for (size_t waypointIndex = 0; waypointIndex < waypoints.size(); ++waypointIndex) {
-                    const Math::Vector3& waypoint = waypoints[waypointIndex];
-                    RTB_INFO("[NavAgentComponent]   [" + std::to_string(waypointIndex) + "] (" +
-                        std::to_string(waypoint.x) + ", " + std::to_string(waypoint.y) + ", " +
-                        std::to_string(waypoint.z) + ")");
-                }
-            }
         }
 
         void NavAgentComponent::ClampSettings()

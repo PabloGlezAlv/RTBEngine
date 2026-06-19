@@ -1,6 +1,5 @@
 #include "SpotLight.h"
 #include <cmath>
-#include <string>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -50,25 +49,6 @@ namespace RTBEngine {
             this->range = range;
             linear = 4.5f / range;
             quadratic = 75.0f / (range * range);
-        }
-
-        void SpotLight::ApplyToShader(Shader* shader) {
-            ApplyToShader(shader, 0);
-        }
-
-        void SpotLight::ApplyToShader(Shader* shader, int index) {
-            std::string base = "spotLights[" + std::to_string(index) + "].";
-
-            shader->SetVector3((base + "position").c_str(), position);
-            shader->SetVector3((base + "direction").c_str(), direction);
-            shader->SetVector3((base + "color").c_str(), color);
-            shader->SetFloat((base + "intensity").c_str(), intensity);
-            shader->SetFloat((base + "innerCutOff").c_str(), innerCutOff);
-            shader->SetFloat((base + "outerCutOff").c_str(), outerCutOff);
-            shader->SetFloat((base + "constant").c_str(), constant);
-            shader->SetFloat((base + "linear").c_str(), linear);
-            shader->SetFloat((base + "quadratic").c_str(), quadratic);
-            shader->SetFloat((base + "range").c_str(), range);
         }
 
     }

@@ -15,16 +15,15 @@ uniform vec4 uColor;
 uniform vec3 uDiffuseColor;
 uniform vec3 uViewPos;
 
-// Directional Light
+#define MAX_POINT_LIGHTS 8
+#define MAX_SPOT_LIGHTS 8
+
 struct DirectionalLight {
     vec3 direction;
     vec3 color;
     float intensity;
 };
-uniform DirectionalLight dirLight;
 
-// Point Lights
-#define MAX_POINT_LIGHTS 8
 struct PointLight {
     vec3 position;
     vec3 color;
@@ -34,11 +33,7 @@ struct PointLight {
     float quadratic;
     float range;
 };
-uniform PointLight pointLights[MAX_POINT_LIGHTS];
-uniform int numPointLights;
 
-// Spot Lights
-#define MAX_SPOT_LIGHTS 8
 struct SpotLight {
     vec3 position;
     vec3 direction;
@@ -51,8 +46,14 @@ struct SpotLight {
     float quadratic;
     float range;
 };
-uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
-uniform int numSpotLights;
+
+layout(std140, binding = 0) uniform LightingData {
+    DirectionalLight dirLight;
+    PointLight pointLights[MAX_POINT_LIGHTS];
+    SpotLight spotLights[MAX_SPOT_LIGHTS];
+    int numPointLights;
+    int numSpotLights;
+};
 
 uniform sampler2D uShadowMap;
 uniform bool uHasShadows;

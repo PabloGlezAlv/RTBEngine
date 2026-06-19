@@ -588,8 +588,6 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 {
 	if (!camera) return;
 
-	CollectLights();
-
 	const Rendering::Frustum& frustum = camera->GetFrustum();
 
 	++iterationDepth;
@@ -619,7 +617,7 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 			}
 		}
 
-		renderer->Render(camera, lights);
+		renderer->Render(camera);
 	}
 
 	--iterationDepth;
@@ -680,24 +678,6 @@ uint32_t RTBEngine::ECS::Scene::GetActiveComponentCount() const {
 		}
 	}
 	return count;
-}
-
-void RTBEngine::ECS::Scene::CollectLights()
-{
-	lights.clear();
-
-	for (LightComponent* lightComp : GetCachedLightComponents()) {
-		if (!lightComp || !lightComp->IsEnabled()) {
-			continue;
-		}
-
-		GameObject* gameObject = lightComp->GetOwner();
-		if (!gameObject || !gameObject->IsActiveInHierarchy()) {
-			continue;
-		}
-
-		lights.push_back(lightComp->GetLight());
-	}
 }
 
 void RTBEngine::ECS::Scene::SetMainCamera(CameraComponent* camera) {

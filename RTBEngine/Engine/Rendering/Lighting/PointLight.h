@@ -1,7 +1,6 @@
 #pragma once
 #include "../../RTBEngineAPI.h"
 #include "Light.h"
-#include "../Shader.h"
 
 namespace RTBEngine {
     namespace Rendering {
@@ -22,9 +21,6 @@ namespace RTBEngine {
 
             void SetRange(float range);
             float GetRange() const { return range; }
-
-            void ApplyToShader(Shader* shader, int index);
-            void ApplyToShader(Shader* shader) override;
 
         private:
             Math::Vector3 position;

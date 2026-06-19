@@ -19,15 +19,6 @@ namespace RTBEngine {
             shadowMap->Initialize();
         }
 
-        void DirectionalLight::ApplyToShader(Shader* shader)
-        {
-            if (shader) {
-                shader->SetVector3("dirLight.direction", direction);
-                shader->SetVector3("dirLight.color", color);
-                shader->SetFloat("dirLight.intensity", intensity);
-            }
-        }
-
         void DirectionalLight::SetCastShadows(bool enabled) {
             castShadows = enabled;
 

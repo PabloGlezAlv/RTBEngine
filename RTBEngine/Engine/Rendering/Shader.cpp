@@ -1,4 +1,5 @@
 #include "Shader.h"
+#include "Lighting/LightingUBO.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -152,6 +153,11 @@ namespace RTBEngine {
             uniformCache.clear();
             boneTransformUniformLocations.clear();
             PrecacheBoneTransformUniforms();
+
+            const GLuint lightingBlockIndex = glGetUniformBlockIndex(programID, "LightingData");
+            if (lightingBlockIndex != GL_INVALID_INDEX) {
+                glUniformBlockBinding(programID, lightingBlockIndex, kLightingUBOBindingPoint);
+            }
 
             return true;
         }

@@ -66,7 +66,6 @@ namespace RTBEngine {
             int currentWaypointIndex = 0;
             bool hasActivePath = false;
             bool pathRequestQueued = false;
-            bool hasLoggedFirstPathDebug = false; // One-shot spawn diagnostics per agent instance.
         };
 #pragma warning(pop)
 

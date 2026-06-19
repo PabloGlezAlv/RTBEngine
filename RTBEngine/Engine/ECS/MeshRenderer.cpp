@@ -1,9 +1,7 @@
 #include "MeshRenderer.h"
 #include "GameObject.h"
 #include "../Rendering/Lighting/Light.h"
-#include "../Rendering/Lighting/DirectionalLight.h"
-#include "../Rendering/Lighting/PointLight.h"
-#include "../Rendering/Lighting/SpotLight.h"
+#include "../Rendering/Lighting/LightingUBO.h"
 #include "../Animation/Animator.h"
 #include "../Reflection/PropertyMacros.h"
 #include "../Core/ResourceManager.h"
@@ -207,14 +205,14 @@ namespace RTBEngine {
             }
         }
 
-        void MeshRenderer::Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights)
+        void MeshRenderer::Render(Rendering::Camera* camera)
         {
             if (!isEnabled || !owner || !owner->IsActiveInHierarchy()) {
                 return;
             }
 
             if (multiMesh) {
-                RenderMultiMesh(camera, lights);
+                RenderMultiMesh(camera);
                 return;
             }
 
@@ -238,6 +236,8 @@ namespace RTBEngine {
             }
 
             if (shader) {
+                Rendering::LightingUBO::GetInstance().Bind();
+
                 Math::Matrix4 modelMatrix = owner->GetWorldMatrix();
                 shader->SetMatrix4("uModel", modelMatrix);
                 shader->SetMatrix4("uView", camera->GetViewMatrix());
@@ -254,44 +254,6 @@ namespace RTBEngine {
                 else {
                     shader->SetBool("uHasAnimation", false);
                 }
-
-                // Lighting
-                int pointLightCount = 0;
-                int spotLightCount = 0;
-                bool directionalLightSet = false;
-
-                for (Rendering::Light* light : lights) {
-                    if (!light) continue;
-
-                    Rendering::LightType type = light->GetType();
-                    if (type == Rendering::LightType::Directional) {
-                        if (!directionalLightSet) {
-                            light->ApplyToShader(shader);
-                            directionalLightSet = true;
-                        }
-                    }
-                    else if (type == Rendering::LightType::Point) {
-                        if (pointLightCount < 8) {
-                            auto* pl = static_cast<Rendering::PointLight*>(light);
-                            pl->ApplyToShader(shader, pointLightCount++);
-                        }
-                    }
-                    else if (type == Rendering::LightType::Spot) {
-                        if (spotLightCount < 8) {
-                            auto* sl = static_cast<Rendering::SpotLight*>(light);
-                            sl->ApplyToShader(shader, spotLightCount++);
-                        }
-                    }
-                }
-
-                shader->SetInt("numPointLights", pointLightCount);
-                shader->SetInt("numSpotLights", spotLightCount);
-
-                if (!directionalLightSet) {
-                    shader->SetVector3("dirLight.direction", Math::Vector3(0.0f, -1.0f, 0.0f));
-                    shader->SetVector3("dirLight.color", Math::Vector3(0.0f, 0.0f, 0.0f));
-                    shader->SetFloat("dirLight.intensity", 0.0f);
-                }
             }
 
             mesh->Draw();
@@ -300,7 +262,7 @@ namespace RTBEngine {
             mat->Unbind();
         }
 
-        void MeshRenderer::RenderMultiMesh(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights)
+        void MeshRenderer::RenderMultiMesh(Rendering::Camera* camera)
         {
             if (meshes.empty()) {
                 RTB_WARN(std::string("[RENDER] GO='") + owner->GetName() + "' multi-mesh has no meshes");
@@ -323,6 +285,7 @@ namespace RTBEngine {
             // Setup shared uniforms once
             Math::Matrix4 modelMatrix = owner->GetWorldMatrix();
             shader->Bind();
+            Rendering::LightingUBO::GetInstance().Bind();
             shader->SetMatrix4("uModel", modelMatrix);
             shader->SetMatrix4("uView", camera->GetViewMatrix());
             shader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
@@ -336,44 +299,6 @@ namespace RTBEngine {
             }
             else {
                 shader->SetBool("uHasAnimation", false);
-            }
-
-            // Lighting (set once, shared across all sub-meshes)
-            int pointLightCount = 0;
-            int spotLightCount = 0;
-            bool directionalLightSet = false;
-
-            for (Rendering::Light* light : lights) {
-                if (!light) continue;
-
-                Rendering::LightType type = light->GetType();
-                if (type == Rendering::LightType::Directional) {
-                    if (!directionalLightSet) {
-                        light->ApplyToShader(shader);
-                        directionalLightSet = true;
-                    }
-                }
-                else if (type == Rendering::LightType::Point) {
-                    if (pointLightCount < 8) {
-                        auto* pl = static_cast<Rendering::PointLight*>(light);
-                        pl->ApplyToShader(shader, pointLightCount++);
-                    }
-                }
-                else if (type == Rendering::LightType::Spot) {
-                    if (spotLightCount < 8) {
-                        auto* sl = static_cast<Rendering::SpotLight*>(light);
-                        sl->ApplyToShader(shader, spotLightCount++);
-                    }
-                }
-            }
-
-            shader->SetInt("numPointLights", pointLightCount);
-            shader->SetInt("numSpotLights", spotLightCount);
-
-            if (!directionalLightSet) {
-                shader->SetVector3("dirLight.direction", Math::Vector3(0.0f, -1.0f, 0.0f));
-                shader->SetVector3("dirLight.color", Math::Vector3(0.0f, 0.0f, 0.0f));
-                shader->SetFloat("dirLight.intensity", 0.0f);
             }
 
             // Draw each sub-mesh with its own material

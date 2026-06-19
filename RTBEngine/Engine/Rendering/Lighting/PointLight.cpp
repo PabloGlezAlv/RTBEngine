@@ -1,5 +1,4 @@
 #include "PointLight.h"
-#include <string>
 
 namespace RTBEngine {
     namespace Rendering {
@@ -35,22 +34,6 @@ namespace RTBEngine {
             // Formula: at range distance, light should be ~1% intensity
             linear = 4.5f / range;
             quadratic = 75.0f / (range * range);
-        }
-
-        void PointLight::ApplyToShader(Shader* shader) {
-            ApplyToShader(shader, 0);
-        }
-
-        void PointLight::ApplyToShader(Shader* shader, int index) {
-            std::string base = "pointLights[" + std::to_string(index) + "].";
-
-            shader->SetVector3((base + "position").c_str(), position);
-            shader->SetVector3((base + "color").c_str(), color);
-            shader->SetFloat((base + "intensity").c_str(), intensity);
-            shader->SetFloat((base + "constant").c_str(), constant);
-            shader->SetFloat((base + "linear").c_str(), linear);
-            shader->SetFloat((base + "quadratic").c_str(), quadratic);
-            shader->SetFloat((base + "range").c_str(), range);
         }
 
     }

@@ -10,12 +10,6 @@
 #include <cstdint>
 
 namespace RTBEngine {
-	namespace Rendering {
-		class Light;
-	}
-}
-
-namespace RTBEngine {
     namespace ECS {
 
 #pragma warning(push)
@@ -47,7 +41,7 @@ namespace RTBEngine {
             bool IsMultiMesh() const { return multiMesh; }
             void GetCombinedAABB(Math::Vector3& outMin, Math::Vector3& outMax) const;
 
-            void Render(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights);
+            void Render(Rendering::Camera* camera);
 
             //Render stats
             static void ResetRenderStats();
@@ -80,7 +74,7 @@ namespace RTBEngine {
             std::vector<std::unique_ptr<Rendering::Material>> meshMaterials;
 
             void SyncProperties();
-            void RenderMultiMesh(Rendering::Camera* camera, const std::vector<Rendering::Light*>& lights);
+            void RenderMultiMesh(Rendering::Camera* camera);
 
             static uint32_t drawCallCount;
             static uint32_t culledObjectCount;
