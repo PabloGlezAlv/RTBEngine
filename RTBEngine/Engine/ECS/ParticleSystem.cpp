@@ -4,6 +4,7 @@
 #include "Scene.h"
 #include "../Core/ResourceManager.h"
 #include "../Rendering/Camera.h"
+#include "../Rendering/CameraUBO.h"
 #include "../Rendering/Shader.h"
 #include "../Rendering/Texture.h"
 
@@ -634,10 +635,7 @@ namespace RTBEngine {
 
             // Vertex shader builds each quad from uCameraRight/Up; fragment shader multiplies by instance color.
             shader->Bind();
-            shader->SetMatrix4("uView", camera->GetViewMatrix());
-            shader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
-            shader->SetVector3("uCameraRight", camera->GetRight());
-            shader->SetVector3("uCameraUp", camera->GetUp());
+            Rendering::CameraUBO::GetInstance().Bind();
             shader->SetBool("uHasTexture", textureRef != nullptr);
 
             if (textureRef) {

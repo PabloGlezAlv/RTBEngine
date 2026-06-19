@@ -6,10 +6,20 @@ layout(location = 1) in vec2 aTexCoords;
 out vec2 vTexCoords;
 
 uniform mat4 uModel;
-uniform mat4 uView;
-uniform mat4 uProjection;
+
+layout(std140, binding = 1) uniform CameraData {
+    mat4 view;
+    mat4 projection;
+    vec3 viewPos;
+    float _cameraPad0;
+    mat4 viewProjection;
+    vec3 cameraRight;
+    float _cameraPad1;
+    vec3 cameraUp;
+    float _cameraPad2;
+};
 
 void main() {
     vTexCoords = aTexCoords;
-    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    gl_Position = projection * view * uModel * vec4(aPosition, 1.0);
 }

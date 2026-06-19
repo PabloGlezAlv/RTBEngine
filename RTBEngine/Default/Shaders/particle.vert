@@ -6,19 +6,26 @@ layout(location = 2) in vec3 aInstancePos;
 layout(location = 3) in vec4 aInstanceColor;
 layout(location = 4) in float aInstanceSize;
 
-uniform mat4 uView;
-uniform mat4 uProjection;
-uniform vec3 uCameraRight;
-uniform vec3 uCameraUp;
+layout(std140, binding = 1) uniform CameraData {
+    mat4 view;
+    mat4 projection;
+    vec3 viewPos;
+    float _cameraPad0;
+    mat4 viewProjection;
+    vec3 cameraRight;
+    float _cameraPad1;
+    vec3 cameraUp;
+    float _cameraPad2;
+};
 
 out vec2 vUV;
 out vec4 vColor;
 
 void main()
 {
-    vec3 offset = (uCameraRight * aCorner.x + uCameraUp * aCorner.y) * aInstanceSize;
+    vec3 offset = (cameraRight * aCorner.x + cameraUp * aCorner.y) * aInstanceSize;
     vec3 worldPos = aInstancePos + offset;
-    gl_Position = uProjection * uView * vec4(worldPos, 1.0);
+    gl_Position = projection * view * vec4(worldPos, 1.0);
     gl_Position.z -= 0.002 * gl_Position.w;
     vUV = aUV;
     vColor = aInstanceColor;

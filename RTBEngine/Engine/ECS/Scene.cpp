@@ -659,7 +659,7 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 			}
 		}
 
-		renderer->Render(camera);
+		renderer->Render();
 	}
 
 	--iterationDepth;

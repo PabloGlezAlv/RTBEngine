@@ -3,6 +3,7 @@
 #include "GameObject.h"
 #include "../Core/ResourceManager.h"
 #include "../Rendering/Camera.h"
+#include "../Rendering/CameraUBO.h"
 #include "../Rendering/Shader.h"
 
 #include <algorithm>
@@ -212,7 +213,7 @@ namespace RTBEngine {
 
             // The shader only needs the camera view-projection because vertices are already in world space.
             shader->Bind();
-            shader->SetMatrix4("uViewProjection", camera->GetViewProjectionMatrix());
+            Rendering::CameraUBO::GetInstance().Bind();
 
             // Draw the uploaded quads as triangles.
             glBindVertexArray(vao);

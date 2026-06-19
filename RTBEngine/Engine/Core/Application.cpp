@@ -29,6 +29,7 @@
 #include "../Rendering/Skybox.h"
 #include "../Rendering/Cubemap.h"
 #include "../Rendering/Lighting/LightingUBO.h"
+#include "../Rendering/CameraUBO.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
 #include "../Rendering/Frustum.h"
 #include "../Online/OnlineSystem.h"
@@ -670,6 +671,8 @@ void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Renderi
 
 	Rendering::LightingUBO::GetInstance().Upload(activeLights);
 	Rendering::LightingUBO::GetInstance().Bind();
+	Rendering::CameraUBO::GetInstance().Upload(camera);
+	Rendering::CameraUBO::GetInstance().Bind();
 
 	if (shadowCastingLight) {
 		shader->SetBool("uHasShadows", true);

@@ -20,6 +20,7 @@
 #include "../Input/InputManager.h"
 #include "../Input/MouseButton.h"
 #include "../Rendering/Camera.h"
+#include "../Rendering/CameraUBO.h"
 #include "../Rendering/Font.h"
 #include "../Rendering/Shader.h"
 #include "../Rendering/Texture.h"
@@ -386,8 +387,7 @@ namespace RTBEngine {
 			glDisable(GL_CULL_FACE);
 
 			shader->Bind();
-			shader->SetMatrix4("uView", camera->GetViewMatrix());
-			shader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
+			Rendering::CameraUBO::GetInstance().Bind();
 			shader->SetInt("uTexture", 0);
 
 			for (Canvas* canvas : activeCanvases) {

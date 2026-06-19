@@ -4,7 +4,6 @@
 #include "../Reflection/PropertyMacros.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Material.h"
-#include "../Rendering/Camera.h"
 #include <vector>
 #include <memory>
 #include <cstdint>
@@ -41,7 +40,7 @@ namespace RTBEngine {
             bool IsMultiMesh() const { return multiMesh; }
             void GetCombinedAABB(Math::Vector3& outMin, Math::Vector3& outMax) const;
 
-            void Render(Rendering::Camera* camera);
+            void Render();
 
             //Render stats
             static void ResetRenderStats();
@@ -74,7 +73,7 @@ namespace RTBEngine {
             std::vector<std::unique_ptr<Rendering::Material>> meshMaterials;
 
             void SyncProperties();
-            void RenderMultiMesh(Rendering::Camera* camera);
+            void RenderMultiMesh();
 
             static uint32_t drawCallCount;
             static uint32_t culledObjectCount;

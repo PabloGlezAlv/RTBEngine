@@ -2,6 +2,7 @@
 #include "Cubemap.h"
 #include "Shader.h"
 #include "Camera.h"
+#include "CameraUBO.h"
 #include "../Math/Matrix/Matrix4.h"
 
 namespace RTBEngine {
@@ -119,16 +120,7 @@ namespace RTBEngine {
             glDepthFunc(GL_LEQUAL);
 
             shader->Bind();
-
-            // Remove translation from view matrix
-            // This makes the skybox appear infinitely far away
-            Math::Matrix4 view = camera->GetViewMatrix();
-            view.m[12] = 0.0f;  // Remove X translation
-            view.m[13] = 0.0f;  // Remove Y translation
-            view.m[14] = 0.0f;  // Remove Z translation
-
-            shader->SetMatrix4("uView", view);
-            shader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
+            CameraUBO::GetInstance().Bind();
             shader->SetInt("uSkybox", 0);
 
             // Bind cubemap and draw

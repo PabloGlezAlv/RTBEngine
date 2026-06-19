@@ -1,5 +1,6 @@
 #include "Shader.h"
 #include "Lighting/LightingUBO.h"
+#include "CameraUBO.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -157,6 +158,11 @@ namespace RTBEngine {
             const GLuint lightingBlockIndex = glGetUniformBlockIndex(programID, "LightingData");
             if (lightingBlockIndex != GL_INVALID_INDEX) {
                 glUniformBlockBinding(programID, lightingBlockIndex, kLightingUBOBindingPoint);
+            }
+
+            const GLuint cameraBlockIndex = glGetUniformBlockIndex(programID, "CameraData");
+            if (cameraBlockIndex != GL_INVALID_INDEX) {
+                glUniformBlockBinding(programID, cameraBlockIndex, kCameraUBOBindingPoint);
             }
 
             return true;

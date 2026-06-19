@@ -2,6 +2,7 @@
 #include "GameObject.h"
 #include "../Rendering/Lighting/Light.h"
 #include "../Rendering/Lighting/LightingUBO.h"
+#include "../Rendering/CameraUBO.h"
 #include "../Animation/Animator.h"
 #include "../Reflection/PropertyMacros.h"
 #include "../Core/ResourceManager.h"
@@ -205,14 +206,14 @@ namespace RTBEngine {
             }
         }
 
-        void MeshRenderer::Render(Rendering::Camera* camera)
+        void MeshRenderer::Render()
         {
             if (!isEnabled || !owner || !owner->IsActiveInHierarchy()) {
                 return;
             }
 
             if (multiMesh) {
-                RenderMultiMesh(camera);
+                RenderMultiMesh();
                 return;
             }
 
@@ -237,12 +238,10 @@ namespace RTBEngine {
 
             if (shader) {
                 Rendering::LightingUBO::GetInstance().Bind();
+                Rendering::CameraUBO::GetInstance().Bind();
 
                 Math::Matrix4 modelMatrix = owner->GetWorldMatrix();
                 shader->SetMatrix4("uModel", modelMatrix);
-                shader->SetMatrix4("uView", camera->GetViewMatrix());
-                shader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
-                shader->SetVector3("uViewPos", camera->GetPosition());
 
                 // Skeletal animation: walk up hierarchy (KayKit/multi-mesh FBX children)
                 Animation::Animator* animator = FindAnimatorInAncestors(owner);
@@ -262,7 +261,7 @@ namespace RTBEngine {
             mat->Unbind();
         }
 
-        void MeshRenderer::RenderMultiMesh(Rendering::Camera* camera)
+        void MeshRenderer::RenderMultiMesh()
         {
             if (meshes.empty()) {
                 RTB_WARN(std::string("[RENDER] GO='") + owner->GetName() + "' multi-mesh has no meshes");
@@ -286,10 +285,8 @@ namespace RTBEngine {
             Math::Matrix4 modelMatrix = owner->GetWorldMatrix();
             shader->Bind();
             Rendering::LightingUBO::GetInstance().Bind();
+            Rendering::CameraUBO::GetInstance().Bind();
             shader->SetMatrix4("uModel", modelMatrix);
-            shader->SetMatrix4("uView", camera->GetViewMatrix());
-            shader->SetMatrix4("uProjection", camera->GetProjectionMatrix());
-            shader->SetVector3("uViewPos", camera->GetPosition());
 
             Animation::Animator* animator = FindAnimatorInAncestors(owner);
 

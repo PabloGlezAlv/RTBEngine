@@ -4,16 +4,24 @@ layout(location = 0) in vec3 aPosition;
 
 out vec3 vTexCoords;
 
-uniform mat4 uView;
-uniform mat4 uProjection;
+layout(std140, binding = 1) uniform CameraData {
+    mat4 view;
+    mat4 projection;
+    vec3 viewPos;
+    float _cameraPad0;
+    mat4 viewProjection;
+    vec3 cameraRight;
+    float _cameraPad1;
+    vec3 cameraUp;
+    float _cameraPad2;
+};
 
 void main() {
-    // Use position as texture coordinates for cubemap sampling
     vTexCoords = aPosition;
-    
-    // Transform vertex position
-    vec4 pos = uProjection * uView * vec4(aPosition, 1.0);
-    
-    // Set z = w so depth is always 1.0 (maximum depth, rendered behind everything)
+
+    mat4 skyView = view;
+    skyView[3] = vec4(0.0, 0.0, 0.0, 1.0);
+
+    vec4 pos = projection * skyView * vec4(aPosition, 1.0);
     gl_Position = pos.xyww;
 }

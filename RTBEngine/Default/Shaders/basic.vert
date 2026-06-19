@@ -13,9 +13,13 @@ out vec3 vFragPos;
 out vec4 vFragPosLightSpace;
 
 uniform mat4 uModel;
-uniform mat4 uView;
-uniform mat4 uProjection;
 uniform mat4 uLightSpaceMatrix;
+
+layout(std140, binding = 1) uniform CameraData {
+    mat4 view;
+    mat4 projection;
+    vec3 viewPos;
+};
 
 // Skeletal animation uniforms
 const int MAX_BONES = 100;
@@ -53,7 +57,7 @@ void main() {
         totalNormal = aNormal;
     }
 
-    gl_Position = uProjection * uView * uModel * totalPosition;
+    gl_Position = projection * view * uModel * totalPosition;
     vTexCoords = aTexCoords;
     vFragPos = vec3(uModel * totalPosition);
     vNormal = mat3(transpose(inverse(uModel))) * totalNormal;
