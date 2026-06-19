@@ -435,8 +435,6 @@ void RTBEngine::ECS::Scene::Update(float deltaTime)
 
 void RTBEngine::ECS::Scene::FixedUpdate(float fixedDeltaTime)
 {
-	Navigation::ProcessSceneNavigationFixedUpdate(this);
-
 	++iterationDepth;
 	for (auto& gameObject : gameObjects) {
 		if (gameObject) gameObject->FixedUpdate(fixedDeltaTime);

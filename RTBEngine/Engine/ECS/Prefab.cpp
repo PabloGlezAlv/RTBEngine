@@ -32,9 +32,20 @@ namespace RTBEngine {
 
         void Prefab::SnapshotComponent(ComponentSnapshot& snap, const Component* comp)
         {
-            snap.typeName = comp->GetTypeName();
+            if (!comp) {
+                return;
+            }
 
-            const Reflection::TypeInfo* typeInfo = comp->GetTypeInfo();
+            const char* typeName = comp->GetTypeName();
+            if (!typeName || typeName[0] == '\0') {
+                return;
+            }
+
+            snap.typeName = typeName;
+
+            // Use TypeRegistry by name — safe across RTBEngine / GameScripts DLL boundaries.
+            const Reflection::TypeInfo* typeInfo =
+                Reflection::TypeRegistry::GetInstance().GetTypeInfo(snap.typeName);
             if (!typeInfo) return;
 
             Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
@@ -141,7 +152,8 @@ namespace RTBEngine {
             if (snap.ptrPathData.empty()) return;
 
             Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
-            const Reflection::TypeInfo* typeInfo = target->GetTypeInfo();
+            const Reflection::TypeInfo* typeInfo =
+                Reflection::TypeRegistry::GetInstance().GetTypeInfo(snap.typeName);
             if (!typeInfo) return;
 
             for (const Reflection::PropertyInfo* prop : typeInfo->GetSerializableProperties())
@@ -304,8 +316,7 @@ namespace RTBEngine {
 
                     const Reflection::TypeInfo* registeredTypeInfo =
                         Scripting::ComponentRegistry::GetInstance().GetComponentTypeInfo(snap.typeName);
-                    const Reflection::TypeInfo* effectiveTypeInfo =
-                        registeredTypeInfo ? registeredTypeInfo : comp->GetTypeInfo();
+                    const Reflection::TypeInfo* effectiveTypeInfo = registeredTypeInfo;
 
                     ApplySnapshot(comp, snap);
                     Scripting::SceneReflectionUtils::ClearReferenceProperties(comp, registeredTypeInfo);

@@ -1,5 +1,6 @@
 #pragma once
 #include "../RTBEngineAPI.h"
+#include <cstdint>
 #include <string>
 
 namespace RTBEngine {

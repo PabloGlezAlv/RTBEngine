@@ -1,5 +1,6 @@
 #pragma once
 #include "TypeInfo.h"
+#include "../Core/TypeId.h"
 #include "../Math/Math.h"
 #include "../Scripting/ScriptBridgeABI.h"
 #include <utility>
@@ -54,7 +55,7 @@
 #define RTB_COMPONENT(ClassName)                                                        \
 public:                                                                                 \
     virtual const char* GetTypeName() const override { return #ClassName; }             \
-    static constexpr const char* StaticComponentTypeName() { return #ClassName; }       \
+    static constexpr std::uint32_t TypeId() { return RTB_TYPE_ID(ClassName); }          \
     virtual void* GetActualObject() override { return this; }                           \
     virtual const void* GetActualObject() const override { return this; }               \
     virtual const RTBEngine::Reflection::TypeInfo* GetTypeInfo() const override {       \
@@ -65,7 +66,7 @@ private:
 #define RTB_COMPONENT(ClassName)                                                        \
 public:                                                                                 \
     virtual const char* GetTypeName() const override { return #ClassName; }             \
-    static constexpr const char* StaticComponentTypeName() { return #ClassName; }       \
+    static constexpr std::uint32_t TypeId() { return RTB_TYPE_ID(ClassName); }          \
     virtual void* GetActualObject() override { return this; }                           \
     virtual const void* GetActualObject() const override { return this; }               \
     virtual const RTBEngine::Reflection::TypeInfo* GetTypeInfo() const override {       \

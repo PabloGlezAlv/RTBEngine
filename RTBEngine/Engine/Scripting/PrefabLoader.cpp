@@ -35,7 +35,13 @@ namespace RTBEngine {
             ECS::Component* comp,
             ECS::ComponentSnapshot& snap)
         {
-            const Reflection::TypeInfo* typeInfo = comp->GetTypeInfo();
+            const char* typeName = comp->GetTypeName();
+            if (!typeName || typeName[0] == '\0') {
+                return;
+            }
+
+            const Reflection::TypeInfo* typeInfo =
+                Reflection::TypeRegistry::GetInstance().GetTypeInfo(typeName);
             if (!typeInfo) {
                 return;
             }

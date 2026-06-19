@@ -1,6 +1,7 @@
 #include "GameObject.h"
 #include "SceneLifecycle.h"
 #include "../Core/Time.h"
+#include "../Core/TypeId.h"
 #include "../Reflection/TypeInfo.h"
 #include "../Core/Logger.h"
 #include "../Physics/PhysicsLayerSettings.h"
@@ -83,7 +84,7 @@ namespace RTBEngine {
                 comp->OnDestroy();
             }
             components.clear();
-            componentsByType.clear();
+            componentsByTypeId.clear();
         }
 
         void GameObject::AddComponent(Component* component)
@@ -91,18 +92,90 @@ namespace RTBEngine {
             AddComponent(component, nullptr);
         }
 
-        void GameObject::RegisterComponentType(Component* component, const RTBEngine::Reflection::TypeInfo* typeInfoOverride)
+        Component* GameObject::LookupComponentByTypeId(const std::uint32_t typeId)
+        {
+            if (typeId == 0) {
+                return nullptr;
+            }
+
+            const auto it = componentsByTypeId.find(typeId);
+            return it != componentsByTypeId.end() ? it->second : nullptr;
+        }
+
+        Component* GameObject::LookupComponentInChildrenByTypeId(const std::uint32_t typeId, int maxDepth)
+        {
+            if (typeId == 0) {
+                return nullptr;
+            }
+
+            if (Component* local = LookupComponentByTypeId(typeId)) {
+                return local;
+            }
+
+            if (maxDepth == 0) {
+                return nullptr;
+            }
+
+            const int childDepth = (maxDepth > 0) ? maxDepth - 1 : -1;
+            for (GameObject* child : children) {
+                if (!child) {
+                    continue;
+                }
+
+                if (Component* found = child->LookupComponentInChildrenByTypeId(typeId, childDepth)) {
+                    return found;
+                }
+            }
+
+            return nullptr;
+        }
+
+        std::size_t GameObject::GetComponentCount() const
+        {
+            return components.size();
+        }
+
+        Component* GameObject::GetComponentAt(const std::size_t index) const
+        {
+            return index < components.size() ? components[index].get() : nullptr;
+        }
+
+        std::size_t GameObject::GetChildCount() const
+        {
+            return children.size();
+        }
+
+        GameObject* GameObject::GetChildAt(const std::size_t index) const
+        {
+            return index < children.size() ? children[index] : nullptr;
+        }
+
+        static std::uint32_t GetComponentTypeId(const Component* component)
+        {
+            if (!component) {
+                return 0;
+            }
+
+            const char* typeName = component->GetTypeName();
+            if (!typeName || typeName[0] == '\0') {
+                return 0;
+            }
+
+            return TypeId::Hash(typeName);
+        }
+
+        void GameObject::RegisterComponentType(Component* component)
         {
             if (!component) {
                 return;
             }
 
-            const RTBEngine::Reflection::TypeInfo* typeInfo = typeInfoOverride ? typeInfoOverride : component->GetTypeInfo();
-            if (!typeInfo) {
+            const std::uint32_t typeId = GetComponentTypeId(component);
+            if (typeId == 0) {
                 return;
             }
 
-            componentsByType.emplace(typeInfo, component);
+            componentsByTypeId.emplace(typeId, component);
         }
 
         void GameObject::UnregisterComponentType(Component* component)
@@ -111,21 +184,21 @@ namespace RTBEngine {
                 return;
             }
 
-            const RTBEngine::Reflection::TypeInfo* typeInfo = component->GetTypeInfo();
-            if (!typeInfo) {
+            const std::uint32_t typeId = GetComponentTypeId(component);
+            if (typeId == 0) {
                 return;
             }
 
-            const auto cached = componentsByType.find(typeInfo);
-            if (cached == componentsByType.end() || cached->second != component) {
+            const auto cached = componentsByTypeId.find(typeId);
+            if (cached == componentsByTypeId.end() || cached->second != component) {
                 return;
             }
 
-            componentsByType.erase(cached);
+            componentsByTypeId.erase(cached);
 
             for (const auto& comp : components) {
-                if (comp && comp->GetTypeInfo() == typeInfo) {
-                    componentsByType.emplace(typeInfo, comp.get());
+                if (comp && GetComponentTypeId(comp.get()) == typeId) {
+                    componentsByTypeId.emplace(typeId, comp.get());
                     break;
                 }
             }
@@ -140,7 +213,7 @@ namespace RTBEngine {
             component->SetOwner(this);
             auto deleter = MakeComponentDeleter(component, typeInfoOverride);
             components.push_back(std::unique_ptr<Component, std::function<void(Component*)>>(component, std::move(deleter)));
-            RegisterComponentType(component, typeInfoOverride);
+            RegisterComponentType(component);
 
             if (lifecycleInitialized) {
                 SceneLifecycle::InvokeAwakeAndValidate(component);
