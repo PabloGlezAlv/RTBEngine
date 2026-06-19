@@ -32,6 +32,24 @@ namespace RTBEngine {
             return GenerateUUID();
         }
 
+        void GameObject::SetUUID(const std::string& id)
+        {
+            if (uuid == id) {
+                return;
+            }
+
+            Scene* scene = owningScene;
+            if (scene && !uuid.empty()) {
+                scene->UnregisterGameObjectUuid(this);
+            }
+
+            uuid = id;
+
+            if (scene && !uuid.empty()) {
+                scene->RegisterGameObjectUuid(this);
+            }
+        }
+
 
         GameObject::GameObject(const std::string& name)
             : name(name)

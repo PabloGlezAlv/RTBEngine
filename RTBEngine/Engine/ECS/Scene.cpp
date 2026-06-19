@@ -187,6 +187,7 @@ RTBEngine::ECS::Scene::~Scene()
 	}
 
 	pendingAdds.clear();
+	gameObjectsByUuid.clear();
 }
 
 void RTBEngine::ECS::Scene::InvalidateComponentCaches()
@@ -285,6 +286,68 @@ const std::vector<RTBEngine::ECS::RigidBodyComponent*>& RTBEngine::ECS::Scene::G
 	return cachedRigidBodies;
 }
 
+void RTBEngine::ECS::Scene::RegisterGameObjectUuid(GameObject* gameObject)
+{
+	if (!gameObject) {
+		return;
+	}
+
+	const std::string& uuid = gameObject->GetUUID();
+	if (uuid.empty()) {
+		return;
+	}
+
+	const auto existing = gameObjectsByUuid.find(uuid);
+	if (existing != gameObjectsByUuid.end() && existing->second != gameObject) {
+		RTB_WARN("Scene: duplicate UUID '" + uuid + "'");
+	}
+
+	gameObjectsByUuid[uuid] = gameObject;
+}
+
+void RTBEngine::ECS::Scene::UnregisterGameObjectUuid(GameObject* gameObject)
+{
+	if (!gameObject) {
+		return;
+	}
+
+	const std::string& uuid = gameObject->GetUUID();
+	if (uuid.empty()) {
+		return;
+	}
+
+	const auto it = gameObjectsByUuid.find(uuid);
+	if (it != gameObjectsByUuid.end() && it->second == gameObject) {
+		gameObjectsByUuid.erase(it);
+	}
+}
+
+void RTBEngine::ECS::Scene::RegisterGameObjectHierarchy(GameObject* root)
+{
+	if (!root) {
+		return;
+	}
+
+	RegisterGameObjectUuid(root);
+
+	for (GameObject* child : root->GetChildren()) {
+		RegisterGameObjectHierarchy(child);
+	}
+}
+
+void RTBEngine::ECS::Scene::UnregisterGameObjectHierarchy(GameObject* root)
+{
+	if (!root) {
+		return;
+	}
+
+	for (GameObject* child : root->GetChildren()) {
+		UnregisterGameObjectHierarchy(child);
+	}
+
+	UnregisterGameObjectUuid(root);
+}
+
 void RTBEngine::ECS::Scene::AssignGameObjectOwnership(GameObject* gameObject)
 {
 	if (!gameObject) {
@@ -316,6 +379,7 @@ void RTBEngine::ECS::Scene::AddGameObject(GameObject* gameObject, bool queueLife
 	}
 
 	AssignGameObjectOwnership(gameObject);
+	RegisterGameObjectHierarchy(gameObject);
 	InvalidateComponentCaches();
 	pendingRenderLog = true;
 }
@@ -409,6 +473,7 @@ void RTBEngine::ECS::Scene::RemoveGameObject(GameObject* gameObject)
 	}
 
 	for (GameObject* node : hierarchy) {
+		UnregisterGameObjectUuid(node);
 		ClearGameObjectOwnership(node);
 		DestroyOwnedGameObject(gameObjects, node);
 		DestroyOwnedGameObject(pendingAdds, node);
@@ -479,46 +544,23 @@ RTBEngine::ECS::GameObject* RTBEngine::ECS::Scene::FindGameObject(const std::str
 	return nullptr;
 }
 
-namespace {
-	RTBEngine::ECS::GameObject* FindGameObjectByUUIDInHierarchy(
-		RTBEngine::ECS::GameObject* root,
-		const std::string& uuid)
-	{
-		if (!root || uuid.empty()) {
-			return nullptr;
-		}
-
-		if (root->GetUUID() == uuid) {
-			return root;
-		}
-
-		for (RTBEngine::ECS::GameObject* child : root->GetChildren()) {
-			if (RTBEngine::ECS::GameObject* match = FindGameObjectByUUIDInHierarchy(child, uuid)) {
-				return match;
-			}
-		}
-
-		return nullptr;
-	}
-}
-
 RTBEngine::ECS::GameObject* RTBEngine::ECS::Scene::FindGameObjectByUUID(const std::string& uuid)
 {
 	if (uuid.empty()) {
 		return nullptr;
 	}
 
-	for (auto& obj : gameObjects) {
-		if (RTBEngine::ECS::GameObject* match = FindGameObjectByUUIDInHierarchy(obj.get(), uuid)) {
-			return match;
-		}
+	const auto it = gameObjectsByUuid.find(uuid);
+	if (it == gameObjectsByUuid.end()) {
+		return nullptr;
 	}
-	for (auto& obj : pendingAdds) {
-		if (RTBEngine::ECS::GameObject* match = FindGameObjectByUUIDInHierarchy(obj.get(), uuid)) {
-			return match;
-		}
+
+	GameObject* gameObject = it->second;
+	if (!gameObject || !OwnsGameObject(gameObject)) {
+		return nullptr;
 	}
-	return nullptr;
+
+	return gameObject;
 }
 
 void RTBEngine::ECS::Scene::PrepareForPlayMode()

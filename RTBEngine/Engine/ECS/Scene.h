@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <cstdint>
+#include <unordered_map>
 
 namespace RTBEngine {
     namespace Rendering {
@@ -93,9 +94,16 @@ namespace RTBEngine {
             void RebuildComponentCaches() const;
             void AssignGameObjectOwnership(GameObject* gameObject);
             void ClearGameObjectOwnership(GameObject* gameObject);
+            void RegisterGameObjectUuid(GameObject* gameObject);
+            void UnregisterGameObjectUuid(GameObject* gameObject);
+            void RegisterGameObjectHierarchy(GameObject* root);
+            void UnregisterGameObjectHierarchy(GameObject* root);
+
+            friend class GameObject;
 
             std::string name;
             std::vector<std::unique_ptr<GameObject>> gameObjects;
+            std::unordered_map<std::string, GameObject*> gameObjectsByUuid;
 
             std::vector<std::unique_ptr<GameObject>> pendingAdds;
             std::vector<GameObject*> pendingRemoves;

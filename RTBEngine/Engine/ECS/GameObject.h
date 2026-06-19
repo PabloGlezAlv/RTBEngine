@@ -105,7 +105,7 @@ namespace RTBEngine {
 
             const std::string& GetUUID() const { return uuid; }
 
-            void SetUUID(const std::string& id) { uuid = id; }
+            void SetUUID(const std::string& id);
 
             static std::string GenerateNewUUID();
 
