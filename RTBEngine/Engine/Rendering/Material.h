@@ -16,6 +16,7 @@ namespace RTBEngine {
             Material& operator=(const Material&) = delete;
 
             void Bind();
+            void ApplyProperties();
             void Unbind();
 
             void SetShader(Shader* shader);

@@ -14,6 +14,11 @@
 #include "ParticleSystem.h"
 #include "../UI/Canvas.h"
 #include "../Core/Logger.h"
+#include "../Rendering/CameraUBO.h"
+#include "../Rendering/Lighting/LightingUBO.h"
+#include "../Rendering/Material.h"
+#include "../Rendering/Shader.h"
+#include "../Rendering/Texture.h"
 
 namespace {
 	RTBEngine::ECS::CameraComponent* FindCameraComponent(
@@ -135,6 +140,115 @@ namespace {
 					return !root || removed.find(root) != removed.end();
 				}),
 			pendingLifecycleRoots.end());
+	}
+
+	struct OpaqueMeshDraw {
+		RTBEngine::ECS::MeshRenderer* renderer = nullptr;
+		RTBEngine::Rendering::Mesh* mesh = nullptr;
+		RTBEngine::Rendering::Material* material = nullptr;
+	};
+
+	struct OpaqueRenderBatchState {
+		RTBEngine::Rendering::Shader* shader = nullptr;
+		RTBEngine::Rendering::Texture* texture = nullptr;
+		RTBEngine::Rendering::Material* material = nullptr;
+	};
+
+	void ApplyOpaqueDrawMaterial(RTBEngine::Rendering::Material* drawMaterial, OpaqueRenderBatchState& state)
+	{
+		if (!drawMaterial) {
+			return;
+		}
+
+		RTBEngine::Rendering::Shader* nextShader = drawMaterial->GetShader();
+		if (!nextShader) {
+			return;
+		}
+
+		if (nextShader != state.shader) {
+			nextShader->Bind();
+			RTBEngine::Rendering::LightingUBO::GetInstance().Bind();
+			RTBEngine::Rendering::CameraUBO::GetInstance().Bind();
+			state.shader = nextShader;
+			state.material = nullptr;
+			state.texture = reinterpret_cast<RTBEngine::Rendering::Texture*>(static_cast<uintptr_t>(1));
+		}
+
+		if (drawMaterial != state.material) {
+			drawMaterial->ApplyProperties();
+			state.material = drawMaterial;
+		}
+
+		RTBEngine::Rendering::Texture* nextTexture = drawMaterial->GetTexture();
+		if (nextTexture != state.texture) {
+			if (nextTexture) {
+				nextTexture->Bind(0);
+			}
+			state.texture = nextTexture;
+		}
+	}
+
+	bool OpaqueMeshDrawLess(const OpaqueMeshDraw& a, const OpaqueMeshDraw& b)
+	{
+		const RTBEngine::Rendering::Material* aMaterial = a.material;
+		const RTBEngine::Rendering::Material* bMaterial = b.material;
+		const RTBEngine::Rendering::Shader* aShader = aMaterial ? aMaterial->GetShader() : nullptr;
+		const RTBEngine::Rendering::Shader* bShader = bMaterial ? bMaterial->GetShader() : nullptr;
+		const GLuint aProgram = aShader ? aShader->GetProgramID() : 0;
+		const GLuint bProgram = bShader ? bShader->GetProgramID() : 0;
+
+		if (aProgram != bProgram) {
+			return aProgram < bProgram;
+		}
+
+		const RTBEngine::Rendering::Texture* aTexture = aMaterial ? aMaterial->GetTexture() : nullptr;
+		const RTBEngine::Rendering::Texture* bTexture = bMaterial ? bMaterial->GetTexture() : nullptr;
+		if (aTexture != bTexture) {
+			return aTexture < bTexture;
+		}
+
+		if (aMaterial != bMaterial) {
+			return aMaterial < bMaterial;
+		}
+
+		if (a.renderer != b.renderer) {
+			return a.renderer < b.renderer;
+		}
+
+		return a.mesh < b.mesh;
+	}
+
+	void CollectOpaqueMeshDraws(
+		RTBEngine::ECS::MeshRenderer* renderer,
+		std::vector<OpaqueMeshDraw>& outDraws)
+	{
+		if (!renderer) {
+			return;
+		}
+
+		if (renderer->IsMultiMesh()) {
+			const std::vector<RTBEngine::Rendering::Mesh*>& meshes = renderer->GetMeshes();
+			for (int i = 0; i < renderer->GetMeshCount(); ++i) {
+				RTBEngine::Rendering::Mesh* drawMesh = (i >= 0 && static_cast<std::size_t>(i) < meshes.size())
+					? meshes[static_cast<std::size_t>(i)]
+					: nullptr;
+				RTBEngine::Rendering::Material* drawMaterial = renderer->GetMaterialForMesh(i);
+				if (!drawMesh || !drawMaterial) {
+					continue;
+				}
+
+				outDraws.push_back({ renderer, drawMesh, drawMaterial });
+			}
+			return;
+		}
+
+		RTBEngine::Rendering::Mesh* drawMesh = renderer->GetMesh();
+		RTBEngine::Rendering::Material* drawMaterial = renderer->GetMaterial();
+		if (!drawMesh || !drawMaterial) {
+			return;
+		}
+
+		outDraws.push_back({ renderer, drawMesh, drawMaterial });
 	}
 }
 
@@ -631,6 +745,8 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 	if (!camera) return;
 
 	const Rendering::Frustum& frustum = camera->GetFrustum();
+	std::vector<OpaqueMeshDraw> opaqueDraws;
+	opaqueDraws.reserve(GetCachedMeshRenderers().size());
 
 	++iterationDepth;
 	for (MeshRenderer* renderer : GetCachedMeshRenderers()) {
@@ -643,11 +759,9 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 			continue;
 		}
 
-		// Frustum culling
 		Math::Vector3 localMin, localMax;
 		renderer->GetCombinedAABB(localMin, localMax);
 
-		// Skip culling if no mesh (let renderer handle it)
 		if (localMin != localMax) {
 			Math::Vector3 worldMin, worldMax;
 			Rendering::Frustum::TransformAABB(
@@ -659,7 +773,15 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 			}
 		}
 
-		renderer->Render();
+		CollectOpaqueMeshDraws(renderer, opaqueDraws);
+	}
+
+	std::sort(opaqueDraws.begin(), opaqueDraws.end(), OpaqueMeshDrawLess);
+
+	OpaqueRenderBatchState batchState;
+	for (const OpaqueMeshDraw& draw : opaqueDraws) {
+		ApplyOpaqueDrawMaterial(draw.material, batchState);
+		draw.renderer->RenderDraw(draw.mesh, draw.material);
 	}
 
 	--iterationDepth;

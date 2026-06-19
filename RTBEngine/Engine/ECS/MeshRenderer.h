@@ -41,6 +41,7 @@ namespace RTBEngine {
             void GetCombinedAABB(Math::Vector3& outMin, Math::Vector3& outMax) const;
 
             void Render();
+            void RenderDraw(Rendering::Mesh* drawMesh, Rendering::Material* drawMaterial);
 
             //Render stats
             static void ResetRenderStats();

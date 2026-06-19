@@ -206,6 +206,34 @@ namespace RTBEngine {
             }
         }
 
+        void MeshRenderer::RenderDraw(Rendering::Mesh* drawMesh, Rendering::Material* drawMaterial)
+        {
+            if (!isEnabled || !owner || !owner->IsActiveInHierarchy() || !drawMesh || !drawMaterial) {
+                return;
+            }
+
+            Rendering::Shader* shader = drawMaterial->GetShader();
+            if (!shader) {
+                RTB_WARN(std::string("[RENDER] GO='") + owner->GetName() + "' shader is null");
+                return;
+            }
+
+            shader->SetMatrix4("uModel", owner->GetWorldMatrix());
+
+            Animation::Animator* animator = FindAnimatorInAncestors(owner);
+            if (animator && animator->ShouldSkinMesh()) {
+                shader->SetBool("uHasAnimation", true);
+                shader->SetBoneTransforms(animator->GetBoneTransforms());
+            }
+            else {
+                shader->SetBool("uHasAnimation", false);
+            }
+
+            drawMesh->Draw();
+            drawCallCount++;
+            triangleCount += drawMesh->GetIndexCount() / 3;
+        }
+
         void MeshRenderer::Render()
         {
             if (!isEnabled || !owner || !owner->IsActiveInHierarchy()) {
@@ -217,7 +245,6 @@ namespace RTBEngine {
                 return;
             }
 
-            //Single-mesh path (unchanged)
             if (!mesh) {
                 RTB_WARN(std::string("[RENDER] GO='") + owner->GetName() + "' has no mesh");
                 return;
@@ -230,34 +257,9 @@ namespace RTBEngine {
             }
 
             mat->Bind();
-
-            Rendering::Shader* shader = mat->GetShader();
-            if (!shader) {
-                RTB_WARN(std::string("[RENDER] GO='") + owner->GetName() + "' shader is null");
-            }
-
-            if (shader) {
-                Rendering::LightingUBO::GetInstance().Bind();
-                Rendering::CameraUBO::GetInstance().Bind();
-
-                Math::Matrix4 modelMatrix = owner->GetWorldMatrix();
-                shader->SetMatrix4("uModel", modelMatrix);
-
-                // Skeletal animation: walk up hierarchy (KayKit/multi-mesh FBX children)
-                Animation::Animator* animator = FindAnimatorInAncestors(owner);
-
-                if (animator && animator->ShouldSkinMesh()) {
-                    shader->SetBool("uHasAnimation", true);
-                    shader->SetBoneTransforms(animator->GetBoneTransforms());
-                }
-                else {
-                    shader->SetBool("uHasAnimation", false);
-                }
-            }
-
-            mesh->Draw();
-            drawCallCount++;
-            triangleCount += mesh->GetIndexCount() / 3;
+            Rendering::LightingUBO::GetInstance().Bind();
+            Rendering::CameraUBO::GetInstance().Bind();
+            RenderDraw(mesh, mat);
             mat->Unbind();
         }
 
@@ -268,51 +270,22 @@ namespace RTBEngine {
                 return;
             }
 
-            // Find first valid shader from materials
-            Rendering::Shader* shader = nullptr;
-            for (auto& mat : meshMaterials) {
-                if (mat && mat->GetShader()) {
-                    shader = mat->GetShader();
-                    break;
-                }
-            }
-            if (!shader) {
-                RTB_WARN(std::string("[RENDER] GO='") + owner->GetName() + "' multi-mesh has no shader");
-                return;
-            }
-
-            // Setup shared uniforms once
-            Math::Matrix4 modelMatrix = owner->GetWorldMatrix();
-            shader->Bind();
-            Rendering::LightingUBO::GetInstance().Bind();
-            Rendering::CameraUBO::GetInstance().Bind();
-            shader->SetMatrix4("uModel", modelMatrix);
-
-            Animation::Animator* animator = FindAnimatorInAncestors(owner);
-
-            if (animator && animator->ShouldSkinMesh()) {
-                shader->SetBool("uHasAnimation", true);
-                shader->SetBoneTransforms(animator->GetBoneTransforms());
-            }
-            else {
-                shader->SetBool("uHasAnimation", false);
-            }
-
-            // Draw each sub-mesh with its own material
             for (size_t i = 0; i < meshes.size(); i++) {
-                if (!meshes[i]) continue;
-
-                if (i < meshMaterials.size() && meshMaterials[i]) {
-                    meshMaterials[i]->Bind();
+                if (!meshes[i]) {
+                    continue;
                 }
 
-                meshes[i]->Draw();
-                drawCallCount++;
-                triangleCount += meshes[i]->GetIndexCount() / 3;
-
-                if (i < meshMaterials.size() && meshMaterials[i]) {
-                    meshMaterials[i]->Unbind();
+                Rendering::Material* subMaterial =
+                    i < meshMaterials.size() ? meshMaterials[i].get() : nullptr;
+                if (!subMaterial) {
+                    continue;
                 }
+
+                subMaterial->Bind();
+                Rendering::LightingUBO::GetInstance().Bind();
+                Rendering::CameraUBO::GetInstance().Bind();
+                RenderDraw(meshes[i], subMaterial);
+                subMaterial->Unbind();
             }
         }
 

@@ -16,17 +16,26 @@ namespace RTBEngine {
             
         }
 
+        void Material::ApplyProperties()
+        {
+            if (!shader) {
+                return;
+            }
+
+            shader->SetVector4("uColor", color);
+            shader->SetVector3("uDiffuseColor", diffuseColor);
+            shader->SetFloat("uShininess", shininess);
+            shader->SetBool("uHasTexture", texture != nullptr);
+            if (texture) {
+                shader->SetInt("uTexture", 0);
+            }
+        }
+
         void Material::Bind()
         {
             if (shader) {
                 shader->Bind();
-                shader->SetVector4("uColor", color);
-                shader->SetVector3("uDiffuseColor", diffuseColor);
-                shader->SetFloat("uShininess", shininess);
-                shader->SetBool("uHasTexture", texture != nullptr);
-                if (texture) {
-                    shader->SetInt("uTexture", 0);
-                }
+                ApplyProperties();
             }
             if (texture) {
                 texture->Bind(0);
@@ -37,9 +46,6 @@ namespace RTBEngine {
         {
             if (texture) {
                 texture->Unbind();
-            }
-            if (shader) {
-                shader->Unbind();
             }
         }
 
