@@ -511,6 +511,9 @@ void RTBEngine::Core::Application::Render()
 		}
 	}
 
+	auto& canvasSystem = UI::CanvasSystem::GetInstance();
+	canvasSystem.Update(scene);
+
 	RenderShadowPass(scene);
 	RenderGeometryPass(scene, activeCamera);
 
@@ -525,8 +528,6 @@ void RTBEngine::Core::Application::Render()
 		static_cast<float>(window->GetHeight())
 	);
 
-	auto& canvasSystem = UI::CanvasSystem::GetInstance();
-	canvasSystem.Update(scene);
 	canvasSystem.UpdateAllRectTransforms(screenSize);
 
 	// Mouse position in window space (no offset for standalone)
@@ -712,9 +713,7 @@ void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Renderi
 	// Transparent effects must render after the skybox because they skip depth writes.
 	scene->RenderTransparentEffects(camera);
 
-	auto& canvasSystem = UI::CanvasSystem::GetInstance();
-	canvasSystem.Update(scene);
-	canvasSystem.RenderWorldSpace(camera);
+	UI::CanvasSystem::GetInstance().RenderWorldSpace(camera);
 }
 
 void RTBEngine::Core::Application::ResetPhysics()
