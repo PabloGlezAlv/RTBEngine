@@ -3,6 +3,8 @@
 #include <algorithm>
 
 namespace {
+    constexpr int kMaxFixedStepsPerFrame = 5;
+
     struct TimeState {
         float deltaTime = 0.0f;
         float unscaledDeltaTime = 0.0f;
@@ -46,6 +48,14 @@ namespace RTBEngine {
 
             if (!state.paused) {
                 state.fixedAccumulator += state.deltaTime;
+
+                if (state.fixedDeltaTime > 0.0f) {
+                    const float maxAccumulator =
+                        state.fixedDeltaTime * static_cast<float>(kMaxFixedStepsPerFrame);
+                    if (state.fixedAccumulator > maxAccumulator) {
+                        state.fixedAccumulator = maxAccumulator;
+                    }
+                }
             }
 
             ++state.frameCount;

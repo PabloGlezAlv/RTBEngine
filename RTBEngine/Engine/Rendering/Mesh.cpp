@@ -10,6 +10,20 @@ RTBEngine::Rendering::Mesh::Mesh(const std::vector<Vertex>& vertices, const std:
 
 RTBEngine::Rendering::Mesh::~Mesh()
 {
+	if (VAO != 0) {
+		glDeleteVertexArrays(1, &VAO);
+		VAO = 0;
+	}
+
+	if (VBO != 0) {
+		glDeleteBuffers(1, &VBO);
+		VBO = 0;
+	}
+
+	if (EBO != 0) {
+		glDeleteBuffers(1, &EBO);
+		EBO = 0;
+	}
 }
 
 void RTBEngine::Rendering::Mesh::Draw() const
