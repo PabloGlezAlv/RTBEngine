@@ -208,11 +208,15 @@ namespace RTBEngine {
 
         private:
 
+            friend class Transform;
+
             void RegisterComponentType(Component* component);
 
             void UnregisterComponentType(Component* component);
 
 
+
+            void MarkWorldMatrixDirty();
 
             std::string name;
 
@@ -247,6 +251,9 @@ namespace RTBEngine {
             std::vector<GameObject*> children;
 
             Scene* owningScene = nullptr;
+
+            mutable Math::Matrix4 cachedWorldMatrix;
+            mutable bool worldMatrixDirty = true;
 
         };
 

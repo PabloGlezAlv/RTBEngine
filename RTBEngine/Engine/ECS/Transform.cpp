@@ -1,4 +1,5 @@
 #include "Transform.h"
+#include "GameObject.h"
 
 namespace RTBEngine {
     namespace ECS {
@@ -21,24 +22,36 @@ namespace RTBEngine {
         {
         }
 
+        void Transform::MarkLocalTransformDirty()
+        {
+            modelMatrixDirty = true;
+            if (owningGameObject) {
+                owningGameObject->MarkWorldMatrixDirty();
+            }
+        }
+
         void Transform::SetPosition(const Math::Vector3& position)
         {
             this->position = position;
+            MarkLocalTransformDirty();
         }
 
         void Transform::SetRotation(const Math::Quaternion& rotation)
         {
             this->rotation = rotation;
+            MarkLocalTransformDirty();
         }
 
         void Transform::SetRotation(const Math::Vector3& eulerAngles)
         {
             this->rotation = Math::Quaternion::FromEulerAngles(eulerAngles);
+            MarkLocalTransformDirty();
         }
 
         void Transform::SetScale(const Math::Vector3& scale)
         {
             this->scale = scale;
+            MarkLocalTransformDirty();
         }
 
         Math::Vector3 Transform::GetForward() const
@@ -64,26 +77,34 @@ namespace RTBEngine {
         void Transform::Translate(const Math::Vector3& translation)
         {
             position += translation;
+            MarkLocalTransformDirty();
         }
 
         void Transform::Rotate(const Math::Quaternion& rotation)
         {
             this->rotation = rotation * this->rotation;
+            MarkLocalTransformDirty();
         }
 
         void Transform::Rotate(const Math::Vector3& eulerAngles)
         {
             Math::Quaternion deltaRotation = Math::Quaternion::FromEulerAngles(eulerAngles);
             this->rotation = deltaRotation * this->rotation;
+            MarkLocalTransformDirty();
         }
 
         Math::Matrix4 Transform::GetModelMatrix() const
         {
-            Math::Matrix4 translationMatrix = Math::Matrix4::Translate(position);
-            Math::Matrix4 rotationMatrix = rotation.ToMatrix();
-            Math::Matrix4 scaleMatrix = Math::Matrix4::Scale(scale);
+            if (modelMatrixDirty) {
+                Math::Matrix4 translationMatrix = Math::Matrix4::Translate(position);
+                Math::Matrix4 rotationMatrix = rotation.ToMatrix();
+                Math::Matrix4 scaleMatrix = Math::Matrix4::Scale(scale);
 
-            return translationMatrix * rotationMatrix * scaleMatrix;
+                cachedModelMatrix = translationMatrix * rotationMatrix * scaleMatrix;
+                modelMatrixDirty = false;
+            }
+
+            return cachedModelMatrix;
         }
 
     }

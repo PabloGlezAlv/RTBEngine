@@ -5,6 +5,8 @@
 namespace RTBEngine {
     namespace ECS {
 
+        class GameObject;
+
         class RTB_API Transform {
         public:
             Transform();
@@ -30,7 +32,14 @@ namespace RTBEngine {
 
             Math::Matrix4 GetModelMatrix() const;
 
+            void SetOwningGameObject(GameObject* owner) { owningGameObject = owner; }
+
         private:
+            void MarkLocalTransformDirty();
+
+            GameObject* owningGameObject = nullptr;
+            mutable Math::Matrix4 cachedModelMatrix;
+            mutable bool modelMatrixDirty = true;
             Math::Vector3 position;
             Math::Quaternion rotation;
             Math::Vector3 scale;

@@ -39,6 +39,7 @@ namespace RTBEngine {
             , transform()
             , isActive(true)
         {
+            transform.SetOwningGameObject(this);
         }
 
         // Returns a deleter that destroys the component through its TypeInfo if available.
@@ -267,20 +268,41 @@ namespace RTBEngine {
             return true;
         }
 
+        void GameObject::MarkWorldMatrixDirty()
+        {
+            if (worldMatrixDirty) {
+                return;
+            }
+
+            worldMatrixDirty = true;
+            for (GameObject* child : children) {
+                if (child) {
+                    child->MarkWorldMatrixDirty();
+                }
+            }
+        }
+
         Math::Matrix4 GameObject::GetWorldMatrix() const
         {
-            if (parent) {
-                return parent->GetWorldMatrix() * transform.GetModelMatrix();
+            if (!worldMatrixDirty) {
+                return cachedWorldMatrix;
             }
-            return transform.GetModelMatrix();
+
+            if (parent) {
+                cachedWorldMatrix = parent->GetWorldMatrix() * transform.GetModelMatrix();
+            } else {
+                cachedWorldMatrix = transform.GetModelMatrix();
+            }
+
+            worldMatrixDirty = false;
+            return cachedWorldMatrix;
         }
 
         Math::Vector3 GameObject::GetWorldPosition() const
         {
             if (parent) {
-                // Return translation part of world matrix
-                Math::Matrix4 wm = GetWorldMatrix();
-                return Math::Vector3(wm[12], wm[13], wm[14]);
+                const Math::Matrix4& worldMatrix = GetWorldMatrix();
+                return Math::Vector3(worldMatrix[12], worldMatrix[13], worldMatrix[14]);
             }
             return transform.GetPosition();
         }
@@ -379,6 +401,8 @@ namespace RTBEngine {
                     component->OnParentChanged(oldParent, parent);
                 }
             }
+
+            MarkWorldMatrixDirty();
         }
 
         void GameObject::AddChild(GameObject* child)
