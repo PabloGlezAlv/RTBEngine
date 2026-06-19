@@ -32,6 +32,10 @@ namespace RTBEngine {
                     return sphere->GetCenterOffset();
                 }
 
+                if (ECS::BoxColliderComponent* box = gameObject->GetComponent<ECS::BoxColliderComponent>()) {
+                    return box->GetCenterOffset();
+                }
+
                 return Math::Vector3(0.0f, 0.0f, 0.0f);
             }
 
