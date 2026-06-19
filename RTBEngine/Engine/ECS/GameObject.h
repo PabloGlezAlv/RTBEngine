@@ -35,7 +35,7 @@ namespace RTBEngine {
 
     namespace ECS {
 
-
+        class Scene;
 
         #pragma warning(push)
 
@@ -203,7 +203,8 @@ namespace RTBEngine {
             std::size_t GetChildCount() const;
             GameObject* GetChildAt(std::size_t index) const;
 
-
+            void SetOwningScene(Scene* scene) { owningScene = scene; }
+            Scene* GetOwningScene() const { return owningScene; }
 
         private:
 
@@ -244,6 +245,8 @@ namespace RTBEngine {
             GameObject* parent = nullptr;
 
             std::vector<GameObject*> children;
+
+            Scene* owningScene = nullptr;
 
         };
 

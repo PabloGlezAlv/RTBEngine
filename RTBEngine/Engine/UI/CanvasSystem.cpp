@@ -316,12 +316,17 @@ namespace RTBEngine {
 			activeScene = scene;
 			activeCanvases.clear();
 
-			for (const auto& objPtr : scene->GetGameObjects()) {
-				ECS::GameObject* obj = objPtr.get();
-				Canvas* canvas = obj->GetComponent<Canvas>();
-				if (canvas && canvas->IsEnabled() && obj->IsActiveInHierarchy()) {
-					activeCanvases.push_back(canvas);
+			for (Canvas* canvas : scene->GetCachedCanvases()) {
+				if (!canvas || !canvas->IsEnabled()) {
+					continue;
 				}
+
+				ECS::GameObject* obj = canvas->GetOwner();
+				if (!obj || !obj->IsActiveInHierarchy()) {
+					continue;
+				}
+
+				activeCanvases.push_back(canvas);
 			}
 
 			std::sort(activeCanvases.begin(), activeCanvases.end(),

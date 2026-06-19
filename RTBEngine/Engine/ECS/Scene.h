@@ -17,9 +17,17 @@ namespace RTBEngine {
 
 
 namespace RTBEngine {
+    namespace UI {
+        class Canvas;
+    }
+
     namespace ECS {
 
         class CameraComponent;
+        class MeshRenderer;
+        class TrailRenderer;
+        class ParticleSystem;
+        class RigidBodyComponent;
 
         #pragma warning(push)
         #pragma warning(disable: 4251)
@@ -61,6 +69,15 @@ namespace RTBEngine {
             const std::vector<Rendering::Light*>& GetLights() const { return lights; }
             const std::vector<std::unique_ptr<GameObject>>& GetGameObjects() const { return gameObjects; }
 
+            void InvalidateComponentCaches();
+
+            const std::vector<MeshRenderer*>& GetCachedMeshRenderers() const;
+            const std::vector<LightComponent*>& GetCachedLightComponents() const;
+            const std::vector<TrailRenderer*>& GetCachedTrailRenderers() const;
+            const std::vector<ParticleSystem*>& GetCachedParticleSystems() const;
+            const std::vector<RTBEngine::UI::Canvas*>& GetCachedCanvases() const;
+            const std::vector<RigidBodyComponent*>& GetCachedRigidBodies() const;
+
             // Camera management
             void SetMainCamera(CameraComponent* camera);
             CameraComponent* GetMainCamera() const;
@@ -75,6 +92,10 @@ namespace RTBEngine {
             void QueueLifecycleInitialization(GameObject* root);
             void FlushPendingLifecycle();
             bool OwnsGameObject(GameObject* target) const;
+            void EnsureComponentCaches() const;
+            void RebuildComponentCaches() const;
+            void AssignGameObjectOwnership(GameObject* gameObject);
+            void ClearGameObjectOwnership(GameObject* gameObject);
 
             std::string name;
             std::vector<std::unique_ptr<GameObject>> gameObjects;
@@ -92,6 +113,14 @@ namespace RTBEngine {
             bool skyboxEnabled = true;
 
             bool pendingRenderLog = false;
+
+            mutable bool componentCachesDirty = true;
+            mutable std::vector<MeshRenderer*> cachedMeshRenderers;
+            mutable std::vector<LightComponent*> cachedLightComponents;
+            mutable std::vector<TrailRenderer*> cachedTrailRenderers;
+            mutable std::vector<ParticleSystem*> cachedParticleSystems;
+            mutable std::vector<RTBEngine::UI::Canvas*> cachedCanvases;
+            mutable std::vector<RigidBodyComponent*> cachedRigidBodies;
         };
         #pragma warning(pop)
 

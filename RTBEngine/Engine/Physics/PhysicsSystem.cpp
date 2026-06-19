@@ -216,15 +216,13 @@ namespace RTBEngine {
 
         void PhysicsSystem::SyncTransformsToPhysics(ECS::Scene* scene)
         {
-            const auto& gameObjects = scene->GetGameObjects();
-
-            for (const auto& gameObject : gameObjects)
+            for (ECS::RigidBodyComponent* rbComp : scene->GetCachedRigidBodies())
             {
-                if (!gameObject->IsActiveInHierarchy())
+                ECS::GameObject* gameObject = rbComp ? rbComp->GetOwner() : nullptr;
+                if (!gameObject || !gameObject->IsActiveInHierarchy())
                     continue;
 
-                ECS::RigidBodyComponent* rbComp = gameObject->GetComponent<ECS::RigidBodyComponent>();
-                if (!rbComp || !rbComp->HasRigidBody())
+                if (!rbComp->HasRigidBody())
                     continue;
 
                 Physics::RigidBody* rigidBody = rbComp->GetRigidBody();
@@ -235,7 +233,7 @@ namespace RTBEngine {
                 if (rigidBody->GetType() == RigidBodyType::Kinematic)
                 {
                     ECS::Transform& transform = gameObject->GetTransform();
-                    btTransform btTrans = BuildColliderTransform(transform, GetColliderCenterOffset(gameObject.get()));
+                    btTransform btTrans = BuildColliderTransform(transform, GetColliderCenterOffset(gameObject));
 
                     btBody->setWorldTransform(btTrans);
                 }
@@ -244,15 +242,13 @@ namespace RTBEngine {
 
         void PhysicsSystem::SyncPhysicsToTransforms(ECS::Scene* scene, float interpolationAlpha)
         {
-            const auto& gameObjects = scene->GetGameObjects();
-
-            for (const auto& gameObject : gameObjects)
+            for (ECS::RigidBodyComponent* rbComp : scene->GetCachedRigidBodies())
             {
-                if (!gameObject->IsActiveInHierarchy())
+                ECS::GameObject* gameObject = rbComp ? rbComp->GetOwner() : nullptr;
+                if (!gameObject || !gameObject->IsActiveInHierarchy())
                     continue;
 
-                ECS::RigidBodyComponent* rbComp = gameObject->GetComponent<ECS::RigidBodyComponent>();
-                if (!rbComp || !rbComp->HasRigidBody())
+                if (!rbComp->HasRigidBody())
                     continue;
 
                 Physics::RigidBody* rigidBody = rbComp->GetRigidBody();
@@ -280,7 +276,7 @@ namespace RTBEngine {
 
                     Math::Quaternion rotation = PhysicsUtils::FromBullet(btRot);
                     Math::Vector3 position = PhysicsUtils::FromBullet(btPos) -
-                        (rotation * GetColliderCenterOffset(gameObject.get()));
+                        (rotation * GetColliderCenterOffset(gameObject));
 
                     ECS::Transform& transform = gameObject->GetTransform();
                     transform.SetPosition(position);

@@ -8,8 +8,11 @@
 #include "GameObject.h"
 #include "MeshRenderer.h"
 #include "CameraComponent.h"
+#include "LightComponent.h"
+#include "RigidBodyComponent.h"
 #include "TrailRenderer.h"
 #include "ParticleSystem.h"
+#include "../UI/Canvas.h"
 #include "../Core/Logger.h"
 
 namespace {
@@ -186,6 +189,120 @@ RTBEngine::ECS::Scene::~Scene()
 	pendingAdds.clear();
 }
 
+void RTBEngine::ECS::Scene::InvalidateComponentCaches()
+{
+	componentCachesDirty = true;
+}
+
+void RTBEngine::ECS::Scene::EnsureComponentCaches() const
+{
+	if (!componentCachesDirty) {
+		return;
+	}
+
+	const_cast<Scene*>(this)->RebuildComponentCaches();
+	componentCachesDirty = false;
+}
+
+void RTBEngine::ECS::Scene::RebuildComponentCaches() const
+{
+	cachedMeshRenderers.clear();
+	cachedLightComponents.clear();
+	cachedTrailRenderers.clear();
+	cachedParticleSystems.clear();
+	cachedCanvases.clear();
+	cachedRigidBodies.clear();
+
+	const auto collectFromGameObjects = [this](const std::vector<std::unique_ptr<GameObject>>& objects) {
+		for (const auto& gameObject : objects) {
+			if (!gameObject) {
+				continue;
+			}
+
+			if (MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>()) {
+				cachedMeshRenderers.push_back(meshRenderer);
+			}
+
+			if (LightComponent* lightComponent = gameObject->GetComponent<LightComponent>()) {
+				cachedLightComponents.push_back(lightComponent);
+			}
+
+			if (TrailRenderer* trailRenderer = gameObject->GetComponent<TrailRenderer>()) {
+				cachedTrailRenderers.push_back(trailRenderer);
+			}
+
+			if (ParticleSystem* particleSystem = gameObject->GetComponent<ParticleSystem>()) {
+				cachedParticleSystems.push_back(particleSystem);
+			}
+
+			if (RTBEngine::UI::Canvas* canvas = gameObject->GetComponent<RTBEngine::UI::Canvas>()) {
+				cachedCanvases.push_back(canvas);
+			}
+
+			if (RigidBodyComponent* rigidBody = gameObject->GetComponent<RigidBodyComponent>()) {
+				cachedRigidBodies.push_back(rigidBody);
+			}
+		}
+	};
+
+	collectFromGameObjects(gameObjects);
+	collectFromGameObjects(pendingAdds);
+}
+
+const std::vector<RTBEngine::ECS::MeshRenderer*>& RTBEngine::ECS::Scene::GetCachedMeshRenderers() const
+{
+	EnsureComponentCaches();
+	return cachedMeshRenderers;
+}
+
+const std::vector<RTBEngine::ECS::LightComponent*>& RTBEngine::ECS::Scene::GetCachedLightComponents() const
+{
+	EnsureComponentCaches();
+	return cachedLightComponents;
+}
+
+const std::vector<RTBEngine::ECS::TrailRenderer*>& RTBEngine::ECS::Scene::GetCachedTrailRenderers() const
+{
+	EnsureComponentCaches();
+	return cachedTrailRenderers;
+}
+
+const std::vector<RTBEngine::ECS::ParticleSystem*>& RTBEngine::ECS::Scene::GetCachedParticleSystems() const
+{
+	EnsureComponentCaches();
+	return cachedParticleSystems;
+}
+
+const std::vector<RTBEngine::UI::Canvas*>& RTBEngine::ECS::Scene::GetCachedCanvases() const
+{
+	EnsureComponentCaches();
+	return cachedCanvases;
+}
+
+const std::vector<RTBEngine::ECS::RigidBodyComponent*>& RTBEngine::ECS::Scene::GetCachedRigidBodies() const
+{
+	EnsureComponentCaches();
+	return cachedRigidBodies;
+}
+
+void RTBEngine::ECS::Scene::AssignGameObjectOwnership(GameObject* gameObject)
+{
+	if (!gameObject) {
+		return;
+	}
+
+	gameObject->SetOwningScene(this);
+}
+
+void RTBEngine::ECS::Scene::ClearGameObjectOwnership(GameObject* gameObject)
+{
+	if (!gameObject) {
+		return;
+	}
+
+	gameObject->SetOwningScene(nullptr);
+}
+
 void RTBEngine::ECS::Scene::AddGameObject(GameObject* gameObject, bool queueLifecycle)
 {
 	if (iterationDepth > 0) {
@@ -198,6 +315,8 @@ void RTBEngine::ECS::Scene::AddGameObject(GameObject* gameObject, bool queueLife
 		QueueLifecycleInitialization(gameObject);
 	}
 
+	AssignGameObjectOwnership(gameObject);
+	InvalidateComponentCaches();
 	pendingRenderLog = true;
 }
 
@@ -290,14 +409,19 @@ void RTBEngine::ECS::Scene::RemoveGameObject(GameObject* gameObject)
 	}
 
 	for (GameObject* node : hierarchy) {
+		ClearGameObjectOwnership(node);
 		DestroyOwnedGameObject(gameObjects, node);
 		DestroyOwnedGameObject(pendingAdds, node);
 	}
+
+	InvalidateComponentCaches();
 }
 
 void RTBEngine::ECS::Scene::FlushPendingCommands()
 {
 	if (iterationDepth > 0) return;
+
+	const bool hadPendingChanges = !pendingRemoves.empty() || !pendingAdds.empty();
 
 	// Process removes first to avoid updating objects marked for deletion.
 	if (!pendingRemoves.empty()) {
@@ -334,9 +458,14 @@ void RTBEngine::ECS::Scene::FlushPendingCommands()
 
 	// Then flush adds
 	for (auto& go : pendingAdds) {
+		AssignGameObjectOwnership(go.get());
 		gameObjects.push_back(std::move(go));
 	}
 	pendingAdds.clear();
+
+	if (hadPendingChanges) {
+		InvalidateComponentCaches();
+	}
 }
 
 RTBEngine::ECS::GameObject* RTBEngine::ECS::Scene::FindGameObject(const std::string& name)
@@ -464,29 +593,33 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 	const Rendering::Frustum& frustum = camera->GetFrustum();
 
 	++iterationDepth;
-	for (auto& gameObject : gameObjects) {
-		if (gameObject && gameObject->IsActiveInHierarchy()) {
-			MeshRenderer* renderer = gameObject->GetComponent<MeshRenderer>();
-			if (renderer && renderer->IsEnabled()) {
-				// Frustum culling
-				Math::Vector3 localMin, localMax;
-				renderer->GetCombinedAABB(localMin, localMax);
+	for (MeshRenderer* renderer : GetCachedMeshRenderers()) {
+		if (!renderer || !renderer->IsEnabled()) {
+			continue;
+		}
 
-				// Skip culling if no mesh (let renderer handle it)
-				if (localMin != localMax) {
-					Math::Vector3 worldMin, worldMax;
-					Rendering::Frustum::TransformAABB(
-						gameObject->GetWorldMatrix(), localMin, localMax, worldMin, worldMax);
+		GameObject* gameObject = renderer->GetOwner();
+		if (!gameObject || !gameObject->IsActiveInHierarchy()) {
+			continue;
+		}
 
-					if (!frustum.IsAABBVisible(worldMin, worldMax)) {
-						MeshRenderer::IncrementCulledCount();
-						continue;
-					}
-				}
+		// Frustum culling
+		Math::Vector3 localMin, localMax;
+		renderer->GetCombinedAABB(localMin, localMax);
 
-				renderer->Render(camera, lights);
+		// Skip culling if no mesh (let renderer handle it)
+		if (localMin != localMax) {
+			Math::Vector3 worldMin, worldMax;
+			Rendering::Frustum::TransformAABB(
+				gameObject->GetWorldMatrix(), localMin, localMax, worldMin, worldMax);
+
+			if (!frustum.IsAABBVisible(worldMin, worldMax)) {
+				MeshRenderer::IncrementCulledCount();
+				continue;
 			}
 		}
+
+		renderer->Render(camera, lights);
 	}
 
 	--iterationDepth;
@@ -498,22 +631,30 @@ void RTBEngine::ECS::Scene::RenderTransparentEffects(Rendering::Camera* camera)
 	if (!camera) return;
 
 	++iterationDepth;
-	for (auto& gameObject : gameObjects) {
-		if (gameObject && gameObject->IsActiveInHierarchy()) {
-			TrailRenderer* trailRenderer = gameObject->GetComponent<TrailRenderer>();
-			if (trailRenderer && trailRenderer->IsEnabled()) {
-				trailRenderer->Render(camera);
-			}
+	for (TrailRenderer* trailRenderer : GetCachedTrailRenderers()) {
+		if (!trailRenderer || !trailRenderer->IsEnabled()) {
+			continue;
 		}
+
+		GameObject* gameObject = trailRenderer->GetOwner();
+		if (!gameObject || !gameObject->IsActiveInHierarchy()) {
+			continue;
+		}
+
+		trailRenderer->Render(camera);
 	}
 
-	for (auto& gameObject : gameObjects) {
-		if (gameObject && gameObject->IsActiveInHierarchy()) {
-			ParticleSystem* particleSystem = gameObject->GetComponent<ParticleSystem>();
-			if (particleSystem && particleSystem->IsEnabled()) {
-				particleSystem->Render(camera);
-			}
+	for (ParticleSystem* particleSystem : GetCachedParticleSystems()) {
+		if (!particleSystem || !particleSystem->IsEnabled()) {
+			continue;
 		}
+
+		GameObject* gameObject = particleSystem->GetOwner();
+		if (!gameObject || !gameObject->IsActiveInHierarchy()) {
+			continue;
+		}
+
+		particleSystem->Render(camera);
 	}
 	--iterationDepth;
 	FlushPendingCommands();
@@ -545,13 +686,17 @@ void RTBEngine::ECS::Scene::CollectLights()
 {
 	lights.clear();
 
-	for (auto& gameObject : gameObjects) {
-		if (gameObject && gameObject->IsActiveInHierarchy()) {
-			LightComponent* lightComp = gameObject->GetComponent<LightComponent>();
-			if (lightComp && lightComp->IsEnabled()) {
-				lights.push_back(lightComp->GetLight());
-			}
+	for (LightComponent* lightComp : GetCachedLightComponents()) {
+		if (!lightComp || !lightComp->IsEnabled()) {
+			continue;
 		}
+
+		GameObject* gameObject = lightComp->GetOwner();
+		if (!gameObject || !gameObject->IsActiveInHierarchy()) {
+			continue;
+		}
+
+		lights.push_back(lightComp->GetLight());
 	}
 }
 

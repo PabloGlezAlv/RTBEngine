@@ -1,4 +1,5 @@
 #include "GameObject.h"
+#include "Scene.h"
 #include "SceneLifecycle.h"
 #include "../Core/Time.h"
 #include "../Core/TypeId.h"
@@ -215,6 +216,10 @@ namespace RTBEngine {
             components.push_back(std::unique_ptr<Component, std::function<void(Component*)>>(component, std::move(deleter)));
             RegisterComponentType(component);
 
+            if (owningScene) {
+                owningScene->InvalidateComponentCaches();
+            }
+
             if (lifecycleInitialized) {
                 SceneLifecycle::InvokeAwakeAndValidate(component);
             }
@@ -231,6 +236,10 @@ namespace RTBEngine {
                 UnregisterComponentType(component);
                 (*it)->OnDestroy();
                 components.erase(it);
+
+                if (owningScene) {
+                    owningScene->InvalidateComponentCaches();
+                }
             }
         }
 

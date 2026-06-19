@@ -554,11 +554,11 @@ void RTBEngine::Core::Application::RenderShadowPass(ECS::Scene* scene)
 
 	shadowShader->Bind();
 
-	for (auto& go : scene->GetGameObjects()) {
-		if (!go || !go->IsActiveInHierarchy()) continue;
-
-		auto* lightComp = go->GetComponent<ECS::LightComponent>();
+	for (ECS::LightComponent* lightComp : scene->GetCachedLightComponents()) {
 		if (!lightComp || !lightComp->GetLight()) continue;
+
+		ECS::GameObject* go = lightComp->GetOwner();
+		if (!go || !go->IsActiveInHierarchy()) continue;
 
 		if (lightComp->GetLight()->GetType() != Rendering::LightType::Directional) continue;
 		auto* dirLight = static_cast<Rendering::DirectionalLight*>(lightComp->GetLight());
@@ -593,11 +593,11 @@ void RTBEngine::Core::Application::RenderShadowPass(ECS::Scene* scene)
 
 void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader, const Rendering::Frustum& frustum)
 {
-	for (auto& go : scene->GetGameObjects()) {
-		if (!go || !go->IsActiveInHierarchy()) continue;
-
-		auto* meshRenderer = go->GetComponent<ECS::MeshRenderer>();
+	for (ECS::MeshRenderer* meshRenderer : scene->GetCachedMeshRenderers()) {
 		if (!meshRenderer || !meshRenderer->IsEnabled()) continue;
+
+		ECS::GameObject* go = meshRenderer->GetOwner();
+		if (!go || !go->IsActiveInHierarchy()) continue;
 
 		// Frustum culling
 		Math::Vector3 localMin, localMax;
@@ -611,7 +611,7 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rende
 		Math::Matrix4 modelMatrix = go->GetWorldMatrix();
 		shader->SetMatrix4("uModel", modelMatrix);
 
-		Animation::Animator* animator = FindAnimatorInAncestors(go.get());
+		Animation::Animator* animator = FindAnimatorInAncestors(go);
 		if (animator && animator->ShouldSkinMesh()) {
 			shader->SetBool("uHasAnimation", true);
 			shader->SetBoneTransforms(animator->GetBoneTransforms());
@@ -649,11 +649,11 @@ void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Renderi
 	int spotLightIndex = 0;
 	Rendering::DirectionalLight* shadowCastingLight = nullptr;
 
-	for (auto& go : scene->GetGameObjects()) {
-		if (!go || !go->IsActiveInHierarchy()) continue;
-
-		auto* lightComp = go->GetComponent<ECS::LightComponent>();
+	for (ECS::LightComponent* lightComp : scene->GetCachedLightComponents()) {
 		if (!lightComp || !lightComp->GetLight()) continue;
+
+		ECS::GameObject* go = lightComp->GetOwner();
+		if (!go || !go->IsActiveInHierarchy()) continue;
 
 		Rendering::Light* light = lightComp->GetLight();
 
