@@ -188,6 +188,7 @@ namespace RTBEngine {
                 particle.age = 0.0f;
                 particle.lifetime = 0.0f;
             }
+            RebuildFreeSlots();
             activeInstanceCount = 0;
         }
 
@@ -195,6 +196,21 @@ namespace RTBEngine {
         {
             if (playOnAwake && !userStopped) {
                 Play();
+            }
+        }
+
+        void ParticleSystem::RebuildFreeSlots()
+        {
+            freeSlots.clear();
+            freeSlots.reserve(particles.size());
+            activeParticleCount = 0;
+
+            for (int i = 0; i < static_cast<int>(particles.size()); ++i) {
+                if (particles[static_cast<std::size_t>(i)].IsAlive()) {
+                    ++activeParticleCount;
+                } else {
+                    freeSlots.push_back(i);
+                }
             }
         }
 
@@ -208,9 +224,17 @@ namespace RTBEngine {
             particles.resize(static_cast<std::size_t>(clampedMax));
             instanceData.resize(static_cast<std::size_t>(clampedMax));
 
-            for (std::size_t i = previousSize; i < particles.size(); ++i) {
-                particles[i].age = 0.0f;
-                particles[i].lifetime = 0.0f;
+            if (particles.size() > previousSize) {
+                freeSlots.reserve(particles.size());
+                for (std::size_t i = previousSize; i < particles.size(); ++i) {
+                    particles[i].age = 0.0f;
+                    particles[i].lifetime = 0.0f;
+                    freeSlots.push_back(static_cast<int>(i));
+                }
+            } else if (particles.size() < previousSize) {
+                RebuildFreeSlots();
+            } else if (previousSize == 0) {
+                RebuildFreeSlots();
             }
         }
 
@@ -259,13 +283,7 @@ namespace RTBEngine {
 
         int ParticleSystem::GetActiveParticleCount() const
         {
-            int count = 0;
-            for (const Rendering::Particle& particle : particles) {
-                if (particle.IsAlive()) {
-                    ++count;
-                }
-            }
-            return count;
+            return activeParticleCount;
         }
 
         // Editor-only: ticks emitters with simulateInEditMode while not in Play mode.
@@ -292,17 +310,6 @@ namespace RTBEngine {
 
                 particleSystem->Tick(deltaTime);
             }
-        }
-
-        // Returns the first pool index with lifetime == 0, or -1 when the pool is full.
-        int ParticleSystem::FindDeadParticleIndex() const
-        {
-            for (int i = 0; i < static_cast<int>(particles.size()); ++i) {
-                if (!particles[static_cast<std::size_t>(i)].IsAlive()) {
-                    return i;
-                }
-            }
-            return -1;
         }
 
         // Uniform random direction inside a cone around local +Y; angle 0 emits along +Y only.
@@ -397,10 +404,12 @@ namespace RTBEngine {
         // Claims a dead pool slot and initializes position, velocity, lifetime, size, and color.
         void ParticleSystem::SpawnParticle()
         {
-            const int slot = FindDeadParticleIndex();
-            if (slot < 0) {
+            if (freeSlots.empty()) {
                 return;
             }
+
+            const int slot = freeSlots.back();
+            freeSlots.pop_back();
 
             Rendering::Particle& particle = particles[static_cast<std::size_t>(slot)];
             const Math::Vector3 localPosition = SampleSpawnPosition();
@@ -429,6 +438,7 @@ namespace RTBEngine {
             particle.size = startSize;
             particle.color = startColor;
             ++totalEmitted;
+            ++activeParticleCount;
         }
 
         // Emits new particles, integrates gravity/velocity, lerps size/color, then uploads GPU data.
@@ -454,13 +464,16 @@ namespace RTBEngine {
                 simulationGravity = Math::Vector3(localGravity4.x, localGravity4.y, localGravity4.z);
             }
 
-            for (Rendering::Particle& particle : particles) {
+            for (int i = 0; i < static_cast<int>(particles.size()); ++i) {
+                Rendering::Particle& particle = particles[static_cast<std::size_t>(i)];
                 if (!particle.IsAlive()) {
                     continue;
                 }
 
                 particle.age += deltaTime;
                 if (!particle.IsAlive()) {
+                    freeSlots.push_back(i);
+                    --activeParticleCount;
                     continue;
                 }
 
@@ -475,7 +488,7 @@ namespace RTBEngine {
                 particle.color.a = Math::Lerp(startColor.a, endColor.a, t);
             }
 
-            if (!loop && totalEmitted > 0 && GetActiveParticleCount() == 0) {
+            if (!loop && totalEmitted > 0 && activeParticleCount == 0) {
                 playing = false;
             }
 

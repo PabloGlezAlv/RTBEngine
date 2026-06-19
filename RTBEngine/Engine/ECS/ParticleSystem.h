@@ -91,8 +91,8 @@ namespace RTBEngine {
             };
 
             void ResizePool();
+            void RebuildFreeSlots();
             void SpawnParticle();
-            int FindDeadParticleIndex() const;
             Math::Vector3 SampleConeDirection() const;
             Math::Vector3 SampleSpawnPosition() const;
             Math::Vector3 SampleSpawnDirection() const;
@@ -107,6 +107,7 @@ namespace RTBEngine {
 
             std::vector<Rendering::Particle> particles;
             std::vector<ParticleInstanceData> instanceData;
+            std::vector<int> freeSlots;
 
             float emissionAccumulator = 0.0f;
             bool playing = false;
@@ -116,6 +117,7 @@ namespace RTBEngine {
             GLuint instanceVbo = 0;
             Rendering::Shader* shader = nullptr;
             int activeInstanceCount = 0;
+            int activeParticleCount = 0;
             int totalEmitted = 0;
         };
 #pragma warning(pop)
