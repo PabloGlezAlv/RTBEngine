@@ -52,9 +52,11 @@ namespace RTBEngine {
             void Stop();
             void Pause();
             void Resume();
+            void HoldCurrentPose();
 
             bool IsPlaying() const { return playing; }
             bool IsPaused() const { return paused; }
+            bool IsHoldingPose() const { return holdPose; }
 
             void SetSpeed(float spd) { speed = spd; }
             float GetSpeed() const { return speed; }
@@ -65,7 +67,7 @@ namespace RTBEngine {
             // Bone transforms for shader
             const std::vector<Math::Matrix4>& GetBoneTransforms() const { return finalBoneTransforms; }
             bool HasBones() const { return skeleton && skeleton->GetBoneCount() > 0; }
-            bool ShouldSkinMesh() const { return playing && HasBones() && !finalBoneTransforms.empty(); }
+            bool ShouldSkinMesh() const { return HasBones() && !finalBoneTransforms.empty() && (playing || holdPose); }
 
             // Loaded meshes with bone data
             void SetMeshes(const std::vector<Rendering::Mesh*>& loadedMeshes) { meshes = loadedMeshes; }
@@ -99,6 +101,7 @@ namespace RTBEngine {
             AnimationClip* currentClip = nullptr;
             float currentTime = 0.0f;
             bool paused = false;
+            bool holdPose = false;
 
             std::vector<Math::Matrix4> finalBoneTransforms;
             std::vector<Rendering::Mesh*> meshes;

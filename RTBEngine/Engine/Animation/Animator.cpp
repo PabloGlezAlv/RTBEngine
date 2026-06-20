@@ -184,6 +184,7 @@ namespace RTBEngine {
                 else {
                     currentTime = duration;
                     playing = false;
+                    holdPose = true;
                 }
             }
 
@@ -193,8 +194,7 @@ namespace RTBEngine {
         void Animator::OnLateUpdate(float deltaTime)
         {
             (void)deltaTime;
-            // Re-sync bone GOs after gameplay scripts may have called Play() in OnUpdate.
-            if (playing && !paused && currentClip && skeleton && boneGOsCreated) {
+            if (((playing && !paused) || holdPose) && currentClip && skeleton && boneGOsCreated) {
                 SyncBoneGameObjects();
             }
         }
@@ -279,6 +279,7 @@ namespace RTBEngine {
             currentTime = 0.0f;
             playing = false;
             paused = false;
+            holdPose = false;
         }
 
         AnimationClip* Animator::GetClip(const std::string& name) const
@@ -312,6 +313,7 @@ namespace RTBEngine {
             currentClipName = clipName;
             currentTime = 0.0f;
             paused = false;
+            holdPose = false;
             looping = loop;
         }
 
@@ -327,6 +329,7 @@ namespace RTBEngine {
             currentTime = 0.0f;
             playing = true;
             paused = false;
+            holdPose = false;
             looping = loop;
 
             UpdateBoneTransforms();
@@ -338,6 +341,7 @@ namespace RTBEngine {
 
             playing = false;
             paused = false;
+            holdPose = false;
             currentTime = 0.0f;
             currentClip = nullptr;
             currentClipName.clear();
@@ -380,6 +384,23 @@ namespace RTBEngine {
             if (playing) {
                 paused = false;
             }
+        }
+
+        void Animator::HoldCurrentPose()
+        {
+            if (!skeleton || !currentClip) {
+                return;
+            }
+
+            const float duration = currentClip->GetDuration();
+            if (currentTime > duration) {
+                currentTime = duration;
+            }
+
+            playing = false;
+            paused = false;
+            holdPose = true;
+            UpdateBoneTransforms();
         }
 
         void Animator::UpdateBoneTransforms()

@@ -104,7 +104,12 @@ void main() {
     if (uHasTexture && texColor.a < 0.01) {
         discard;
     }
-    FragColor = vec4(result * uDiffuseColor * texColor.rgb, 1.0) * uColor;
+
+    vec3 albedo = uDiffuseColor * texColor.rgb;
+    vec3 litColor = result * albedo;
+    vec3 tint = min(uColor.rgb, vec3(1.0));
+    vec3 flashAdd = max(uColor.rgb - vec3(1.0), vec3(0.0));
+    FragColor = vec4(litColor * tint + flashAdd, texColor.a * uColor.a);
 }
 
 
