@@ -1,6 +1,7 @@
 #include "ScenePropertySerializer.h"
 #include "../Scene/Component.h"
 #include "../Scene/GameObject.h"
+#include "../Scene/MissingComponent.h"
 #include "../Reflection/TypeInfo.h"
 #include "../Core/ResourceManager.h"
 #include "../Math/Vectors/Vector2.h"
@@ -10,12 +11,16 @@
 #include "../Math/Color.h"
 #include "../Animation/Animator.h"
 #include "../RTBEngine.h"
+#include "../Reflection/ListPropertyAccess.h"
 #include <sstream>
 #include <iomanip>
 
 namespace RTBEngine {
     namespace Scripting {
         namespace ScenePropertySerializer {
+
+            namespace {
+            }
 
             void WriteComponent(std::ofstream& file, const ECS::Component* comp, int indent)
             {
@@ -34,16 +39,10 @@ namespace RTBEngine {
                     }
                 }
 
-                if (std::string(typeName) == "Animator") {
-                    const auto* animator = static_cast<const Animation::Animator*>(comp);
-                    if (!animator->additionalModels.empty()) {
-                        file << ",\n";
-                        file << ind << "    additionalModels = {\n";
-                        for (const auto& path : animator->additionalModels) {
-                            file << ind << "        " << FormatString(NormalizePath(path)) << ",\n";
-                        }
-                        file << ind << "    }";
-                    }
+                if (std::string(typeName) == "MissingComponent") {
+                    const auto* missing = static_cast<const ECS::MissingComponent*>(comp);
+                    file << ",\n" << ind << "    missingTypeName = \""
+                         << missing->GetMissingTypeName() << "\"";
                 }
 
                 file << "\n" << ind << "},\n";
@@ -128,6 +127,63 @@ namespace RTBEngine {
                     else {
                         file << "nil";
                     }
+                    break;
+                }
+                case Reflection::PropertyType::List: {
+                    file << "{\n";
+                    const std::string elementIndent = ind + "    ";
+                    bool wroteAny = false;
+
+                    auto writeEntry = [&](const std::string& value) {
+                        if (wroteAny) {
+                            file << ",\n";
+                        }
+                        wroteAny = true;
+                        file << elementIndent << FormatString(value) << ",\n";
+                    };
+
+                    switch (prop.listElementType) {
+                    case Reflection::ListElementType::String:
+                    case Reflection::ListElementType::AssetRef: {
+                        const auto* values = Reflection::ListPropertyAccess::GetStringVector(
+                            const_cast<ECS::Component*>(comp), prop);
+                        if (values) {
+                            for (const auto& value : *values) {
+                                writeEntry(NormalizePath(value));
+                            }
+                        }
+                        break;
+                    }
+                    case Reflection::ListElementType::GameObjectRef: {
+                        const auto* values = Reflection::ListPropertyAccess::GetGameObjectVector(
+                            const_cast<ECS::Component*>(comp), prop);
+                        if (values) {
+                            for (ECS::GameObject* target : *values) {
+                                writeEntry(target ? target->GetUUID() : "");
+                            }
+                        }
+                        break;
+                    }
+                    case Reflection::ListElementType::ComponentRef: {
+                        const auto* values = Reflection::ListPropertyAccess::GetComponentVector(
+                            const_cast<ECS::Component*>(comp), prop);
+                        if (values) {
+                            for (ECS::Component* target : *values) {
+                                if (target && target->GetOwner()) {
+                                    writeEntry(target->GetOwner()->GetUUID() + "/"
+                                        + std::string(target->GetTypeName()));
+                                } else {
+                                    writeEntry("");
+                                }
+                            }
+                        }
+                        break;
+                    }
+                    default:
+                        break;
+                    }
+
+                    file << ind << "}";
                     break;
                 }
                 default:

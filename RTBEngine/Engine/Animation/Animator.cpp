@@ -80,6 +80,7 @@ namespace RTBEngine {
             RTB_PROPERTY(speed)
             RTB_PROPERTY(playing)
             RTB_PROPERTY(looping)
+            RTB_PROPERTY_STRING_LIST(additionalModels)
         RTB_END_REGISTER(Animator)
 
         Animator::Animator()

@@ -38,7 +38,17 @@ namespace RTBEngine {
             FontRef,         // Reference to Font*
             GameObjectRef,   // Reference to GameObject*
             ComponentRef,    // Reference to Component*
+            List,            // std::vector<T> / std::vector<T*> — see ListElementType
             Unknown
+        };
+
+        // Element type for PropertyType::List (vector-backed serializable lists).
+        enum class ListElementType : int {
+            None = 0,
+            String = 1,
+            AssetRef = 2,
+            GameObjectRef = 3,
+            ComponentRef = 4,
         };
 
         // Property configuration flags
@@ -88,7 +98,8 @@ namespace RTBEngine {
             std::optional<std::string> category;
             std::vector<std::string> enumNames;
             std::string assetType;
-            std::string componentTypeName;  // For ComponentRef: target component type name
+            std::string componentTypeName;  // For ComponentRef / ComponentRef lists
+            ListElementType listElementType = ListElementType::None;
 
             PropertyInfo()
                 : type(PropertyType::Unknown)
@@ -158,6 +169,8 @@ namespace RTBEngine {
             void AddPropertyPODRange(const char* name, PropertyType type, size_t offset, size_t size, PropertyFlags flags, float rangeMin, float rangeMax);
             void AddPropertyPODEnum(const char* name, size_t offset, size_t size, PropertyFlags flags, const char* const* enumNames, int enumCount);
             void AddPropertyPODTyped(const char* name, PropertyType type, size_t offset, size_t size, PropertyFlags flags, const char* extraTypeName);
+            void AddPropertyList(const char* name, ListElementType elementType, size_t offset, size_t size,
+                PropertyFlags flags, const char* componentTypeName = nullptr);
             bool HasProperties() const { return !properties.empty(); }
             size_t GetPropertyCount() const { return properties.size(); }
 

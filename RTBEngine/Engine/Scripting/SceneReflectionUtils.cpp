@@ -4,10 +4,13 @@
 #include <LuaBridge/LuaBridge.h>
 
 #include "../Reflection/TypeInfo.h"
+#include "../Reflection/ListPropertyAccess.h"
 #include "../Scene/Component.h"
 #include "../Math/Math.h"
 #include "../Core/ResourceManager.h"
 #include "../RTBEngine.h"
+
+#include <algorithm>
 
 namespace RTBEngine {
     namespace Scripting {
@@ -193,6 +196,53 @@ namespace RTBEngine {
                             }
                         }
                         break;
+                    case PropertyType::List: {
+                        if (!lua_istable(L, -1)) {
+                            break;
+                        }
+
+                        const int elementCount = static_cast<int>(luaL_len(L, -1));
+                        switch (prop->listElementType) {
+                        case ListElementType::String:
+                        case ListElementType::AssetRef: {
+                            auto* values = ListPropertyAccess::GetStringVector(component, *prop);
+                            if (!values) {
+                                break;
+                            }
+                            values->clear();
+                            values->reserve(static_cast<size_t>(elementCount));
+                            for (int elementIndex = 1; elementIndex <= elementCount; ++elementIndex) {
+                                lua_geti(L, -1, elementIndex);
+                                if (lua_isstring(L, -1)) {
+                                    values->emplace_back(lua_tostring(L, -1));
+                                } else {
+                                    values->emplace_back();
+                                }
+                                lua_pop(L, 1);
+                            }
+                            break;
+                        }
+                        case ListElementType::GameObjectRef: {
+                            auto* values = ListPropertyAccess::GetGameObjectVector(component, *prop);
+                            if (!values) {
+                                break;
+                            }
+                            values->assign(static_cast<size_t>(elementCount), nullptr);
+                            break;
+                        }
+                        case ListElementType::ComponentRef: {
+                            auto* values = ListPropertyAccess::GetComponentVector(component, *prop);
+                            if (!values) {
+                                break;
+                            }
+                            values->assign(static_cast<size_t>(elementCount), nullptr);
+                            break;
+                        }
+                        default:
+                            break;
+                        }
+                        break;
+                    }
                     default:
                         // FontRef, GameObjectRef, and ComponentRef are resolved by other systems.
                         break;
@@ -222,7 +272,8 @@ namespace RTBEngine {
                     }
 
                     if (prop->type != PropertyType::GameObjectRef &&
-                        prop->type != PropertyType::ComponentRef) {
+                        prop->type != PropertyType::ComponentRef &&
+                        prop->type != PropertyType::List) {
                         continue;
                     }
 
@@ -233,8 +284,27 @@ namespace RTBEngine {
 
                     if (prop->type == PropertyType::GameObjectRef) {
                         *static_cast<ECS::GameObject**>(data) = nullptr;
-                    } else {
+                    } else if (prop->type == PropertyType::ComponentRef) {
                         *static_cast<ECS::Component**>(data) = nullptr;
+                    } else if (prop->type == PropertyType::List) {
+                        switch (prop->listElementType) {
+                        case ListElementType::GameObjectRef: {
+                            auto* values = ListPropertyAccess::AsGameObjectVector(data);
+                            if (values) {
+                                std::fill(values->begin(), values->end(), nullptr);
+                            }
+                            break;
+                        }
+                        case ListElementType::ComponentRef: {
+                            auto* values = ListPropertyAccess::AsComponentVector(data);
+                            if (values) {
+                                std::fill(values->begin(), values->end(), nullptr);
+                            }
+                            break;
+                        }
+                        default:
+                            break;
+                        }
                     }
                 }
             }

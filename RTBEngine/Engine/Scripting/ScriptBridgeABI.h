@@ -4,7 +4,7 @@
 
 // ABI-safe bridge descriptors shared by EXE and GameScripts.dll.
 // Keep these POD-only and byte-for-byte identical on both sides.
-static constexpr std::uint32_t RTB_SCRIPT_BRIDGE_ABI_VERSION = 2;
+static constexpr std::uint32_t RTB_SCRIPT_BRIDGE_ABI_VERSION = 3;
 
 struct RTBPropertyDesc {
     const char* name;
@@ -18,6 +18,7 @@ struct RTBPropertyDesc {
     int         hasRange;
     const char* assetTypeName;
     const char* componentTypeName;
+    int         listElementType;
 };
 
 struct RTBScriptTypeDesc {

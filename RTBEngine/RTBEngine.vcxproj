@@ -467,6 +467,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Scene\CapsuleColliderComponent.h" />
     <ClInclude Include="Engine\Scene\SphereColliderComponent.h" />
     <ClInclude Include="Engine\Scene\MissingComponent.h" />
+    <ClInclude Include="Engine\Reflection\ListPropertyAccess.h" />
     <ClInclude Include="Engine\Reflection\TypeInfo.h" />
     <ClInclude Include="Engine\Reflection\PropertyMacros.h" />
     <ClInclude Include="Engine\Reflection\TypeInfoBuilder.h" />

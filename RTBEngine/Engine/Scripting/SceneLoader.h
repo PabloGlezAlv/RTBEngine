@@ -30,6 +30,7 @@ namespace RTBEngine {
                 ECS::Component* component;
                 const Reflection::PropertyInfo* prop;
                 std::string uuidString;
+                int listIndex = -1;
             };
 
             static void SetupLuaBindings(lua_State* L);

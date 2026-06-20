@@ -97,8 +97,25 @@ namespace RTBEngine {
             prop.flags = flags;
             if (type == PropertyType::AssetRef) {
                 prop.assetType = extraTypeName ? extraTypeName : "";
-            } else {
+            } else if (type == PropertyType::ComponentRef) {
                 prop.componentTypeName = extraTypeName ? extraTypeName : "";
+            }
+            properties.push_back(std::move(prop));
+        }
+
+        void TypeInfo::AddPropertyList(const char* name, ListElementType elementType, size_t offset, size_t size,
+            PropertyFlags flags, const char* componentTypeName)
+        {
+            PropertyInfo prop;
+            prop.name = name;
+            prop.displayName = name;
+            prop.type = PropertyType::List;
+            prop.offset = offset;
+            prop.size = size;
+            prop.flags = flags;
+            prop.listElementType = elementType;
+            if (elementType == ListElementType::ComponentRef && componentTypeName) {
+                prop.componentTypeName = componentTypeName;
             }
             properties.push_back(std::move(prop));
         }

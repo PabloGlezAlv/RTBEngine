@@ -5,7 +5,7 @@
 #include "Component.h"
 #include "MeshRenderer.h"
 #include "SceneManager.h"
-#include "../Reflection/TypeInfo.h"
+#include "../Reflection/ListPropertyAccess.h"
 #include "../Scripting/ComponentRegistry.h"
 #include "../Scripting/SceneReflectionUtils.h"
 #include "../Core/ResourceManager.h"
@@ -107,6 +107,26 @@ namespace RTBEngine {
                     continue;
                 }
 
+                if (prop->type == Reflection::PropertyType::List) {
+                    switch (prop->listElementType) {
+                    case Reflection::ListElementType::String:
+                    case Reflection::ListElementType::AssetRef: {
+                        const auto* values = static_cast<const std::vector<std::string>*>(
+                            prop->GetData(comp));
+                        if (values) {
+                            snap.listStringData[offset] = *values;
+                        }
+                        continue;
+                    }
+                    case Reflection::ListElementType::GameObjectRef:
+                    case Reflection::ListElementType::ComponentRef:
+                        // Scene references are resolved when the prefab instance is loaded.
+                        continue;
+                    default:
+                        continue;
+                    }
+                }
+
                 const char* src = static_cast<const char*>(prop->GetData(comp));
 
                 snap.rawData.insert(snap.rawData.end(),
@@ -127,8 +147,14 @@ namespace RTBEngine {
         void Prefab::ApplySnapshot(Component* target, const ComponentSnapshot& snap)
         {
             char* actualObject = static_cast<char*>(target ? target->GetActualObject() : nullptr);
+            if (!actualObject) {
+                return;
+            }
+
             const uint8_t* ptr = snap.rawData.data();
             const uint8_t* end = ptr + snap.rawData.size();
+            const Reflection::TypeInfo* typeInfo =
+                Reflection::TypeRegistry::GetInstance().GetTypeInfo(snap.typeName);
 
             while (ptr < end)
             {
@@ -138,8 +164,20 @@ namespace RTBEngine {
                 size_t size = *reinterpret_cast<const size_t*>(ptr);
                 ptr += sizeof(size_t);
 
-                char* dst = actualObject + offset;
-                std::memcpy(dst, ptr, size);
+                bool skipMemcpy = false;
+                if (typeInfo) {
+                    for (const Reflection::PropertyInfo* prop : typeInfo->GetSerializableProperties()) {
+                        if (prop && prop->offset == offset && prop->size == size &&
+                            prop->type == Reflection::PropertyType::List) {
+                            skipMemcpy = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!skipMemcpy) {
+                    std::memcpy(actualObject + offset, ptr, size);
+                }
                 ptr += size;
             }
 
@@ -149,11 +187,16 @@ namespace RTBEngine {
                 *dst = str;
             }
 
+            for (const auto& [offset, strings] : snap.listStringData)
+            {
+                std::vector<std::string>* dst = reinterpret_cast<std::vector<std::string>*>(
+                    actualObject + offset);
+                *dst = strings;
+            }
+
             if (snap.ptrPathData.empty()) return;
 
             Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
-            const Reflection::TypeInfo* typeInfo =
-                Reflection::TypeRegistry::GetInstance().GetTypeInfo(snap.typeName);
             if (!typeInfo) return;
 
             for (const Reflection::PropertyInfo* prop : typeInfo->GetSerializableProperties())

@@ -30,7 +30,7 @@
     RTBEngine::Reflection::GetMemberOffset<RTBCurrentClass>(&ThisClass::PropName)
 
 #ifdef GAMESCRIPTS_EXPORTS
-#define RTB__BRIDGE_PROP(NameLiteral, TypeValue, OffsetValue, SizeValue, FlagsValue, RangeMinValue, RangeMaxValue, HasRangeValue, AssetTypeNameValue, ComponentTypeNameValue) \
+#define RTB__BRIDGE_PROP(NameLiteral, TypeValue, OffsetValue, SizeValue, FlagsValue, RangeMinValue, RangeMaxValue, HasRangeValue, AssetTypeNameValue, ComponentTypeNameValue, ListElementTypeValue) \
                 do {                                                                    \
                     RTBPropertyDesc _rtb_prop_desc{};                                   \
                     _rtb_prop_desc.name = (NameLiteral);                                \
@@ -44,6 +44,7 @@
                     _rtb_prop_desc.hasRange = static_cast<int>(HasRangeValue);          \
                     _rtb_prop_desc.assetTypeName = (AssetTypeNameValue);                \
                     _rtb_prop_desc.componentTypeName = (ComponentTypeNameValue);        \
+                    _rtb_prop_desc.listElementType = static_cast<int>(ListElementTypeValue); \
                     RTBScripts_RegisterLocalProperty(RTBCurrentTypeName, &_rtb_prop_desc); \
                 } while (false)
 #else
@@ -112,7 +113,7 @@ private:
 #define RTB__PROP_POD(PropName, TypeExpr, SizeExpr, FlagsExpr)                          \
                 RTB__BRIDGE_PROP(                                                       \
                     #PropName, TypeExpr, RTB_MEMBER_OFFSET(PropName),                   \
-                    SizeExpr, FlagsExpr, 0.0f, 0.0f, 0, nullptr, nullptr               \
+                    SizeExpr, FlagsExpr, 0.0f, 0.0f, 0, nullptr, nullptr, 0               \
                 );
 #else
 #define RTB__PROP_POD(PropName, TypeExpr, SizeExpr, FlagsExpr)                          \
@@ -122,7 +123,7 @@ private:
                 );                                                                      \
                 RTB__BRIDGE_PROP(                                                       \
                     #PropName, TypeExpr, RTB_MEMBER_OFFSET(PropName),                   \
-                    SizeExpr, FlagsExpr, 0.0f, 0.0f, 0, nullptr, nullptr               \
+                    SizeExpr, FlagsExpr, 0.0f, 0.0f, 0, nullptr, nullptr, 0               \
                 );
 #endif
 
@@ -155,7 +156,7 @@ private:
                         sizeof(std::declval<InnerType>().InnerProp),                     \
                         RTBEngine::Reflection::PropertyFlags::Serialize |                 \
                         RTBEngine::Reflection::PropertyFlags::HideInInspector,            \
-                        0.0f, 0.0f, 0, nullptr, nullptr                                 \
+                        0.0f, 0.0f, 0, nullptr, nullptr, 0                                 \
                     );                                                                   \
                 }
 #else
@@ -185,7 +186,7 @@ private:
                         sizeof(std::declval<InnerType>().InnerProp),                     \
                         RTBEngine::Reflection::PropertyFlags::Serialize |                 \
                         RTBEngine::Reflection::PropertyFlags::HideInInspector,            \
-                        0.0f, 0.0f, 0, nullptr, nullptr                                 \
+                        0.0f, 0.0f, 0, nullptr, nullptr, 0                                 \
                     );                                                                   \
                 }
 #endif
@@ -216,7 +217,7 @@ private:
                     #PropName, RTB__AUTO_TYPE(PropName),                                \
                     RTB_MEMBER_OFFSET(PropName), RTB__AUTO_SIZE(PropName),               \
                     RTBEngine::Reflection::PropertyFlags::None,                         \
-                    static_cast<float>(Min), static_cast<float>(Max), 1, nullptr, nullptr \
+                    static_cast<float>(Min), static_cast<float>(Max), 1, nullptr, nullptr, 0 \
                 );
 #else
 #define RTB_PROPERTY_RANGE(PropName, Min, Max)                                          \
@@ -230,7 +231,7 @@ private:
                     #PropName, RTB__AUTO_TYPE(PropName),                                \
                     RTB_MEMBER_OFFSET(PropName), RTB__AUTO_SIZE(PropName),               \
                     RTBEngine::Reflection::PropertyFlags::None,                         \
-                    static_cast<float>(Min), static_cast<float>(Max), 1, nullptr, nullptr \
+                    static_cast<float>(Min), static_cast<float>(Max), 1, nullptr, nullptr, 0 \
                 );
 #endif
 
@@ -258,7 +259,7 @@ private:
                         #PropName, RTBEngine::Reflection::PropertyType::Enum,            \
                         RTB_MEMBER_OFFSET(PropName), RTB__AUTO_SIZE(PropName),           \
                         RTBEngine::Reflection::PropertyFlags::None,                     \
-                        0.0f, 0.0f, 0, nullptr, nullptr                                 \
+                        0.0f, 0.0f, 0, nullptr, nullptr, 0                                 \
                     );                                                                  \
                 }
 #endif
@@ -269,7 +270,7 @@ private:
                     #PropName, RTBEngine::Reflection::PropertyType::AssetRef,           \
                     RTB_MEMBER_OFFSET(PropName), RTB__AUTO_SIZE(PropName),              \
                     RTBEngine::Reflection::PropertyFlags::None,                         \
-                    0.0f, 0.0f, 0, AssetTypeName, nullptr                               \
+                    0.0f, 0.0f, 0, AssetTypeName, nullptr, 0                               \
                 );
 #else
 #define RTB_PROPERTY_ASSET_PATH(PropName, AssetTypeName)                                \
@@ -282,7 +283,7 @@ private:
                     #PropName, RTBEngine::Reflection::PropertyType::AssetRef,           \
                     RTB_MEMBER_OFFSET(PropName), RTB__AUTO_SIZE(PropName),              \
                     RTBEngine::Reflection::PropertyFlags::None,                         \
-                    0.0f, 0.0f, 0, AssetTypeName, nullptr                               \
+                    0.0f, 0.0f, 0, AssetTypeName, nullptr, 0                               \
                 );
 #endif
 
@@ -334,7 +335,7 @@ private:
                     #PropName, RTBEngine::Reflection::PropertyType::ComponentRef,        \
                     RTB_MEMBER_OFFSET(PropName), sizeof(void*),                         \
                     RTBEngine::Reflection::PropertyFlags::None,                         \
-                    0.0f, 0.0f, 0, nullptr, #ComponentType                              \
+                    0.0f, 0.0f, 0, nullptr, #ComponentType, 0                              \
                 );
 #else
 #define RTB_PROPERTY_COMPONENT(PropName, ComponentType)                                 \
@@ -347,9 +348,43 @@ private:
                     #PropName, RTBEngine::Reflection::PropertyType::ComponentRef,        \
                     RTB_MEMBER_OFFSET(PropName), sizeof(void*),                         \
                     RTBEngine::Reflection::PropertyFlags::None,                         \
-                    0.0f, 0.0f, 0, nullptr, #ComponentType                              \
+                    0.0f, 0.0f, 0, nullptr, #ComponentType, 0                              \
                 );
 #endif
+
+#define RTB__PROP_LIST(PropName, ElementKind, ComponentTypeLiteral)                     \
+                RTB__BRIDGE_PROP(                                                       \
+                    #PropName, RTBEngine::Reflection::PropertyType::List,               \
+                    RTB_MEMBER_OFFSET(PropName),                                        \
+                    sizeof(std::declval<ThisClass>().PropName),                         \
+                    RTBEngine::Reflection::PropertyFlags::None,                         \
+                    0.0f, 0.0f, 0, nullptr, ComponentTypeLiteral,                         \
+                    static_cast<int>(ElementKind));
+
+#ifndef GAMESCRIPTS_EXPORTS
+#undef RTB__PROP_LIST
+#define RTB__PROP_LIST(PropName, ElementKind, ComponentTypeLiteral)                     \
+                info.AddPropertyList(                                                   \
+                    #PropName, ElementKind, RTB_MEMBER_OFFSET(PropName),                \
+                    sizeof(std::declval<ThisClass>().PropName),                          \
+                    RTBEngine::Reflection::PropertyFlags::None, ComponentTypeLiteral);    \
+                RTB__BRIDGE_PROP(                                                       \
+                    #PropName, RTBEngine::Reflection::PropertyType::List,               \
+                    RTB_MEMBER_OFFSET(PropName),                                        \
+                    sizeof(std::declval<ThisClass>().PropName),                         \
+                    RTBEngine::Reflection::PropertyFlags::None,                         \
+                    0.0f, 0.0f, 0, nullptr, ComponentTypeLiteral,                         \
+                    static_cast<int>(ElementKind));
+#endif
+
+#define RTB_PROPERTY_STRING_LIST(PropName)                                              \
+                RTB__PROP_LIST(PropName, RTBEngine::Reflection::ListElementType::String, nullptr)
+
+#define RTB_PROPERTY_GAMEOBJECT_LIST(PropName)                                          \
+                RTB__PROP_LIST(PropName, RTBEngine::Reflection::ListElementType::GameObjectRef, nullptr)
+
+#define RTB_PROPERTY_COMPONENT_LIST(PropName, ComponentType)                            \
+                RTB__PROP_LIST(PropName, RTBEngine::Reflection::ListElementType::ComponentRef, #ComponentType)
 
 // Forward declaration visible to all script .cpp files when building GameScripts.dll.
 #ifdef GAMESCRIPTS_EXPORTS

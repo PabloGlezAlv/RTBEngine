@@ -48,6 +48,8 @@
 #include "SceneLuaBindings.h"
 #include "SceneComponentConfigurator.h"
 #include "SceneParsingUtils.h"
+#include "ScriptManager.h"
+#include "../Reflection/ListPropertyAccess.h"
 #include "SceneReflectionUtils.h"
 
 namespace RTBEngine {
@@ -415,11 +417,63 @@ namespace RTBEngine {
         {
             for (const auto& req : uuidRefRequests) {
                 const std::string& uuidStr = req.uuidString;
+                void* data = req.prop->GetMutableData(req.component);
+                if (!data) {
+                    continue;
+                }
+
+                if (req.prop->type == Reflection::PropertyType::List &&
+                    req.prop->listElementType == Reflection::ListElementType::GameObjectRef &&
+                    req.listIndex >= 0)
+                {
+                    auto* values = Reflection::ListPropertyAccess::AsGameObjectVector(data);
+                    if (!values || req.listIndex >= static_cast<int>(values->size())) {
+                        continue;
+                    }
+
+                    ECS::GameObject* target = scene->FindGameObjectByUUID(uuidStr);
+                    if (target) {
+                        (*values)[static_cast<size_t>(req.listIndex)] = target;
+                    } else {
+                        RTB_WARN("SceneLoader: GameObjectRef list UUID not found: " + uuidStr);
+                    }
+                    continue;
+                }
+
+                if (req.prop->type == Reflection::PropertyType::List &&
+                    req.prop->listElementType == Reflection::ListElementType::ComponentRef &&
+                    req.listIndex >= 0)
+                {
+                    auto* values = Reflection::ListPropertyAccess::AsComponentVector(data);
+                    if (!values || req.listIndex >= static_cast<int>(values->size())) {
+                        continue;
+                    }
+
+                    size_t slash = uuidStr.find('/');
+                    if (slash == std::string::npos) {
+                        continue;
+                    }
+
+                    const std::string uuid = uuidStr.substr(0, slash);
+                    const std::string type = uuidStr.substr(slash + 1);
+                    ECS::GameObject* targetGO = scene->FindGameObjectByUUID(uuid);
+                    if (!targetGO) {
+                        RTB_WARN("SceneLoader: ComponentRef list UUID not found: " + uuidStr);
+                        continue;
+                    }
+
+                    for (const auto& comp : targetGO->GetComponents()) {
+                        if (std::string(comp->GetTypeName()) == type) {
+                            (*values)[static_cast<size_t>(req.listIndex)] = comp.get();
+                            break;
+                        }
+                    }
+                    continue;
+                }
 
                 if (req.prop->type == Reflection::PropertyType::GameObjectRef) {
                     ECS::GameObject* target = scene->FindGameObjectByUUID(uuidStr);
                     if (target) {
-                        void* data = req.prop->GetMutableData(req.component);
                         *(ECS::GameObject**)data = target;
                     } else {
                         RTB_WARN("SceneLoader: GameObjectRef UUID not found: " + uuidStr);
@@ -434,7 +488,6 @@ namespace RTBEngine {
                         if (targetGO) {
                             for (const auto& comp : targetGO->GetComponents()) {
                                 if (std::string(comp->GetTypeName()) == type) {
-                                    void* data = req.prop->GetMutableData(req.component);
                                     *(ECS::Component**)data = comp.get();
                                     break;
                                 }
@@ -470,13 +523,29 @@ namespace RTBEngine {
                 std::string componentType = lua_tostring(L, -1);
                 lua_pop(L, 1);
 
+                std::string missingTypeName;
+                if (componentType == "MissingComponent") {
+                    lua_getfield(L, componentTableIndex, "missingTypeName");
+                    if (lua_isstring(L, -1)) {
+                        missingTypeName = lua_tostring(L, -1);
+                    }
+                    lua_pop(L, 1);
+
+                    if (!missingTypeName.empty()) {
+                        componentType = missingTypeName;
+                    }
+                }
+
                 const Reflection::TypeInfo* registeredTypeInfo =
                     ComponentRegistry::GetInstance().GetComponentTypeInfo(componentType);
 
                 ECS::Component* comp = ComponentRegistry::GetInstance().CreateComponent(componentType);
                 if (!comp) {
-                    RTB_ERROR("SceneLoader: Component type '" + componentType + "' not found — inserting MissingComponent placeholder");
-                    gameObject->AddComponent(new ECS::MissingComponent(componentType));
+                    const std::string placeholderType =
+                        !missingTypeName.empty() ? missingTypeName : componentType;
+                    RTB_ERROR("SceneLoader: Component type '" + placeholderType
+                              + "' not found — inserting MissingComponent placeholder");
+                    gameObject->AddComponent(new ECS::MissingComponent(placeholderType));
                     lua_pop(L, 1);
                     continue;
                 }
@@ -550,8 +619,29 @@ namespace RTBEngine {
                             lua_getfield(L, componentTableIndex, prop->name.c_str());
                             if (lua_isstring(L, -1)) {
                                 std::string uuidStr = lua_tostring(L, -1);
-                                if (!uuidStr.empty())
-                                    uuidRefRequests.push_back({ comp, prop, uuidStr });
+                                if (!uuidStr.empty()) {
+                                    uuidRefRequests.push_back({ comp, prop, uuidStr, -1 });
+                                }
+                            }
+                            lua_pop(L, 1);
+                        } else if (prop->type == Reflection::PropertyType::List &&
+                            (prop->listElementType == Reflection::ListElementType::GameObjectRef ||
+                             prop->listElementType == Reflection::ListElementType::ComponentRef))
+                        {
+                            lua_getfield(L, componentTableIndex, prop->name.c_str());
+                            if (lua_istable(L, -1)) {
+                                const int elementCount = static_cast<int>(luaL_len(L, -1));
+                                for (int elementIndex = 1; elementIndex <= elementCount; ++elementIndex) {
+                                    lua_geti(L, -1, elementIndex);
+                                    if (lua_isstring(L, -1)) {
+                                        std::string uuidStr = lua_tostring(L, -1);
+                                        if (!uuidStr.empty()) {
+                                            uuidRefRequests.push_back(
+                                                { comp, prop, uuidStr, elementIndex - 1 });
+                                        }
+                                    }
+                                    lua_pop(L, 1);
+                                }
                             }
                             lua_pop(L, 1);
                         }

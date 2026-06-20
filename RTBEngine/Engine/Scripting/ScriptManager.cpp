@@ -213,6 +213,12 @@ namespace RTBEngine {
             if (prop.type == RTBEngine::Reflection::PropertyType::ComponentRef) {
                 prop.componentTypeName = SafeCString(desc->componentTypeName, "componentTypeName");
             }
+            if (prop.type == RTBEngine::Reflection::PropertyType::List) {
+                prop.listElementType = static_cast<RTBEngine::Reflection::ListElementType>(desc->listElementType);
+                if (prop.listElementType == RTBEngine::Reflection::ListElementType::ComponentRef) {
+                    prop.componentTypeName = SafeCString(desc->componentTypeName, "componentTypeName");
+                }
+            }
             if (desc->hasRange) {
                 prop.range = RTBEngine::Reflection::Range(desc->rangeMin, desc->rangeMax);
             }
