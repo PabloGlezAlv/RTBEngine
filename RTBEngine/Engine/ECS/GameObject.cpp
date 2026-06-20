@@ -267,6 +267,10 @@ namespace RTBEngine {
             const bool wasActive = isActive;
             this->isActive = active;
 
+            if (wasActive != active) {
+                MarkActiveInHierarchyDirty();
+            }
+
             if (!wasActive && active && lifecycleInitialized) {
                 for (auto& component : components) {
                     if (component) {
@@ -278,12 +282,28 @@ namespace RTBEngine {
 
         bool GameObject::IsActiveInHierarchy() const
         {
-            for (const GameObject* node = this; node; node = node->GetParent()) {
-                if (!node->isActive) {
-                    return false;
+            if (!activeInHierarchyDirty) {
+                return cachedActiveInHierarchy;
+            }
+
+            if (parent) {
+                cachedActiveInHierarchy = isActive && parent->IsActiveInHierarchy();
+            } else {
+                cachedActiveInHierarchy = isActive;
+            }
+
+            activeInHierarchyDirty = false;
+            return cachedActiveInHierarchy;
+        }
+
+        void GameObject::MarkActiveInHierarchyDirty()
+        {
+            activeInHierarchyDirty = true;
+            for (GameObject* child : children) {
+                if (child) {
+                    child->MarkActiveInHierarchyDirty();
                 }
             }
-            return true;
         }
 
         void GameObject::MarkWorldMatrixDirty()
@@ -421,6 +441,7 @@ namespace RTBEngine {
             }
 
             MarkWorldMatrixDirty();
+            MarkActiveInHierarchyDirty();
         }
 
         void GameObject::AddChild(GameObject* child)

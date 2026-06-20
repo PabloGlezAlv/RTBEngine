@@ -217,6 +217,7 @@ namespace RTBEngine {
 
 
             void MarkWorldMatrixDirty();
+            void MarkActiveInHierarchyDirty();
 
             std::string name;
 
@@ -254,6 +255,9 @@ namespace RTBEngine {
 
             mutable Math::Matrix4 cachedWorldMatrix;
             mutable bool worldMatrixDirty = true;
+
+            mutable bool cachedActiveInHierarchy = true;
+            mutable bool activeInHierarchyDirty = true;
 
         };
 
