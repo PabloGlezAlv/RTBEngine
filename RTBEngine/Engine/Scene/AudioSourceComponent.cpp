@@ -46,6 +46,31 @@ namespace RTBEngine {
             }
         }
 
+        void AudioSourceComponent::PlayOneShot() {
+            PlayOneShot(audioClip);
+        }
+
+        void AudioSourceComponent::PlayOneShot(Audio::AudioClip* clipOverride) {
+            if (!clipOverride || !clipOverride->IsLoaded()) {
+                return;
+            }
+
+            FMOD::System* fmodSystem = Audio::AudioSystem::GetInstance().GetFMODSystem();
+            if (!fmodSystem) {
+                return;
+            }
+
+            FMOD::Channel* oneShotChannel = nullptr;
+            if (fmodSystem->playSound(clipOverride->GetSound(), nullptr, false, &oneShotChannel) != FMOD_OK ||
+                !oneShotChannel) {
+                return;
+            }
+
+            oneShotChannel->setVolume(volume);
+            oneShotChannel->setPitch(pitch);
+            oneShotChannel->setMode(FMOD_LOOP_OFF);
+        }
+
         void AudioSourceComponent::Stop() {
             if (channel) {
                 channel->stop();

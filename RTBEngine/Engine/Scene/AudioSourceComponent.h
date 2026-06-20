@@ -23,6 +23,8 @@ namespace RTBEngine {
             Audio::AudioClip* GetClip() const { return audioClip; }
 
             void Play();
+            void PlayOneShot();
+            void PlayOneShot(Audio::AudioClip* clipOverride);
             void Stop();
             void Pause();
             void Resume();

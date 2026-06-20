@@ -66,13 +66,6 @@ namespace {
         }
 
         RTBEngine::ECS::GameObject* instantiated = FinalizeInstantiation(scene, root, children, onHierarchyAdded);
-        if (instantiated) {
-            const RTBEngine::Math::Vector3 position = instantiated->GetWorldPosition();
-            RTB_INFO("SceneManager: Instantiated prefab '" + prefab.GetName() + "' as '" +
-                instantiated->GetName() + "' at (" + std::to_string(position.x) + ", " +
-                std::to_string(position.y) + ", " + std::to_string(position.z) + ").");
-        }
-
         return instantiated;
     }
 
