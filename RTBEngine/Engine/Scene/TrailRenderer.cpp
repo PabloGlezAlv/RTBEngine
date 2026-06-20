@@ -205,10 +205,13 @@ namespace RTBEngine {
             const GLboolean wasBlendEnabled = glIsEnabled(GL_BLEND);
             const GLboolean wasDepthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
             const GLboolean wasCullFaceEnabled = glIsEnabled(GL_CULL_FACE);
+            GLboolean wasDepthMaskEnabled = GL_TRUE;
+            glGetBooleanv(GL_DEPTH_WRITEMASK, &wasDepthMaskEnabled);
 
             glEnable(GL_BLEND); // Enable alpha colors
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glEnable(GL_DEPTH_TEST); // Visible just when in front
+            glDepthMask(GL_FALSE); // Avoid z-fighting with floor geometry
             glDisable(GL_CULL_FACE); // Visible from both sides
 
             // The shader only needs the camera view-projection because vertices are already in world space.
@@ -238,6 +241,7 @@ namespace RTBEngine {
             } else {
                 glDisable(GL_BLEND);
             }
+            glDepthMask(wasDepthMaskEnabled);
         }
 
     }
