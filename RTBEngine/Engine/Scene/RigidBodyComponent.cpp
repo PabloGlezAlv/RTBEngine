@@ -152,6 +152,9 @@ namespace RTBEngine {
             RTB_PROPERTY(mass)
             RTB_PROPERTY(friction)
             RTB_PROPERTY(restitution)
+            RTB_PROPERTY(freezeRotationX)
+            RTB_PROPERTY(freezeRotationY)
+            RTB_PROPERTY(freezeRotationZ)
             RTB_PROPERTY_ENUM(bodyType, "Static", "Dynamic", "Kinematic")
         RTB_END_REGISTER(RigidBodyComponent)
 
@@ -226,11 +229,22 @@ namespace RTBEngine {
         }
 
         void RigidBodyComponent::SyncProperties() {
-            if (rigidBody) {
-                rigidBody->SetMass(mass);
-                rigidBody->SetFriction(friction);
-                rigidBody->SetRestitution(restitution);
-                rigidBody->SetType(bodyType);
+            if (!rigidBody) {
+                return;
+            }
+
+            rigidBody->SetMass(mass);
+            rigidBody->SetFriction(friction);
+            rigidBody->SetRestitution(restitution);
+            rigidBody->SetType(bodyType);
+
+            if (bodyType == Physics::RigidBodyType::Dynamic) {
+                rigidBody->SetAngularFactor(btVector3(
+                    freezeRotationX ? 0.0f : 1.0f,
+                    freezeRotationY ? 0.0f : 1.0f,
+                    freezeRotationZ ? 0.0f : 1.0f));
+            } else {
+                rigidBody->SetAngularFactor(btVector3(1.0f, 1.0f, 1.0f));
             }
         }
 

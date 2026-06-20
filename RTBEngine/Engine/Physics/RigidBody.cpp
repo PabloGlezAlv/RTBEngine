@@ -10,6 +10,8 @@ namespace RTBEngine {
             , bodyMass(1.0f)
             , bodyFriction(0.5f)
             , bodyRestitution(0.0f)
+            , bodyAngularFactor(1.0f, 1.0f, 1.0f)
+            , bodyLinearFactor(1.0f, 1.0f, 1.0f)
             , bulletRigidBody(nullptr) {
         }
 
@@ -133,14 +135,16 @@ namespace RTBEngine {
         }
 
         void RigidBody::SetAngularFactor(const btVector3& factor) {
+            bodyAngularFactor = factor;
             if (bulletRigidBody) {
-                bulletRigidBody->setAngularFactor(factor);
+                bulletRigidBody->setAngularFactor(bodyAngularFactor);
             }
         }
 
         void RigidBody::SetLinearFactor(const btVector3& factor) {
+            bodyLinearFactor = factor;
             if (bulletRigidBody) {
-                bulletRigidBody->setLinearFactor(factor);
+                bulletRigidBody->setLinearFactor(bodyLinearFactor);
             }
         }
 
@@ -176,6 +180,8 @@ namespace RTBEngine {
                 SetFriction(bodyFriction);
                 SetRestitution(bodyRestitution);
                 SetType(bodyType);
+                SetAngularFactor(bodyAngularFactor);
+                SetLinearFactor(bodyLinearFactor);
             }
         }
 

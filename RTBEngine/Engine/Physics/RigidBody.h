@@ -76,6 +76,8 @@ namespace RTBEngine {
             float bodyMass;
             float bodyFriction;
             float bodyRestitution;
+            btVector3 bodyAngularFactor;
+            btVector3 bodyLinearFactor;
 
             std::unique_ptr<btRigidBody> bulletRigidBody;
 

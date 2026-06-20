@@ -31,6 +31,9 @@ namespace RTBEngine {
             float friction = 0.5f;
             float restitution = 0.0f;
             Physics::RigidBodyType bodyType = Physics::RigidBodyType::Dynamic;
+            bool freezeRotationX = false;
+            bool freezeRotationY = false;
+            bool freezeRotationZ = false;
 
             RTB_COMPONENT(RigidBodyComponent)
 
