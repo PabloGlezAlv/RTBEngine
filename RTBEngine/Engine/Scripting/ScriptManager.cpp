@@ -1,7 +1,7 @@
 #include "ScriptManager.h"
 #include "ScriptBridgeABI.h"
 #include "../Core/Logger.h"
-#include "../ECS/SceneManager.h"
+#include "../Scene/SceneManager.h"
 #include <sstream>
 #include <iomanip>
 #include <cstdint>

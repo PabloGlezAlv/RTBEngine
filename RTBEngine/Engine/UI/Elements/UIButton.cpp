@@ -1,7 +1,7 @@
 #include "UIButton.h"
 #include "UIImage.h"
 #include "UIPanel.h"
-#include "../../ECS/GameObject.h"
+#include "../../Scene/GameObject.h"
 #include "../../Core/Logger.h"
 
 namespace RTBEngine {

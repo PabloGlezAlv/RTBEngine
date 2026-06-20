@@ -1,6 +1,6 @@
 #include "ScenePropertySerializer.h"
-#include "../ECS/Component.h"
-#include "../ECS/GameObject.h"
+#include "../Scene/Component.h"
+#include "../Scene/GameObject.h"
 #include "../Reflection/TypeInfo.h"
 #include "../Core/ResourceManager.h"
 #include "../Math/Vectors/Vector2.h"

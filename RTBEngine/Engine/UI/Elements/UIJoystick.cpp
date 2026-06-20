@@ -1,7 +1,7 @@
 #include "UIJoystick.h"
 
 #include "UIImage.h"
-#include "../../ECS/GameObject.h"
+#include "../../Scene/GameObject.h"
 
 #include <algorithm>
 #include <cmath>

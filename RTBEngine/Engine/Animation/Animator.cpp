@@ -3,9 +3,9 @@
 #include "../Rendering/ModelLoader.h"
 #include "../Rendering/FbxBinding.h"
 #include "../Core/ResourceManager.h"
-#include "../ECS/MeshRenderer.h"
-#include "../ECS/GameObject.h"
-#include "../ECS/SceneManager.h"
+#include "../Scene/MeshRenderer.h"
+#include "../Scene/GameObject.h"
+#include "../Scene/SceneManager.h"
 #include "../Math/Quaternions/Quaternion.h"
 #include <cmath>
 #include <algorithm>

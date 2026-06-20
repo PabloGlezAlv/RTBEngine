@@ -1,7 +1,7 @@
 #include "UIInputField.h"
 #include "UIPanel.h"
 #include "UIText.h"
-#include "../../ECS/GameObject.h"
+#include "../../Scene/GameObject.h"
 #include "../../Input/InputManager.h"
 #include "../../Input/KeyCode.h"
 #include <SDL.h>

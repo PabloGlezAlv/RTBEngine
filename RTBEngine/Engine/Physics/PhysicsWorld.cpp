@@ -1,6 +1,6 @@
 #include "PhysicsWorld.h"
 #include "PhysicsUtils.h"
-#include "../ECS/GameObject.h"
+#include "../Scene/GameObject.h"
 #include <SDL_timer.h>
 #include <algorithm>
 #include <atomic>

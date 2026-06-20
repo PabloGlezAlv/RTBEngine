@@ -3,12 +3,12 @@
 #include <filesystem>
 
 #include "ScenePropertySerializer.h"
-#include "../ECS/Scene.h"
-#include "../ECS/GameObject.h"
-#include "../ECS/Component.h"
-#include "../ECS/Transform.h"
-#include "../ECS/Prefab.h"
-#include "../ECS/PrefabRegistry.h"
+#include "../Scene/Scene.h"
+#include "../Scene/GameObject.h"
+#include "../Scene/Component.h"
+#include "../Scene/Transform.h"
+#include "../Scene/Prefab.h"
+#include "../Scene/PrefabRegistry.h"
 #include "../Math/Vectors/Vector3.h"
 #include "../Math/Quaternions/Quaternion.h"
 #include "../Rendering/Cubemap.h"

@@ -1,6 +1,8 @@
 # RTBEngine
 
-A 3D game engine written in **C++17**, compiled as `RTBEngine.dll` with an import library (`RTBEngine.lib`). RTBEngine provides a complete set of subsystems for building games and interactive real-time applications on Windows: an Entity-Component-System architecture, OpenGL rendering with shadow mapping, Bullet-based rigid-body physics, FMOD spatial audio, SDL2 input, skeletal animation, Lua-based scene serialization, a macro-driven reflection system, and an ImGui-compatible UI framework.
+A 3D game engine written in **C++17**, compiled as `RTBEngine.dll` with an import library (`RTBEngine.lib`). RTBEngine provides a complete set of subsystems for building games and interactive real-time applications on Windows: a **GameObject–Component** architecture (Unity-style OOP components, not data-oriented ECS), OpenGL rendering with shadow mapping, Bullet-based rigid-body physics, FMOD spatial audio, SDL2 input, skeletal animation, Lua-based scene serialization, a macro-driven reflection system, and an ImGui-compatible UI framework.
+
+> **Note:** The scene/component layer lives in `Engine/Scene/`. The namespace `RTBEngine::ECS` is a legacy name (to be renamed). The engine does **not** implement a data-oriented Entity-Component-System today. Hybrid ECS support for high-volume simulation (particles, projectiles, crowds) is planned for a future release alongside the existing GameObject model.
 
 This document covers every subsystem in depth — public API, internal design, data flow, and usage patterns.
 
@@ -18,7 +20,7 @@ This document covers every subsystem in depth — public API, internal design, d
    - 5.3 [Window](#53-window)
    - 5.4 [Logger](#54-logger)
    - 5.5 [ResourceManager](#55-resourcemanager)
-6. [ECS Subsystem](#6-ecs-subsystem)
+6. [Scene & Components Subsystem](#6-scene--components-subsystem)
    - 6.1 [Component](#61-component)
    - 6.2 [Transform](#62-transform)
    - 6.3 [GameObject](#63-gameobject)
@@ -158,7 +160,7 @@ RTBEngine/
 │   │   │   ├── ResourceManager.h / .cpp
 │   │   │   └── ApplicationConfig.h
 │   │   │
-│   │   ├── ECS/
+│   │   ├── Scene/
 │   │   │   ├── Component.h
 │   │   │   ├── Transform.h / .cpp
 │   │   │   ├── GameObject.h / .cpp
@@ -361,6 +363,8 @@ RTBEngine is organized around three concepts:
 1. **Application** — owns the platform layer (window, OpenGL context, device), drives the main loop, and coordinates all subsystems.
 2. **Scene / SceneManager** — manages the active collection of `GameObject` instances. Scene loading now goes through deferred requests so the active scene can be replaced at a safe point without leaving subsystems half torn down.
 3. **Component** — the unit of behavior. Every distinct feature of a `GameObject` (rendering, physics, audio, scripts) is a `Component`. Components interact through their owner `GameObject` and the global singleton subsystems.
+
+This is a **GameObject–Component** model: each `GameObject` owns a `Transform`, a hierarchy, and a list of polymorphic `Component` instances with lifecycle hooks. It is **not** a data-oriented ECS (no entity IDs, archetypes, or SoA component storage). Future work may add an optional simulation layer (hybrid ECS) for performance-critical subsystems while keeping GameObjects as the authoring and scripting surface.
 
 ### Main Loop
 
@@ -731,11 +735,13 @@ void Clear();        // Destroy all cached assets
 
 ---
 
-## 6. ECS Subsystem
+## 6. Scene & Components Subsystem
+
+The scene layer lives under `Engine/Scene/`. Public API types are in namespace `RTBEngine::ECS` (legacy name, to be renamed). Symbols such as `ECS::GameObject` and `ECS::Scene` refer to this GameObject–Component layer — not to a data-oriented ECS registry.
 
 ### 6.1 Component
 
-`Engine/ECS/Component.h` — Abstract base class for all behaviors. Every feature that can be attached to a `GameObject` extends this class.
+`Engine/Scene/Component.h` — Abstract base class for all behaviors. Every feature that can be attached to a `GameObject` extends this class.
 
 **Lifecycle hooks** (called by `GameObject::Update` / `Scene::Update`):
 
@@ -804,7 +810,7 @@ This split exists for event-driven scripts. A component such as a UI animation c
 
 ### 6.2 Transform
 
-`Engine/ECS/Transform.h` — Stores and manipulates a `GameObject`'s local-space position, rotation, and scale.
+`Engine/Scene/Transform.h` — Stores and manipulates a `GameObject`'s local-space position, rotation, and scale.
 
 **Setters:**
 
@@ -850,7 +856,7 @@ Returns the TRS matrix: `Translation * Rotation * Scale`. Used by renderers and 
 
 ### 6.3 GameObject
 
-`Engine/ECS/GameObject.h` — Named container that owns a `Transform` and a list of `Component` instances. Can participate in a parent-child hierarchy.
+`Engine/Scene/GameObject.h` — Named container that owns a `Transform` and a list of `Component` instances. Can participate in a parent-child hierarchy.
 
 **Identity:**
 
@@ -964,7 +970,7 @@ void Start();                    // Calls OnStart on all components (once, at fi
 
 ### 6.4 Scene
 
-`Engine/ECS/Scene.h` — Owns a flat list of `GameObject` unique pointers. Manages the active camera and aggregates lighting information.
+`Engine/Scene/Scene.h` — Owns a flat list of `GameObject` unique pointers. Manages the active camera and aggregates lighting information.
 
 **GameObject management:**
 
@@ -1023,7 +1029,7 @@ Each scene has its own `Skybox` instance. When rendering, `Application` checks `
 
 ### 6.5 SceneManager
 
-`Engine/ECS/SceneManager.h` — Singleton. Handles loading and unloading scenes, and fires lifecycle callbacks so subsystems can respond.
+`Engine/Scene/SceneManager.h` — Singleton. Handles loading and unloading scenes, and fires lifecycle callbacks so subsystems can respond.
 
 ```cpp
 static SceneManager& GetInstance();
@@ -1089,7 +1095,7 @@ GameObject* Instantiate(const ECS::Prefab& prefab, GameObject* parent = nullptr)
 
 ### 6.6 Prefab
 
-`Engine/ECS/Prefab.h` — Captures a snapshot of a `GameObject` and its component data. Can instantiate independent copies with the same configuration.
+`Engine/Scene/Prefab.h` — Captures a snapshot of a `GameObject` and its component data. Can instantiate independent copies with the same configuration.
 
 **ComponentSnapshot:**
 
@@ -1134,7 +1140,7 @@ static void ApplySnapshot(Component* target, const ComponentSnapshot& snap);
 
 ### 6.7 PrefabRegistry
 
-`Engine/ECS/PrefabRegistry.h` — Singleton that manages loading, caching, and hot-reloading of prefab assets.
+`Engine/Scene/PrefabRegistry.h` — Singleton that manages loading, caching, and hot-reloading of prefab assets.
 
 ```cpp
 static PrefabRegistry& GetInstance();
@@ -1160,7 +1166,7 @@ All built-in components follow the full lifecycle protocol and support the refle
 
 ### 7.1 MeshRenderer
 
-`Engine/ECS/MeshRenderer.h` — Renders one or more meshes using a single `Material`.
+`Engine/Scene/MeshRenderer.h` — Renders one or more meshes using a single `Material`.
 
 **Single-mesh workflow:**
 
@@ -1223,7 +1229,7 @@ The actual draw call is issued by `GameObject::Render(camera)`, which calls `Mes
 
 ### 7.2 CameraComponent
 
-`Engine/ECS/CameraComponent.h` — Wraps a `Rendering::Camera` and can designate itself as the scene's main camera.
+`Engine/Scene/CameraComponent.h` — Wraps a `Rendering::Camera` and can designate itself as the scene's main camera.
 
 **Camera properties:**
 
@@ -1266,7 +1272,7 @@ float orthographicSizeRef  = 5.0f;
 
 ### 7.3 LightComponent
 
-`Engine/ECS/LightComponent.h` — Attaches a dynamic `Rendering::Light` (Directional, Point, or Spot) to a `GameObject`. The component syncs the light's world position and direction with the owner's `Transform` each frame.
+`Engine/Scene/LightComponent.h` — Attaches a dynamic `Rendering::Light` (Directional, Point, or Spot) to a `GameObject`. The component syncs the light's world position and direction with the owner's `Transform` each frame.
 
 **Light type:**
 
@@ -1326,7 +1332,7 @@ float         spotInnerAngleRef = 15.0f;
 
 ### 7.4 RigidBodyComponent
 
-`Engine/ECS/RigidBodyComponent.h` — Adds Bullet Physics simulation to a `GameObject`. Works in conjunction with `BoxColliderComponent` (or other colliders) to define the shape.
+`Engine/Scene/RigidBodyComponent.h` — Adds Bullet Physics simulation to a `GameObject`. Works in conjunction with `BoxColliderComponent` (or other colliders) to define the shape.
 
 **Body type:**
 
@@ -1372,7 +1378,7 @@ int   bodyTypeRef    = 1;      // BodyType enum index (default: Dynamic)
 
 ### 7.5 BoxColliderComponent
 
-`Engine/ECS/BoxColliderComponent.h` — Defines a box-shaped collision volume for the sibling `RigidBodyComponent`.
+`Engine/Scene/BoxColliderComponent.h` — Defines a box-shaped collision volume for the sibling `RigidBodyComponent`.
 
 **Size and offset:**
 
@@ -1397,7 +1403,7 @@ The collider is realized when `PhysicsSystem::InitializeCollider(go, boxCollider
 
 ### 7.6 AudioSourceComponent
 
-`Engine/ECS/AudioSourceComponent.h` — Plays audio clips through the FMOD engine. Supports positional 3D audio when the owning `GameObject` has a `Transform`.
+`Engine/Scene/AudioSourceComponent.h` — Plays audio clips through the FMOD engine. Supports positional 3D audio when the owning `GameObject` has a `Transform`.
 
 **Clip management:**
 
@@ -1443,13 +1449,13 @@ bool        playOnStartRef= false;
 
 ### 7.7 FreeLookCamera
 
-`Engine/ECS/FreeLookCamera.h` — A convenience component that implements first-person camera controls using `InputManager`. Designed for runtime use (not the editor).
+`Engine/Scene/FreeLookCamera.h` — A convenience component that implements first-person camera controls using `InputManager`. Designed for runtime use (not the editor).
 
 Reads `KeyCode::W/A/S/D/E/Q` for movement and the mouse delta for look. Speed and sensitivity are configurable. Internally drives the owner `GameObject`'s `Transform` directly.
 
 ### 7.8 SphereColliderComponent
 
-`Engine/ECS/SphereColliderComponent.h` — Defines a sphere-shaped collision volume. Counterpart to `BoxColliderComponent`.
+`Engine/Scene/SphereColliderComponent.h` — Defines a sphere-shaped collision volume. Counterpart to `BoxColliderComponent`.
 
 **Size:**
 
@@ -1492,7 +1498,7 @@ bool          isTrigger    = false;
 
 ### 7.9 NetworkIdentity
 
-`Engine/ECS/NetworkIdentity.h` — Assigns a stable online identity and player slot to a pawn. Used with `NetworkTransform` and gameplay scripts to decide who sends input and who simulates physics. Authority checks use `OnlineSystem` (lobby/identity), not the RTBN protocol layer.
+`Engine/Scene/NetworkIdentity.h` — Assigns a stable online identity and player slot to a pawn. Used with `NetworkTransform` and gameplay scripts to decide who sends input and who simulates physics. Authority checks use `OnlineSystem` (lobby/identity), not the RTBN protocol layer.
 
 ```cpp
 auto* identity = pawn->AddComponent<NetworkIdentity>();
@@ -1517,7 +1523,7 @@ int         networkPlayerSlot = -1;
 
 ### 7.10 NetworkTransform
 
-`Engine/ECS/NetworkTransform.h` — Replicates position and rotation over UDP. Host broadcasts authoritative snapshots; clients interpolate received state.
+`Engine/Scene/NetworkTransform.h` — Replicates position and rotation over UDP. Host broadcasts authoritative snapshots; clients interpolate received state.
 
 Attach alongside `NetworkIdentity` on any replicated pawn:
 
@@ -1548,7 +1554,7 @@ bool        replicateRotation = true;
 
 ### 7.11 ParticleSystem
 
-`Engine/ECS/ParticleSystem.h` — CPU-simulated, GPU-instanced billboard particle emitter. Each alive particle becomes one camera-facing quad with per-instance position, color, size, and an optional diffuse texture.
+`Engine/Scene/ParticleSystem.h` — CPU-simulated, GPU-instanced billboard particle emitter. Each alive particle becomes one camera-facing quad with per-instance position, color, size, and an optional diffuse texture.
 
 **Types** (`Engine/Rendering/ParticleTypes.h`):
 
@@ -1674,7 +1680,7 @@ particles->Play();
 
 ### 7.9 NavGridComponent
 
-`Engine/ECS/NavGridComponent.h` — Scene-level 2D navigation surface in world XZ. The editor bakes walkability from physics geometry; at runtime the baked grid is registered with `NavPathService` so `NavAgentComponent` instances can pathfind.
+`Engine/Scene/NavGridComponent.h` — Scene-level 2D navigation surface in world XZ. The editor bakes walkability from physics geometry; at runtime the baked grid is registered with `NavPathService` so `NavAgentComponent` instances can pathfind.
 
 **Key properties:**
 
@@ -1698,7 +1704,7 @@ Bake and activation also run from the editor Inspector. Baked data is saved besi
 
 ### 7.10 NavAgentComponent
 
-`Engine/ECS/NavAgentComponent.h` — Per-actor navigation driver. Gameplay sets destinations; the component owns waypoints and requests A* paths on the active scene grid.
+`Engine/Scene/NavAgentComponent.h` — Per-actor navigation driver. Gameplay sets destinations; the component owns waypoints and requests A* paths on the active scene grid.
 
 ```cpp
 auto* agent = enemy->GetComponent<NavAgentComponent>();
@@ -2755,7 +2761,7 @@ Internally performs:
 
 ### 12.4 Animator
 
-`Engine/ECS/Animator.h` — Component that plays `AnimationClip`s and produces per-frame bone transform arrays for GPU upload.
+`Engine/Scene/Animator.h` — Component that plays `AnimationClip`s and produces per-frame bone transform arrays for GPU upload.
 
 **Skeleton and clips:**
 
@@ -4394,8 +4400,8 @@ Assets/Scenes/DefaultScene.lua  →  Assets/Scenes/DefaultScene.navmesh
 | `NavPathfinder.*` | A* + string pulling |
 | `NavPathService.*` | Active grid, agents, request queue |
 | `NavMeshFile.*` | `.navmesh` serialization |
-| `NavGridComponent.*` | ECS scene surface + bake API |
-| `NavAgentComponent.*` | ECS per-actor path follower |
+| `NavGridComponent.*` | Scene-level navigation surface + bake API |
+| `NavAgentComponent.*` | Per-actor path follower component |
 | `PhysicsWorldResolver.*` | Resolve `PhysicsWorld` from scene/context |
 
 ---

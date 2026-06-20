@@ -1,6 +1,6 @@
 #pragma once
 #include "../../Core/Event.h"
-#include "../../ECS/Component.h"
+#include "../../Scene/Component.h"
 #include "../../Math/Vectors/Vector2.h"
 #include "../../Reflection/PropertyMacros.h"
 #include "../../RTBEngineAPI.h"

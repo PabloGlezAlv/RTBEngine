@@ -1,6 +1,6 @@
 #include "ResourceManager.h"
 #include "../Scripting/SceneLoader.h"
-#include "../ECS/Scene.h"
+#include "../Scene/Scene.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>

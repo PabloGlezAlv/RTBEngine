@@ -1,7 +1,7 @@
 #include "FbxBinding.h"
-#include "../ECS/Scene.h"
-#include "../ECS/GameObject.h"
-#include "../ECS/MeshRenderer.h"
+#include "../Scene/Scene.h"
+#include "../Scene/GameObject.h"
+#include "../Scene/MeshRenderer.h"
 #include "../Animation/Animator.h"
 #include "../Core/Logger.h"
 #include <filesystem>

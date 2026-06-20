@@ -1,5 +1,5 @@
 #pragma once
-#include "../../ECS/Component.h"
+#include "../../Scene/Component.h"
 #include "../../Reflection/PropertyMacros.h"
 #include "../EventSystem/IPointerDownHandler.h"
 #include "../EventSystem/IPointerUpHandler.h"

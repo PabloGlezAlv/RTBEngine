@@ -4,17 +4,17 @@
 #include "../RTBEngine.h"
 #include <lua.hpp>
 
-#include "../ECS/GameObject.h"
-#include "../ECS/MeshRenderer.h"
-#include "../ECS/LightComponent.h"
-#include "../ECS/AudioSourceComponent.h"
-#include "../ECS/RigidBodyComponent.h"
-#include "../ECS/BoxColliderComponent.h"
-#include "../ECS/SphereColliderComponent.h"
-#include "../ECS/CapsuleColliderComponent.h"
-#include "../ECS/CameraComponent.h"
-#include "../ECS/FreeLookCamera.h"
-#include "../ECS/NavGridComponent.h"
+#include "../Scene/GameObject.h"
+#include "../Scene/MeshRenderer.h"
+#include "../Scene/LightComponent.h"
+#include "../Scene/AudioSourceComponent.h"
+#include "../Scene/RigidBodyComponent.h"
+#include "../Scene/BoxColliderComponent.h"
+#include "../Scene/SphereColliderComponent.h"
+#include "../Scene/CapsuleColliderComponent.h"
+#include "../Scene/CameraComponent.h"
+#include "../Scene/FreeLookCamera.h"
+#include "../Scene/NavGridComponent.h"
 
 #include "../Animation/Animator.h"
 

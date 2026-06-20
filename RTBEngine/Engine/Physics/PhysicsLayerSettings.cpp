@@ -1,11 +1,11 @@
 #include "PhysicsLayerSettings.h"
 
 #include "../Core/Logger.h"
-#include "../ECS/BoxColliderComponent.h"
-#include "../ECS/CapsuleColliderComponent.h"
-#include "../ECS/GameObject.h"
-#include "../ECS/RigidBodyComponent.h"
-#include "../ECS/SphereColliderComponent.h"
+#include "../Scene/BoxColliderComponent.h"
+#include "../Scene/CapsuleColliderComponent.h"
+#include "../Scene/GameObject.h"
+#include "../Scene/RigidBodyComponent.h"
+#include "../Scene/SphereColliderComponent.h"
 #include "../Physics/RigidBody.h"
 
 #include <BulletCollision/CollisionDispatch/btCollisionObject.h>

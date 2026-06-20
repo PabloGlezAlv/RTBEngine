@@ -1,6 +1,6 @@
 #include "PrefabSaver.h"
-#include "../ECS/Prefab.h"
-#include "../ECS/Component.h"
+#include "../Scene/Prefab.h"
+#include "../Scene/Component.h"
 #include "ComponentRegistry.h"
 #include "ScenePropertySerializer.h"
 #include "../Math/Math.h"

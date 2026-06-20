@@ -1,6 +1,6 @@
 #include "TypeInfo.h"
 #include <algorithm>
-#include "../ECS/Component.h"
+#include "../Scene/Component.h"
 
 namespace RTBEngine {
     namespace Reflection {

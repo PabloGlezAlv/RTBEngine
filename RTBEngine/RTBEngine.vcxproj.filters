@@ -60,31 +60,31 @@
     <ClCompile Include="Engine\Rendering\Material.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\Transform.cpp">
+    <ClCompile Include="Engine\Scene\Transform.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\Component.cpp">
+    <ClCompile Include="Engine\Scene\Component.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\GameObject.cpp">
+    <ClCompile Include="Engine\Scene\GameObject.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\MeshRenderer.cpp">
+    <ClCompile Include="Engine\Scene\MeshRenderer.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\NetworkIdentity.cpp">
+    <ClCompile Include="Engine\Scene\NetworkIdentity.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\NetworkTransform.cpp">
+    <ClCompile Include="Engine\Scene\NetworkTransform.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\TrailRenderer.cpp">
+    <ClCompile Include="Engine\Scene\TrailRenderer.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\Scene.cpp">
+    <ClCompile Include="Engine\Scene\Scene.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\RigidBodyComponent.cpp">
+    <ClCompile Include="Engine\Scene\RigidBodyComponent.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Rendering\Lighting\DirectionalLight.cpp">
@@ -96,7 +96,7 @@
     <ClCompile Include="Engine\Rendering\Lighting\Light.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\LightComponent.cpp">
+    <ClCompile Include="Engine\Scene\LightComponent.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Core\ResourceManager.cpp">
@@ -126,10 +126,10 @@
     <ClCompile Include="Engine\Animation\AnimationClip.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\CameraComponent.cpp">
+    <ClCompile Include="Engine\Scene\CameraComponent.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\FreeLookCamera.cpp">
+    <ClCompile Include="Engine\Scene\FreeLookCamera.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Rendering\Cubemap.cpp">
@@ -141,7 +141,7 @@
     <ClCompile Include="Engine\Scripting\ComponentRegistry.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\AudioSourceComponent.cpp">
+    <ClCompile Include="Engine\Scene\AudioSourceComponent.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Audio\AudioClip.cpp">
@@ -207,7 +207,7 @@
     <ClCompile Include="Engine\Scripting\SceneParsingUtils.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\SceneManager.cpp">
+    <ClCompile Include="Engine\Scene\SceneManager.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Animation\Skeleton.cpp">
@@ -297,10 +297,10 @@
     <ClCompile Include="Engine\Online\OnlineUser.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\BoxColliderComponent.cpp">
+    <ClCompile Include="Engine\Scene\BoxColliderComponent.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\CapsuleColliderComponent.cpp">
+    <ClCompile Include="Engine\Scene\CapsuleColliderComponent.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Physics\CapsuleCollider.cpp">
@@ -321,13 +321,13 @@
     <ClCompile Include="Engine\Scripting\SceneSaver.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\SphereColliderComponent.cpp">
+    <ClCompile Include="Engine\Scene\SphereColliderComponent.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\MissingComponent.cpp">
+    <ClCompile Include="Engine\Scene\MissingComponent.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\Prefab.cpp">
+    <ClCompile Include="Engine\Scene\Prefab.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Scripting\PrefabSaver.cpp">
@@ -339,7 +339,7 @@
     <ClCompile Include="Engine\Scripting\PrefabLoader.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\ECS\PrefabRegistry.cpp">
+    <ClCompile Include="Engine\Scene\PrefabRegistry.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
   </ItemGroup>
@@ -407,31 +407,31 @@
     <ClInclude Include="Engine\Rendering\Material.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\Transform.h">
+    <ClInclude Include="Engine\Scene\Transform.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\Component.h">
+    <ClInclude Include="Engine\Scene\Component.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\GameObject.h">
+    <ClInclude Include="Engine\Scene\GameObject.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\MeshRenderer.h">
+    <ClInclude Include="Engine\Scene\MeshRenderer.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\NetworkIdentity.h">
+    <ClInclude Include="Engine\Scene\NetworkIdentity.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\NetworkTransform.h">
+    <ClInclude Include="Engine\Scene\NetworkTransform.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\TrailRenderer.h">
+    <ClInclude Include="Engine\Scene\TrailRenderer.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\Scene.h">
+    <ClInclude Include="Engine\Scene\Scene.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\RigidBodyComponent.h">
+    <ClInclude Include="Engine\Scene\RigidBodyComponent.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Rendering\Lighting\DirectionalLight.h">
@@ -443,7 +443,7 @@
     <ClInclude Include="Engine\Rendering\Lighting\Light.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\LightComponent.h">
+    <ClInclude Include="Engine\Scene\LightComponent.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Core\ResourceManager.h">
@@ -488,10 +488,10 @@
     <ClInclude Include="Engine\Core\ApplicationConfig.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\CameraComponent.h">
+    <ClInclude Include="Engine\Scene\CameraComponent.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\FreeLookCamera.h">
+    <ClInclude Include="Engine\Scene\FreeLookCamera.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Rendering\Cubemap.h">
@@ -572,7 +572,7 @@
     <ClInclude Include="Engine\Scripting\ComponentRegistry.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\AudioSourceComponent.h">
+    <ClInclude Include="Engine\Scene\AudioSourceComponent.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Audio\AudioClip.h">
@@ -668,7 +668,7 @@
     <ClInclude Include="Engine\Scripting\SceneParsingUtils.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\SceneManager.h">
+    <ClInclude Include="Engine\Scene\SceneManager.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Animation\Skeleton.h">
@@ -698,10 +698,10 @@
     <ClInclude Include="Engine\Core\Logger.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\BoxColliderComponent.h">
+    <ClInclude Include="Engine\Scene\BoxColliderComponent.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\CapsuleColliderComponent.h">
+    <ClInclude Include="Engine\Scene\CapsuleColliderComponent.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Reflection\TypeInfo.h">
@@ -725,13 +725,13 @@
     <ClInclude Include="Engine\Scripting\SceneSaver.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\SphereColliderComponent.h">
+    <ClInclude Include="Engine\Scene\SphereColliderComponent.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\MissingComponent.h">
+    <ClInclude Include="Engine\Scene\MissingComponent.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\Prefab.h">
+    <ClInclude Include="Engine\Scene\Prefab.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Scripting\PrefabSaver.h">
@@ -743,7 +743,7 @@
     <ClInclude Include="Engine\Scripting\PrefabLoader.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\ECS\PrefabRegistry.h">
+    <ClInclude Include="Engine\Scene\PrefabRegistry.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
   </ItemGroup>

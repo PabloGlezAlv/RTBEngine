@@ -4,7 +4,7 @@
 #include <LuaBridge/LuaBridge.h>
 
 #include "../Reflection/TypeInfo.h"
-#include "../ECS/Component.h"
+#include "../Scene/Component.h"
 #include "../Math/Math.h"
 #include "../Core/ResourceManager.h"
 #include "../RTBEngine.h"

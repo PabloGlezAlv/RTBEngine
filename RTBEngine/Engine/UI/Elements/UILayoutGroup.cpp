@@ -1,6 +1,6 @@
 #include "UILayoutGroup.h"
 
-#include "../../ECS/GameObject.h"
+#include "../../Scene/GameObject.h"
 #include "../UIElement.h"
 
 namespace RTBEngine {

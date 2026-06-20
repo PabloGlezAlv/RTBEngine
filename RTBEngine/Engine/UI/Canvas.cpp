@@ -3,7 +3,7 @@
 #include "Elements/UILayoutGroup.h"
 #include "Elements/UIHorizontalLayout.h"
 #include "Elements/UIVerticalLayout.h"
-#include "../ECS/GameObject.h"
+#include "../Scene/GameObject.h"
 #include <algorithm>
 #include <functional>
 #include <cstdint>

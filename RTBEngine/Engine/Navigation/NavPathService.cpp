@@ -1,7 +1,7 @@
 #include "NavPathService.h"
 
-#include "../ECS/NavAgentComponent.h"
-#include "../ECS/Scene.h"
+#include "../Scene/NavAgentComponent.h"
+#include "../Scene/Scene.h"
 
 #include <algorithm>
 

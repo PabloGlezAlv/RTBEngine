@@ -8,11 +8,11 @@
 #include "Core/Event.h"
 #include "Core/Time.h"
 
-// ECS
-#include "ECS/GameObject.h"
-#include "ECS/Component.h"
-#include "ECS/Scene.h"
-#include "ECS/SceneManager.h"
+// Scene & Components
+#include "Scene/GameObject.h"
+#include "Scene/Component.h"
+#include "Scene/Scene.h"
+#include "Scene/SceneManager.h"
 
 // Math
 #include "Math/Vectors/Vector2.h"
@@ -46,21 +46,21 @@
 #include "Navigation/NavPathService.h"
 
 // Built-in Components
-#include "ECS/MissingComponent.h"
-#include "ECS/MeshRenderer.h"
-#include "ECS/NetworkIdentity.h"
-#include "ECS/NetworkTransform.h"
-#include "ECS/LightComponent.h"
-#include "ECS/AudioSourceComponent.h"
-#include "ECS/RigidBodyComponent.h"
-#include "ECS/BoxColliderComponent.h"
-#include "ECS/SphereColliderComponent.h"
-#include "ECS/CapsuleColliderComponent.h"
-#include "ECS/NavGridComponent.h"
-#include "ECS/NavAgentComponent.h"
-#include "ECS/CameraComponent.h"
-#include "ECS/TrailRenderer.h"
-#include "ECS/ParticleSystem.h"
+#include "Scene/MissingComponent.h"
+#include "Scene/MeshRenderer.h"
+#include "Scene/NetworkIdentity.h"
+#include "Scene/NetworkTransform.h"
+#include "Scene/LightComponent.h"
+#include "Scene/AudioSourceComponent.h"
+#include "Scene/RigidBodyComponent.h"
+#include "Scene/BoxColliderComponent.h"
+#include "Scene/SphereColliderComponent.h"
+#include "Scene/CapsuleColliderComponent.h"
+#include "Scene/NavGridComponent.h"
+#include "Scene/NavAgentComponent.h"
+#include "Scene/CameraComponent.h"
+#include "Scene/TrailRenderer.h"
+#include "Scene/ParticleSystem.h"
 
 // UI
 #include "UI/Canvas.h"

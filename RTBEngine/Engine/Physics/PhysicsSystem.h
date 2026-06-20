@@ -1,12 +1,12 @@
 #pragma once
 #include "../RTBEngineAPI.h"
 #include "PhysicsWorld.h"
-#include "../ECS/Scene.h"
-#include "../ECS/GameObject.h"
-#include "../ECS/RigidBodyComponent.h"
-#include "../ECS/BoxColliderComponent.h"
-#include "../ECS/SphereColliderComponent.h"
-#include "../ECS/CapsuleColliderComponent.h"
+#include "../Scene/Scene.h"
+#include "../Scene/GameObject.h"
+#include "../Scene/RigidBodyComponent.h"
+#include "../Scene/BoxColliderComponent.h"
+#include "../Scene/SphereColliderComponent.h"
+#include "../Scene/CapsuleColliderComponent.h"
 #include <set>
 
 namespace RTBEngine {

@@ -2,9 +2,9 @@
 
 #include "../Core/Logger.h"
 #include "../Core/ResourceManager.h"
-#include "../ECS/GameObject.h"
-#include "../ECS/NavGridComponent.h"
-#include "../ECS/Scene.h"
+#include "../Scene/GameObject.h"
+#include "../Scene/NavGridComponent.h"
+#include "../Scene/Scene.h"
 
 #include <algorithm>
 #include <cstdint>

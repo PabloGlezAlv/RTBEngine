@@ -1,6 +1,6 @@
 #pragma once
 #include "../RTBEngineAPI.h"
-#include "../ECS/Component.h"
+#include "../Scene/Component.h"
 #include "Skeleton.h"
 #include "AnimationClip.h"
 #include "../Reflection/PropertyMacros.h"

@@ -1,6 +1,6 @@
 #include "UISlider.h"
 #include "UIPanel.h"
-#include "../../ECS/GameObject.h"
+#include "../../Scene/GameObject.h"
 #include "../../Math/Vectors/Vector2.h"
 #include <algorithm>
 #include <cmath>

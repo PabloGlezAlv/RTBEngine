@@ -1,6 +1,6 @@
-﻿#include "UIElement.h"
-#include "../ECS/GameObject.h"
-#include "../ECS/SceneManager.h"
+#include "UIElement.h"
+#include "../Scene/GameObject.h"
+#include "../Scene/SceneManager.h"
 
 namespace RTBEngine {
 	namespace UI {

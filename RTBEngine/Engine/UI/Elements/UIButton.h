@@ -1,5 +1,5 @@
 #pragma once
-#include "../../ECS/Component.h"
+#include "../../Scene/Component.h"
 #include "../../Math/Vectors/Vector4.h"
 #include "../EventSystem/IPointerEnterHandler.h"
 #include "../EventSystem/IPointerExitHandler.h"

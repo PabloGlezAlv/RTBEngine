@@ -1,7 +1,7 @@
 #include "NavGridBaker.h"
 
-#include "../ECS/GameObject.h"
-#include "../ECS/RigidBodyComponent.h"
+#include "../Scene/GameObject.h"
+#include "../Scene/RigidBodyComponent.h"
 #include "../Physics/PhysicsWorld.h"
 #include "../Physics/RigidBody.h"
 
