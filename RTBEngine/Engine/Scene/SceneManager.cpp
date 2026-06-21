@@ -45,6 +45,7 @@ namespace {
         RTBEngine::ECS::GameObject* parent,
         const RTBEngine::Math::Vector3* positionOverride,
         const RTBEngine::Math::Quaternion* rotationOverride,
+        bool regenerateUuids,
         const std::function<void(RTBEngine::ECS::GameObject*)>& onHierarchyAdded)
     {
         if (!scene) {
@@ -52,7 +53,7 @@ namespace {
         }
 
         std::vector<RTBEngine::ECS::GameObject*> children;
-        RTBEngine::ECS::GameObject* root = prefab.Instantiate(parent, children);
+        RTBEngine::ECS::GameObject* root = prefab.Instantiate(parent, children, regenerateUuids);
         if (!root) {
             return nullptr;
         }
@@ -249,7 +250,7 @@ namespace RTBEngine {
             return FinalizeInstantiation(scene, gameObject, noChildren, onHierarchyAdded);
         }
 
-        GameObject* SceneManager::Instantiate(const Prefab& prefab, GameObject* parent)
+        GameObject* SceneManager::Instantiate(const Prefab& prefab, GameObject* parent, bool regenerateUuids)
         {
             Scene* scene = GetActiveScene();
             if (!scene) {
@@ -257,13 +258,14 @@ namespace RTBEngine {
                 return nullptr;
             }
 
-            return InstantiatePrefab(scene, prefab, parent, nullptr, nullptr, onHierarchyAdded);
+            return InstantiatePrefab(scene, prefab, parent, nullptr, nullptr, regenerateUuids, onHierarchyAdded);
         }
 
         GameObject* SceneManager::Instantiate(const Prefab& prefab,
                                               const Math::Vector3& position,
                                               const Math::Quaternion& rotation,
-                                              GameObject* parent)
+                                              GameObject* parent,
+                                              bool regenerateUuids)
         {
             Scene* scene = GetActiveScene();
             if (!scene) {
@@ -271,7 +273,7 @@ namespace RTBEngine {
                 return nullptr;
             }
 
-            return InstantiatePrefab(scene, prefab, parent, &position, &rotation, onHierarchyAdded);
+            return InstantiatePrefab(scene, prefab, parent, &position, &rotation, regenerateUuids, onHierarchyAdded);
         }
 
         void SceneManager::DeactivateHierarchy(GameObject* root)

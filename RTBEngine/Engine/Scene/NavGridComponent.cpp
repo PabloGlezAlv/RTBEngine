@@ -199,9 +199,6 @@ namespace RTBEngine {
             auto& pathService = Navigation::NavPathService::GetInstance();
             if (pathService.GetActiveGrid() != &grid) {
                 pathService.SetActiveGrid(&grid);
-                RTB_INFO("[NavGridComponent] Active navigation grid (" +
-                    std::to_string(grid.GetWidth()) + "x" + std::to_string(grid.GetHeight()) +
-                    ", walkable=" + std::to_string(GetWalkableCellCount()) + ").");
             }
         }
 

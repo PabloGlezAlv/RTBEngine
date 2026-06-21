@@ -226,8 +226,6 @@ namespace RTBEngine {
                 return false;
             }
 
-            RTB_INFO("[NavMeshFile] Saved " + std::to_string(records.size()) +
-                " navigation grid(s) to " + absolutePath);
             return true;
         }
 
@@ -242,13 +240,8 @@ namespace RTBEngine {
                 return false;
             }
 
-            RTB_INFO("[NavMeshFile] Attempting to load navmesh for scene '" + sceneAssetPath +
-                "' -> " + absolutePath);
-
             std::ifstream file(absolutePath, std::ios::binary);
             if (!file.is_open()) {
-                RTB_INFO("[NavMeshFile] No navmesh file found at: " + absolutePath +
-                    " (scene has no baked navigation yet).");
                 return false;
             }
 
@@ -315,11 +308,6 @@ namespace RTBEngine {
                         " (record " + std::to_string(record.gridWidth) + "x" + std::to_string(record.gridHeight) +
                         ", walkableBytes=" + std::to_string(record.walkable.size()) + ").");
                 }
-            }
-
-            if (loadedGrids > 0) {
-                RTB_INFO("[NavMeshFile] Loaded " + std::to_string(loadedGrids) +
-                    " navigation grid(s) from " + absolutePath);
             }
 
             return loadedGrids > 0;

@@ -70,6 +70,14 @@ namespace RTBEngine {
                 boneGO->GetTransform().SetRotation(rot);
                 boneGO->GetTransform().SetScale(scale);
             }
+
+            bool IsBindPoseClipName(const std::string& name)
+            {
+                return name == "T-Pose" ||
+                    name == "TPose" ||
+                    name == "BindPose" ||
+                    name == "bind_pose";
+            }
         }
 
         using ThisClass = Animator;
@@ -209,7 +217,7 @@ namespace RTBEngine {
 
         void Animator::AddClip(const std::string& name, std::shared_ptr<AnimationClip> clip)
         {
-            if (clips.find(name) != clips.end()) {
+            if (clips.find(name) != clips.end() && !IsBindPoseClipName(name)) {
                 RTB_WARN("[Animator] Clip name collision: \"" + name + "\" already exists and will be overwritten.");
             }
             clips[name] = clip;

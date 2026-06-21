@@ -43,11 +43,12 @@ namespace RTBEngine {
             void SetOnHierarchyDeactivated(std::function<void(GameObject*)> callback);
 
             GameObject* Instantiate(const std::string& name = "GameObject", GameObject* parent = nullptr);
-            GameObject* Instantiate(const Prefab& prefab, GameObject* parent = nullptr);
+            GameObject* Instantiate(const Prefab& prefab, GameObject* parent = nullptr, bool regenerateUuids = true);
             GameObject* Instantiate(const Prefab& prefab,
                                     const Math::Vector3& position,
                                     const Math::Quaternion& rotation,
-                                    GameObject* parent = nullptr);
+                                    GameObject* parent = nullptr,
+                                    bool regenerateUuids = true);
             void DeactivateHierarchy(GameObject* root);
 
             void MarkSceneDirty();

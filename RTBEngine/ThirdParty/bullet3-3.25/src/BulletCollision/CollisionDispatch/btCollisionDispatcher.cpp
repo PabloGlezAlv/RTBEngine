@@ -169,7 +169,6 @@ bool btCollisionDispatcher::needsCollision(const btCollisionObject* body0, const
 		if (body0->isStaticOrKinematicObject() && body1->isStaticOrKinematicObject())
 		{
 			m_dispatcherFlags |= btCollisionDispatcher::CD_STATIC_STATIC_REPORTED;
-			printf("warning btCollisionDispatcher::needsCollision: static-static collision!\n");
 		}
 	}
 #endif  //BT_DEBUG
