@@ -2,6 +2,7 @@
 
 #include "GameObject.h"
 #include "Scene.h"
+#include "SceneManager.h"
 #include "../Core/ResourceManager.h"
 #include "../Rendering/Camera.h"
 #include "../Rendering/CameraUBO.h"
@@ -128,6 +129,7 @@ namespace RTBEngine {
             RTB_PROPERTY(loop)
             RTB_PROPERTY(playOnAwake)
             RTB_PROPERTY(simulateInEditMode)
+            RTB_PROPERTY(destroyOwnerWhenFinished)
             RTB_PROPERTY_RANGE(burstCount, 1, 256)
         RTB_END_REGISTER(ParticleSystem)
 
@@ -153,10 +155,11 @@ namespace RTBEngine {
             ApplyPlaybackSettings();
         }
 
-        // Advances simulation and refreshes the GPU instance buffer each frame.
+        // Advances simulation, refreshes the GPU instance buffer, and destroys the owner when configured.
         void ParticleSystem::OnUpdate(float deltaTime)
         {
             Tick(deltaTime);
+            TryDestroyOwnerWhenFinished();
         }
 
         // Clamps reflected ranges, resizes the pool, and reapplies playback settings.
@@ -173,6 +176,9 @@ namespace RTBEngine {
             boxSize.y = std::max(boxSize.y, 0.0f);
             boxSize.z = std::max(boxSize.z, 0.0f);
             burstCount = std::clamp(burstCount, 1, 256);
+            if (loop) {
+                destroyOwnerWhenFinished = false;
+            }
             ResizePool();
             ApplyPlaybackSettings();
         }
@@ -195,8 +201,14 @@ namespace RTBEngine {
 
         void ParticleSystem::ApplyPlaybackSettings()
         {
-            if (playOnAwake && !userStopped) {
-                Play();
+            if (!playOnAwake || userStopped) {
+                return;
+            }
+
+            Play();
+            if (emissionRate <= kMinEmissionRate) {
+                Emit(burstCount);
+                Tick(0.001f);
             }
         }
 
@@ -245,6 +257,7 @@ namespace RTBEngine {
             userStopped = false;
             playing = true;
             paused = false;
+            destroyOwnerTriggered = false;
         }
 
         // Clears the pool, resets counters, and blocks playOnAwake until the next validate/load.
@@ -255,6 +268,7 @@ namespace RTBEngine {
             paused = false;
             emissionAccumulator = 0.0f;
             totalEmitted = 0;
+            destroyOwnerTriggered = false;
             KillAllParticles();
             UploadInstanceBuffer();
         }
@@ -496,6 +510,30 @@ namespace RTBEngine {
             UploadInstanceBuffer();
         }
 
+        void ParticleSystem::TryDestroyOwnerWhenFinished()
+        {
+            if (loop || !destroyOwnerWhenFinished || destroyOwnerTriggered || totalEmitted <= 0) {
+                return;
+            }
+
+            if (IsPlaying() || GetActiveParticleCount() > 0) {
+                return;
+            }
+
+            GameObject* owner = GetOwner();
+            if (!owner) {
+                return;
+            }
+
+            Scene* scene = SceneManager::GetInstance().GetActiveScene();
+            if (!scene || !scene->IsLifecycleComplete()) {
+                return;
+            }
+
+            destroyOwnerTriggered = true;
+            scene->RemoveGameObject(owner);
+        }
+
         // Packs alive particles into instanceData and uploads them to the per-emitter instance VBO.
         void ParticleSystem::UploadInstanceBuffer()
         {
@@ -558,6 +596,7 @@ namespace RTBEngine {
                 glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
                 glEnableVertexAttribArray(3);
                 glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, color));
+                glEnableVertexAttribArray(4);
                 glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, size));
 
                 glVertexAttribDivisor(2, 1);
@@ -596,8 +635,11 @@ namespace RTBEngine {
             // Re-bind instance pointers after glBufferData may have changed the active ARRAY_BUFFER.
             glBindBuffer(GL_ARRAY_BUFFER, instanceVbo);
             const GLsizei stride = static_cast<GLsizei>(sizeof(ParticleInstanceData));
+            glEnableVertexAttribArray(2);
             glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+            glEnableVertexAttribArray(3);
             glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, color));
+            glEnableVertexAttribArray(4);
             glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, size));
             glDrawArraysInstanced(GL_TRIANGLES, 0, 6, activeInstanceCount);
             glBindVertexArray(0);

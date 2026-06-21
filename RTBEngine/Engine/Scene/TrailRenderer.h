@@ -44,16 +44,21 @@ namespace RTBEngine {
             void SetVisible(bool isVisible) { visible = isVisible; }
             bool IsVisible() const { return visible; }
 
+            void SetGlobalAlphaScale(float scale) { globalAlphaScale = scale < 0.0f ? 0.0f : scale; }
+            float GetGlobalAlphaScale() const { return globalAlphaScale; }
+
             void Render(Rendering::Camera* camera);
 
             float width = 0.15f;
             Math::Vector4 color = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+            bool fadeAlphaAlongLength = false;
             bool visible = false;
 
             RTB_COMPONENT(TrailRenderer)
 
         private:
             std::vector<Math::Vector3> points;
+            float globalAlphaScale = 1.0f;
             GLuint vao = 0;
             GLuint vbo = 0;
             Rendering::Shader* shader = nullptr;

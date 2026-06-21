@@ -25,6 +25,7 @@ namespace RTBEngine {
         RTB_REGISTER_COMPONENT(TrailRenderer)
             RTB_PROPERTY_RANGE(width, 0.001f, 10.0f)
             RTB_PROPERTY_COLOR(color)
+            RTB_PROPERTY(fadeAlphaAlongLength)
             RTB_PROPERTY(visible)
         RTB_END_REGISTER(TrailRenderer)
 
@@ -155,6 +156,19 @@ namespace RTBEngine {
 
             const float halfWidth = width * 0.5f;
             const Math::Vector3 up = Math::Vector3::Up();
+            const float pointCountMinusOne = points.size() > 1
+                ? static_cast<float>(points.size() - 1)
+                : 1.0f;
+
+            auto buildVertexColor = [&](std::size_t pointIndex) -> Math::Vector4 {
+                Math::Vector4 vertexColor = color;
+                if (fadeAlphaAlongLength) {
+                    const float alongTrail = static_cast<float>(pointIndex) / pointCountMinusOne;
+                    vertexColor.w *= alongTrail;
+                }
+                vertexColor.w *= globalAlphaScale;
+                return vertexColor;
+            };
 
             for (std::size_t i = 0; i + 1 < points.size(); ++i) {
                 const Math::Vector3 start = points[i];
@@ -180,13 +194,16 @@ namespace RTBEngine {
                 const Math::Vector3 p2 = end + side;
                 const Math::Vector3 p3 = end - side;
 
+                const Math::Vector4 startColor = buildVertexColor(i);
+                const Math::Vector4 endColor = buildVertexColor(i + 1);
+
                 // Two triangles per segment. This keeps width stable across platforms.
-                vertices.push_back({ p0, color });
-                vertices.push_back({ p1, color });
-                vertices.push_back({ p2, color });
-                vertices.push_back({ p0, color });
-                vertices.push_back({ p2, color });
-                vertices.push_back({ p3, color });
+                vertices.push_back({ p0, startColor });
+                vertices.push_back({ p1, startColor });
+                vertices.push_back({ p2, endColor });
+                vertices.push_back({ p0, startColor });
+                vertices.push_back({ p2, endColor });
+                vertices.push_back({ p3, endColor });
             }
 
             if (vertices.empty()) {

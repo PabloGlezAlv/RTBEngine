@@ -78,6 +78,7 @@ namespace RTBEngine {
             bool loop = true;
             bool playOnAwake = true;
             bool simulateInEditMode = true;
+            bool destroyOwnerWhenFinished = false;
 
             int burstCount = 10;
 
@@ -103,6 +104,7 @@ namespace RTBEngine {
             void ReleaseRenderResources();
             void KillAllParticles();
             void ApplyPlaybackSettings();
+            void TryDestroyOwnerWhenFinished();
             void DrawInstances();
 
             std::vector<Rendering::Particle> particles;
@@ -119,6 +121,7 @@ namespace RTBEngine {
             int activeInstanceCount = 0;
             int activeParticleCount = 0;
             int totalEmitted = 0;
+            bool destroyOwnerTriggered = false;
         };
 #pragma warning(pop)
 

@@ -6,7 +6,7 @@ layout(location = 2) in vec3 aInstancePos;
 layout(location = 3) in vec4 aInstanceColor;
 layout(location = 4) in float aInstanceSize;
 
-layout(std140, binding = 1) uniform CameraData {
+layout(std140) uniform CameraData {
     mat4 view;
     mat4 projection;
     vec3 viewPos;

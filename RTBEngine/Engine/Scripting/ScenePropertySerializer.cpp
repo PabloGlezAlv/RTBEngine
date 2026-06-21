@@ -139,7 +139,7 @@ namespace RTBEngine {
                             file << ",\n";
                         }
                         wroteAny = true;
-                        file << elementIndent << FormatString(value) << ",\n";
+                        file << elementIndent << FormatString(value);
                     };
 
                     switch (prop.listElementType) {
