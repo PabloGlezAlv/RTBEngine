@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../RTBEngineAPI.h"
+#include "../Core/Event.h"
 #include "IOnlineBackend.h"
 #include "IOnlineIdentity.h"
 #include "IOnlineLobby.h"
@@ -19,6 +20,13 @@ namespace RTBEngine {
     namespace Online {
 
         struct OnlineConfig;
+
+        struct PlayerSessionProfileChangedEvent {
+            int playerSlot = -1;
+            std::string displayName;
+            bool removed = false;
+        };
+
 #pragma warning(push)
 #pragma warning(disable: 4251)
         class RTB_API OnlineSystem {
@@ -73,6 +81,11 @@ namespace RTBEngine {
             std::string GetPlayerDisplayName(int playerSlot) const;
             std::vector<OnlinePlayerProfile> GetPlayerSessionProfiles() const;
 
+            using PlayerSessionProfileChangedCallback =
+                Core::Event<PlayerSessionProfileChangedEvent>::Callback;
+            Core::EventSubscription SubscribeToPlayerSessionProfileChanged(
+                PlayerSessionProfileChangedCallback callback);
+
         private:
             OnlineSystem() = default;
             ~OnlineSystem();
@@ -90,6 +103,7 @@ namespace RTBEngine {
             std::string lastError;
             std::unique_ptr<IOnlineBackend> backend;
             std::unordered_map<int, OnlinePlayerProfile> playerSessionProfiles;
+            Core::Event<PlayerSessionProfileChangedEvent> playerSessionProfileChangedEvent;
         };
 #pragma warning(pop)
 

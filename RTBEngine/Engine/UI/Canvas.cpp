@@ -18,6 +18,7 @@ namespace RTBEngine {
 			RTB_PROPERTY_RANGE(pixelsPerUnit, 1.0f, 1000.0f)
             RTB_PROPERTY(sortOrder)
             RTB_PROPERTY(faceCamera)
+            RTB_PROPERTY(faceCameraLockY)
         RTB_END_REGISTER(Canvas)
 
 		Canvas::Canvas() {

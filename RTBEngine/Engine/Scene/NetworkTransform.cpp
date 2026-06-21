@@ -83,10 +83,7 @@ namespace RTBEngine {
             }
 
             EnsureNetworkIdRegistered();
-
-            if (HasSendAuthority()) {
-                SendSnapshot(fixedDeltaTime);
-            }
+            (void)fixedDeltaTime;
         }
 
         void NetworkTransform::OnLateUpdate(float deltaTime)
@@ -96,6 +93,10 @@ namespace RTBEngine {
             }
 
             EnsureNetworkIdRegistered();
+
+            if (HasSendAuthority()) {
+                SendSnapshot(deltaTime);
+            }
 
             if (HasReceiveAuthority()) {
                 ApplyRemoteSnapshot(deltaTime);
@@ -176,8 +177,8 @@ namespace RTBEngine {
 
             Online::OnlineGameplayNet::TransformSnapshot snapshot;
             snapshot.networkId = networkId;
-            snapshot.position = owner->GetTransform().GetPosition();
-            snapshot.rotation = owner->GetTransform().GetRotation();
+            snapshot.position = owner->GetWorldPosition();
+            snapshot.rotation = owner->GetWorldRotation();
             Online::OnlineGameplayNet::BroadcastTransform(snapshot);
         }
 
@@ -199,8 +200,8 @@ namespace RTBEngine {
             }
 
             const float t = std::clamp(interpolationSpeed * std::max(0.0f, deltaTime), 0.0f, 1.0f);
-            Math::Vector3 nextPosition = owner->GetTransform().GetPosition();
-            Math::Quaternion nextRotation = owner->GetTransform().GetRotation();
+            Math::Vector3 nextPosition = owner->GetWorldPosition();
+            Math::Quaternion nextRotation = owner->GetWorldRotation();
 
             if (replicatePosition) {
                 nextPosition = LerpVector(nextPosition, snapshot.position, t);

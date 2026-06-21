@@ -340,6 +340,12 @@ namespace RTBEngine {
             }
 
             playerSessionProfiles[profile.playerSlot] = profile;
+
+            PlayerSessionProfileChangedEvent eventData;
+            eventData.playerSlot = profile.playerSlot;
+            eventData.displayName = profile.displayName;
+            eventData.removed = false;
+            playerSessionProfileChangedEvent.Invoke(eventData);
         }
 
         void OnlineSystem::RemovePlayerSessionProfile(int playerSlot)
@@ -349,6 +355,11 @@ namespace RTBEngine {
             }
 
             playerSessionProfiles.erase(playerSlot);
+
+            PlayerSessionProfileChangedEvent eventData;
+            eventData.playerSlot = playerSlot;
+            eventData.removed = true;
+            playerSessionProfileChangedEvent.Invoke(eventData);
         }
 
         bool OnlineSystem::HasPlayerSessionProfile(int playerSlot) const
@@ -392,6 +403,12 @@ namespace RTBEngine {
                 });
 
             return profiles;
+        }
+
+        Core::EventSubscription OnlineSystem::SubscribeToPlayerSessionProfileChanged(
+            PlayerSessionProfileChangedCallback callback)
+        {
+            return playerSessionProfileChangedEvent.Subscribe(std::move(callback));
         }
 
     }

@@ -149,26 +149,48 @@ namespace RTBEngine {
 					0.0f);
 			}
 
-			Math::Matrix4 BuildFaceCameraModelMatrix(ECS::GameObject* canvasObject, Rendering::Camera* camera) {
+			Math::Matrix4 BuildFaceCameraModelMatrix(ECS::GameObject* canvasObject,
+			                                       Rendering::Camera* camera,
+			                                       bool lockYAxis) {
 				const Math::Vector3 worldPos = canvasObject->GetWorldPosition();
 				const Math::Vector3 worldScale = canvasObject->GetWorldScale();
 
 				Math::Vector3 forward = camera->GetPosition() - worldPos;
+				if (lockYAxis) {
+					forward.y = 0.0f;
+				}
+
 				if (forward.LengthSquared() < 1e-8f) {
 					forward = camera->GetForward();
+					if (lockYAxis) {
+						forward.y = 0.0f;
+					}
+				}
+
+				if (forward.LengthSquared() < 1e-8f) {
+					forward = lockYAxis ? Math::Vector3::Forward() : camera->GetForward();
 				} else {
 					forward = forward.Normalized();
 				}
 
-				Math::Vector3 upReference = Math::Vector3::Up();
-				Math::Vector3 right = upReference.Cross(forward);
+				Math::Vector3 up = Math::Vector3::Up();
+				Math::Vector3 right = up.Cross(forward);
 				if (right.LengthSquared() < 1e-8f) {
-					upReference = Math::Vector3::Forward();
-					right = upReference.Cross(forward);
+					right = Math::Vector3::Right();
+				} else {
+					right = right.Normalized();
 				}
-				right = right.Normalized();
 
-				const Math::Vector3 up = forward.Cross(right).Normalized();
+				if (!lockYAxis) {
+					Math::Vector3 upReference = Math::Vector3::Up();
+					right = upReference.Cross(forward);
+					if (right.LengthSquared() < 1e-8f) {
+						upReference = Math::Vector3::Forward();
+						right = upReference.Cross(forward);
+					}
+					right = right.Normalized();
+					up = forward.Cross(right).Normalized();
+				}
 
 				Math::Matrix4 rotation = Math::Matrix4::Identity();
 				rotation.m[0] = right.x;
@@ -398,7 +420,7 @@ namespace RTBEngine {
 				// World-space layout still starts from canvas pixels; only the final rendering happens in 3D.
 				canvas->PrepareForHitTest(canvas->GetCanvasSize());
 				const Math::Matrix4 modelMatrix = canvas->GetFaceCamera()
-					? BuildFaceCameraModelMatrix(canvasObject, camera)
+					? BuildFaceCameraModelMatrix(canvasObject, camera, canvas->GetFaceCameraLockY())
 					: canvasObject->GetWorldMatrix();
 				shader->SetMatrix4("uModel", modelMatrix);
 

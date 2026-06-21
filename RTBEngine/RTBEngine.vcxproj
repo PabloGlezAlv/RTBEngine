@@ -137,8 +137,8 @@ if exist "$(ProjectDir)ThirdParty\SDL2-2.32.10\lib\x64\SDL2.dll" xcopy /y /d "$(
 if exist "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" xcopy /y /d "$(ProjectDir)ThirdParty\glew-2.1.0\bin\Release\x64\glew32.dll" "$(OutDir)"
 if exist "$(ProjectDir)ThirdParty\assimp\bin\x64\" xcopy "$(ProjectDir)ThirdParty\assimp\bin\x64\*.dll" "$(OutDir)" /Y /D
 if exist "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" xcopy /y /d "$(ProjectDir)ThirdParty\fmod\api\core\lib\x64\fmod.dll" "$(OutDir)"
-if not exist "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Bin\" mkdir "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Bin\"
-if exist "$(TargetPath)" xcopy /y "$(TargetPath)" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Bin\"
+if not exist "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Bin\Debug\" mkdir "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Bin\Debug\"
+if exist "$(TargetPath)" xcopy /y "$(TargetPath)" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Bin\Debug\"
 if exist "$(ProjectDir)Engine" xcopy /y /d /s "$(ProjectDir)Engine\*.h" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Include\RTBEngine\"
 if exist "$(ProjectDir)Engine\RTBEngine.h" xcopy /y /d "$(ProjectDir)Engine\RTBEngine.h" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Include\"
 if exist "$(ProjectDir)Default" xcopy /y /d /e /i "$(ProjectDir)Default" "$(ProjectDir)..\..\RTBEngineEditor\RTBEngineEditor\RTBEngine_SDK\Default"

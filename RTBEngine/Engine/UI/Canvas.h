@@ -41,6 +41,9 @@ namespace RTBEngine {
 			bool GetFaceCamera() const { return faceCamera; }
 			void SetFaceCamera(bool value) { faceCamera = value; }
 
+			bool GetFaceCameraLockY() const { return faceCameraLockY; }
+			void SetFaceCameraLockY(bool value) { faceCameraLockY = value; }
+
 			const std::vector<UIElement*>& GetUIElements() const { return cachedUIElements; }
 
 			virtual void OnAwake() override;
@@ -62,6 +65,7 @@ namespace RTBEngine {
 			float pixelsPerUnit = 100.0f;
 			int sortOrder = 0;
 			bool faceCamera = false;
+			bool faceCameraLockY = false;
 			std::vector<UIElement*> cachedUIElements;
 			bool isInitialized = false;
 			bool hierarchyDirty = true;
