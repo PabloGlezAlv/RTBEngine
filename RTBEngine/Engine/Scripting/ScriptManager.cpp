@@ -2,6 +2,7 @@
 #include "ScriptBridgeABI.h"
 #include "../Core/Logger.h"
 #include "../Scene/SceneManager.h"
+#include "../Reflection/NameFormatting.h"
 #include <sstream>
 #include <iomanip>
 #include <cstdint>
@@ -203,6 +204,9 @@ namespace RTBEngine {
             RTBEngine::Reflection::PropertyInfo prop;
             prop.name              = SafeCString(desc->name, "name");
             prop.displayName       = SafeCString(desc->displayName, "displayName");
+            if (prop.displayName == prop.name) {
+                prop.displayName = RTBEngine::Reflection::FormatPropertyName(prop.name);
+            }
             prop.type              = static_cast<RTBEngine::Reflection::PropertyType>(desc->type);
             prop.offset            = desc->offset;
             prop.size              = desc->size;

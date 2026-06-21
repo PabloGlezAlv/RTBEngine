@@ -306,6 +306,9 @@
     <ClCompile Include="Engine\Physics\CapsuleCollider.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Reflection\NameFormatting.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Reflection\TypeInfo.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
@@ -702,6 +705,9 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Scene\CapsuleColliderComponent.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Reflection\NameFormatting.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Reflection\TypeInfo.h">

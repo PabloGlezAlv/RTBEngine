@@ -1,4 +1,5 @@
 #include "TypeInfo.h"
+#include "NameFormatting.h"
 #include <algorithm>
 #include "../Scene/Component.h"
 
@@ -17,6 +18,14 @@ namespace RTBEngine {
                 }
             }
             return nullptr;
+        }
+
+        std::string PropertyInfo::GetInspectorLabel() const
+        {
+            if (displayName != name) {
+                return displayName;
+            }
+            return FormatPropertyName(name);
         }
 
         void* PropertyInfo::GetMutableData(ECS::Component* component) const {
@@ -54,7 +63,7 @@ namespace RTBEngine {
         void TypeInfo::AddPropertyPOD(const char* name, PropertyType type, size_t offset, size_t size, PropertyFlags flags) {
             PropertyInfo prop;
             prop.name = name;
-            prop.displayName = name;
+            prop.displayName = FormatPropertyName(name);
             prop.type = type;
             prop.offset = offset;
             prop.size = size;
@@ -65,7 +74,7 @@ namespace RTBEngine {
         void TypeInfo::AddPropertyPODRange(const char* name, PropertyType type, size_t offset, size_t size, PropertyFlags flags, float rangeMin, float rangeMax) {
             PropertyInfo prop;
             prop.name = name;
-            prop.displayName = name;
+            prop.displayName = FormatPropertyName(name);
             prop.type = type;
             prop.offset = offset;
             prop.size = size;
@@ -77,7 +86,7 @@ namespace RTBEngine {
         void TypeInfo::AddPropertyPODEnum(const char* name, size_t offset, size_t size, PropertyFlags flags, const char* const* enumNames, int enumCount) {
             PropertyInfo prop;
             prop.name = name;
-            prop.displayName = name;
+            prop.displayName = FormatPropertyName(name);
             prop.type = PropertyType::Enum;
             prop.offset = offset;
             prop.size = size;
@@ -90,7 +99,7 @@ namespace RTBEngine {
         void TypeInfo::AddPropertyPODTyped(const char* name, PropertyType type, size_t offset, size_t size, PropertyFlags flags, const char* extraTypeName) {
             PropertyInfo prop;
             prop.name = name;
-            prop.displayName = name;
+            prop.displayName = FormatPropertyName(name);
             prop.type = type;
             prop.offset = offset;
             prop.size = size;
@@ -108,7 +117,7 @@ namespace RTBEngine {
         {
             PropertyInfo prop;
             prop.name = name;
-            prop.displayName = name;
+            prop.displayName = FormatPropertyName(name);
             prop.type = PropertyType::List;
             prop.offset = offset;
             prop.size = size;

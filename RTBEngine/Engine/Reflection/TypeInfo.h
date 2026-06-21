@@ -121,6 +121,8 @@ namespace RTBEngine {
             bool IsVisibleInInspector() const { return !HasFlag(flags, PropertyFlags::HideInInspector); }
             bool IsReadOnly() const { return HasFlag(flags, PropertyFlags::ReadOnly); }
 
+            std::string GetInspectorLabel() const;
+
             void* GetMutableData(void* objectBase) const {
                 return objectBase ? static_cast<void*>(static_cast<char*>(objectBase) + offset) : nullptr;
             }

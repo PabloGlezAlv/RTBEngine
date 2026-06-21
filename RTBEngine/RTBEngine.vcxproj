@@ -309,6 +309,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Physics\CapsuleCollider.cpp" />
     <ClCompile Include="Engine\Scene\SphereColliderComponent.cpp" />
     <ClCompile Include="Engine\Scene\MissingComponent.cpp" />
+    <ClCompile Include="Engine\Reflection\NameFormatting.cpp" />
     <ClCompile Include="Engine\Reflection\TypeInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -468,6 +469,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Scene\SphereColliderComponent.h" />
     <ClInclude Include="Engine\Scene\MissingComponent.h" />
     <ClInclude Include="Engine\Reflection\ListPropertyAccess.h" />
+    <ClInclude Include="Engine\Reflection\NameFormatting.h" />
     <ClInclude Include="Engine\Reflection\TypeInfo.h" />
     <ClInclude Include="Engine\Reflection\PropertyMacros.h" />
     <ClInclude Include="Engine\Reflection\TypeInfoBuilder.h" />

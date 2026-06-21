@@ -1,6 +1,7 @@
 #pragma once
 #include "TypeInfo.h"
 #include "PropertyMacros.h"
+#include "NameFormatting.h"
 
 namespace RTBEngine {
     namespace Math {
@@ -45,7 +46,7 @@ namespace RTBEngine {
             TypeInfoBuilder& PropertyEnum(const char* name, EnumType T::* member, std::initializer_list<const char*> enumNames, PropertyFlags flags = PropertyFlags::None) {
                 PropertyInfo prop;
                 prop.name = name;
-                prop.displayName = name;
+                prop.displayName = FormatPropertyName(name);
                 prop.offset = RTBEngine::Reflection::GetMemberOffset<T>(member);
                 prop.size = sizeof(EnumType);
                 prop.flags = flags;
@@ -61,7 +62,7 @@ namespace RTBEngine {
             TypeInfoBuilder& PropertyAsset(const char* name, AssetType* T::* member, const char* assetTypeName, PropertyFlags flags = PropertyFlags::None) {
                 PropertyInfo prop;
                 prop.name = name;
-                prop.displayName = name;
+                prop.displayName = FormatPropertyName(name);
                 prop.offset = RTBEngine::Reflection::GetMemberOffset<T>(member);
                 prop.size = sizeof(AssetType*);
                 prop.flags = flags;
@@ -89,7 +90,7 @@ namespace RTBEngine {
         inline PropertyInfo MakePropertyInfo<Math::Vector2>(const char* name, size_t offset, PropertyFlags flags) {
             PropertyInfo prop;
             prop.name = name;
-            prop.displayName = name;
+            prop.displayName = FormatPropertyName(name);
             prop.offset = offset;
             prop.size = sizeof(float) * 2;
             prop.flags = flags;
@@ -101,7 +102,7 @@ namespace RTBEngine {
         inline PropertyInfo MakePropertyInfo<Math::Vector3>(const char* name, size_t offset, PropertyFlags flags) {
             PropertyInfo prop;
             prop.name = name;
-            prop.displayName = name;
+            prop.displayName = FormatPropertyName(name);
             prop.offset = offset;
             prop.size = sizeof(float) * 3;
             prop.flags = flags;
@@ -113,7 +114,7 @@ namespace RTBEngine {
         inline PropertyInfo MakePropertyInfo<Math::Vector4>(const char* name, size_t offset, PropertyFlags flags) {
             PropertyInfo prop;
             prop.name = name;
-            prop.displayName = name;
+            prop.displayName = FormatPropertyName(name);
             prop.offset = offset;
             prop.size = sizeof(float) * 4;
             prop.flags = flags;
@@ -125,7 +126,7 @@ namespace RTBEngine {
         inline PropertyInfo MakePropertyInfo<Math::Quaternion>(const char* name, size_t offset, PropertyFlags flags) {
             PropertyInfo prop;
             prop.name = name;
-            prop.displayName = name;
+            prop.displayName = FormatPropertyName(name);
             prop.offset = offset;
             prop.size = sizeof(float) * 4;
             prop.flags = flags;
