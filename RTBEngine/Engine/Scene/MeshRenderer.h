@@ -40,6 +40,9 @@ namespace RTBEngine {
             bool IsMultiMesh() const { return multiMesh; }
             void GetCombinedAABB(Math::Vector3& outMin, Math::Vector3& outMax) const;
 
+            float GetOcclusionFadeAlpha() const { return occlusionFadeAlpha; }
+            void SetOcclusionFadeAlpha(float alpha);
+
             void Render();
             void RenderDraw(Rendering::Mesh* drawMesh, Rendering::Material* drawMaterial);
 
@@ -75,6 +78,8 @@ namespace RTBEngine {
 
             void SyncProperties();
             void RenderMultiMesh();
+
+            float occlusionFadeAlpha = 1.0f;
 
             static uint32_t drawCallCount;
             static uint32_t culledObjectCount;

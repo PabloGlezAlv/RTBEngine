@@ -1,4 +1,6 @@
 #include "Material.h"
+#include "../Math/Math.h"
+#include <algorithm>
 namespace RTBEngine {
     namespace Rendering {
 
@@ -16,13 +18,16 @@ namespace RTBEngine {
             
         }
 
-        void Material::ApplyProperties()
+        void Material::ApplyProperties(float alphaMultiplier)
         {
             if (!shader) {
                 return;
             }
 
-            shader->SetVector4("uColor", color);
+            Math::Vector4 effectiveColor = color;
+            effectiveColor.w *= std::clamp(alphaMultiplier, 0.0f, 1.0f);
+
+            shader->SetVector4("uColor", effectiveColor);
             shader->SetVector3("uDiffuseColor", diffuseColor);
             shader->SetFloat("uShininess", shininess);
             shader->SetBool("uHasTexture", texture != nullptr);

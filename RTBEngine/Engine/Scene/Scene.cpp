@@ -10,6 +10,8 @@
 #include "CameraComponent.h"
 #include "LightComponent.h"
 #include "RigidBodyComponent.h"
+#include "Occludable.h"
+#include "OcclusionTarget.h"
 #include "TrailRenderer.h"
 #include "ParticleSystem.h"
 #include "../UI/Canvas.h"
@@ -152,13 +154,19 @@ namespace {
 		RTBEngine::Rendering::Shader* shader = nullptr;
 		RTBEngine::Rendering::Texture* texture = nullptr;
 		RTBEngine::Rendering::Material* material = nullptr;
+		float lastAlphaMultiplier = 1.0f;
 	};
 
-	void ApplyOpaqueDrawMaterial(RTBEngine::Rendering::Material* drawMaterial, OpaqueRenderBatchState& state)
+	void ApplyOpaqueDrawMaterial(
+		RTBEngine::ECS::MeshRenderer* renderer,
+		RTBEngine::Rendering::Material* drawMaterial,
+		OpaqueRenderBatchState& state)
 	{
 		if (!drawMaterial) {
 			return;
 		}
+
+		const float alphaMultiplier = renderer ? renderer->GetOcclusionFadeAlpha() : 1.0f;
 
 		RTBEngine::Rendering::Shader* nextShader = drawMaterial->GetShader();
 		if (!nextShader) {
@@ -172,11 +180,13 @@ namespace {
 			state.shader = nextShader;
 			state.material = nullptr;
 			state.texture = reinterpret_cast<RTBEngine::Rendering::Texture*>(static_cast<uintptr_t>(1));
+			state.lastAlphaMultiplier = -1.0f;
 		}
 
-		if (drawMaterial != state.material) {
-			drawMaterial->ApplyProperties();
+		if (drawMaterial != state.material || alphaMultiplier != state.lastAlphaMultiplier) {
+			drawMaterial->ApplyProperties(alphaMultiplier);
 			state.material = drawMaterial;
+			state.lastAlphaMultiplier = alphaMultiplier;
 		}
 
 		RTBEngine::Rendering::Texture* nextTexture = drawMaterial->GetTexture();
@@ -218,13 +228,34 @@ namespace {
 		return a.mesh < b.mesh;
 	}
 
-	void CollectOpaqueMeshDraws(
+	bool RequiresOcclusionFadePass(RTBEngine::ECS::MeshRenderer* renderer)
+	{
+		return renderer && renderer->GetOcclusionFadeAlpha() < 0.999f;
+	}
+
+	void CollectMeshDraws(
 		RTBEngine::ECS::MeshRenderer* renderer,
-		std::vector<OpaqueMeshDraw>& outDraws)
+		std::vector<OpaqueMeshDraw>& opaqueDraws,
+		std::vector<OpaqueMeshDraw>& transparentDraws)
 	{
 		if (!renderer) {
 			return;
 		}
+
+		const auto collectDraw = [&](RTBEngine::Rendering::Mesh* drawMesh,
+			RTBEngine::Rendering::Material* drawMaterial) {
+			if (!drawMesh || !drawMaterial) {
+				return;
+			}
+
+			const OpaqueMeshDraw draw{ renderer, drawMesh, drawMaterial };
+			if (RequiresOcclusionFadePass(renderer)) {
+				transparentDraws.push_back(draw);
+			}
+			else {
+				opaqueDraws.push_back(draw);
+			}
+		};
 
 		if (renderer->IsMultiMesh()) {
 			const std::vector<RTBEngine::Rendering::Mesh*>& meshes = renderer->GetMeshes();
@@ -232,23 +263,97 @@ namespace {
 				RTBEngine::Rendering::Mesh* drawMesh = (i >= 0 && static_cast<std::size_t>(i) < meshes.size())
 					? meshes[static_cast<std::size_t>(i)]
 					: nullptr;
-				RTBEngine::Rendering::Material* drawMaterial = renderer->GetMaterialForMesh(i);
-				if (!drawMesh || !drawMaterial) {
-					continue;
-				}
-
-				outDraws.push_back({ renderer, drawMesh, drawMaterial });
+				collectDraw(drawMesh, renderer->GetMaterialForMesh(i));
 			}
 			return;
 		}
 
-		RTBEngine::Rendering::Mesh* drawMesh = renderer->GetMesh();
-		RTBEngine::Rendering::Material* drawMaterial = renderer->GetMaterial();
-		if (!drawMesh || !drawMaterial) {
+		collectDraw(renderer->GetMesh(), renderer->GetMaterial());
+	}
+
+	void CollectOpaqueMeshDraws(
+		RTBEngine::ECS::MeshRenderer* renderer,
+		std::vector<OpaqueMeshDraw>& outDraws)
+	{
+		std::vector<OpaqueMeshDraw> transparentScratch;
+		CollectMeshDraws(renderer, outDraws, transparentScratch);
+	}
+
+	float GetMeshDrawSortDistance(
+		const OpaqueMeshDraw& draw,
+		const RTBEngine::Math::Vector3& cameraPosition)
+	{
+		if (!draw.renderer || !draw.renderer->GetOwner()) {
+			return 0.0f;
+		}
+
+		const RTBEngine::Math::Vector3 worldPosition = draw.renderer->GetOwner()->GetWorldPosition();
+		return (worldPosition - cameraPosition).LengthSquared();
+	}
+
+	bool TransparentMeshDrawFartherFirst(
+		const OpaqueMeshDraw& a,
+		const OpaqueMeshDraw& b,
+		const RTBEngine::Math::Vector3& cameraPosition)
+	{
+		return GetMeshDrawSortDistance(a, cameraPosition) > GetMeshDrawSortDistance(b, cameraPosition);
+	}
+
+	void RenderTransparentMeshDraws(
+		const std::vector<OpaqueMeshDraw>& transparentDraws,
+		const RTBEngine::Math::Vector3& cameraPosition)
+	{
+		if (transparentDraws.empty()) {
 			return;
 		}
 
-		outDraws.push_back({ renderer, drawMesh, drawMaterial });
+		std::vector<OpaqueMeshDraw> sortedDraws = transparentDraws;
+		std::sort(
+			sortedDraws.begin(),
+			sortedDraws.end(),
+			[&cameraPosition](const OpaqueMeshDraw& a, const OpaqueMeshDraw& b) {
+				return TransparentMeshDrawFartherFirst(a, b, cameraPosition);
+			});
+
+		const GLboolean wasBlendEnabled = glIsEnabled(GL_BLEND);
+		const GLboolean wasDepthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
+		const GLboolean wasCullFaceEnabled = glIsEnabled(GL_CULL_FACE);
+		GLboolean wasDepthMaskEnabled = GL_TRUE;
+		glGetBooleanv(GL_DEPTH_WRITEMASK, &wasDepthMaskEnabled);
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glEnable(GL_DEPTH_TEST);
+		glDepthMask(GL_FALSE);
+
+		OpaqueRenderBatchState batchState;
+		for (const OpaqueMeshDraw& draw : sortedDraws) {
+			ApplyOpaqueDrawMaterial(draw.renderer, draw.material, batchState);
+			draw.renderer->RenderDraw(draw.mesh, draw.material);
+		}
+
+		if (wasCullFaceEnabled) {
+			glEnable(GL_CULL_FACE);
+		}
+		else {
+			glDisable(GL_CULL_FACE);
+		}
+
+		if (wasDepthTestEnabled) {
+			glEnable(GL_DEPTH_TEST);
+		}
+		else {
+			glDisable(GL_DEPTH_TEST);
+		}
+
+		if (wasBlendEnabled) {
+			glEnable(GL_BLEND);
+		}
+		else {
+			glDisable(GL_BLEND);
+		}
+
+		glDepthMask(wasDepthMaskEnabled);
 	}
 }
 
@@ -327,6 +432,8 @@ void RTBEngine::ECS::Scene::RebuildComponentCaches() const
 	cachedParticleSystems.clear();
 	cachedCanvases.clear();
 	cachedRigidBodies.clear();
+	cachedOccludables.clear();
+	cachedOcclusionTargets.clear();
 
 	const auto collectFromGameObjects = [this](const std::vector<std::unique_ptr<GameObject>>& objects) {
 		for (const auto& gameObject : objects) {
@@ -356,6 +463,14 @@ void RTBEngine::ECS::Scene::RebuildComponentCaches() const
 
 			if (RigidBodyComponent* rigidBody = gameObject->GetComponent<RigidBodyComponent>()) {
 				cachedRigidBodies.push_back(rigidBody);
+			}
+
+			if (Occludable* occludable = gameObject->GetComponent<Occludable>()) {
+				cachedOccludables.push_back(occludable);
+			}
+
+			if (OcclusionTarget* target = gameObject->GetComponent<OcclusionTarget>()) {
+				cachedOcclusionTargets.push_back(target);
 			}
 		}
 	};
@@ -398,6 +513,18 @@ const std::vector<RTBEngine::ECS::RigidBodyComponent*>& RTBEngine::ECS::Scene::G
 {
 	EnsureComponentCaches();
 	return cachedRigidBodies;
+}
+
+const std::vector<RTBEngine::ECS::Occludable*>& RTBEngine::ECS::Scene::GetCachedOccludables() const
+{
+	EnsureComponentCaches();
+	return cachedOccludables;
+}
+
+const std::vector<RTBEngine::ECS::OcclusionTarget*>& RTBEngine::ECS::Scene::GetCachedOcclusionTargets() const
+{
+	EnsureComponentCaches();
+	return cachedOcclusionTargets;
 }
 
 void RTBEngine::ECS::Scene::RegisterGameObjectUuid(GameObject* gameObject)
@@ -780,7 +907,7 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 
 	OpaqueRenderBatchState batchState;
 	for (const OpaqueMeshDraw& draw : opaqueDraws) {
-		ApplyOpaqueDrawMaterial(draw.material, batchState);
+		ApplyOpaqueDrawMaterial(draw.renderer, draw.material, batchState);
 		draw.renderer->RenderDraw(draw.mesh, draw.material);
 	}
 
@@ -793,6 +920,40 @@ void RTBEngine::ECS::Scene::RenderTransparentEffects(Rendering::Camera* camera)
 	if (!camera) return;
 
 	++iterationDepth;
+
+	const Rendering::Frustum& frustum = camera->GetFrustum();
+	std::vector<OpaqueMeshDraw> transparentDraws;
+	transparentDraws.reserve(16);
+
+	for (MeshRenderer* renderer : GetCachedMeshRenderers()) {
+		if (!renderer || !renderer->IsEnabled()) {
+			continue;
+		}
+
+		GameObject* gameObject = renderer->GetOwner();
+		if (!gameObject || !gameObject->IsActiveInHierarchy()) {
+			continue;
+		}
+
+		Math::Vector3 localMin, localMax;
+		renderer->GetCombinedAABB(localMin, localMax);
+
+		if (localMin != localMax) {
+			Math::Vector3 worldMin, worldMax;
+			Rendering::Frustum::TransformAABB(
+				gameObject->GetWorldMatrix(), localMin, localMax, worldMin, worldMax);
+
+			if (!frustum.IsAABBVisible(worldMin, worldMax)) {
+				continue;
+			}
+		}
+
+		std::vector<OpaqueMeshDraw> opaqueScratch;
+		CollectMeshDraws(renderer, opaqueScratch, transparentDraws);
+	}
+
+	RenderTransparentMeshDraws(transparentDraws, camera->GetPosition());
+
 	for (TrailRenderer* trailRenderer : GetCachedTrailRenderers()) {
 		if (!trailRenderer || !trailRenderer->IsEnabled()) {
 			continue;

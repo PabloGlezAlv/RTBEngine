@@ -7,6 +7,7 @@
 #include "../Reflection/PropertyMacros.h"
 #include "../Core/ResourceManager.h"
 #include "../Core/Logger.h"
+#include <algorithm>
 
 namespace RTBEngine {
     namespace ECS {
@@ -204,6 +205,11 @@ namespace RTBEngine {
             if (material) {
                 material->SetShader(shader);
             }
+        }
+
+        void MeshRenderer::SetOcclusionFadeAlpha(float alpha)
+        {
+            occlusionFadeAlpha = std::clamp(alpha, 0.0f, 1.0f);
         }
 
         void MeshRenderer::RenderDraw(Rendering::Mesh* drawMesh, Rendering::Material* drawMaterial)

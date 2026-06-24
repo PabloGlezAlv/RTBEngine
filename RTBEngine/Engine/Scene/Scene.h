@@ -28,6 +28,8 @@ namespace RTBEngine {
         class TrailRenderer;
         class ParticleSystem;
         class RigidBodyComponent;
+        class Occludable;
+        class OcclusionTarget;
 
         #pragma warning(push)
         #pragma warning(disable: 4251)
@@ -75,6 +77,8 @@ namespace RTBEngine {
             const std::vector<ParticleSystem*>& GetCachedParticleSystems() const;
             const std::vector<RTBEngine::UI::Canvas*>& GetCachedCanvases() const;
             const std::vector<RigidBodyComponent*>& GetCachedRigidBodies() const;
+            const std::vector<Occludable*>& GetCachedOccludables() const;
+            const std::vector<OcclusionTarget*>& GetCachedOcclusionTargets() const;
 
             // Camera management
             void SetMainCamera(CameraComponent* camera);
@@ -125,6 +129,8 @@ namespace RTBEngine {
             mutable std::vector<ParticleSystem*> cachedParticleSystems;
             mutable std::vector<RTBEngine::UI::Canvas*> cachedCanvases;
             mutable std::vector<RigidBodyComponent*> cachedRigidBodies;
+            mutable std::vector<Occludable*> cachedOccludables;
+            mutable std::vector<OcclusionTarget*> cachedOcclusionTargets;
         };
         #pragma warning(pop)
 

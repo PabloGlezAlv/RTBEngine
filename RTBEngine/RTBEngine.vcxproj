@@ -214,6 +214,10 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Rendering\FbxBinding.cpp" />
     <ClCompile Include="Engine\Scene\GameObject.cpp" />
     <ClCompile Include="Engine\Scene\MeshRenderer.cpp" />
+    <ClCompile Include="Engine\Scene\Occludable.cpp" />
+    <ClCompile Include="Engine\Scene\OcclusionTarget.cpp" />
+    <ClCompile Include="Engine\Scene\OcclusionFadeSystem.cpp" />
+    <ClCompile Include="Engine\Scene\OcclusionFadeController.cpp" />
     <ClCompile Include="Engine\Scene\NetworkIdentity.cpp" />
     <ClCompile Include="Engine\Scene\NetworkTransform.cpp" />
     <ClCompile Include="Engine\Scene\TrailRenderer.cpp" />
@@ -385,6 +389,10 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Rendering\FbxBinding.h" />
     <ClInclude Include="Engine\Scene\GameObject.h" />
     <ClInclude Include="Engine\Scene\MeshRenderer.h" />
+    <ClInclude Include="Engine\Scene\Occludable.h" />
+    <ClInclude Include="Engine\Scene\OcclusionTarget.h" />
+    <ClInclude Include="Engine\Scene\OcclusionFadeSystem.h" />
+    <ClInclude Include="Engine\Scene\OcclusionFadeController.h" />
     <ClInclude Include="Engine\Scene\NetworkIdentity.h" />
     <ClInclude Include="Engine\Scene\NetworkTransform.h" />
     <ClInclude Include="Engine\Scene\TrailRenderer.h" />
