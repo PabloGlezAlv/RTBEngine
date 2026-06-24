@@ -290,6 +290,9 @@ private:
 #define RTB_PROPERTY_FBX(PropName)                                                      \
                 RTB_PROPERTY_ASSET_PATH(PropName, "fbx")
 
+#define RTB_PROPERTY_DATA_ASSET(PropName)                                               \
+                RTB_PROPERTY_ASSET_PATH(PropName, "rtbasset")
+
 // Registers a color property
 #define RTB_PROPERTY_COLOR(PropName)                                                    \
                 RTB__PROP_POD(PropName, RTBEngine::Reflection::PropertyType::Color,     \
@@ -412,6 +415,75 @@ extern "C" void RTBScripts_RegisterLocalProperty(const char* ownerType, const RT
     namespace { static ClassName##_TypeRegistrar _##ClassName##_registrar; }
 #else
 #define RTB_END_REGISTER(ClassName)                                                                     RTBEngine::Reflection::TypeRegistry::GetInstance().RegisterType(                             #ClassName, ClassName::MutableTypeInfo());                                        }                                                                                   };                                                                                   namespace { static ClassName##_TypeRegistrar _##ClassName##_registrar; }
+#endif
+
+// Data assets (ScriptableObject-like assets without GameObjects)
+#ifdef GAMESCRIPTS_EXPORTS
+#define RTB_DATA_ASSET(ClassName)                                                       \
+public:                                                                                 \
+    virtual const char* GetTypeName() const override { return #ClassName; }             \
+    virtual void* GetActualObject() override { return this; }                           \
+    virtual const void* GetActualObject() const override { return this; }               \
+    virtual const RTBEngine::Reflection::TypeInfo* GetTypeInfo() const override {       \
+        return RTBEngine::Reflection::TypeRegistry::GetInstance().GetTypeInfo(#ClassName); \
+    }                                                                                   \
+private:
+#else
+#define RTB_DATA_ASSET(ClassName)                                                       \
+public:                                                                                 \
+    virtual const char* GetTypeName() const override { return #ClassName; }             \
+    virtual void* GetActualObject() override { return this; }                           \
+    virtual const void* GetActualObject() const override { return this; }               \
+    virtual const RTBEngine::Reflection::TypeInfo* GetTypeInfo() const override {       \
+        return &ClassName::StaticTypeInfo();                                            \
+    }                                                                                   \
+    static const RTBEngine::Reflection::TypeInfo& StaticTypeInfo() {                    \
+        return MutableTypeInfo();                                                       \
+    }                                                                                   \
+    static RTBEngine::Reflection::TypeInfo& MutableTypeInfo() {                         \
+        static RTBEngine::Reflection::TypeInfo info(#ClassName);                        \
+        static bool initialized = false;                                                \
+        if (!initialized) {                                                             \
+            info.SetIsDataAsset(true);                                                  \
+            initialized = true;                                                         \
+        }                                                                               \
+        return info;                                                                    \
+    }                                                                                   \
+private:
+#endif
+
+#define RTB_REGISTER_DATA_ASSET(ClassName) RTB_REGISTER_COMPONENT(ClassName)
+
+#ifdef GAMESCRIPTS_EXPORTS
+#define RTB_END_REGISTER_DATA_ASSET(ClassName)                                          \
+            RTBScriptTypeDesc _rtb_type_desc{};                                         \
+            _rtb_type_desc.typeName = #ClassName;                                       \
+            _rtb_type_desc.createComponent = []() -> void* {                            \
+                return static_cast<void*>(new ClassName());                             \
+            };                                                                          \
+            _rtb_type_desc.destroyComponent = [](void* asset) {                         \
+                delete static_cast<ClassName*>(                                         \
+                    static_cast<RTBEngine::Data::DataAsset*>(asset));                   \
+            };                                                                          \
+            _rtb_type_desc.instanceSize = sizeof(ClassName);                            \
+            _rtb_type_desc.typeKind = static_cast<int>(RTBScriptTypeKind::DataAsset);   \
+            RTBScripts_RegisterLocalType(&_rtb_type_desc);                              \
+        }                                                                               \
+    };                                                                                  \
+    namespace { static ClassName##_TypeRegistrar _##ClassName##_registrar; }
+#else
+#define RTB_END_REGISTER_DATA_ASSET(ClassName)                                          \
+            RTBEngine::Data::DataAssetRegistry::GetInstance().RegisterType(             \
+                #ClassName,                                                             \
+                []() -> RTBEngine::Data::DataAsset* { return new ClassName(); },        \
+                [](RTBEngine::Data::DataAsset* asset) {                                 \
+                    delete static_cast<ClassName*>(asset);                              \
+                });                                                                     \
+            RTBEngine::Reflection::TypeRegistry::GetInstance().RegisterType(            \
+                #ClassName, ClassName::MutableTypeInfo());                              \
+        }                                                                               \
+    };                                                                                  \
+    namespace { static ClassName##_TypeRegistrar _##ClassName##_registrar; }
 #endif
 
 namespace RTBEngine {

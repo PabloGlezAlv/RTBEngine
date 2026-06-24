@@ -1,6 +1,7 @@
 #include "ComponentRegistry.h"
 #include <iostream>
 #include "../RTBEngine.h"
+#include "../Data/DataAssetRegistry.h"
 #include "../Reflection/TypeInfo.h"
 
 #include "../Scene/NetworkIdentity.h"
@@ -81,7 +82,18 @@ namespace RTBEngine {
         }
 
         bool ComponentRegistry::HasComponent(const std::string& typeName) const {
+            if (RTBEngine::Data::DataAssetRegistry::GetInstance().IsDataAssetType(typeName)) {
+                return false;
+            }
+
             if (factories.find(typeName) != factories.end()) return true;
+
+            const Reflection::TypeInfo* typeInfo =
+                Reflection::TypeRegistry::GetInstance().GetTypeInfo(typeName);
+            if (typeInfo && typeInfo->IsDataAsset()) {
+                return false;
+            }
+
             return Reflection::TypeRegistry::GetInstance().HasType(typeName);
         }
 

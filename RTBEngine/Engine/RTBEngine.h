@@ -27,6 +27,9 @@
 
 // Scripting
 #include "Scripting/ComponentRegistry.h"
+#include "Data/DataAsset.h"
+#include "Data/DataAssetRegistry.h"
+#include "Scripting/DataAssetLoader.h"
 
 // Online
 #include "Online/IOnlineIdentity.h"

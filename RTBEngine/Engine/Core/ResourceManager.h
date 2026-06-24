@@ -18,6 +18,10 @@ namespace RTBEngine {
     namespace ECS {
         class Scene;
     }
+
+    namespace Data {
+        class DataAsset;
+    }
 }
 
 namespace RTBEngine {
@@ -80,6 +84,12 @@ namespace RTBEngine {
             Rendering::Cubemap* GetCubemap(const std::string& path);
             Rendering::Cubemap* LoadCubemapAsset(const std::string& cubemapFilePath);
 
+            // Data asset management
+            Data::DataAsset* GetDataAsset(const std::string& path);
+            Data::DataAsset* LoadDataAsset(const std::string& path);
+            void EvictDataAsset(const std::string& path);
+            std::string GetDataAssetPath(const Data::DataAsset* asset) const;
+
             // Default resources
             Rendering::Texture* GetDefaultTexture();
             Rendering::Texture* GetLogoTexture();
@@ -116,6 +126,7 @@ namespace RTBEngine {
             std::unordered_map<std::string, std::vector<std::unique_ptr<Rendering::Mesh>>> modelMeshes;
             std::unordered_map<std::string, std::unique_ptr<Audio::AudioClip>> audioClips;
             std::unordered_map<std::string, std::unique_ptr<Rendering::Cubemap>> cubemaps;
+            std::unordered_map<std::string, std::unique_ptr<Data::DataAsset>> dataAssets;
 
             // Cache for raw pointers (for GetModelMeshes return)
             std::unordered_map<std::string, std::vector<Rendering::Mesh*>> modelMeshPtrs;
@@ -132,6 +143,7 @@ namespace RTBEngine {
             std::unordered_map<Rendering::Mesh*, std::string> meshPathMap;
             std::unordered_map<Rendering::Font*, std::string> fontPathMap;
             std::unordered_map<Rendering::Cubemap*, std::string> cubemapPathMap;
+            std::unordered_map<Data::DataAsset*, std::string> dataAssetPathMap;
 
 
             std::unique_ptr<Rendering::Skybox> defaultSkybox;

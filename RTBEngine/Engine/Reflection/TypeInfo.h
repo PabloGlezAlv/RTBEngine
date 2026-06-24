@@ -176,6 +176,9 @@ namespace RTBEngine {
             bool HasProperties() const { return !properties.empty(); }
             size_t GetPropertyCount() const { return properties.size(); }
 
+            void SetIsDataAsset(bool value) { isDataAsset = value; }
+            bool IsDataAsset() const { return isDataAsset; }
+
             ECS::Component* Create() const { return factoryFn ? factoryFn(factoryCtx) : nullptr; }
             void SetFactory(FactoryFunc fn, void* ctx) { factoryFn = fn; factoryCtx = ctx; }
 
@@ -193,6 +196,7 @@ namespace RTBEngine {
             void*       factoryCtx = nullptr;
             DestroyFunc destroyFn  = nullptr;
             void*       destroyCtx = nullptr;
+            bool        isDataAsset = false;
         };
 
         // Global registry for all reflected types

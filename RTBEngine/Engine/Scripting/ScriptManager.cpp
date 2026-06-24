@@ -1,4 +1,6 @@
 #include "ScriptManager.h"
+#include "../Data/DataAsset.h"
+#include "../Data/DataAssetRegistry.h"
 #include "ScriptBridgeABI.h"
 #include "../Core/Logger.h"
 #include "../Scene/SceneManager.h"
@@ -161,7 +163,26 @@ namespace RTBEngine {
             // No STL types cross the module boundary — all POD.
             RTBEngine::Reflection::TypeInfo newInfo(typeName);
             auto* desc = static_cast<RTBScriptTypeDesc*>(scriptTypeDesc);
-            if (desc) {
+            const bool isDataAsset = desc
+                && desc->typeKind == static_cast<int>(RTBScriptTypeKind::DataAsset);
+
+            if (desc && isDataAsset) {
+                newInfo.SetIsDataAsset(true);
+                RTBEngine::Data::DataAssetRegistry::GetInstance().RegisterType(
+                    typeName,
+                    [desc]() -> RTBEngine::Data::DataAsset* {
+                        if (!desc->createComponent) {
+                            return nullptr;
+                        }
+                        return static_cast<RTBEngine::Data::DataAsset*>(desc->createComponent());
+                    },
+                    [desc](RTBEngine::Data::DataAsset* asset) {
+                        if (desc->destroyComponent) {
+                            desc->destroyComponent(asset);
+                        }
+                    });
+            }
+            else if (desc) {
                 newInfo.SetFactory(
                     [](void* ctx) -> RTBEngine::ECS::Component* {
                         auto* scriptDesc = static_cast<RTBScriptTypeDesc*>(ctx);
@@ -343,6 +364,7 @@ namespace RTBEngine {
             // Remove all types that came from this DLL before freeing it.
             // Component factories inside the DLL become dangling pointers after FreeLibrary.
             for (const auto& typeName : loadedScriptTypes) {
+                RTBEngine::Data::DataAssetRegistry::GetInstance().UnregisterType(typeName);
                 RTBEngine::Reflection::TypeRegistry::GetInstance().UnregisterType(typeName);
             }
             loadedScriptTypes.clear();

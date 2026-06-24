@@ -276,6 +276,11 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Scripting\PrefabSaver.cpp" />
     <ClCompile Include="Engine\Scripting\ScenePropertySerializer.cpp" />
     <ClCompile Include="Engine\Scripting\PrefabLoader.cpp" />
+    <ClCompile Include="Engine\Scripting\DataAssetLoader.cpp" />
+    <ClCompile Include="Engine\Scripting\DataAssetSaver.cpp" />
+    <ClCompile Include="Engine\Scripting\DataAssetReflectionUtils.cpp" />
+    <ClCompile Include="Engine\Data\DataAsset.cpp" />
+    <ClCompile Include="Engine\Data\DataAssetRegistry.cpp" />
     <ClCompile Include="Engine\Scene\PrefabRegistry.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui.cpp" />
@@ -463,6 +468,11 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Scripting\PrefabSaver.h" />
     <ClInclude Include="Engine\Scripting\ScenePropertySerializer.h" />
     <ClInclude Include="Engine\Scripting\PrefabLoader.h" />
+    <ClInclude Include="Engine\Scripting\DataAssetLoader.h" />
+    <ClInclude Include="Engine\Scripting\DataAssetSaver.h" />
+    <ClInclude Include="Engine\Scripting\DataAssetReflectionUtils.h" />
+    <ClInclude Include="Engine\Data\DataAsset.h" />
+    <ClInclude Include="Engine\Data\DataAssetRegistry.h" />
     <ClInclude Include="Engine\Scene\PrefabRegistry.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imgui.h" />

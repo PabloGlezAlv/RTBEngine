@@ -1,5 +1,8 @@
 #include "ResourceManager.h"
 #include "../Scripting/SceneLoader.h"
+#include "../Scripting/DataAssetLoader.h"
+#include "../Data/DataAsset.h"
+#include "../Data/DataAssetRegistry.h"
 #include "../Scene/Scene.h"
 #include <iostream>
 #include <fstream>
@@ -546,6 +549,54 @@ namespace RTBEngine {
             return ptr;
         }
 
+        Data::DataAsset* ResourceManager::GetDataAsset(const std::string& path)
+        {
+            const auto it = dataAssets.find(path);
+            return it != dataAssets.end() ? it->second.get() : nullptr;
+        }
+
+        Data::DataAsset* ResourceManager::LoadDataAsset(const std::string& path)
+        {
+            if (Data::DataAsset* existing = GetDataAsset(path)) {
+                return existing;
+            }
+
+            std::unique_ptr<Data::DataAsset> loaded = Scripting::DataAssetLoader::Load(path);
+            if (!loaded) {
+                return nullptr;
+            }
+
+            Data::DataAsset* ptr = loaded.get();
+            dataAssets[path] = std::move(loaded);
+            dataAssetPathMap[ptr] = path;
+            return ptr;
+        }
+
+        void ResourceManager::EvictDataAsset(const std::string& path)
+        {
+            const auto it = dataAssets.find(path);
+            if (it == dataAssets.end()) {
+                return;
+            }
+
+            dataAssetPathMap.erase(it->second.get());
+            dataAssets.erase(it);
+        }
+
+        std::string ResourceManager::GetDataAssetPath(const Data::DataAsset* asset) const
+        {
+            if (!asset) {
+                return "";
+            }
+
+            const auto it = dataAssetPathMap.find(const_cast<Data::DataAsset*>(asset));
+            if (it != dataAssetPathMap.end()) {
+                return it->second;
+            }
+
+            return asset->GetSourcePath();
+        }
+
         Rendering::Texture* ResourceManager::GetDefaultTexture()
         {
             return LoadTexture(DEFAULT_TEXTURE_PATH);
@@ -684,6 +735,7 @@ namespace RTBEngine {
             scenes.clear();
             defaultFont = nullptr;
             cubemaps.clear();
+            dataAssets.clear();
             defaultSkybox.reset();
 
             texturePathMap.clear();
@@ -691,6 +743,7 @@ namespace RTBEngine {
             meshPathMap.clear();
             fontPathMap.clear();
             cubemapPathMap.clear();
+            dataAssetPathMap.clear();
         }
 
     }
