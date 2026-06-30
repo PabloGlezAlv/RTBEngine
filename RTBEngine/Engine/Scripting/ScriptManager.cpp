@@ -3,6 +3,7 @@
 #include "../Data/DataAssetRegistry.h"
 #include "ScriptBridgeABI.h"
 #include "../Core/Logger.h"
+#include "../Core/ResourceManager.h"
 #include "../Scene/SceneManager.h"
 #include "../Reflection/NameFormatting.h"
 #include <sstream>
@@ -360,6 +361,12 @@ namespace RTBEngine {
             // Unload the current scene first so all script components are destroyed
             // while the DLL is still mapped. FreeLibrary invalidates their vtables.
             sceneManager.UnloadCurrentScene();
+
+            // Cached DataAsset instances have concrete types (and virtual destructors)
+            // defined in this DLL. They must be destroyed while the DLL is still mapped,
+            // otherwise FreeLibrary leaves their vtables dangling and a later delete
+            // (e.g. on shutdown or the next reload) reads freed module memory and crashes.
+            RTBEngine::Core::ResourceManager::GetInstance().ClearDataAssets();
 
             // Remove all types that came from this DLL before freeing it.
             // Component factories inside the DLL become dangling pointers after FreeLibrary.

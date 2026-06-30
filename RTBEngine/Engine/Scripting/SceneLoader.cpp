@@ -740,8 +740,9 @@ namespace RTBEngine {
             for (const auto& go : scene->GetGameObjects()) {
                 auto* animator = go->GetComponent<Animation::Animator>();
                 if (!animator) continue;
+
                 if (animator->AreBoneGOsCreated()) continue;
-                if (!animator->HasBones()) continue;
+                if (animator->modelRef.empty()) continue;
                 animatorsNeedingBones.push_back(animator);
             }
             for (auto* animator : animatorsNeedingBones) {

@@ -326,9 +326,14 @@ namespace RTBEngine {
 
                 std::string modelPath = ReadOptionalString(L, tableIndex, "modelRef", "");
                 if (modelPath.empty()) modelPath = ReadOptionalString(L, tableIndex, "model", "");
-                comp->modelRef = modelPath;
 
+                // Only (re)assign modelRef and reload model data when a path is actually
+                // provided. Prefab-instance overrides frequently re-declare the Animator
+                // component without repeating modelRef; clobbering it to "" here would drop
+                // the skeleton and leave every bone at identity (0,0,0).
                 if (!modelPath.empty()) {
+                    comp->modelRef = modelPath;
+
                     Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelPath);
 
                     if (modelData.skeleton) {

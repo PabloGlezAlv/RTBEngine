@@ -402,6 +402,7 @@ void RTBEngine::Core::Application::Shutdown()
 	}
 
 	// Only after all GameObjects are destroyed, unload the script DLL.
+	// UnloadScripts() also evicts script-owned DataAssets while the DLL is still mapped.
 	Scripting::ScriptManager::GetInstance().UnloadScripts();
 
 	ResourceManager::GetInstance().Clear();

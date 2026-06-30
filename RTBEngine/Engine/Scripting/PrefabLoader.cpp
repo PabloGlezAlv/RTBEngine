@@ -127,6 +127,7 @@ namespace RTBEngine {
                 ECS::ComponentSnapshot snap;
                 ECS::Prefab::SnapshotComponent(snap, comp);
                 CaptureLuaReferenceProperties(L, compTableIndex, comp, snap);
+
                 prefab.AddSnapshot(std::move(snap));
 
                 ComponentRegistry::GetInstance().DestroyComponent(typeName, comp);

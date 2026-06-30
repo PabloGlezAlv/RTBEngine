@@ -362,6 +362,7 @@ namespace RTBEngine {
                     const Reflection::TypeInfo* effectiveTypeInfo = registeredTypeInfo;
 
                     ApplySnapshot(comp, snap);
+
                     Scripting::SceneReflectionUtils::ClearReferenceProperties(comp, registeredTypeInfo);
                     go->AddComponent(comp, registeredTypeInfo);
                     context.createdComponents.push_back(comp);
@@ -393,15 +394,28 @@ namespace RTBEngine {
                 for (const auto& childPrefab : nodePrefab.childPrefabs)
                 {
                     if (!childPrefab) continue;
-                    GameObject* child = instantiateNode(*childPrefab, go);
-                    if (child)
-                        outChildren.push_back(child);
+                    instantiateNode(*childPrefab, go);
                 }
 
                 return go;
             };
 
             GameObject* root = instantiateNode(*this, parent);
+
+            // Register every descendant with the scene, not only direct children.
+            // Nested nodes (e.g. weapons parented to bones) must be in the flat GO list
+            // so component caches, lifecycle, and rendering can find them.
+            std::function<void(GameObject*)> collectDescendants = [&](GameObject* node) {
+                if (!node) {
+                    return;
+                }
+
+                for (GameObject* child : node->GetChildren()) {
+                    outChildren.push_back(child);
+                    collectDescendants(child);
+                }
+            };
+            collectDescendants(root);
 
             for (const PendingReferencePatch& patch : context.pendingReferencePatches)
             {

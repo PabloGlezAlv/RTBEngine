@@ -735,7 +735,7 @@ namespace RTBEngine {
             scenes.clear();
             defaultFont = nullptr;
             cubemaps.clear();
-            dataAssets.clear();
+            ClearDataAssets();
             defaultSkybox.reset();
 
             texturePathMap.clear();
@@ -743,6 +743,11 @@ namespace RTBEngine {
             meshPathMap.clear();
             fontPathMap.clear();
             cubemapPathMap.clear();
+        }
+
+        void ResourceManager::ClearDataAssets()
+        {
+            dataAssets.clear();
             dataAssetPathMap.clear();
         }
 

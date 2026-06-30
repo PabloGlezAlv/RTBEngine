@@ -228,7 +228,35 @@ namespace RTBEngine {
             }
 
             std::string FormatString(const std::string& s) {
-                return "\"" + s + "\"";
+                std::string escaped;
+                escaped.reserve(s.size() + 8);
+                escaped.push_back('"');
+
+                for (char c : s) {
+                    switch (c) {
+                    case '\\':
+                        escaped += "\\\\";
+                        break;
+                    case '"':
+                        escaped += "\\\"";
+                        break;
+                    case '\n':
+                        escaped += "\\n";
+                        break;
+                    case '\r':
+                        escaped += "\\r";
+                        break;
+                    case '\t':
+                        escaped += "\\t";
+                        break;
+                    default:
+                        escaped.push_back(c);
+                        break;
+                    }
+                }
+
+                escaped.push_back('"');
+                return escaped;
             }
 
             std::string GetResourcePath(void* resourcePtr, bool silentOnFailure) {

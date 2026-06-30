@@ -116,6 +116,11 @@ namespace RTBEngine {
 
             void Clear();
 
+            // Destroys cached DataAsset instances. Must run while the script DLL that
+            // owns their concrete types (and virtual destructors) is still loaded,
+            // otherwise the deleter dereferences an unloaded module's vtable.
+            void ClearDataAssets();
+
         private:
             ResourceManager();
             ~ResourceManager();

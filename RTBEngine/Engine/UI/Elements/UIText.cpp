@@ -1,4 +1,4 @@
-﻿#include "UIText.h"
+#include "UIText.h"
 #include "../../Rendering/Font.h"
 #include "../../Core/ResourceManager.h"
 #include "../UIRenderContext.h"
@@ -100,12 +100,15 @@ namespace RTBEngine {
 				break;
 			case TextAlignment::Right:
 				textPos.x += scaledWidth - textSize.x;
-				textPos.y += (scaledHeight - textSize.y) * 0.5f;
 				break;
 			case TextAlignment::Left:
 			default:
-				textPos.y += (scaledHeight - textSize.y) * 0.5f;
 				break;
+			}
+
+			const float topPadding = 4.0f * uiScale;
+			if (alignment != TextAlignment::Center) {
+				textPos.y += topPadding;
 			}
 
 			ImU32 textColor = IM_COL32(

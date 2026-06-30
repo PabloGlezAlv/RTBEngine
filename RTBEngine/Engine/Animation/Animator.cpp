@@ -138,6 +138,9 @@ namespace RTBEngine {
                     CreateBoneGameObjects(scene);
                 }
             }
+            else if (skeleton && boneGOsCreated && !playing) {
+                ApplyBindPoseTransforms();
+            }
         }
 
         void Animator::OnStart()
@@ -458,6 +461,8 @@ namespace RTBEngine {
 
         void Animator::CreateBoneGameObjects(ECS::Scene* scene)
         {
+            EnsureModelDataLoaded();
+
             if (!skeleton || !owner || boneGOsCreated || !scene) {
                 return;
             }
@@ -507,9 +512,7 @@ namespace RTBEngine {
                     }
 
                     ReparentPreserveWorld(boneGO, parentGO);
-                    if (createdNew) {
-                        ApplyBindPose(boneGO, bone);
-                    }
+                    ApplyBindPose(boneGO, bone);
 
                     boneGameObjects[i] = boneGO;
                     boneGO->SetAnimatorBone(true);
@@ -535,6 +538,8 @@ namespace RTBEngine {
                     currentClipName = defaultClip;
                 }
             }
+
+            ApplyBindPoseTransforms();
             if (currentClip && playing) {
                 UpdateBoneTransforms();
             }
