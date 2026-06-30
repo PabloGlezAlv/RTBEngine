@@ -155,8 +155,6 @@ namespace RTBEngine {
             // Never wipe an existing bake just because this particular call had nothing
             // to write (e.g. invoked during teardown). Deletion only happens explicitly.
             if (records.empty()) {
-                RTB_WARN("[NavMeshFile] Skipped saving navmesh for '" + sceneAssetPath +
-                    "': no baked navigation grids in scene (existing file left untouched).");
                 return false;
             }
 
@@ -297,7 +295,6 @@ namespace RTBEngine {
                 ECS::NavGridComponent* navGrid =
                     ECS::NavGridComponent::FindNavGridByOwnerUuid(scene, record.ownerUuid);
                 if (!navGrid) {
-                    RTB_WARN("[NavMeshFile] NavGrid owner UUID not found in scene: " + record.ownerUuid);
                     continue;
                 }
 

@@ -116,6 +116,8 @@ namespace RTBEngine {
 
             static void ActivateAllBakedInScene(Scene* scene);
 
+            static bool SceneHasNavGrid(Scene* scene);
+
             static void LoadNavMeshForScene(const std::string& sceneAssetPath, Scene* scene);
             static bool SaveNavMeshForScene(const std::string& sceneAssetPath, Scene* scene);
 

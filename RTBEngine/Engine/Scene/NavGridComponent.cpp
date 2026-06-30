@@ -577,13 +577,54 @@ namespace RTBEngine {
             return gameObject->GetComponent<NavGridComponent>();
         }
 
+        bool NavGridComponent::SceneHasNavGrid(Scene* scene)
+        {
+            if (!scene) {
+                return false;
+            }
+
+            std::function<bool(GameObject*)> visit = [&](GameObject* gameObject) -> bool {
+                if (!gameObject) {
+                    return false;
+                }
+
+                if (gameObject->GetComponent<NavGridComponent>()) {
+                    return true;
+                }
+
+                for (GameObject* child : gameObject->GetChildren()) {
+                    if (visit(child)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            };
+
+            for (const auto& gameObject : scene->GetGameObjects()) {
+                if (gameObject && visit(gameObject.get())) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         void NavGridComponent::LoadNavMeshForScene(const std::string& sceneAssetPath, Scene* scene)
         {
+            if (!SceneHasNavGrid(scene)) {
+                return;
+            }
+
             Navigation::NavMeshFile::LoadSceneNavMesh(sceneAssetPath, scene);
         }
 
         bool NavGridComponent::SaveNavMeshForScene(const std::string& sceneAssetPath, Scene* scene)
         {
+            if (!SceneHasNavGrid(scene)) {
+                return false;
+            }
+
             return Navigation::NavMeshFile::SaveSceneNavMesh(sceneAssetPath, scene);
         }
 
