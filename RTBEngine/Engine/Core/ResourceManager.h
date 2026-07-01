@@ -70,6 +70,8 @@ namespace RTBEngine {
             // Full model data (meshes, skeleton, animations) — cached after first load.
             const Rendering::ModelData& GetModelData(const std::string& path);
             const Rendering::ModelData& LoadModelData(const std::string& path);
+            // Animation-only FBX sources (additional clip packs). Shares the model cache but never registers meshes.
+            const Rendering::ModelData& LoadAnimationClips(const std::string& path);
 
             // Audio management
             Audio::AudioClip* GetAudioClip(const std::string& path);

@@ -70,14 +70,6 @@ namespace RTBEngine {
                 boneGO->GetTransform().SetRotation(rot);
                 boneGO->GetTransform().SetScale(scale);
             }
-
-            bool IsBindPoseClipName(const std::string& name)
-            {
-                return name == "T-Pose" ||
-                    name == "TPose" ||
-                    name == "BindPose" ||
-                    name == "bind_pose";
-            }
         }
 
         using ThisClass = Animator;
@@ -99,76 +91,113 @@ namespace RTBEngine {
         {
         }
 
-        void Animator::EnsureModelDataLoaded()
+        std::string Animator::NormalizeClipName(const std::string& rawName)
         {
-            if (modelRef.empty()) {
-                EnsureAdditionalAnimationSourcesLoaded();
-                return;
-            }
-
-            // Load skeleton/meshes even when clips were pre-registered (e.g. ThirdPersonCharacterController
-            // registers locomotion aliases on the parent OnStart before this Animator's OnStart runs).
-            if (!skeleton) {
-                auto& resources = Core::ResourceManager::GetInstance();
-
-                const Rendering::ModelData& modelData = resources.LoadModelData(modelRef);
-
-                if (modelData.skeleton) {
-                    SetSkeleton(modelData.skeleton);
-                }
-
-                if (!modelData.meshes.empty()) {
-                    SetMeshes(modelData.meshes);
-                }
-
-                for (const auto& clip : modelData.animations) {
-                    AddClip(clip->GetName(), clip);
-                }
-            }
-
-            EnsureAdditionalAnimationSourcesLoaded();
+            const size_t pipe = rawName.find('|');
+            return pipe != std::string::npos ? rawName.substr(pipe + 1) : rawName;
         }
 
-        void Animator::EnsureAdditionalAnimationSourcesLoaded()
+        bool Animator::AreSourcesCurrent() const
         {
-            if (additionalAnimationSourcesLoaded || additionalModels.empty()) {
-                return;
-            }
+            return loadedPrimaryPath == modelRef && loadedAdditionalPaths == additionalModels;
+        }
 
-            additionalAnimationSourcesLoaded = true;
+        void Animator::ReloadClipLibrary()
+        {
+            const std::string previousDefault = defaultClip;
+            const std::string previousCurrent = currentClipName;
+            const bool wasPlaying = playing;
+            const bool wasLooping = looping;
+
+            clips.clear();
+            currentClip = nullptr;
+            loadedPrimaryPath.clear();
+            loadedAdditionalPaths.clear();
 
             auto& resources = Core::ResourceManager::GetInstance();
+
+            if (!modelRef.empty()) {
+                const Rendering::ModelData& modelData = resources.LoadModelData(modelRef);
+                if (modelData.skeleton || !modelData.meshes.empty() || !modelData.animations.empty()) {
+                    if (modelData.skeleton) {
+                        SetSkeleton(modelData.skeleton);
+                    }
+
+                    if (!modelData.meshes.empty()) {
+                        SetMeshes(modelData.meshes);
+                    }
+
+                    for (const auto& clip : modelData.animations) {
+                        AddClip(clip->GetName(), clip);
+                    }
+                } else {
+                    RTB_WARN("[Animator] Primary model not found or empty: " + modelRef);
+                }
+            } else {
+                skeleton.reset();
+                meshes.clear();
+            }
+
             for (const std::string& addPath : additionalModels) {
                 if (addPath.empty()) {
                     continue;
                 }
 
-                const std::string resolvedPath = resources.ResolvePathForRead(addPath);
-                Rendering::ModelData addData =
-                    Rendering::ModelLoader::LoadModelWithAnimations(resolvedPath);
-                if (addData.animations.empty() && addData.meshes.empty()) {
-                    RTB_WARN("[Animator] Additional model not found or empty: " + addPath);
+                const Rendering::ModelData& addData = resources.LoadAnimationClips(addPath);
+                if (addData.animations.empty()) {
+                    RTB_WARN("[Animator] Additional animation source not found or empty: " + addPath);
                     continue;
                 }
 
                 for (const auto& clip : addData.animations) {
                     AddClip(clip->GetName(), clip);
                 }
+            }
 
-                for (Rendering::Mesh* mesh : addData.meshes) {
-                    delete mesh;
+            loadedPrimaryPath = modelRef;
+            loadedAdditionalPaths = additionalModels;
+
+            defaultClip = NormalizeClipName(previousDefault);
+            if (!defaultClip.empty() && GetClip(defaultClip) == nullptr) {
+                defaultClip.clear();
+            }
+
+            currentClipName = NormalizeClipName(previousCurrent);
+            if (!currentClipName.empty()) {
+                currentClip = GetClip(currentClipName);
+                if (!currentClip) {
+                    currentClipName.clear();
                 }
             }
+
+            if (!currentClip && !defaultClip.empty()) {
+                currentClip = GetClip(defaultClip);
+                if (currentClip) {
+                    currentClipName = defaultClip;
+                }
+            }
+
+            playing = wasPlaying && currentClip != nullptr;
+            looping = wasLooping;
+        }
+
+        void Animator::EnsureSourcesLoaded()
+        {
+            if (AreSourcesCurrent()) {
+                return;
+            }
+
+            ReloadClipLibrary();
         }
 
         void Animator::OnAwake()
         {
-            EnsureModelDataLoaded();
+            EnsureSourcesLoaded();
         }
 
         void Animator::OnValidate()
         {
-            EnsureModelDataLoaded();
+            EnsureSourcesLoaded();
 
             // Create bone GOs in Edit mode too so the hierarchy is visible
             if (skeleton && !boneGOsCreated) {
@@ -184,7 +213,7 @@ namespace RTBEngine {
 
         void Animator::OnStart()
         {
-            EnsureModelDataLoaded();
+            EnsureSourcesLoaded();
 
             // Initialize bone transforms array
             if (skeleton) {
@@ -259,12 +288,19 @@ namespace RTBEngine {
 
         void Animator::AddClip(const std::string& name, std::shared_ptr<AnimationClip> clip)
         {
-            if (clips.find(name) != clips.end() && !IsBindPoseClipName(name)) {
-                RTB_WARN("[Animator] Clip name collision: \"" + name + "\" already exists and will be overwritten.");
+            if (!clip || name.empty()) {
+                return;
             }
-            clips[name] = clip;
 
-            if (currentClipName == name) {
+            const std::string normalizedName = NormalizeClipName(name);
+            const auto existing = clips.find(normalizedName);
+            if (existing != clips.end() && existing->second == clip) {
+                return;
+            }
+
+            clips[normalizedName] = clip;
+
+            if (currentClipName == normalizedName) {
                 currentClip = clip.get();
                 if (!currentClip) {
                     currentClipName.clear();
@@ -306,7 +342,7 @@ namespace RTBEngine {
             }
             else {
                 for (const auto& clip : modelData.animations) {
-                    if (clip && clip->GetName() == clipName) {
+                    if (clip && NormalizeClipName(clip->GetName()) == NormalizeClipName(clipName)) {
                         selectedClip = clip;
                         break;
                     }
@@ -324,6 +360,8 @@ namespace RTBEngine {
         void Animator::ClearClips()
         {
             clips.clear();
+            loadedPrimaryPath.clear();
+            loadedAdditionalPaths.clear();
             currentClip = nullptr;
             currentClipName.clear();
             currentTime = 0.0f;
@@ -334,7 +372,8 @@ namespace RTBEngine {
 
         AnimationClip* Animator::GetClip(const std::string& name) const
         {
-            auto it = clips.find(name);
+            const std::string normalizedName = NormalizeClipName(name);
+            auto it = clips.find(normalizedName);
             if (it != clips.end()) {
                 return it->second.get();
             }
@@ -354,13 +393,14 @@ namespace RTBEngine {
 
         void Animator::SelectClip(const std::string& clipName, bool loop)
         {
-            AnimationClip* clip = GetClip(clipName);
+            const std::string normalizedName = NormalizeClipName(clipName);
+            AnimationClip* clip = GetClip(normalizedName);
             if (!clip) {
                 return;
             }
 
             currentClip = clip;
-            currentClipName = clipName;
+            currentClipName = normalizedName;
             currentTime = 0.0f;
             paused = false;
             holdPose = false;
@@ -369,13 +409,14 @@ namespace RTBEngine {
 
         void Animator::Play(const std::string& clipName, bool loop)
         {
-            AnimationClip* clip = GetClip(clipName);
+            const std::string normalizedName = NormalizeClipName(clipName);
+            AnimationClip* clip = GetClip(normalizedName);
             if (!clip) {
                 return;
             }
 
             currentClip = clip;
-            currentClipName = clipName;
+            currentClipName = normalizedName;
             currentTime = 0.0f;
             playing = true;
             paused = false;
@@ -387,7 +428,7 @@ namespace RTBEngine {
 
         void Animator::Stop()
         {
-            EnsureModelDataLoaded();
+            EnsureSourcesLoaded();
 
             playing = false;
             paused = false;
@@ -500,7 +541,7 @@ namespace RTBEngine {
 
         void Animator::CreateBoneGameObjects(ECS::Scene* scene)
         {
-            EnsureModelDataLoaded();
+            EnsureSourcesLoaded();
 
             if (!skeleton || !owner || boneGOsCreated || !scene) {
                 return;

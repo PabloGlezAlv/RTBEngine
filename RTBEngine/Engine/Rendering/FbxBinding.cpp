@@ -337,7 +337,8 @@ namespace RTBEngine {
                     animator->AddClip(clip->GetName(), clip);
                 }
                 if (!modelData.animations.empty()) {
-                    animator->defaultClip = modelData.animations[0]->GetName();
+                    animator->defaultClip = Animation::Animator::NormalizeClipName(
+                        modelData.animations[0]->GetName());
                 }
                 animator->modelRef = fbxPath;
                 root->AddComponent(animator);

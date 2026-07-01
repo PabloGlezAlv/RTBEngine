@@ -322,65 +322,23 @@ namespace RTBEngine {
             }
 
             void ConfigureAnimator(lua_State* L, int tableIndex, Animation::Animator* comp) {
-                Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
-
                 std::string modelPath = ReadOptionalString(L, tableIndex, "modelRef", "");
                 if (modelPath.empty()) modelPath = ReadOptionalString(L, tableIndex, "model", "");
 
-                // Only (re)assign modelRef and reload model data when a path is actually
-                // provided. Prefab-instance overrides frequently re-declare the Animator
-                // component without repeating modelRef; clobbering it to "" here would drop
-                // the skeleton and leave every bone at identity (0,0,0).
+                // Only (re)assign modelRef when a path is actually provided. Prefab-instance
+                // overrides frequently re-declare the Animator without repeating modelRef.
                 if (!modelPath.empty()) {
                     comp->modelRef = modelPath;
-
-                    Rendering::ModelData modelData = Rendering::ModelLoader::LoadModelWithAnimations(modelPath);
-
-                    if (modelData.skeleton) {
-                        comp->SetSkeleton(modelData.skeleton);
-                    }
-
-                    if (!modelData.meshes.empty()) {
-                        resources.RegisterMeshes(modelPath, modelData.meshes);
-                        comp->SetMeshes(modelData.meshes);
-                    }
-
-                    for (const auto& clip : modelData.animations) {
-                        comp->AddClip(clip->GetName(), clip);
-                    }
                 }
 
-                // Load additional animation-only FBX files (clips merged, meshes ignored)
-                for (const std::string& addPath : comp->additionalModels) {
-                    if (addPath.empty()) {
-                        continue;
-                    }
+                comp->ReloadClipLibrary();
 
-                    Rendering::ModelData addData = Rendering::ModelLoader::LoadModelWithAnimations(addPath);
-                    if (addData.animations.empty() && addData.meshes.empty()) {
-                        RTB_WARN("[Animator] Additional model not found or empty: " + addPath);
-                    } else {
-                        for (const auto& clip : addData.animations) {
-                            comp->AddClip(clip->GetName(), clip);
-                        }
-                    }
-                    for (Rendering::Mesh* mesh : addData.meshes) {
-                        delete mesh;
-                    }
-                }
-
-                // Strip legacy "vendor|" prefix from clip name fields (e.g. old scene files with "mixamo.com|Walk")
-                auto StripPrefix = [](const std::string& s) -> std::string {
-                    size_t pipe = s.find('|');
-                    return (pipe != std::string::npos) ? s.substr(pipe + 1) : s;
-                };
-
-                // Sync defaultClip from Lua
-                comp->defaultClip = StripPrefix(ReadOptionalString(L, tableIndex, "defaultClip", ""));
+                comp->defaultClip = Animation::Animator::NormalizeClipName(
+                    ReadOptionalString(L, tableIndex, "defaultClip", ""));
 
                 std::string clipName = ReadOptionalString(L, tableIndex, "currentClipName", "");
                 if (clipName.empty()) clipName = ReadOptionalString(L, tableIndex, "defaultClip", "");
-                clipName = StripPrefix(clipName);
+                clipName = Animation::Animator::NormalizeClipName(clipName);
                 bool loop = ReadOptionalBool(L, tableIndex, "looping", true);
                 if (!loop) loop = ReadOptionalBool(L, tableIndex, "loop", true);
                 const bool shouldPlay = ReadOptionalBool(L, tableIndex, "playing", false);

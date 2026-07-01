@@ -357,13 +357,47 @@ namespace RTBEngine {
 
             Rendering::ModelData loaded =
                 Rendering::ModelLoader::LoadModelWithAnimations(ResolvePathForRead(path));
-            if (loaded.meshes.empty()) {
+            if (loaded.meshes.empty() && loaded.animations.empty() && !loaded.skeleton) {
                 RTB_ERROR("ResourceManager: Failed to load model data: " + path);
                 return emptyModelData;
             }
 
-            RegisterMeshes(path, loaded.meshes);
-            loaded.meshes = modelMeshPtrs[path];
+            if (!loaded.meshes.empty()) {
+                RegisterMeshes(path, loaded.meshes);
+                loaded.meshes = modelMeshPtrs[path];
+            }
+
+            loaded.modelAssetPath = path;
+
+            auto [insertedIt, inserted] = modelDataCache.emplace(path, std::move(loaded));
+            return insertedIt->second;
+        }
+
+        const Rendering::ModelData& ResourceManager::LoadAnimationClips(const std::string& path)
+        {
+            if (path.empty()) {
+                return emptyModelData;
+            }
+
+            auto it = modelDataCache.find(path);
+            if (it != modelDataCache.end()) {
+                return it->second;
+            }
+
+            Rendering::ModelData loaded =
+                Rendering::ModelLoader::LoadModelWithAnimations(ResolvePathForRead(path));
+            if (loaded.animations.empty()) {
+                for (Rendering::Mesh* mesh : loaded.meshes) {
+                    delete mesh;
+                }
+                RTB_WARN("ResourceManager: Animation source has no clips: " + path);
+                return emptyModelData;
+            }
+
+            for (Rendering::Mesh* mesh : loaded.meshes) {
+                delete mesh;
+            }
+            loaded.meshes.clear();
             loaded.modelAssetPath = path;
 
             auto [insertedIt, inserted] = modelDataCache.emplace(path, std::move(loaded));

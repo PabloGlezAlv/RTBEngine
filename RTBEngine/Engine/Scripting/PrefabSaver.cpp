@@ -41,6 +41,9 @@ namespace RTBEngine {
 
             file << ind << "{\n";
             file << ind << "    name = \"" << prefab.GetName() << "\",\n";
+            if (!prefab.GetSourceUuid().empty()) {
+                file << ind << "    uuid = \"" << prefab.GetSourceUuid() << "\",\n";
+            }
             if (prefab.GetCollisionLayer() != 0) {
                 file << ind << "    collisionLayer = "
                     << ScenePropertySerializer::FormatString(
@@ -94,6 +97,9 @@ namespace RTBEngine {
             try {
                 file << "return {\n";
                 file << "    name = \"" << prefab.GetName() << "\",\n";
+                if (!prefab.GetSourceUuid().empty()) {
+                    file << "    uuid = \"" << prefab.GetSourceUuid() << "\",\n";
+                }
                 if (prefab.GetCollisionLayer() != 0) {
                     file << "    collisionLayer = "
                         << ScenePropertySerializer::FormatString(
