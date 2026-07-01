@@ -109,8 +109,10 @@ namespace RTBEngine {
             std::vector<Math::Matrix4> currentLocalTransforms;
             std::vector<ECS::GameObject*> boneGameObjects;
             bool boneGOsCreated = false;
+            bool additionalAnimationSourcesLoaded = false;
 
             void EnsureModelDataLoaded();
+            void EnsureAdditionalAnimationSourcesLoaded();
             void UpdateBoneTransforms();
             void ApplyBindPoseTransforms();
         };

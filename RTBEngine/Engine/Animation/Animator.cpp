@@ -101,9 +101,14 @@ namespace RTBEngine {
 
         void Animator::EnsureModelDataLoaded()
         {
-            // Lazy-load model data (skeleton, meshes, clips, materials) if we have a modelRef
-            // but no runtime data yet (typical for prefab snapshot duplicates).
-            if (!modelRef.empty() && !skeleton && clips.empty()) {
+            if (modelRef.empty()) {
+                EnsureAdditionalAnimationSourcesLoaded();
+                return;
+            }
+
+            // Load skeleton/meshes even when clips were pre-registered (e.g. ThirdPersonCharacterController
+            // registers locomotion aliases on the parent OnStart before this Animator's OnStart runs).
+            if (!skeleton) {
                 auto& resources = Core::ResourceManager::GetInstance();
 
                 const Rendering::ModelData& modelData = resources.LoadModelData(modelRef);
@@ -118,6 +123,40 @@ namespace RTBEngine {
 
                 for (const auto& clip : modelData.animations) {
                     AddClip(clip->GetName(), clip);
+                }
+            }
+
+            EnsureAdditionalAnimationSourcesLoaded();
+        }
+
+        void Animator::EnsureAdditionalAnimationSourcesLoaded()
+        {
+            if (additionalAnimationSourcesLoaded || additionalModels.empty()) {
+                return;
+            }
+
+            additionalAnimationSourcesLoaded = true;
+
+            auto& resources = Core::ResourceManager::GetInstance();
+            for (const std::string& addPath : additionalModels) {
+                if (addPath.empty()) {
+                    continue;
+                }
+
+                const std::string resolvedPath = resources.ResolvePathForRead(addPath);
+                Rendering::ModelData addData =
+                    Rendering::ModelLoader::LoadModelWithAnimations(resolvedPath);
+                if (addData.animations.empty() && addData.meshes.empty()) {
+                    RTB_WARN("[Animator] Additional model not found or empty: " + addPath);
+                    continue;
+                }
+
+                for (const auto& clip : addData.animations) {
+                    AddClip(clip->GetName(), clip);
+                }
+
+                for (Rendering::Mesh* mesh : addData.meshes) {
+                    delete mesh;
                 }
             }
         }

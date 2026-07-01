@@ -35,6 +35,7 @@ namespace RTBEngine {
 
             std::unordered_map<std::string, std::unique_ptr<Prefab>> prefabs;
             std::unordered_map<std::string, std::string> nameToPaths;
+            std::unordered_map<std::string, std::string> pathToName;
         };
 
     }

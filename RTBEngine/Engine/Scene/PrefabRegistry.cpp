@@ -41,12 +41,29 @@ namespace RTBEngine {
             nameToPaths[name] = filePath;
             prefabs[name] = std::move(prefab);
 
+            std::error_code pathEc;
+            const std::filesystem::path canonicalPath =
+                std::filesystem::weakly_canonical(filePath, pathEc);
+            if (!pathEc) {
+                pathToName[canonicalPath.string()] = name;
+            }
+
             if (onPrefabChanged)
                 onPrefabChanged(name);
         }
 
         void PrefabRegistry::Unload(const std::string& name)
         {
+            auto pathIt = nameToPaths.find(name);
+            if (pathIt != nameToPaths.end()) {
+                std::error_code pathEc;
+                const std::filesystem::path canonicalPath =
+                    std::filesystem::weakly_canonical(pathIt->second, pathEc);
+                if (!pathEc) {
+                    pathToName.erase(canonicalPath.string());
+                }
+            }
+
             prefabs.erase(name);
             nameToPaths.erase(name);
         }
@@ -73,9 +90,15 @@ namespace RTBEngine {
 
         Prefab* PrefabRegistry::GetByPath(const std::string& filePath) const
         {
-            std::filesystem::path canonical;
             std::error_code ec;
-            canonical = std::filesystem::weakly_canonical(filePath, ec);
+            const std::filesystem::path canonical =
+                std::filesystem::weakly_canonical(filePath, ec);
+            if (!ec) {
+                const auto pathIt = pathToName.find(canonical.string());
+                if (pathIt != pathToName.end()) {
+                    return Get(pathIt->second);
+                }
+            }
 
             for (const auto& [name, path] : nameToPaths)
             {
@@ -95,6 +118,7 @@ namespace RTBEngine {
         {
             prefabs.clear();
             nameToPaths.clear();
+            pathToName.clear();
         }
 
     }
