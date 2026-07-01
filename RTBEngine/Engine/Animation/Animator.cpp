@@ -109,7 +109,17 @@ namespace RTBEngine {
             const bool wasPlaying = playing;
             const bool wasLooping = looping;
 
+            // Preserve gameplay aliases registered via LoadClipFromFbx (e.g. ThirdPerson.Idle).
+            std::unordered_map<std::string, std::shared_ptr<AnimationClip>> aliasClips;
+            aliasClips.reserve(clips.size());
+            for (const auto& entry : clips) {
+                if (sourceDerivedClipNames.find(entry.first) == sourceDerivedClipNames.end()) {
+                    aliasClips.emplace(entry.first, entry.second);
+                }
+            }
+
             clips.clear();
+            sourceDerivedClipNames.clear();
             currentClip = nullptr;
             loadedPrimaryPath.clear();
             loadedAdditionalPaths.clear();
@@ -128,7 +138,7 @@ namespace RTBEngine {
                     }
 
                     for (const auto& clip : modelData.animations) {
-                        AddClip(clip->GetName(), clip);
+                        AddClipFromSource(clip->GetName(), clip);
                     }
                 } else {
                     RTB_WARN("[Animator] Primary model not found or empty: " + modelRef);
@@ -150,8 +160,12 @@ namespace RTBEngine {
                 }
 
                 for (const auto& clip : addData.animations) {
-                    AddClip(clip->GetName(), clip);
+                    AddClipFromSource(clip->GetName(), clip);
                 }
+            }
+
+            for (const auto& entry : aliasClips) {
+                AddClip(entry.first, entry.second);
             }
 
             loadedPrimaryPath = modelRef;
@@ -170,7 +184,8 @@ namespace RTBEngine {
                 }
             }
 
-            if (!currentClip && !defaultClip.empty()) {
+            // Only restore defaultClip as active when no explicit clip was requested.
+            if (!currentClip && previousCurrent.empty() && !defaultClip.empty()) {
                 currentClip = GetClip(defaultClip);
                 if (currentClip) {
                     currentClipName = defaultClip;
@@ -234,14 +249,12 @@ namespace RTBEngine {
                 } else {
                     SelectClip(currentClipName, looping);
                 }
-            } else if (!defaultClip.empty() && GetClip(defaultClip) != nullptr) {
+            } else if (currentClipName.empty() && !defaultClip.empty() && GetClip(defaultClip) != nullptr) {
                 if (playing) {
                     Play(defaultClip, looping);
                 } else {
                     SelectClip(defaultClip, looping);
                 }
-            } else if (playing && !clips.empty()) {
-                Play(clips.begin()->first, looping);
             }
         }
 
@@ -284,6 +297,16 @@ namespace RTBEngine {
             if (skeleton) {
                 ApplyBindPoseTransforms();
             }
+        }
+
+        void Animator::AddClipFromSource(const std::string& name, std::shared_ptr<AnimationClip> clip)
+        {
+            AddClip(name, clip);
+            if (!clip || name.empty()) {
+                return;
+            }
+
+            sourceDerivedClipNames.insert(NormalizeClipName(name));
         }
 
         void Animator::AddClip(const std::string& name, std::shared_ptr<AnimationClip> clip)
@@ -331,7 +354,7 @@ namespace RTBEngine {
             }
 
             auto& resources = Core::ResourceManager::GetInstance();
-            const Rendering::ModelData& modelData = resources.LoadModelData(modelPath);
+            const Rendering::ModelData& modelData = resources.LoadAnimationClips(modelPath);
             if (modelData.animations.empty()) {
                 return false;
             }
@@ -360,6 +383,7 @@ namespace RTBEngine {
         void Animator::ClearClips()
         {
             clips.clear();
+            sourceDerivedClipNames.clear();
             loadedPrimaryPath.clear();
             loadedAdditionalPaths.clear();
             currentClip = nullptr;

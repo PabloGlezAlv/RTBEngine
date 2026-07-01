@@ -352,7 +352,8 @@ namespace RTBEngine {
                     } else {
                         comp->SelectClip(clipName, loop);
                     }
-                } else {
+                    comp->playing = shouldPlay;
+                } else if (clipName.empty()) {
                     auto clipNames = comp->GetClipNames();
                     if (!clipNames.empty()) {
                         if (shouldPlay) {
@@ -361,9 +362,11 @@ namespace RTBEngine {
                             comp->SelectClip(clipNames[0], loop);
                         }
                     }
+                    comp->playing = shouldPlay;
+                } else {
+                    // Clip not loaded yet (e.g. ThirdPerson.* aliases). Let gameplay scripts register it.
+                    comp->playing = false;
                 }
-
-                comp->playing = shouldPlay;
             }
 
             void ConfigureNavGrid(lua_State* L, int tableIndex, ECS::NavGridComponent* comp) {
