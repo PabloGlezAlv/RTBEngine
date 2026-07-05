@@ -8,6 +8,7 @@
 #include "Core/Event.h"
 #include "Core/Time.h"
 #include "Core/Scheduler.h"
+#include "Core/CountdownTimer.h"
 #include "Scripting/LatentActions.h"
 
 // Scene & Components
