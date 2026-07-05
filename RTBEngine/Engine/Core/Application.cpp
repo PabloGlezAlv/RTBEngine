@@ -1,6 +1,7 @@
 #include "Application.h"
 #include "Window.h"
 #include "Time.h"
+#include "Scheduler.h"
 #include "../Input/Input.h"
 #include "../Rendering/Rendering.h"
 #include "../Scene/Scene.h"
@@ -450,6 +451,7 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 
 	Time::SetFixedDeltaTime(config.physics.timeStep);
 	Time::AdvanceFrame(deltaTime);
+	Scheduler::GetInstance().Tick(Time::GetDeltaTime(), Time::GetUnscaledDeltaTime());
 
 	Online::OnlineSystem::GetInstance().Tick(deltaTime);
 

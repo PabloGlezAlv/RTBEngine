@@ -7,6 +7,8 @@
 #include "Core/Logger.h"
 #include "Core/Event.h"
 #include "Core/Time.h"
+#include "Core/Scheduler.h"
+#include "Scripting/LatentActions.h"
 
 // Scene & Components
 #include "Scene/GameObject.h"

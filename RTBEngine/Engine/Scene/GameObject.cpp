@@ -1,6 +1,7 @@
 #include "GameObject.h"
 #include "Scene.h"
 #include "SceneLifecycle.h"
+#include "../Core/Scheduler.h"
 #include "../Core/Time.h"
 #include "../Core/TypeId.h"
 #include "../Reflection/TypeInfo.h"
@@ -101,6 +102,7 @@ namespace RTBEngine {
             parent = nullptr;
 
             for (auto& comp : components) {
+                Core::Scheduler::GetInstance().CancelAllForOwner(comp.get());
                 comp->OnDestroy();
             }
             components.clear();
@@ -253,6 +255,7 @@ namespace RTBEngine {
 
             if (it != components.end()) {
                 UnregisterComponentType(component);
+                Core::Scheduler::GetInstance().CancelAllForOwner(component);
                 (*it)->OnDestroy();
                 components.erase(it);
 

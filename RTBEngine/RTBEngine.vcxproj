@@ -198,6 +198,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Rendering\Frustum.cpp" />
     <ClCompile Include="Engine\Core\Application.cpp" />
     <ClCompile Include="Engine\Core\Time.cpp" />
+    <ClCompile Include="Engine\Core\Scheduler.cpp" />
     <ClCompile Include="Engine\Core\Window.cpp" />
     <ClCompile Include="Engine\Math\Vectors\Vector3.cpp" />
     <ClCompile Include="Engine\Math\Vectors\Vector2.cpp" />
@@ -371,6 +372,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Rendering\Frustum.h" />
     <ClInclude Include="Engine\Core\Application.h" />
     <ClInclude Include="Engine\Core\Time.h" />
+    <ClInclude Include="Engine\Core\Scheduler.h" />
     <ClInclude Include="Engine\Core\Window.h" />
     <ClInclude Include="Engine\Input\Input.h" />
     <ClInclude Include="Engine\Input\KeyCode.h" />

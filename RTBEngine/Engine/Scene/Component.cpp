@@ -1,5 +1,7 @@
 #include "Component.h"
 #include "GameObject.h"
+#include "../Core/Scheduler.h"
+#include "../Scripting/LatentActions.h"
 #include "../Physics/CollisionInfo.h"
 
 namespace RTBEngine {
@@ -59,6 +61,51 @@ namespace RTBEngine {
         void Component::SetTimeMode(ComponentTimeMode mode)
         {
             this->timeMode = mode;
+        }
+
+        Scripting::LatentActionHandle Component::StartSequence(Scripting::LatentSequence sequence)
+        {
+            const bool useUnscaledTime = timeMode == ComponentTimeMode::Unscaled;
+            return Core::Scheduler::GetInstance().StartSequence(
+                this,
+                std::move(sequence),
+                useUnscaledTime);
+        }
+
+        Scripting::LatentActionHandle Component::Invoke(
+            float delaySeconds,
+            std::function<void()> callback)
+        {
+            const bool useUnscaledTime = timeMode == ComponentTimeMode::Unscaled;
+            return Core::Scheduler::GetInstance().Invoke(
+                this,
+                delaySeconds,
+                std::move(callback),
+                useUnscaledTime);
+        }
+
+        Scripting::LatentActionHandle Component::InvokeRepeating(
+            float initialDelaySeconds,
+            float intervalSeconds,
+            std::function<void()> callback)
+        {
+            const bool useUnscaledTime = timeMode == ComponentTimeMode::Unscaled;
+            return Core::Scheduler::GetInstance().InvokeRepeating(
+                this,
+                initialDelaySeconds,
+                intervalSeconds,
+                std::move(callback),
+                useUnscaledTime);
+        }
+
+        void Component::CancelInvoke(Scripting::LatentActionHandle handle)
+        {
+            Core::Scheduler::GetInstance().Cancel(handle);
+        }
+
+        void Component::CancelAllInvokes()
+        {
+            Core::Scheduler::GetInstance().CancelAllForOwner(this);
         }
 
     }

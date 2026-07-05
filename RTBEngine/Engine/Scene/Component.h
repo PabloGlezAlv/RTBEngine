@@ -1,6 +1,8 @@
 #pragma once
 #include "../RTBEngineAPI.h"
+#include "../Scripting/LatentActions.h"
 #include <cstdint>
+#include <functional>
 #include <string>
 
 namespace RTBEngine {
@@ -80,6 +82,17 @@ namespace RTBEngine {
 
             // Returns type info for inspector. Components using RTB_COMPONENT override this.
             virtual const Reflection::TypeInfo* GetTypeInfo() const { return nullptr; }
+
+            // Latent actions (engine Scheduler — Invoke, sequences, repeating). Cancelled automatically
+            // when this component is destroyed. Respects ComponentTimeMode (Scaled / Unscaled).
+            Scripting::LatentActionHandle StartSequence(Scripting::LatentSequence sequence);
+            Scripting::LatentActionHandle Invoke(float delaySeconds, std::function<void()> callback);
+            Scripting::LatentActionHandle InvokeRepeating(
+                float initialDelaySeconds,
+                float intervalSeconds,
+                std::function<void()> callback);
+            void CancelInvoke(Scripting::LatentActionHandle handle);
+            void CancelAllInvokes();
 
         protected:
             GameObject* owner;
