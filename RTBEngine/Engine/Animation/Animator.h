@@ -1,6 +1,7 @@
 #pragma once
 #include "../RTBEngineAPI.h"
 #include "../Scene/Component.h"
+#include "../Core/Event.h"
 #include "Skeleton.h"
 #include "AnimationClip.h"
 #include "../Reflection/PropertyMacros.h"
@@ -31,8 +32,14 @@ namespace RTBEngine {
             bool loop = false;
         };
 
+        struct RTB_API AnimationKeyFinishedEvent {
+            std::string key;
+        };
+
         class RTB_API Animator : public ECS::Component {
         public:
+            using KeyFinishedCallback = Core::Event<AnimationKeyFinishedEvent>::Callback;
+
             Animator();
             virtual ~Animator();
 
@@ -42,6 +49,7 @@ namespace RTBEngine {
             virtual void OnUpdate(float deltaTime) override;
             virtual void OnLateUpdate(float deltaTime) override;
             virtual void OnValidate() override;
+            virtual void OnDestroy() override;
 
             // --- Clip library (single loading pipeline) ---
             // Strips legacy vendor prefixes (e.g. "mixamo.com|Walk" -> "Walk").
@@ -62,6 +70,8 @@ namespace RTBEngine {
             bool PlayKey(const std::string& key);
             bool PlayKey(const std::string& key, bool loop);
             bool IsPlayingKey(const std::string& key) const;
+            Core::EventSubscription SubscribeKeyFinished(KeyFinishedCallback callback);
+            Core::EventSubscription SubscribeKeyFinished(const std::string& key, KeyFinishedCallback callback);
             void ClearClips();
             AnimationClip* GetClip(const std::string& name) const;
             std::vector<std::string> GetClipNames() const;
@@ -135,8 +145,11 @@ namespace RTBEngine {
             std::unordered_set<std::string> sourceDerivedClipNames;
             std::unordered_set<std::string> loadedKeyClipAliases;
 
+            Core::Event<AnimationKeyFinishedEvent> keyFinishedEvent;
+
             bool AreSourcesCurrent() const;
             const AnimationKeyClip* FindKeyClip(const std::string& key) const;
+            void NotifyKeyFinished(const std::string& key);
             void EnsureSourcesLoaded();
             void AddClipFromSource(const std::string& name, std::shared_ptr<AnimationClip> clip);
             void UpdateBoneTransforms();

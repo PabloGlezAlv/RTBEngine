@@ -2798,12 +2798,31 @@ Primary rig: `ResourceManager::LoadModelData(modelRef)`. Extra packs: `ResourceM
 ```cpp
 std::string modelRef;
 std::vector<std::string> additionalModels;
+std::vector<AnimationKeyClip> keyClips;  // RTB_PROPERTY_ANIMATION_KEY_CLIP_LIST
 std::string currentClipName;
 std::string defaultClip;
 float speed = 1.0f;
 bool playing = false;
 bool looping = true;
 ```
+
+**Keyed clips:**
+
+```cpp
+bool HasKey(const std::string& key) const;
+bool PlayKey(const std::string& key);
+bool PlayKey(const std::string& key, bool loop);
+bool IsPlayingKey(const std::string& key) const;
+bool SetKeyClip(const std::string& key, const std::string& clipFbxRef, bool loop);
+void ReloadKeyClips();
+
+struct AnimationKeyFinishedEvent { std::string key; };
+using KeyFinishedCallback = Core::Event<AnimationKeyFinishedEvent>::Callback;
+Core::EventSubscription SubscribeKeyFinished(KeyFinishedCallback callback);
+Core::EventSubscription SubscribeKeyFinished(const std::string& key, KeyFinishedCallback callback);
+```
+
+Non-looping keyed clips invoke `SubscribeKeyFinished` listeners when playback reaches the end naturally (not on `Stop()` or interrupt).
 
 **Playback and queries:**
 

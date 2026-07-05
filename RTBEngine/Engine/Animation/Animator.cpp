@@ -216,8 +216,6 @@ namespace RTBEngine {
         {
             EnsureSourcesLoaded();
             ReloadKeyClips();
-
-            // Create bone GOs in Edit mode too so the hierarchy is visible
             if (skeleton && !boneGOsCreated) {
                 ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
                 if (scene) {
@@ -281,6 +279,12 @@ namespace RTBEngine {
                     currentTime = duration;
                     playing = false;
                     holdPose = true;
+
+                    const std::string normalizedClipName = NormalizeClipName(currentClipName);
+                    if (!normalizedClipName.empty() &&
+                        loadedKeyClipAliases.find(normalizedClipName) != loadedKeyClipAliases.end()) {
+                        NotifyKeyFinished(normalizedClipName);
+                    }
                 }
             }
 
@@ -493,6 +497,46 @@ namespace RTBEngine {
             }
 
             return NormalizeClipName(currentClipName) == NormalizeClipName(key);
+        }
+
+        Core::EventSubscription Animator::SubscribeKeyFinished(KeyFinishedCallback callback)
+        {
+            if (!callback) {
+                return {};
+            }
+
+            return keyFinishedEvent.Subscribe(std::move(callback));
+        }
+
+        Core::EventSubscription Animator::SubscribeKeyFinished(const std::string& key, KeyFinishedCallback callback)
+        {
+            if (!callback || key.empty()) {
+                return {};
+            }
+
+            const std::string normalizedKey = NormalizeClipName(key);
+            return keyFinishedEvent.Subscribe(
+                [normalizedKey, callback = std::move(callback)](const AnimationKeyFinishedEvent& event) {
+                    if (NormalizeClipName(event.key) == normalizedKey) {
+                        callback(event);
+                    }
+                });
+        }
+
+        void Animator::NotifyKeyFinished(const std::string& key)
+        {
+            if (key.empty()) {
+                return;
+            }
+
+            AnimationKeyFinishedEvent eventData;
+            eventData.key = key;
+            keyFinishedEvent.Invoke(eventData);
+        }
+
+        void Animator::OnDestroy()
+        {
+            keyFinishedEvent.Clear();
         }
 
         void Animator::ClearClips()
