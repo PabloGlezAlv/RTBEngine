@@ -14,6 +14,7 @@
 #include "../Rendering/Texture.h"
 #include "../Rendering/FbxBinding.h"
 #include "../Rendering/ModelLoader.h"
+#include "../Animation/Animator.h"
 #include "../Audio/AudioClip.h"
 
 #include <unordered_map>
@@ -122,6 +123,23 @@ namespace RTBEngine {
                     case Reflection::ListElementType::ComponentRef:
                         // Scene references are resolved when the prefab instance is loaded.
                         continue;
+                    case Reflection::ListElementType::AnimationKeyClip: {
+                        const auto* values = static_cast<const std::vector<RTBEngine::Animation::AnimationKeyClip>*>(
+                            prop->GetData(comp));
+                        if (values) {
+                            std::vector<AnimationKeyClipSnapshot> storedValues;
+                            storedValues.reserve(values->size());
+                            for (const RTBEngine::Animation::AnimationKeyClip& entry : *values) {
+                                AnimationKeyClipSnapshot stored;
+                                stored.key = entry.key;
+                                stored.clipFbxRef = entry.clipFbxRef;
+                                stored.loop = entry.loop;
+                                storedValues.push_back(std::move(stored));
+                            }
+                            snap.listAnimationKeyClipData[offset] = std::move(storedValues);
+                        }
+                        continue;
+                    }
                     default:
                         continue;
                     }
@@ -192,6 +210,25 @@ namespace RTBEngine {
                 std::vector<std::string>* dst = reinterpret_cast<std::vector<std::string>*>(
                     actualObject + offset);
                 *dst = strings;
+            }
+
+            for (const auto& [offset, storedValues] : snap.listAnimationKeyClipData)
+            {
+                auto* dst = reinterpret_cast<std::vector<RTBEngine::Animation::AnimationKeyClip>*>(
+                    actualObject + offset);
+                if (!dst) {
+                    continue;
+                }
+
+                dst->clear();
+                dst->reserve(storedValues.size());
+                for (const AnimationKeyClipSnapshot& stored : storedValues) {
+                    RTBEngine::Animation::AnimationKeyClip entry;
+                    entry.key = stored.key;
+                    entry.clipFbxRef = stored.clipFbxRef;
+                    entry.loop = stored.loop;
+                    dst->push_back(std::move(entry));
+                }
             }
 
             if (snap.ptrPathData.empty()) return;

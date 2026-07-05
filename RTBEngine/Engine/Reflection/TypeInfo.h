@@ -49,6 +49,7 @@ namespace RTBEngine {
             AssetRef = 2,
             GameObjectRef = 3,
             ComponentRef = 4,
+            AnimationKeyClip = 5,
         };
 
         // Property configuration flags

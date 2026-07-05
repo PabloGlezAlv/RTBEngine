@@ -14,12 +14,19 @@ namespace RTBEngine {
         class GameObject;
         class Component;
 
+        struct RTB_API AnimationKeyClipSnapshot {
+            std::string key;
+            std::string clipFbxRef;
+            bool loop = false;
+        };
+
         struct RTB_API ComponentSnapshot {
             std::string typeName;
             std::vector<uint8_t> rawData;
             std::unordered_map<size_t, std::string> stringData;
             std::unordered_map<size_t, std::string> ptrPathData;
             std::unordered_map<size_t, std::vector<std::string>> listStringData;
+            std::unordered_map<size_t, std::vector<AnimationKeyClipSnapshot>> listAnimationKeyClipData;
         };
 
         class RTB_API Prefab {

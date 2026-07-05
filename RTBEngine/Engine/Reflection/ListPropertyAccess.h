@@ -3,6 +3,7 @@
 #include "TypeInfo.h"
 #include "../Scene/Component.h"
 #include "../Scene/GameObject.h"
+#include "../Animation/Animator.h"
 
 #include <string>
 #include <vector>
@@ -27,6 +28,11 @@ namespace RTBEngine {
                 return reinterpret_cast<std::vector<ECS::Component*>*>(propertyPtr);
             }
 
+            inline std::vector<Animation::AnimationKeyClip>* AsAnimationKeyClipVector(void* propertyPtr)
+            {
+                return reinterpret_cast<std::vector<Animation::AnimationKeyClip>*>(propertyPtr);
+            }
+
             inline std::vector<std::string>* GetStringVector(ECS::Component* component, const PropertyInfo& prop)
             {
                 return AsStringVector(prop.GetMutableData(component));
@@ -40,6 +46,12 @@ namespace RTBEngine {
             inline std::vector<ECS::Component*>* GetComponentVector(ECS::Component* component, const PropertyInfo& prop)
             {
                 return AsComponentVector(prop.GetMutableData(component));
+            }
+
+            inline std::vector<Animation::AnimationKeyClip>* GetAnimationKeyClipVector(
+                ECS::Component* component, const PropertyInfo& prop)
+            {
+                return AsAnimationKeyClipVector(prop.GetMutableData(component));
             }
 
         }

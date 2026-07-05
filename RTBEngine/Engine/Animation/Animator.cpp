@@ -81,6 +81,7 @@ namespace RTBEngine {
             RTB_PROPERTY(playing)
             RTB_PROPERTY(looping)
             RTB_PROPERTY_STRING_LIST(additionalModels)
+            RTB_PROPERTY_ANIMATION_KEY_CLIP_LIST(keyClips)
         RTB_END_REGISTER(Animator)
 
         Animator::Animator()
@@ -208,11 +209,13 @@ namespace RTBEngine {
         void Animator::OnAwake()
         {
             EnsureSourcesLoaded();
+            ReloadKeyClips();
         }
 
         void Animator::OnValidate()
         {
             EnsureSourcesLoaded();
+            ReloadKeyClips();
 
             // Create bone GOs in Edit mode too so the hierarchy is visible
             if (skeleton && !boneGOsCreated) {
@@ -229,6 +232,7 @@ namespace RTBEngine {
         void Animator::OnStart()
         {
             EnsureSourcesLoaded();
+            ReloadKeyClips();
 
             // Initialize bone transforms array
             if (skeleton) {
@@ -380,10 +384,122 @@ namespace RTBEngine {
             return true;
         }
 
+        const AnimationKeyClip* Animator::FindKeyClip(const std::string& key) const
+        {
+            if (key.empty()) {
+                return nullptr;
+            }
+
+            const std::string normalizedKey = NormalizeClipName(key);
+            for (const AnimationKeyClip& entry : keyClips) {
+                if (!entry.key.empty() && NormalizeClipName(entry.key) == normalizedKey) {
+                    return &entry;
+                }
+            }
+
+            return nullptr;
+        }
+
+        void Animator::ReloadKeyClips()
+        {
+            for (const std::string& alias : loadedKeyClipAliases) {
+                clips.erase(alias);
+                if (currentClipName == alias) {
+                    currentClip = nullptr;
+                    currentClipName.clear();
+                    currentTime = 0.0f;
+                    playing = false;
+                    paused = false;
+                    holdPose = false;
+                }
+            }
+            loadedKeyClipAliases.clear();
+
+            for (const AnimationKeyClip& entry : keyClips) {
+                if (entry.key.empty() || entry.clipFbxRef.empty()) {
+                    continue;
+                }
+
+                const std::string normalizedKey = NormalizeClipName(entry.key);
+                if (LoadClipFromFbx(normalizedKey, entry.clipFbxRef)) {
+                    loadedKeyClipAliases.insert(normalizedKey);
+                } else {
+                    RTB_WARN("[Animator] Failed to load keyed clip '" + entry.key +
+                             "' from: " + entry.clipFbxRef);
+                }
+            }
+
+            if (!defaultClip.empty() && GetClip(defaultClip) == nullptr) {
+                defaultClip.clear();
+            }
+        }
+
+        bool Animator::SetKeyClip(const std::string& key, const std::string& clipFbxRef, bool loop)
+        {
+            if (key.empty() || clipFbxRef.empty()) {
+                return false;
+            }
+
+            const std::string normalizedKey = NormalizeClipName(key);
+            for (AnimationKeyClip& entry : keyClips) {
+                if (NormalizeClipName(entry.key) == normalizedKey) {
+                    entry.clipFbxRef = clipFbxRef;
+                    entry.loop = loop;
+                    ReloadKeyClips();
+                    return true;
+                }
+            }
+
+            AnimationKeyClip entry;
+            entry.key = normalizedKey;
+            entry.clipFbxRef = clipFbxRef;
+            entry.loop = loop;
+            keyClips.push_back(std::move(entry));
+            ReloadKeyClips();
+            return true;
+        }
+
+        bool Animator::HasKey(const std::string& key) const
+        {
+            return FindKeyClip(key) != nullptr;
+        }
+
+        bool Animator::PlayKey(const std::string& key)
+        {
+            const AnimationKeyClip* entry = FindKeyClip(key);
+            if (!entry) {
+                return false;
+            }
+
+            Play(NormalizeClipName(entry->key), entry->loop);
+            return currentClip != nullptr;
+        }
+
+        bool Animator::PlayKey(const std::string& key, bool loop)
+        {
+            const AnimationKeyClip* entry = FindKeyClip(key);
+            if (!entry) {
+                return false;
+            }
+
+            Play(NormalizeClipName(entry->key), loop);
+            return currentClip != nullptr;
+        }
+
+        bool Animator::IsPlayingKey(const std::string& key) const
+        {
+            if (!playing || key.empty()) {
+                return false;
+            }
+
+            return NormalizeClipName(currentClipName) == NormalizeClipName(key);
+        }
+
         void Animator::ClearClips()
         {
             clips.clear();
             sourceDerivedClipNames.clear();
+            loadedKeyClipAliases.clear();
             loadedPrimaryPath.clear();
             loadedAdditionalPaths.clear();
             currentClip = nullptr;

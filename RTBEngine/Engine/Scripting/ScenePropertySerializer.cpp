@@ -179,6 +179,29 @@ namespace RTBEngine {
                         }
                         break;
                     }
+                    case Reflection::ListElementType::AnimationKeyClip: {
+                        const auto* values = Reflection::ListPropertyAccess::GetAnimationKeyClipVector(
+                            const_cast<ECS::Component*>(comp), prop);
+                        if (!values) {
+                            break;
+                        }
+
+                        const std::string entryIndent = ind + "        ";
+                        for (size_t entryIndex = 0; entryIndex < values->size(); ++entryIndex) {
+                            const Animation::AnimationKeyClip& entry = (*values)[entryIndex];
+                            if (wroteAny) {
+                                file << ",\n";
+                            }
+                            wroteAny = true;
+                            file << entryIndent << "{\n";
+                            file << entryIndent << "    key = " << FormatString(entry.key) << ",\n";
+                            file << entryIndent << "    clipFbxRef = "
+                                 << FormatString(NormalizePath(entry.clipFbxRef)) << ",\n";
+                            file << entryIndent << "    loop = " << FormatBool(entry.loop) << "\n";
+                            file << entryIndent << "}";
+                        }
+                        break;
+                    }
                     default:
                         break;
                     }

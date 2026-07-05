@@ -1,4 +1,5 @@
 #include "SceneReflectionUtils.h"
+#include "SceneParsingUtils.h"
 
 #include <lua.hpp>
 #include <LuaBridge/LuaBridge.h>
@@ -6,6 +7,7 @@
 #include "../Reflection/TypeInfo.h"
 #include "../Reflection/ListPropertyAccess.h"
 #include "../Scene/Component.h"
+#include "../Animation/Animator.h"
 #include "../Math/Math.h"
 #include "../Core/ResourceManager.h"
 #include "../RTBEngine.h"
@@ -236,6 +238,34 @@ namespace RTBEngine {
                                 break;
                             }
                             values->assign(static_cast<size_t>(elementCount), nullptr);
+                            break;
+                        }
+                        case ListElementType::AnimationKeyClip: {
+                            auto* values = ListPropertyAccess::GetAnimationKeyClipVector(component, *prop);
+                            if (!values) {
+                                break;
+                            }
+
+                            values->clear();
+                            values->reserve(static_cast<size_t>(elementCount));
+                            for (int elementIndex = 1; elementIndex <= elementCount; ++elementIndex) {
+                                lua_geti(L, -1, elementIndex);
+                                if (!lua_istable(L, -1)) {
+                                    lua_pop(L, 1);
+                                    continue;
+                                }
+
+                                const int absEntryIndex = lua_absindex(L, -1);
+                                Animation::AnimationKeyClip entry;
+                                entry.key = SceneParsingUtils::ReadOptionalString(L, absEntryIndex, "key", "");
+                                entry.clipFbxRef = SceneParsingUtils::ReadOptionalString(
+                                    L, absEntryIndex, "clipFbxRef", "");
+                                entry.loop = SceneParsingUtils::ReadOptionalBool(L, absEntryIndex, "loop", false);
+                                if (!entry.key.empty()) {
+                                    values->push_back(std::move(entry));
+                                }
+                                lua_pop(L, 1);
+                            }
                             break;
                         }
                         default:

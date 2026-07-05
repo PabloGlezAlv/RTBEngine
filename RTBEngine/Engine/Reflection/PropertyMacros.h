@@ -389,6 +389,9 @@ private:
 #define RTB_PROPERTY_COMPONENT_LIST(PropName, ComponentType)                            \
                 RTB__PROP_LIST(PropName, RTBEngine::Reflection::ListElementType::ComponentRef, #ComponentType)
 
+#define RTB_PROPERTY_ANIMATION_KEY_CLIP_LIST(PropName)                                  \
+                RTB__PROP_LIST(PropName, RTBEngine::Reflection::ListElementType::AnimationKeyClip, nullptr)
+
 // Forward declaration visible to all script .cpp files when building GameScripts.dll.
 #ifdef GAMESCRIPTS_EXPORTS
 extern "C" void RTBScripts_RegisterLocalType(const RTBScriptTypeDesc* desc);

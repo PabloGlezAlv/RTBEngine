@@ -332,6 +332,7 @@ namespace RTBEngine {
                 }
 
                 comp->ReloadClipLibrary();
+                comp->ReloadKeyClips();
 
                 comp->defaultClip = Animation::Animator::NormalizeClipName(
                     ReadOptionalString(L, tableIndex, "defaultClip", ""));

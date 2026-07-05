@@ -25,6 +25,12 @@ namespace RTBEngine {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
+        struct RTB_API AnimationKeyClip {
+            std::string key;
+            std::string clipFbxRef;
+            bool loop = false;
+        };
+
         class RTB_API Animator : public ECS::Component {
         public:
             Animator();
@@ -50,6 +56,12 @@ namespace RTBEngine {
             // Animation clips
             void AddClip(const std::string& name, std::shared_ptr<AnimationClip> clip);
             bool LoadClipFromFbx(const std::string& alias, const std::string& sourceFbx);
+            void ReloadKeyClips();
+            bool SetKeyClip(const std::string& key, const std::string& clipFbxRef, bool loop);
+            bool HasKey(const std::string& key) const;
+            bool PlayKey(const std::string& key);
+            bool PlayKey(const std::string& key, bool loop);
+            bool IsPlayingKey(const std::string& key) const;
             void ClearClips();
             AnimationClip* GetClip(const std::string& name) const;
             std::vector<std::string> GetClipNames() const;
@@ -93,6 +105,7 @@ namespace RTBEngine {
             // Reflected properties (Proxy)
             std::string modelRef;
             std::vector<std::string> additionalModels;
+            std::vector<AnimationKeyClip> keyClips;
             std::string currentClipName;
             std::string defaultClip;
             float speed = 1.0f;
@@ -120,8 +133,10 @@ namespace RTBEngine {
             std::string loadedPrimaryPath;
             std::vector<std::string> loadedAdditionalPaths;
             std::unordered_set<std::string> sourceDerivedClipNames;
+            std::unordered_set<std::string> loadedKeyClipAliases;
 
             bool AreSourcesCurrent() const;
+            const AnimationKeyClip* FindKeyClip(const std::string& key) const;
             void EnsureSourcesLoaded();
             void AddClipFromSource(const std::string& name, std::shared_ptr<AnimationClip> clip);
             void UpdateBoneTransforms();
