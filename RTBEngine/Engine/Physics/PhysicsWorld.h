@@ -3,6 +3,7 @@
 #include <btBulletDynamicsCommon.h>
 #include <cstdint>
 #include <memory>
+#include <vector>
 #include "../Math/Vectors/Vector3.h"
 
 namespace RTBEngine {
@@ -15,6 +16,13 @@ namespace RTBEngine {
         enum class RTB_API PhysicsDebugQueryType : std::uint8_t {
             Raycast = 0,
             SphereCast = 1
+        };
+
+        struct RTB_API OverlapSphereHit {
+            ECS::GameObject* gameObject = nullptr;
+            Math::Vector3 point = Math::Vector3(0.0f, 0.0f, 0.0f);
+            Math::Vector3 normal = Math::Vector3(0.0f, 1.0f, 0.0f);
+            float distance = 0.0f;
         };
 
         struct RTB_API PhysicsQueryHit {
@@ -78,6 +86,16 @@ namespace RTBEngine {
                                    float radius,
                                    PhysicsQueryHit& outHit,
                                    const PhysicsQueryOptions& options = PhysicsQueryOptions{}) const;
+
+            std::vector<OverlapSphereHit> OverlapSphere(const Math::Vector3& center,
+                                                        float radius,
+                                                        std::uint32_t layerMask = 0xFFFFFFFFu,
+                                                        const PhysicsQueryOptions& options = PhysicsQueryOptions{}) const;
+            std::vector<OverlapSphereHit> OverlapCapsuleSegment(const Math::Vector3& start,
+                                                                const Math::Vector3& end,
+                                                                float radius,
+                                                                std::uint32_t layerMask = 0xFFFFFFFFu,
+                                                                const PhysicsQueryOptions& options = PhysicsQueryOptions{}) const;
 
             btDynamicsWorld* GetDynamicsWorld() const { return dynamicsWorld.get(); }
             btDispatcher* GetDispatcher() const { return dispatcher.get(); }

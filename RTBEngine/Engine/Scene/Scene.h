@@ -30,6 +30,7 @@ namespace RTBEngine {
         class RigidBodyComponent;
         class Occludable;
         class OcclusionTarget;
+        class Component;
 
         #pragma warning(push)
         #pragma warning(disable: 4251)
@@ -79,6 +80,8 @@ namespace RTBEngine {
             const std::vector<RigidBodyComponent*>& GetCachedRigidBodies() const;
             const std::vector<Occludable*>& GetCachedOccludables() const;
             const std::vector<OcclusionTarget*>& GetCachedOcclusionTargets() const;
+            const std::vector<Component*>& GetCachedComponentsByTypeName(const char* typeName) const;
+            const std::vector<Component*>& GetCachedComponentsByTypeId(std::uint32_t typeId) const;
 
             // Camera management
             void SetMainCamera(CameraComponent* camera);
@@ -131,6 +134,8 @@ namespace RTBEngine {
             mutable std::vector<RigidBodyComponent*> cachedRigidBodies;
             mutable std::vector<Occludable*> cachedOccludables;
             mutable std::vector<OcclusionTarget*> cachedOcclusionTargets;
+            mutable std::unordered_map<std::string, std::vector<Component*>> cachedComponentsByTypeName;
+            mutable std::unordered_map<std::uint32_t, std::vector<Component*>> cachedComponentsByTypeId;
         };
         #pragma warning(pop)
 

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <atomic>
 #include <mutex>
+#include <unordered_set>
 #include <vector>
 
 namespace {
@@ -166,6 +167,150 @@ namespace {
     private:
         RTBEngine::Physics::PhysicsQueryOptions options;
     };
+
+    class OverlapContactCallback final : public btCollisionWorld::ContactResultCallback {
+    public:
+        OverlapContactCallback(const btCollisionObject* queryObjectIn,
+                               const RTBEngine::Math::Vector3& referencePointIn,
+                               std::uint32_t layerMaskIn,
+                               const RTBEngine::Physics::PhysicsQueryOptions& optionsIn)
+            : queryObject(queryObjectIn)
+            , referencePoint(referencePointIn)
+            , options(optionsIn)
+        {
+            m_collisionFilterGroup = 1;
+            m_collisionFilterMask = static_cast<int>(layerMaskIn);
+        }
+
+        void ReserveSeen(std::size_t count)
+        {
+            seenGameObjects.reserve(count);
+        }
+
+        void MarkSeen(RTBEngine::ECS::GameObject* gameObject)
+        {
+            if (gameObject) {
+                seenGameObjects.insert(gameObject);
+            }
+        }
+
+        btScalar addSingleResult(btManifoldPoint& contactPoint,
+                                 const btCollisionObjectWrapper* wrapperA,
+                                 int partIdA,
+                                 int indexA,
+                                 const btCollisionObjectWrapper* wrapperB,
+                                 int partIdB,
+                                 int indexB) override
+        {
+            (void)partIdA;
+            (void)indexA;
+            (void)partIdB;
+            (void)indexB;
+
+            const btCollisionObject* hitObject = wrapperA->getCollisionObject();
+            if (hitObject == queryObject) {
+                hitObject = wrapperB->getCollisionObject();
+            }
+
+            if (!hitObject || hitObject == queryObject) {
+                return 0.0f;
+            }
+
+            if (ShouldIgnoreCollisionObject(hitObject, options)) {
+                return 0.0f;
+            }
+
+            RTBEngine::ECS::GameObject* gameObject = ResolveHitGameObject(hitObject);
+            if (!gameObject || seenGameObjects.find(gameObject) != seenGameObjects.end()) {
+                return 0.0f;
+            }
+
+            seenGameObjects.insert(gameObject);
+
+            RTBEngine::Physics::OverlapSphereHit hit;
+            hit.gameObject = gameObject;
+            hit.point = RTBEngine::Physics::PhysicsUtils::FromBullet(contactPoint.getPositionWorldOnB());
+            hit.normal = RTBEngine::Physics::PhysicsUtils::FromBullet(contactPoint.m_normalWorldOnB);
+            const RTBEngine::Math::Vector3 delta = hit.point - referencePoint;
+            hit.distance = delta.Length();
+            hits.push_back(hit);
+            return 0.0f;
+        }
+
+        std::vector<RTBEngine::Physics::OverlapSphereHit> hits;
+
+    private:
+        const btCollisionObject* queryObject = nullptr;
+        RTBEngine::Math::Vector3 referencePoint;
+        RTBEngine::Physics::PhysicsQueryOptions options;
+        std::unordered_set<RTBEngine::ECS::GameObject*> seenGameObjects;
+    };
+
+    class AllHitsConvexResultIgnoringObject final : public btCollisionWorld::ConvexResultCallback {
+    public:
+        AllHitsConvexResultIgnoringObject(const RTBEngine::Math::Vector3& referencePointIn,
+                                          float segmentLengthIn,
+                                          std::uint32_t layerMaskIn,
+                                          const RTBEngine::Physics::PhysicsQueryOptions& optionsIn)
+            : referencePoint(referencePointIn)
+            , segmentLength(segmentLengthIn)
+            , options(optionsIn)
+        {
+            m_collisionFilterGroup = 1;
+            m_collisionFilterMask = static_cast<int>(layerMaskIn);
+        }
+
+        btScalar addSingleResult(btCollisionWorld::LocalConvexResult& convexResult,
+                                 bool normalInWorldSpace) override
+        {
+            (void)normalInWorldSpace;
+
+            const btCollisionObject* hitObject = convexResult.m_hitCollisionObject;
+            if (!hitObject) {
+                return 1.0f;
+            }
+
+            if (ShouldIgnoreCollisionObject(hitObject, options)) {
+                return 1.0f;
+            }
+
+            RTBEngine::ECS::GameObject* gameObject = ResolveHitGameObject(hitObject);
+            if (!gameObject || seenGameObjects.find(gameObject) != seenGameObjects.end()) {
+                return 1.0f;
+            }
+
+            seenGameObjects.insert(gameObject);
+
+            RTBEngine::Physics::OverlapSphereHit hit;
+            hit.gameObject = gameObject;
+            hit.point = RTBEngine::Physics::PhysicsUtils::FromBullet(convexResult.m_hitPointLocal);
+            hit.normal = RTBEngine::Physics::PhysicsUtils::FromBullet(convexResult.m_hitNormalLocal);
+            hit.distance = segmentLength > 0.0f
+                ? convexResult.m_hitFraction * segmentLength
+                : (hit.point - referencePoint).Length();
+            hits.push_back(hit);
+            return 1.0f;
+        }
+
+        std::vector<RTBEngine::Physics::OverlapSphereHit> hits;
+
+    private:
+        RTBEngine::Math::Vector3 referencePoint;
+        float segmentLength = 0.0f;
+        RTBEngine::Physics::PhysicsQueryOptions options;
+        std::unordered_set<RTBEngine::ECS::GameObject*> seenGameObjects;
+    };
+
+    void ConfigureOverlapQueryObject(btCollisionObject& queryObject,
+                                     btCollisionShape& shape,
+                                     const btTransform& worldTransform)
+    {
+        queryObject.setCollisionShape(&shape);
+        queryObject.setWorldTransform(worldTransform);
+        queryObject.setCollisionFlags(
+            queryObject.getCollisionFlags() | btCollisionObject::CF_NO_CONTACT_RESPONSE);
+        queryObject.setUserPointer(nullptr);
+    }
 }
 
 namespace RTBEngine {
@@ -460,6 +605,79 @@ namespace RTBEngine {
                 true,
                 outHit.fraction);
             return outHit.gameObject != nullptr;
+        }
+
+        std::vector<OverlapSphereHit> PhysicsWorld::OverlapSphere(const Math::Vector3& center,
+                                                                  float radius,
+                                                                  std::uint32_t layerMask,
+                                                                  const PhysicsQueryOptions& options) const
+        {
+            std::vector<OverlapSphereHit> results;
+
+            if (!dynamicsWorld || radius <= 0.0f) {
+                return results;
+            }
+
+            btSphereShape sphereShape(radius);
+            btTransform worldTransform;
+            worldTransform.setIdentity();
+            worldTransform.setOrigin(PhysicsUtils::ToBullet(center));
+
+            btCollisionObject queryObject;
+            ConfigureOverlapQueryObject(queryObject, sphereShape, worldTransform);
+
+            OverlapContactCallback callback(&queryObject, center, layerMask, options);
+            dynamicsWorld->contactTest(&queryObject, callback);
+            return callback.hits;
+        }
+
+        std::vector<OverlapSphereHit> PhysicsWorld::OverlapCapsuleSegment(const Math::Vector3& start,
+                                                                          const Math::Vector3& end,
+                                                                          float radius,
+                                                                          std::uint32_t layerMask,
+                                                                          const PhysicsQueryOptions& options) const
+        {
+            std::vector<OverlapSphereHit> results;
+
+            if (!dynamicsWorld || radius <= 0.0f) {
+                return results;
+            }
+
+            const Math::Vector3 delta = end - start;
+            const float segmentLength = delta.Length();
+            if (segmentLength <= 0.0f) {
+                return OverlapSphere(start, radius, layerMask, options);
+            }
+
+            btSphereShape sphereShape(radius);
+            btTransform fromTransform;
+            fromTransform.setIdentity();
+            fromTransform.setOrigin(PhysicsUtils::ToBullet(start));
+
+            btTransform toTransform;
+            toTransform.setIdentity();
+            toTransform.setOrigin(PhysicsUtils::ToBullet(end));
+
+            AllHitsConvexResultIgnoringObject callback(start, segmentLength, layerMask, options);
+            dynamicsWorld->convexSweepTest(&sphereShape, fromTransform, toTransform, callback);
+
+            results = std::move(callback.hits);
+
+            btTransform endTransform;
+            endTransform.setIdentity();
+            endTransform.setOrigin(PhysicsUtils::ToBullet(end));
+            btCollisionObject endQueryObject;
+            ConfigureOverlapQueryObject(endQueryObject, sphereShape, endTransform);
+
+            OverlapContactCallback endCapCallback(&endQueryObject, start, layerMask, options);
+            endCapCallback.ReserveSeen(results.size());
+            for (const OverlapSphereHit& existingHit : results) {
+                endCapCallback.MarkSeen(existingHit.gameObject);
+            }
+
+            dynamicsWorld->contactTest(&endQueryObject, endCapCallback);
+            results.insert(results.end(), endCapCallback.hits.begin(), endCapCallback.hits.end());
+            return results;
         }
 
     }

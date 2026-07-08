@@ -16,6 +16,7 @@
 #include "ParticleSystem.h"
 #include "../UI/Canvas.h"
 #include "../Core/Logger.h"
+#include "../Core/TypeId.h"
 #include "../Rendering/CameraUBO.h"
 #include "../Rendering/Lighting/LightingUBO.h"
 #include "../Rendering/Material.h"
@@ -434,11 +435,25 @@ void RTBEngine::ECS::Scene::RebuildComponentCaches() const
 	cachedRigidBodies.clear();
 	cachedOccludables.clear();
 	cachedOcclusionTargets.clear();
+	cachedComponentsByTypeName.clear();
+	cachedComponentsByTypeId.clear();
 
 	const auto collectFromGameObjects = [this](const std::vector<std::unique_ptr<GameObject>>& objects) {
 		for (const auto& gameObject : objects) {
 			if (!gameObject) {
 				continue;
+			}
+
+			for (const GameObject::ComponentPtr& component : gameObject->GetComponents()) {
+				if (!component) {
+					continue;
+				}
+
+				const char* typeName = component->GetTypeName();
+				if (typeName && typeName[0] != '\0') {
+					cachedComponentsByTypeName[typeName].push_back(component.get());
+					cachedComponentsByTypeId[TypeId::Hash(typeName)].push_back(component.get());
+				}
 			}
 
 			if (MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>()) {
@@ -525,6 +540,44 @@ const std::vector<RTBEngine::ECS::OcclusionTarget*>& RTBEngine::ECS::Scene::GetC
 {
 	EnsureComponentCaches();
 	return cachedOcclusionTargets;
+}
+
+const std::vector<RTBEngine::ECS::Component*>& RTBEngine::ECS::Scene::GetCachedComponentsByTypeName(
+	const char* typeName) const
+{
+	static const std::vector<Component*> kEmpty;
+
+	EnsureComponentCaches();
+
+	if (!typeName || typeName[0] == '\0') {
+		return kEmpty;
+	}
+
+	const auto iterator = cachedComponentsByTypeName.find(typeName);
+	if (iterator == cachedComponentsByTypeName.end()) {
+		return kEmpty;
+	}
+
+	return iterator->second;
+}
+
+const std::vector<RTBEngine::ECS::Component*>& RTBEngine::ECS::Scene::GetCachedComponentsByTypeId(
+	std::uint32_t typeId) const
+{
+	static const std::vector<Component*> kEmpty;
+
+	EnsureComponentCaches();
+
+	if (typeId == 0) {
+		return kEmpty;
+	}
+
+	const auto iterator = cachedComponentsByTypeId.find(typeId);
+	if (iterator == cachedComponentsByTypeId.end()) {
+		return kEmpty;
+	}
+
+	return iterator->second;
 }
 
 void RTBEngine::ECS::Scene::RegisterGameObjectUuid(GameObject* gameObject)
