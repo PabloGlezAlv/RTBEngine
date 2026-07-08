@@ -75,6 +75,9 @@
     <ClCompile Include="Engine\Scene\NetworkIdentity.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Scene\ObjectPool.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Scene\NetworkTransform.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
@@ -423,6 +426,12 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Scene\NetworkIdentity.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Scene\ObjectPool.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Scene\IPoolable.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Scene\NetworkTransform.h">

@@ -1,6 +1,7 @@
 #include "ParticleSystem.h"
 
 #include "GameObject.h"
+#include "ObjectPool.h"
 #include "Scene.h"
 #include "SceneManager.h"
 #include "../Core/ResourceManager.h"
@@ -531,7 +532,7 @@ namespace RTBEngine {
             }
 
             destroyOwnerTriggered = true;
-            scene->RemoveGameObject(owner);
+            ObjectPool::GetInstance().Release(owner);
         }
 
         // Packs alive particles into instanceData and uploads them to the per-emitter instance VBO.

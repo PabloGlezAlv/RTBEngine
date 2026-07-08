@@ -3,6 +3,7 @@
 #include "../Core/Logger.h"
 #include "../Scripting/SceneLoader.h"
 #include "GameObject.h"
+#include "ObjectPool.h"
 #include "Prefab.h"
 #include "Scene.h"
 #include "SceneLifecycle.h"
@@ -155,6 +156,8 @@ namespace RTBEngine {
                 onSceneUnloading(previousScene.get());
             }
 
+            ObjectPool::GetInstance().Clear();
+
             if (previousScene) {
                 BeginSceneUnload();
                 previousScene.reset();
@@ -224,6 +227,8 @@ namespace RTBEngine {
             if (onSceneUnloading) {
                 onSceneUnloading(activeScene.get());
             }
+
+            ObjectPool::GetInstance().Clear();
 
             BeginSceneUnload();
             activeScene.reset();
