@@ -21,9 +21,11 @@ layout(std140, binding = 1) uniform CameraData {
     vec3 viewPos;
 };
 
-// Skeletal animation uniforms
+// Skeletal animation: bone matrices supplied via UBO, uploaded once per animator.
 const int MAX_BONES = 100;
-uniform mat4 uBoneTransforms[MAX_BONES];
+layout(std140, binding = 2) uniform BoneData {
+    mat4 uBoneTransforms[MAX_BONES];
+};
 uniform bool uHasAnimation;
 
 void main() {

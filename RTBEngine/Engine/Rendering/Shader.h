@@ -11,6 +11,9 @@ namespace RTBEngine {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
+        // Binding point for the per-animator bone matrices UBO (BoneData block).
+        static constexpr GLuint kBoneUBOBindingPoint = 2;
+
         class RTB_API Shader {
         public:
             static constexpr int MaxBoneTransforms = 100;
@@ -37,10 +40,8 @@ namespace RTBEngine {
             void SetVector3(const std::string& name, const Math::Vector3& value);
             void SetVector4(const std::string& name, const Math::Vector4& value);
             void SetMatrix4(const std::string& name, const Math::Matrix4& value);
-            void SetBoneTransforms(const std::vector<Math::Matrix4>& transforms);
 
         private:
-            void PrecacheBoneTransformUniforms();
             GLuint CompileShader(GLenum type, const std::string& source);
             bool LinkProgram(GLuint vertexShader, GLuint fragmentShader);
             std::string ReadFile(const std::string& filePath);
@@ -49,7 +50,6 @@ namespace RTBEngine {
             GLuint programID;
             bool isCompiled;
             std::unordered_map<std::string, GLint> uniformCache;
-            std::vector<GLint> boneTransformUniformLocations;
         };
 #pragma warning(pop)
 

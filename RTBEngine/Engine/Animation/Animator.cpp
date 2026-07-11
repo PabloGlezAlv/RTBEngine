@@ -2,6 +2,7 @@
 #include "../RTBEngine.h"
 #include "../Rendering/ModelLoader.h"
 #include "../Rendering/FbxBinding.h"
+#include "../Rendering/Shader.h"
 #include "../Core/ResourceManager.h"
 #include "../Scene/MeshRenderer.h"
 #include "../Scene/GameObject.h"
@@ -90,6 +91,7 @@ namespace RTBEngine {
 
         Animator::~Animator()
         {
+            ReleaseBoneMatricesUBO();
         }
 
         std::string Animator::NormalizeClipName(const std::string& rawName)
@@ -537,6 +539,47 @@ namespace RTBEngine {
         void Animator::OnDestroy()
         {
             keyFinishedEvent.Clear();
+            ReleaseBoneMatricesUBO();
+        }
+
+        void Animator::BindBoneMatrices()
+        {
+            constexpr GLsizeiptr kBufferSize =
+                static_cast<GLsizeiptr>(Rendering::Shader::MaxBoneTransforms) * 16 * sizeof(float);
+
+            if (boneMatricesUBO == 0) {
+                glGenBuffers(1, &boneMatricesUBO);
+                glBindBuffer(GL_UNIFORM_BUFFER, boneMatricesUBO);
+                glBufferData(GL_UNIFORM_BUFFER, kBufferSize, nullptr, GL_DYNAMIC_DRAW);
+                glBindBuffer(GL_UNIFORM_BUFFER, 0);
+                boneMatricesDirty = true;
+            }
+
+            if (boneMatricesDirty) {
+                const size_t count = std::min(
+                    finalBoneTransforms.size(),
+                    static_cast<size_t>(Rendering::Shader::MaxBoneTransforms));
+                if (count > 0) {
+                    glBindBuffer(GL_UNIFORM_BUFFER, boneMatricesUBO);
+                    glBufferSubData(
+                        GL_UNIFORM_BUFFER,
+                        0,
+                        static_cast<GLsizeiptr>(count * 16 * sizeof(float)),
+                        finalBoneTransforms.data());
+                    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+                }
+                boneMatricesDirty = false;
+            }
+
+            glBindBufferBase(GL_UNIFORM_BUFFER, Rendering::kBoneUBOBindingPoint, boneMatricesUBO);
+        }
+
+        void Animator::ReleaseBoneMatricesUBO()
+        {
+            if (boneMatricesUBO != 0) {
+                glDeleteBuffers(1, &boneMatricesUBO);
+                boneMatricesUBO = 0;
+            }
         }
 
         void Animator::ClearClips()
@@ -641,6 +684,7 @@ namespace RTBEngine {
             }
 
             skeleton->CalculateBoneTransforms(currentLocalTransforms, finalBoneTransforms);
+            boneMatricesDirty = true;
 
             if (boneGOsCreated) {
                 SyncBoneGameObjects();
@@ -704,6 +748,7 @@ namespace RTBEngine {
 
             // Calculate final transforms (with hierarchy and offset matrices)
             skeleton->CalculateBoneTransforms(currentLocalTransforms, finalBoneTransforms);
+            boneMatricesDirty = true;
 
             // Sync bone GameObjects with current local transforms
             SyncBoneGameObjects();

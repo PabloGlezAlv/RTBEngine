@@ -91,28 +91,6 @@ namespace RTBEngine {
             glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, value.m);
         }
 
-        void Shader::SetBoneTransforms(const std::vector<Math::Matrix4>& transforms)
-        {
-            const size_t count = std::min(transforms.size(), boneTransformUniformLocations.size());
-            for (size_t i = 0; i < count; ++i) {
-                const GLint location = boneTransformUniformLocations[i];
-                if (location >= 0) {
-                    glUniformMatrix4fv(location, 1, GL_FALSE, transforms[i].m);
-                }
-            }
-        }
-
-        void Shader::PrecacheBoneTransformUniforms()
-        {
-            boneTransformUniformLocations.resize(MaxBoneTransforms);
-            for (int i = 0; i < MaxBoneTransforms; ++i) {
-                const std::string name = "uBoneTransforms[" + std::to_string(i) + "]";
-                const GLint location = glGetUniformLocation(programID, name.c_str());
-                boneTransformUniformLocations[static_cast<size_t>(i)] = location;
-                uniformCache[name] = location;
-            }
-        }
-
         GLuint Shader::CompileShader(GLenum type, const std::string& source) {
             GLuint shader = glCreateShader(type);
             const char* src = source.c_str();
@@ -152,8 +130,6 @@ namespace RTBEngine {
             }
 
             uniformCache.clear();
-            boneTransformUniformLocations.clear();
-            PrecacheBoneTransformUniforms();
 
             const GLuint lightingBlockIndex = glGetUniformBlockIndex(programID, "LightingData");
             if (lightingBlockIndex != GL_INVALID_INDEX) {
@@ -163,6 +139,11 @@ namespace RTBEngine {
             const GLuint cameraBlockIndex = glGetUniformBlockIndex(programID, "CameraData");
             if (cameraBlockIndex != GL_INVALID_INDEX) {
                 glUniformBlockBinding(programID, cameraBlockIndex, kCameraUBOBindingPoint);
+            }
+
+            const GLuint boneBlockIndex = glGetUniformBlockIndex(programID, "BoneData");
+            if (boneBlockIndex != GL_INVALID_INDEX) {
+                glUniformBlockBinding(programID, boneBlockIndex, kBoneUBOBindingPoint);
             }
 
             return true;

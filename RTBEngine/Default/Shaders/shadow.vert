@@ -8,7 +8,10 @@ uniform mat4 uLightSpaceMatrix;
 uniform mat4 uModel;
 
 uniform bool uHasAnimation;
-uniform mat4 uBoneTransforms[100];
+const int MAX_BONES = 100;
+layout(std140, binding = 2) uniform BoneData {
+    mat4 uBoneTransforms[MAX_BONES];
+};
 
 void main()
 {

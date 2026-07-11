@@ -240,7 +240,7 @@ namespace RTBEngine {
             Animation::Animator* animator = GetActiveAnimator();
             if (animator && animator->ShouldSkinMesh()) {
                 shader->SetBool("uHasAnimation", true);
-                shader->SetBoneTransforms(animator->GetBoneTransforms());
+                animator->BindBoneMatrices();
             }
             else {
                 shader->SetBool("uHasAnimation", false);

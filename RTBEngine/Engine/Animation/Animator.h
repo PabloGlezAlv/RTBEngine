@@ -5,6 +5,7 @@
 #include "Skeleton.h"
 #include "AnimationClip.h"
 #include "../Reflection/PropertyMacros.h"
+#include <GL/glew.h>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -98,6 +99,11 @@ namespace RTBEngine {
             bool HasBones() const { return skeleton && skeleton->GetBoneCount() > 0; }
             bool ShouldSkinMesh() const { return HasBones() && !finalBoneTransforms.empty() && (playing || holdPose); }
 
+            // Uploads the current pose to this animator's bone UBO (only when the pose changed)
+            // and binds it to kBoneUBOBindingPoint. Called from the render/shadow passes; every
+            // mesh skinned by this animator reuses the same GPU upload.
+            void BindBoneMatrices();
+
             // Loaded meshes with bone data
             void SetMeshes(const std::vector<Rendering::Mesh*>& loadedMeshes) { meshes = loadedMeshes; }
             const std::vector<Rendering::Mesh*>& GetMeshes() const { return meshes; }
@@ -136,6 +142,10 @@ namespace RTBEngine {
             std::vector<Math::Matrix4> finalBoneTransforms;
             std::vector<Rendering::Mesh*> meshes;
 
+            // Per-animator GPU buffer holding finalBoneTransforms (std140 BoneData block).
+            GLuint boneMatricesUBO = 0;
+            bool boneMatricesDirty = true;
+
             std::vector<Math::Matrix4> currentLocalTransforms;
             std::vector<ECS::GameObject*> boneGameObjects;
             bool boneGOsCreated = false;
@@ -154,6 +164,7 @@ namespace RTBEngine {
             void AddClipFromSource(const std::string& name, std::shared_ptr<AnimationClip> clip);
             void UpdateBoneTransforms();
             void ApplyBindPoseTransforms();
+            void ReleaseBoneMatricesUBO();
         };
 #pragma warning(pop)
 

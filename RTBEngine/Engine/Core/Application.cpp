@@ -611,7 +611,7 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rende
 		Animation::Animator* animator = meshRenderer->GetActiveAnimator();
 		if (animator && animator->ShouldSkinMesh()) {
 			shader->SetBool("uHasAnimation", true);
-			shader->SetBoneTransforms(animator->GetBoneTransforms());
+			animator->BindBoneMatrices();
 		}
 		else {
 			shader->SetBool("uHasAnimation", false);
