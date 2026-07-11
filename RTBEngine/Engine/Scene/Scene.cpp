@@ -158,6 +158,13 @@ namespace {
 		float lastAlphaMultiplier = 1.0f;
 	};
 
+	// Reusable per-frame scratch buffers for the render passes. Rendering happens on the main
+	// thread; keeping these persistent avoids a heap allocation per frame (and per renderer).
+	thread_local std::vector<OpaqueMeshDraw> g_opaqueDrawScratch;
+	thread_local std::vector<OpaqueMeshDraw> g_transparentDrawScratch;
+	thread_local std::vector<OpaqueMeshDraw> g_sortedTransparentScratch;
+	thread_local std::vector<OpaqueMeshDraw> g_discardDrawScratch;
+
 	void ApplyOpaqueDrawMaterial(
 		RTBEngine::ECS::MeshRenderer* renderer,
 		RTBEngine::Rendering::Material* drawMaterial,
@@ -276,8 +283,8 @@ namespace {
 		RTBEngine::ECS::MeshRenderer* renderer,
 		std::vector<OpaqueMeshDraw>& outDraws)
 	{
-		std::vector<OpaqueMeshDraw> transparentScratch;
-		CollectMeshDraws(renderer, outDraws, transparentScratch);
+		g_discardDrawScratch.clear();
+		CollectMeshDraws(renderer, outDraws, g_discardDrawScratch);
 	}
 
 	float GetMeshDrawSortDistance(
@@ -308,7 +315,8 @@ namespace {
 			return;
 		}
 
-		std::vector<OpaqueMeshDraw> sortedDraws = transparentDraws;
+		std::vector<OpaqueMeshDraw>& sortedDraws = g_sortedTransparentScratch;
+		sortedDraws.assign(transparentDraws.begin(), transparentDraws.end());
 		std::sort(
 			sortedDraws.begin(),
 			sortedDraws.end(),
@@ -925,7 +933,8 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 	if (!camera) return;
 
 	const Rendering::Frustum& frustum = camera->GetFrustum();
-	std::vector<OpaqueMeshDraw> opaqueDraws;
+	std::vector<OpaqueMeshDraw>& opaqueDraws = g_opaqueDrawScratch;
+	opaqueDraws.clear();
 	opaqueDraws.reserve(GetCachedMeshRenderers().size());
 
 	++iterationDepth;
@@ -975,8 +984,8 @@ void RTBEngine::ECS::Scene::RenderTransparentEffects(Rendering::Camera* camera)
 	++iterationDepth;
 
 	const Rendering::Frustum& frustum = camera->GetFrustum();
-	std::vector<OpaqueMeshDraw> transparentDraws;
-	transparentDraws.reserve(16);
+	std::vector<OpaqueMeshDraw>& transparentDraws = g_transparentDrawScratch;
+	transparentDraws.clear();
 
 	for (MeshRenderer* renderer : GetCachedMeshRenderers()) {
 		if (!renderer || !renderer->IsEnabled()) {
@@ -1001,8 +1010,8 @@ void RTBEngine::ECS::Scene::RenderTransparentEffects(Rendering::Camera* camera)
 			}
 		}
 
-		std::vector<OpaqueMeshDraw> opaqueScratch;
-		CollectMeshDraws(renderer, opaqueScratch, transparentDraws);
+		g_discardDrawScratch.clear();
+		CollectMeshDraws(renderer, g_discardDrawScratch, transparentDraws);
 	}
 
 	RenderTransparentMeshDraws(transparentDraws, camera->GetPosition());

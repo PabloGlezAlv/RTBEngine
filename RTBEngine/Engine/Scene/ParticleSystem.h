@@ -110,6 +110,9 @@ namespace RTBEngine {
             std::vector<Rendering::Particle> particles;
             std::vector<ParticleInstanceData> instanceData;
             std::vector<int> freeSlots;
+            // Indices of currently-alive particles, so Tick/Upload iterate only live slots
+            // instead of scanning the whole pool (which can be up to 8192 entries).
+            std::vector<int> activeSlots;
 
             float emissionAccumulator = 0.0f;
             bool playing = false;

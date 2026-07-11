@@ -217,10 +217,13 @@ namespace RTBEngine {
         {
             freeSlots.clear();
             freeSlots.reserve(particles.size());
+            activeSlots.clear();
+            activeSlots.reserve(particles.size());
             activeParticleCount = 0;
 
             for (int i = 0; i < static_cast<int>(particles.size()); ++i) {
                 if (particles[static_cast<std::size_t>(i)].IsAlive()) {
+                    activeSlots.push_back(i);
                     ++activeParticleCount;
                 } else {
                     freeSlots.push_back(i);
@@ -453,6 +456,7 @@ namespace RTBEngine {
             particle.age = 0.0f;
             particle.size = startSize;
             particle.color = startColor;
+            activeSlots.push_back(slot);
             ++totalEmitted;
             ++activeParticleCount;
         }
@@ -480,16 +484,16 @@ namespace RTBEngine {
                 simulationGravity = Math::Vector3(localGravity4.x, localGravity4.y, localGravity4.z);
             }
 
-            for (int i = 0; i < static_cast<int>(particles.size()); ++i) {
-                Rendering::Particle& particle = particles[static_cast<std::size_t>(i)];
-                if (!particle.IsAlive()) {
-                    continue;
-                }
+            for (std::size_t a = 0; a < activeSlots.size();) {
+                const int slot = activeSlots[a];
+                Rendering::Particle& particle = particles[static_cast<std::size_t>(slot)];
 
                 particle.age += deltaTime;
                 if (!particle.IsAlive()) {
-                    freeSlots.push_back(i);
+                    freeSlots.push_back(slot);
                     --activeParticleCount;
+                    activeSlots[a] = activeSlots.back();
+                    activeSlots.pop_back();
                     continue;
                 }
 
@@ -502,6 +506,7 @@ namespace RTBEngine {
                 particle.color.g = Math::Lerp(startColor.g, endColor.g, t);
                 particle.color.b = Math::Lerp(startColor.b, endColor.b, t);
                 particle.color.a = Math::Lerp(startColor.a, endColor.a, t);
+                ++a;
             }
 
             if (!loop && totalEmitted > 0 && activeParticleCount == 0) {
@@ -540,13 +545,25 @@ namespace RTBEngine {
         {
             activeInstanceCount = 0;
 
-            for (const Rendering::Particle& particle : particles) {
-                if (!particle.IsAlive()) {
-                    continue;
+            // Hoist the owner's world matrix out of the per-particle loop for local-space emitters.
+            const bool transformToWorld = !worldSimulation && GetOwner() != nullptr;
+            const Math::Matrix4 worldMatrix =
+                transformToWorld ? GetOwner()->GetWorldMatrix() : Math::Matrix4();
+
+            for (const int slot : activeSlots) {
+                const Rendering::Particle& particle = particles[static_cast<std::size_t>(slot)];
+
+                Math::Vector3 worldPosition;
+                if (transformToWorld) {
+                    const Math::Vector4 transformed = worldMatrix * Math::Vector4(
+                        particle.position.x, particle.position.y, particle.position.z, 1.0f);
+                    worldPosition = Math::Vector3(transformed.x, transformed.y, transformed.z);
+                } else {
+                    worldPosition = particle.position;
                 }
 
                 ParticleInstanceData& instance = instanceData[static_cast<std::size_t>(activeInstanceCount)];
-                instance.position = ToWorldPosition(particle.position);
+                instance.position = worldPosition;
                 instance.color = Math::Vector4(particle.color.r, particle.color.g, particle.color.b, particle.color.a);
                 instance.size = std::max(particle.size, kMinParticleSize);
                 ++activeInstanceCount;

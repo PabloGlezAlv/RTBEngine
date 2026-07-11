@@ -212,6 +212,17 @@ namespace RTBEngine {
             occlusionFadeAlpha = std::clamp(alpha, 0.0f, 1.0f);
         }
 
+        Animation::Animator* MeshRenderer::GetActiveAnimator()
+        {
+            const uint32_t hierarchyVersion = GameObject::GetHierarchyVersion();
+            if (!animatorCacheValid || hierarchyVersion != cachedAnimatorHierarchyVersion) {
+                cachedAnimator = FindAnimatorInAncestors(owner);
+                cachedAnimatorHierarchyVersion = hierarchyVersion;
+                animatorCacheValid = true;
+            }
+            return cachedAnimator;
+        }
+
         void MeshRenderer::RenderDraw(Rendering::Mesh* drawMesh, Rendering::Material* drawMaterial)
         {
             if (!isEnabled || !owner || !owner->IsActiveInHierarchy() || !drawMesh || !drawMaterial) {
@@ -226,7 +237,7 @@ namespace RTBEngine {
 
             shader->SetMatrix4("uModel", owner->GetWorldMatrix());
 
-            Animation::Animator* animator = FindAnimatorInAncestors(owner);
+            Animation::Animator* animator = GetActiveAnimator();
             if (animator && animator->ShouldSkinMesh()) {
                 shader->SetBool("uHasAnimation", true);
                 shader->SetBoneTransforms(animator->GetBoneTransforms());

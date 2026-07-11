@@ -9,6 +9,10 @@
 #include <cstdint>
 
 namespace RTBEngine {
+    namespace Animation {
+        class Animator;
+    }
+
     namespace ECS {
 
 #pragma warning(push)
@@ -46,6 +50,10 @@ namespace RTBEngine {
             void Render();
             void RenderDraw(Rendering::Mesh* drawMesh, Rendering::Material* drawMaterial);
 
+            // Animator that skins this renderer, searched up the hierarchy and cached until the
+            // scene hierarchy changes. Used by both the geometry pass and the shadow pass.
+            Animation::Animator* GetActiveAnimator();
+
             //Render stats
             static void ResetRenderStats();
             static uint32_t GetDrawCallCount() { return drawCallCount; }
@@ -80,6 +88,11 @@ namespace RTBEngine {
             void RenderMultiMesh();
 
             float occlusionFadeAlpha = 1.0f;
+
+            // Cached ancestor animator; invalidated when GameObject::GetHierarchyVersion() changes.
+            Animation::Animator* cachedAnimator = nullptr;
+            uint32_t cachedAnimatorHierarchyVersion = 0;
+            bool animatorCacheValid = false;
 
             static uint32_t drawCallCount;
             static uint32_t culledObjectCount;
