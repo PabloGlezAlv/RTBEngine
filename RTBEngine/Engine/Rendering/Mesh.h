@@ -1,9 +1,11 @@
 #pragma once
 #include "../RTBEngineAPI.h"
 #include <GL/glew.h>
+#include <cstddef>
 #include <vector>
 #include "Vertex.h"
 #include "../Math/Vectors/Vector3.h"
+#include "../Math/Matrix/Matrix4.h"
 
 
 // Guide from: https://learnopengl.com/Model-Loading/Mesh
@@ -19,6 +21,12 @@ namespace RTBEngine {
             Mesh& operator=(const Mesh&) = delete;
 
             void Draw() const;
+
+            // Instanced rendering: uploads per-instance model matrices to this mesh's instance
+            // buffer (configuring attributes 5-8 with divisor 1 on first use) and issues a single
+            // instanced draw. Used to batch identical non-skinned opaque meshes.
+            void UploadInstanceData(const Math::Matrix4* matrices, std::size_t count);
+            void DrawInstanced(GLsizei instanceCount) const;
 
             unsigned int GetVertexCount() const { return vertexCount; }
             unsigned int GetIndexCount() const { return indexCount; }
@@ -40,6 +48,7 @@ namespace RTBEngine {
             GLuint VAO;
             GLuint VBO;
             GLuint EBO;
+            GLuint instanceVBO = 0;
 
             unsigned int vertexCount;
             unsigned int indexCount;

@@ -1,4 +1,5 @@
 #include "Mesh.h"
+#include <cstdint>
 #include <limits>
 
 RTBEngine::Rendering::Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices)
@@ -24,6 +25,11 @@ RTBEngine::Rendering::Mesh::~Mesh()
 		glDeleteBuffers(1, &EBO);
 		EBO = 0;
 	}
+
+	if (instanceVBO != 0) {
+		glDeleteBuffers(1, &instanceVBO);
+		instanceVBO = 0;
+	}
 }
 
 void RTBEngine::Rendering::Mesh::Draw() const
@@ -32,6 +38,56 @@ void RTBEngine::Rendering::Mesh::Draw() const
 	glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
 
+}
+
+void RTBEngine::Rendering::Mesh::UploadInstanceData(const Math::Matrix4* matrices, std::size_t count)
+{
+	if (!matrices || count == 0) {
+		return;
+	}
+
+	glBindVertexArray(VAO);
+
+	// Configure the mat4 instance attribute (locations 5-8) the first time this mesh is instanced.
+	// A mat4 attribute occupies four vec4 slots; the whole attribute advances once per instance.
+	const bool needsAttribSetup = (instanceVBO == 0);
+	if (needsAttribSetup) {
+		glGenBuffers(1, &instanceVBO);
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+
+	if (needsAttribSetup) {
+		const GLsizei stride = static_cast<GLsizei>(sizeof(Math::Matrix4));
+		for (GLuint i = 0; i < 4; ++i) {
+			const GLuint location = 5 + i;
+			glEnableVertexAttribArray(location);
+			glVertexAttribPointer(
+				location, 4, GL_FLOAT, GL_FALSE, stride,
+				reinterpret_cast<void*>(static_cast<std::uintptr_t>(i * sizeof(float) * 4)));
+			glVertexAttribDivisor(location, 1);
+		}
+	}
+
+	glBufferData(
+		GL_ARRAY_BUFFER,
+		static_cast<GLsizeiptr>(count * sizeof(Math::Matrix4)),
+		matrices,
+		GL_DYNAMIC_DRAW);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+}
+
+void RTBEngine::Rendering::Mesh::DrawInstanced(GLsizei instanceCount) const
+{
+	if (instanceCount <= 0) {
+		return;
+	}
+
+	glBindVertexArray(VAO);
+	glDrawElementsInstanced(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0, instanceCount);
+	glBindVertexArray(0);
 }
 
 void RTBEngine::Rendering::Mesh::SetupMesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices)

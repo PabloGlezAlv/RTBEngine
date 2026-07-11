@@ -41,6 +41,8 @@
 #include <iostream>
 #include <filesystem>
 #include <atomic>
+#include <algorithm>
+#include <vector>
 #include "Logger.h"
 
 namespace {
@@ -79,6 +81,26 @@ namespace {
 		for (RTBEngine::ECS::GameObject* child : root->GetChildren()) {
 			CollectHierarchy(child, outHierarchy);
 		}
+	}
+
+	// One (mesh, renderer) pair queued for the depth-only pass so it can be
+	// grouped by mesh and drawn with instancing when possible.
+	struct ShadowDraw {
+		RTBEngine::Rendering::Mesh* mesh = nullptr;
+		RTBEngine::ECS::MeshRenderer* renderer = nullptr;
+	};
+
+	// Reused across shadow passes to avoid per-frame heap allocations.
+	thread_local std::vector<ShadowDraw> g_shadowDrawScratch;
+	thread_local std::vector<RTBEngine::Math::Matrix4> g_shadowInstanceScratch;
+
+	bool ShadowDrawIsSkinned(RTBEngine::ECS::MeshRenderer* renderer)
+	{
+		if (!renderer) {
+			return false;
+		}
+		RTBEngine::Animation::Animator* animator = renderer->GetActiveAnimator();
+		return animator && animator->ShouldSkinMesh();
 	}
 
 }
@@ -590,6 +612,11 @@ void RTBEngine::Core::Application::RenderShadowPass(ECS::Scene* scene)
 
 void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader, const Rendering::Frustum& frustum)
 {
+	// 1) Collect every visible mesh into a flat list. Culling stays per-renderer
+	//    (using the combined AABB), matching the previous behaviour.
+	std::vector<ShadowDraw>& draws = g_shadowDrawScratch;
+	draws.clear();
+
 	for (ECS::MeshRenderer* meshRenderer : scene->GetCachedMeshRenderers()) {
 		if (!meshRenderer || !meshRenderer->IsEnabled()) continue;
 
@@ -605,28 +632,91 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rende
 			if (!frustum.IsAABBVisible(worldMin, worldMax)) continue;
 		}
 
-		Math::Matrix4 modelMatrix = go->GetWorldMatrix();
-		shader->SetMatrix4("uModel", modelMatrix);
-
-		Animation::Animator* animator = meshRenderer->GetActiveAnimator();
-		if (animator && animator->ShouldSkinMesh()) {
-			shader->SetBool("uHasAnimation", true);
-			animator->BindBoneMatrices();
-		}
-		else {
-			shader->SetBool("uHasAnimation", false);
-		}
-
 		if (meshRenderer->IsMultiMesh()) {
 			for (auto* mesh : meshRenderer->GetMeshes()) {
-				if (mesh) mesh->Draw();
+				if (mesh) draws.push_back({ mesh, meshRenderer });
 			}
 		}
 		else {
 			if (auto* mesh = meshRenderer->GetMesh()) {
+				draws.push_back({ mesh, meshRenderer });
+			}
+		}
+	}
+
+	if (draws.empty()) return;
+
+	// 2) Group identical meshes together. Depth-only ignores material, so batching
+	//    by mesh pointer alone maximises instancing opportunities.
+	std::sort(draws.begin(), draws.end(), [](const ShadowDraw& a, const ShadowDraw& b) {
+		return a.mesh < b.mesh;
+	});
+
+	std::vector<Math::Matrix4>& instanceMatrices = g_shadowInstanceScratch;
+
+	const std::size_t drawCount = draws.size();
+	std::size_t i = 0;
+	while (i < drawCount) {
+		Rendering::Mesh* mesh = draws[i].mesh;
+
+		std::size_t j = i + 1;
+		while (j < drawCount && draws[j].mesh == mesh) {
+			++j;
+		}
+		const std::size_t runLength = j - i;
+
+		// Instancing needs 2+ non-skinned draws sharing the same mesh.
+		bool canInstance = runLength >= 2;
+		if (canInstance) {
+			for (std::size_t k = i; k < j; ++k) {
+				if (ShadowDrawIsSkinned(draws[k].renderer)) {
+					canInstance = false;
+					break;
+				}
+			}
+		}
+
+		if (canInstance) {
+			instanceMatrices.clear();
+			instanceMatrices.reserve(runLength);
+			for (std::size_t k = i; k < j; ++k) {
+				ECS::GameObject* owner = draws[k].renderer ? draws[k].renderer->GetOwner() : nullptr;
+				if (owner) {
+					instanceMatrices.push_back(owner->GetWorldMatrix());
+				}
+			}
+
+			if (!instanceMatrices.empty()) {
+				shader->SetBool("uUseInstancing", true);
+				shader->SetBool("uHasAnimation", false);
+				mesh->UploadInstanceData(instanceMatrices.data(), instanceMatrices.size());
+				mesh->DrawInstanced(static_cast<GLsizei>(instanceMatrices.size()));
+				shader->SetBool("uUseInstancing", false);
+			}
+		}
+		else {
+			for (std::size_t k = i; k < j; ++k) {
+				ECS::MeshRenderer* renderer = draws[k].renderer;
+				ECS::GameObject* owner = renderer ? renderer->GetOwner() : nullptr;
+				if (!owner) continue;
+
+				shader->SetBool("uUseInstancing", false);
+				shader->SetMatrix4("uModel", owner->GetWorldMatrix());
+
+				Animation::Animator* animator = renderer->GetActiveAnimator();
+				if (animator && animator->ShouldSkinMesh()) {
+					shader->SetBool("uHasAnimation", true);
+					animator->BindBoneMatrices();
+				}
+				else {
+					shader->SetBool("uHasAnimation", false);
+				}
+
 				mesh->Draw();
 			}
 		}
+
+		i = j;
 	}
 }
 

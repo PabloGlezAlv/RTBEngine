@@ -7,6 +7,7 @@
 
 #include "GameObject.h"
 #include "MeshRenderer.h"
+#include "../Animation/Animator.h"
 #include "CameraComponent.h"
 #include "LightComponent.h"
 #include "RigidBodyComponent.h"
@@ -164,6 +165,19 @@ namespace {
 	thread_local std::vector<OpaqueMeshDraw> g_transparentDrawScratch;
 	thread_local std::vector<OpaqueMeshDraw> g_sortedTransparentScratch;
 	thread_local std::vector<OpaqueMeshDraw> g_discardDrawScratch;
+	// Per-instance model matrices reused each frame for instanced opaque batches.
+	thread_local std::vector<RTBEngine::Math::Matrix4> g_instanceMatrixScratch;
+
+	// A draw is skinned when its renderer is bound to an animator currently posing bones.
+	// Skinned meshes cannot be instanced (each needs its own model/bone matrices).
+	bool DrawIsSkinned(RTBEngine::ECS::MeshRenderer* renderer)
+	{
+		if (!renderer) {
+			return false;
+		}
+		RTBEngine::Animation::Animator* animator = renderer->GetActiveAnimator();
+		return animator && animator->ShouldSkinMesh();
+	}
 
 	void ApplyOpaqueDrawMaterial(
 		RTBEngine::ECS::MeshRenderer* renderer,
@@ -229,11 +243,12 @@ namespace {
 			return aMaterial < bMaterial;
 		}
 
-		if (a.renderer != b.renderer) {
-			return a.renderer < b.renderer;
+		// Mesh before renderer so identical mesh+material draws are always adjacent (instancing).
+		if (a.mesh != b.mesh) {
+			return a.mesh < b.mesh;
 		}
 
-		return a.mesh < b.mesh;
+		return a.renderer < b.renderer;
 	}
 
 	bool RequiresOcclusionFadePass(RTBEngine::ECS::MeshRenderer* renderer)
@@ -968,9 +983,64 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 	std::sort(opaqueDraws.begin(), opaqueDraws.end(), OpaqueMeshDrawLess);
 
 	OpaqueRenderBatchState batchState;
-	for (const OpaqueMeshDraw& draw : opaqueDraws) {
-		ApplyOpaqueDrawMaterial(draw.renderer, draw.material, batchState);
-		draw.renderer->RenderDraw(draw.mesh, draw.material);
+	std::vector<Math::Matrix4>& instanceMatrices = g_instanceMatrixScratch;
+
+	const std::size_t drawCount = opaqueDraws.size();
+	std::size_t i = 0;
+	while (i < drawCount) {
+		const OpaqueMeshDraw& first = opaqueDraws[i];
+
+		// Extend the run while mesh and material stay identical (already adjacent after sorting).
+		std::size_t j = i + 1;
+		while (j < drawCount
+			&& opaqueDraws[j].mesh == first.mesh
+			&& opaqueDraws[j].material == first.material) {
+			++j;
+		}
+		const std::size_t runLength = j - i;
+
+		ApplyOpaqueDrawMaterial(first.renderer, first.material, batchState);
+
+		// Instancing needs 2+ identical, non-skinned draws sharing mesh+material.
+		bool canInstance = runLength >= 2 && first.mesh && first.material;
+		if (canInstance) {
+			for (std::size_t k = i; k < j; ++k) {
+				if (DrawIsSkinned(opaqueDraws[k].renderer)) {
+					canInstance = false;
+					break;
+				}
+			}
+		}
+
+		if (canInstance) {
+			instanceMatrices.clear();
+			instanceMatrices.reserve(runLength);
+			for (std::size_t k = i; k < j; ++k) {
+				GameObject* owner = opaqueDraws[k].renderer ? opaqueDraws[k].renderer->GetOwner() : nullptr;
+				if (owner) {
+					instanceMatrices.push_back(owner->GetWorldMatrix());
+				}
+			}
+
+			Rendering::Shader* shader = first.material->GetShader();
+			if (shader && !instanceMatrices.empty()) {
+				shader->SetBool("uUseInstancing", true);
+				shader->SetBool("uHasAnimation", false);
+				first.mesh->UploadInstanceData(instanceMatrices.data(), instanceMatrices.size());
+				first.mesh->DrawInstanced(static_cast<GLsizei>(instanceMatrices.size()));
+				shader->SetBool("uUseInstancing", false);
+				MeshRenderer::AddInstancedDrawStats(
+					first.mesh->GetIndexCount(),
+					static_cast<uint32_t>(instanceMatrices.size()));
+			}
+		}
+		else {
+			for (std::size_t k = i; k < j; ++k) {
+				opaqueDraws[k].renderer->RenderDraw(opaqueDraws[k].mesh, opaqueDraws[k].material);
+			}
+		}
+
+		i = j;
 	}
 
 	--iterationDepth;

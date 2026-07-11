@@ -62,6 +62,9 @@ namespace RTBEngine {
             static uint32_t GetCulledObjectCount() { return culledObjectCount; }
             static void IncrementCulledCount() { culledObjectCount++; }
 
+            // One instanced draw call covering instanceCount meshes; keeps debug stats accurate.
+            static void AddInstancedDrawStats(uint32_t indexCount, uint32_t instanceCount);
+
             virtual void OnAwake() override;
             virtual void OnUpdate(float deltaTime) override;
             virtual void OnValidate() override;

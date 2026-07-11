@@ -34,6 +34,11 @@ namespace RTBEngine {
             culledObjectCount = 0;
         }
 
+        void MeshRenderer::AddInstancedDrawStats(uint32_t indexCount, uint32_t instanceCount) {
+            drawCallCount++;
+            triangleCount += (indexCount / 3) * instanceCount;
+        }
+
         using ThisClass = MeshRenderer;
         RTB_REGISTER_COMPONENT(MeshRenderer)
             RTB_PROPERTY_MESH(meshRef)
@@ -235,6 +240,9 @@ namespace RTBEngine {
                 return;
             }
 
+            // Single-draw path: ensure the instanced code path in the shader is disabled so a
+            // previous instanced batch cannot leak uUseInstancing=true into this draw.
+            shader->SetBool("uUseInstancing", false);
             shader->SetMatrix4("uModel", owner->GetWorldMatrix());
 
             Animation::Animator* animator = GetActiveAnimator();
