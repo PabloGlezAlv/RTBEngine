@@ -4,6 +4,15 @@ A 3D game engine written in **C++17**, compiled as `RTBEngine.dll` with an impor
 
 > **Note:** The scene/component layer lives in `Engine/Scene/`. The namespace `RTBEngine::ECS` is a legacy name (to be renamed). The engine does **not** implement a data-oriented Entity-Component-System today. Hybrid ECS support for high-volume simulation (particles, projectiles, crowds) is planned for a future release alongside the existing GameObject model.
 
+**Version:** `0.8.0` — see [`CHANGELOG.md`](CHANGELOG.md).
+
+| Constant | Value | Header |
+|----------|-------|--------|
+| Engine semver | `0.8.0` | `Engine/Core/Version.h` → `RTBEngine::Core::VersionInfo` |
+| RTBN protocol | `4` | `Engine/Online/OnlineMessageCodec.h` |
+| Script Bridge ABI | `4` | `Engine/Scripting/ScriptBridgeABI.h` |
+| NavMesh file format | `1` | `Engine/Navigation/NavMeshFile.cpp` |
+
 This document covers every subsystem in depth — public API, internal design, data flow, and usage patterns.
 
 ---
@@ -1135,7 +1144,7 @@ GameObject* Instantiate(GameObject* parent = nullptr) const;
 
 `CreateFromGameObject` recursively snapshots the source's transform, all components (via `SnapshotComponent`), and all children as child prefabs. `Instantiate` creates new `GameObject` instances and applies the snapshots via `ApplySnapshot`.
 
-**Editor prefab assets** (`.prefab` under `Assets/Prefabs/`) are Lua files written by `PrefabSaver` and loaded by `PrefabRegistry`. The editor's `PrefabEditorSession` opens them in a staging scene with `Instantiate(..., regenerateUuids=false)` so UUIDs round-trip on save; level instances use `regenerateUuids=true` for unique object IDs. See RTBEngineEditor README [§27](../../RTBEngineEditor/RTBEngineEditor/README.md#27-prefab-edit-mode).
+**Editor prefab assets** (`.prefab` under `Assets/Prefabs/`) are Lua files written by `PrefabSaver` and loaded by `PrefabRegistry`. The editor's `PrefabEditorSession` opens them in a staging scene with `Instantiate(..., regenerateUuids=false)` so UUIDs round-trip on save; level instances use `regenerateUuids=true` for unique object IDs. See RTBEngineEditor README [§27](../RTBEngineEditor/README.md#27-prefab-edit-mode).
 
 **Transform:**
 
@@ -4335,7 +4344,7 @@ Match exit: host despawns the leaving player's pawn and broadcasts ID 77; other 
 
 RTBEngine provides **grid-based 2D navigation** on the world XZ plane: editor-time baking from physics geometry, scene-side persistence, and runtime A* pathfinding with string pulling. This is not a triangle navmesh — walkability is stored per cell in a `NavGrid`.
 
-Editor bake controls, debug overlay, and Scene View visualization are documented in `RTBEngineEditor/README.md` [§26](../../RTBEngineEditor/RTBEngineEditor/README.md#26-optional-windows-and-navigation-debug).
+Editor bake controls, debug overlay, and Scene View visualization are documented in `RTBEngineEditor/README.md` [§26](../RTBEngineEditor/README.md#26-optional-windows-and-navigation-debug).
 
 ### 19.1 Overview
 

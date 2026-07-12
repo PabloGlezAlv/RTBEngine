@@ -7,6 +7,7 @@
 #include "Core/Logger.h"
 #include "Core/Event.h"
 #include "Core/Time.h"
+#include "Core/Version.h"
 #include "Core/Scheduler.h"
 #include "Core/CountdownTimer.h"
 #include "Scene/ComponentQuery.h"

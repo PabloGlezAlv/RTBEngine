@@ -17,7 +17,7 @@ namespace RTBEngine {
             bool failApplicationOnError = false;
 
             std::string productName = "RTBEngine";
-            std::string productVersion = "0.1.0";
+            std::string productVersion = "0.8.0";
 
             std::uint16_t lanGamePort = 27015;
             std::uint16_t lanDiscoveryPort = 27016;
