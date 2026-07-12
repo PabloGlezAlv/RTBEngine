@@ -10,6 +10,18 @@
 namespace RTBEngine {
     namespace Rendering {
 
+        namespace {
+            void StripUtf8Bom(std::string& value)
+            {
+                if (value.size() >= 3
+                    && static_cast<unsigned char>(value[0]) == 0xEF
+                    && static_cast<unsigned char>(value[1]) == 0xBB
+                    && static_cast<unsigned char>(value[2]) == 0xBF) {
+                    value.erase(0, 3);
+                }
+            }
+        }
+
         Shader::Shader()
             : programID(0)
             , isCompiled(false)
@@ -159,7 +171,9 @@ namespace RTBEngine {
 
             std::stringstream buffer;
             buffer << file.rdbuf();
-            return buffer.str();
+            std::string contents = buffer.str();
+            StripUtf8Bom(contents);
+            return contents;
         }
 
         GLint Shader::GetUniformLocation(const std::string& name) {

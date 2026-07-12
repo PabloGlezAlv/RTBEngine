@@ -73,6 +73,8 @@ namespace RTBEngine {
             Rendering::Mesh* meshRef = nullptr;
             Rendering::Texture* textureRef = nullptr;
             Math::Vector4 colorRef = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+            std::string shaderRef = "basic";
+            std::string shaderPropertyOverrides;
             int meshIndex = 0;
             bool multiMesh = false;
 

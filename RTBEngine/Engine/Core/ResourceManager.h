@@ -8,11 +8,13 @@
 #include "../Audio/AudioClip.h"
 #include "../Rendering/Cubemap.h"
 #include "../Rendering/Skybox.h"
+#include "../Rendering/ShaderAsset.h"
 
 #include <unordered_map>
 #include <string>
 #include <memory>
 #include <filesystem>
+#include <vector>
 
 namespace RTBEngine {
     namespace ECS {
@@ -46,6 +48,14 @@ namespace RTBEngine {
             // Shader management
             Rendering::Shader* GetShader(const std::string& name);
             Rendering::Shader* LoadShader(const std::string& name, const std::string& vertexPath, const std::string& fragmentPath);
+            Rendering::Shader* ResolveShader(const std::string& shaderRef);
+            Rendering::Shader* LoadShaderAsset(const std::string& assetRef, bool forceReload = false);
+            void ScanShaderAssets(const std::filesystem::path& assetsDirectory);
+            void ReloadAllShaderAssets();
+            bool TryGetShaderAssetData(const std::string& shaderRef, const Rendering::ShaderAssetData** outData) const;
+            std::vector<std::string> GetMeshShaderOptions() const;
+            static bool IsShaderAssetRef(const std::string& shaderRef);
+            static std::vector<std::string> GetBuiltinMeshShaderNames();
 
             // Texture management
             Rendering::Texture* GetTexture(const std::string& path);
@@ -55,6 +65,7 @@ namespace RTBEngine {
             Rendering::Texture* LoadModelTexture(const std::string& path);
             Rendering::Texture* LoadTextureAsset(const std::string& textureFilePath);
             void SetAssetRootPath(const std::filesystem::path& path);
+            const std::filesystem::path& GetAssetRootPath() const { return assetRootPath; }
             std::string ResolvePathForRead(const std::string& path) const;
             std::string TryMakeAssetRelativePath(const std::string& path) const;
 
@@ -129,6 +140,8 @@ namespace RTBEngine {
             static bool IsAssetReferencePath(const std::filesystem::path& path, const std::string& assetDirectoryName);
 
             std::unordered_map<std::string, std::unique_ptr<Rendering::Shader>> shaders;
+            std::vector<std::string> shaderAssetRefs;
+            std::unordered_map<std::string, Rendering::ShaderAssetData> shaderAssetDataCache;
             std::unordered_map<std::string, std::unique_ptr<Rendering::Texture>> textures;
             std::unordered_map<std::string, std::vector<std::unique_ptr<Rendering::Mesh>>> modelMeshes;
             std::unordered_map<std::string, std::unique_ptr<Audio::AudioClip>> audioClips;

@@ -7,6 +7,7 @@
 #include "../Reflection/PropertyMacros.h"
 #include "../Core/ResourceManager.h"
 #include "../Core/Logger.h"
+#include "../Rendering/ShaderProperties.h"
 #include <algorithm>
 
 namespace RTBEngine {
@@ -44,6 +45,8 @@ namespace RTBEngine {
             RTB_PROPERTY_MESH(meshRef)
             RTB_PROPERTY_TEXTURE(textureRef)
             RTB_PROPERTY_COLOR(colorRef)
+            RTB_PROPERTY(shaderRef)
+            RTB_PROPERTY(shaderPropertyOverrides)
             RTB_PROPERTY(meshIndex)
             RTB_PROPERTY(multiMesh)
         RTB_END_REGISTER(MeshRenderer)
@@ -62,10 +65,6 @@ namespace RTBEngine {
         }
 
         void MeshRenderer::OnAwake() {
-            if (material && !material->GetShader()) {
-                Rendering::Shader* shader = Core::ResourceManager::GetInstance().GetShader("basic");
-                if (shader) material->SetShader(shader);
-            }
             SyncProperties();
         }
 
@@ -74,20 +73,27 @@ namespace RTBEngine {
         }
 
         void MeshRenderer::OnValidate() {
-            if (material && !material->GetShader()) {
-                Rendering::Shader* shader = Core::ResourceManager::GetInstance().GetShader("basic");
-                if (shader) material->SetShader(shader);
-            }
             SyncProperties();
         }
 
         void MeshRenderer::SyncProperties() {
-            // Multi-mesh mode does not use reflected proxies for mesh/texture sync
-            if (multiMesh) return;
+            Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
+            const std::string resolvedShaderName = shaderRef.empty() ? "basic" : shaderRef;
+            Rendering::Shader* shader = resources.ResolveShader(resolvedShaderName);
 
-            if (material && !material->GetShader()) {
-                Rendering::Shader* shader = Core::ResourceManager::GetInstance().GetShader("basic");
-                if (shader) material->SetShader(shader);
+            if (multiMesh) {
+                if (shader) {
+                    for (std::unique_ptr<Rendering::Material>& meshMaterial : meshMaterials) {
+                        if (meshMaterial) {
+                            meshMaterial->SetShader(shader);
+                        }
+                    }
+                }
+                return;
+            }
+
+            if (material && shader) {
+                material->SetShader(shader);
             }
 
             // Sync mesh from reflected proxy
@@ -253,6 +259,13 @@ namespace RTBEngine {
             else {
                 shader->SetBool("uHasAnimation", false);
             }
+
+            const std::string resolvedShaderName = shaderRef.empty() ? "basic" : shaderRef;
+            Rendering::ShaderProperties::ApplyExtraUniforms(
+                shader,
+                resolvedShaderName,
+                shaderPropertyOverrides,
+                colorRef);
 
             drawMesh->Draw();
             drawCallCount++;

@@ -257,7 +257,12 @@ namespace RTBEngine {
 
                             Rendering::FbxBindingContext ctx{ resources, path, modelData };
                             Rendering::FbxBindingResult bind = Rendering::BuildMeshesAndMaterials(ctx);
-                            Rendering::Shader* shader = resources.GetShader("basic");
+
+                            std::string shaderName = "basic";
+                            if (meshRenderer && !meshRenderer->shaderRef.empty()) {
+                                shaderName = meshRenderer->shaderRef;
+                            }
+                            Rendering::Shader* shader = resources.ResolveShader(shaderName);
 
                             // Pick mesh by meshIndex
                             const Reflection::PropertyInfo* indexProp = typeInfo->GetProperty("meshIndex");

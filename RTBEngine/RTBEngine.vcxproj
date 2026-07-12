@@ -208,6 +208,8 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Math\Quaternions\Quaternion.cpp" />
     <ClCompile Include="Engine\Input\InputManager.cpp" />
     <ClCompile Include="Engine\Rendering\Shader.cpp" />
+    <ClCompile Include="Engine\Rendering\ShaderAsset.cpp" />
+    <ClCompile Include="Engine\Rendering\ShaderProperties.cpp" />
     <ClCompile Include="Engine\Rendering\Mesh.cpp" />
     <ClCompile Include="Engine\Rendering\Texture.cpp" />
     <ClCompile Include="Engine\Rendering\Font.cpp" />
@@ -391,6 +393,8 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Input\InputManager.h" />
     <ClInclude Include="Engine\Rendering\Rendering.h" />
     <ClInclude Include="Engine\Rendering\Shader.h" />
+    <ClInclude Include="Engine\Rendering\ShaderAsset.h" />
+    <ClInclude Include="Engine\Rendering\ShaderProperties.h" />
     <ClInclude Include="Engine\Rendering\Vertex.h" />
     <ClInclude Include="Engine\Rendering\Mesh.h" />
     <ClInclude Include="Engine\Rendering\Texture.h" />

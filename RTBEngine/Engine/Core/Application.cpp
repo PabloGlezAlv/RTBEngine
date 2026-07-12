@@ -273,6 +273,14 @@ bool RTBEngine::Core::Application::Initialize()
 		return false;
 	}
 
+	if (!config.initialScenePath.empty()) {
+		namespace fs = std::filesystem;
+		const fs::path assetsPath = fs::current_path() / "Assets";
+		if (fs::exists(assetsPath) && fs::is_directory(assetsPath)) {
+			resources.ScanShaderAssets(assetsPath);
+		}
+	}
+
 	// Initialize default skybox
 	skybox = resources.GetDefaultSkybox();
 

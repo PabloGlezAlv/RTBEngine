@@ -22,6 +22,7 @@
 #include "../Rendering/Lighting/LightingUBO.h"
 #include "../Rendering/Material.h"
 #include "../Rendering/Shader.h"
+#include "../Rendering/ShaderProperties.h"
 #include "../Rendering/Texture.h"
 
 namespace {
@@ -205,13 +206,23 @@ namespace {
 			state.lastAlphaMultiplier = -1.0f;
 		}
 
-		if (drawMaterial != state.material || alphaMultiplier != state.lastAlphaMultiplier) {
-			drawMaterial->ApplyProperties(alphaMultiplier);
-			state.material = drawMaterial;
-			state.lastAlphaMultiplier = alphaMultiplier;
-		}
+        if (drawMaterial != state.material || alphaMultiplier != state.lastAlphaMultiplier) {
+            drawMaterial->ApplyProperties(alphaMultiplier);
+            state.material = drawMaterial;
+            state.lastAlphaMultiplier = alphaMultiplier;
+        }
 
-		RTBEngine::Rendering::Texture* nextTexture = drawMaterial->GetTexture();
+        if (renderer) {
+            const std::string resolvedShaderName =
+                renderer->shaderRef.empty() ? "basic" : renderer->shaderRef;
+            RTBEngine::Rendering::ShaderProperties::ApplyExtraUniforms(
+                nextShader,
+                resolvedShaderName,
+                renderer->shaderPropertyOverrides,
+                renderer->colorRef);
+        }
+
+        RTBEngine::Rendering::Texture* nextTexture = drawMaterial->GetTexture();
 		if (nextTexture != state.texture) {
 			if (nextTexture) {
 				nextTexture->Bind(0);

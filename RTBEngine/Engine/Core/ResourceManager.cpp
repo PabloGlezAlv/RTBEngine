@@ -8,8 +8,11 @@
 #include <fstream>
 #include <sstream>
 #include <array>
+#include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include "../RTBEngine.h"
+#include "../Rendering/ShaderAsset.h"
 
 namespace RTBEngine {
     namespace Core {
@@ -149,8 +152,12 @@ namespace RTBEngine {
 
             // Create new shader
             auto shader = std::make_unique<Rendering::Shader>();
-            if (!shader->LoadFromFiles(vertexPath, fragmentPath)) {
-                RTB_ERROR("Failed to load shader: " + name);
+            const std::string resolvedVertexPath = ResolvePathForRead(vertexPath);
+            const std::string resolvedFragmentPath = ResolvePathForRead(fragmentPath);
+            if (!shader->LoadFromFiles(resolvedVertexPath, resolvedFragmentPath)) {
+                RTB_ERROR("Failed to load shader: " + name
+                    + " (vertex: " + resolvedVertexPath
+                    + ", fragment: " + resolvedFragmentPath + ")");
                 return nullptr;
             }
 
@@ -158,6 +165,152 @@ namespace RTBEngine {
             Rendering::Shader* shaderPtr = shader.get();
             shaders[name] = std::move(shader);
             return shaderPtr;
+        }
+
+        bool ResourceManager::IsShaderAssetRef(const std::string& shaderRef)
+        {
+            if (shaderRef.size() < 8) {
+                return false;
+            }
+
+            std::string lower = shaderRef;
+            std::transform(lower.begin(), lower.end(), lower.begin(),
+                [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+            return lower.size() >= 7 && lower.substr(lower.size() - 7) == ".shader";
+        }
+
+        std::vector<std::string> ResourceManager::GetBuiltinMeshShaderNames()
+        {
+            return { "basic" };
+        }
+
+        Rendering::Shader* ResourceManager::LoadShaderAsset(const std::string& assetRef, bool forceReload)
+        {
+            if (assetRef.empty()) {
+                return nullptr;
+            }
+
+            const std::string normalizedRef = TryMakeAssetRelativePath(assetRef);
+            const std::string lookupKey = normalizedRef.empty() ? assetRef : normalizedRef;
+            const std::string parseRef = lookupKey;
+
+            Rendering::ShaderAssetData assetData;
+            if (!Rendering::ShaderAsset::ParseFile(parseRef, assetData)) {
+                RTB_ERROR("Failed to parse shader asset: " + parseRef);
+                shaderAssetDataCache.erase(lookupKey);
+                return nullptr;
+            }
+            shaderAssetDataCache[lookupKey] = assetData;
+
+            if (!forceReload) {
+                if (Rendering::Shader* existing = GetShader(lookupKey)) {
+                    return existing;
+                }
+            } else {
+                shaders.erase(lookupKey);
+            }
+
+            return LoadShader(lookupKey, assetData.vertexPath, assetData.fragmentPath);
+        }
+
+        bool ResourceManager::TryGetShaderAssetData(
+            const std::string& shaderRef,
+            const Rendering::ShaderAssetData** outData) const
+        {
+            if (!outData) {
+                return false;
+            }
+
+            *outData = nullptr;
+            if (!IsShaderAssetRef(shaderRef)) {
+                return false;
+            }
+
+            const std::string normalizedRef = TryMakeAssetRelativePath(shaderRef);
+            const std::string lookupKey = normalizedRef.empty() ? shaderRef : normalizedRef;
+
+            const auto it = shaderAssetDataCache.find(lookupKey);
+            if (it == shaderAssetDataCache.end()) {
+                return false;
+            }
+
+            *outData = &it->second;
+            return true;
+        }
+
+        void ResourceManager::ReloadAllShaderAssets()
+        {
+            const std::vector<std::string> assetRefs = shaderAssetRefs;
+            for (const std::string& assetRef : assetRefs) {
+                shaderAssetDataCache.erase(assetRef);
+                shaders.erase(assetRef);
+                LoadShaderAsset(assetRef, true);
+            }
+        }
+
+        Rendering::Shader* ResourceManager::ResolveShader(const std::string& shaderRef)
+        {
+            if (shaderRef.empty()) {
+                return GetShader("basic");
+            }
+
+            if (IsShaderAssetRef(shaderRef)) {
+                const std::string normalizedRef = TryMakeAssetRelativePath(shaderRef);
+                const std::string lookupRef = normalizedRef.empty() ? shaderRef : normalizedRef;
+                if (Rendering::Shader* assetShader = LoadShaderAsset(lookupRef)) {
+                    return assetShader;
+                }
+                return GetShader("basic");
+            }
+
+            if (Rendering::Shader* shader = GetShader(shaderRef)) {
+                return shader;
+            }
+
+            return GetShader("basic");
+        }
+
+        void ResourceManager::ScanShaderAssets(const std::filesystem::path& assetsDirectory)
+        {
+            shaderAssetRefs.clear();
+            if (!std::filesystem::exists(assetsDirectory) ||
+                !std::filesystem::is_directory(assetsDirectory)) {
+                return;
+            }
+
+            for (const auto& entry :
+                std::filesystem::recursive_directory_iterator(assetsDirectory)) {
+                if (!entry.is_regular_file()) {
+                    continue;
+                }
+
+                if (entry.path().extension() != ".shader") {
+                    continue;
+                }
+
+                std::error_code ec;
+                std::filesystem::path relativePath =
+                    std::filesystem::relative(entry.path(), assetsDirectory, ec);
+                if (ec) {
+                    continue;
+                }
+
+                std::string assetRef =
+                    (std::filesystem::path("Assets") / relativePath).generic_string();
+                shaderAssetRefs.push_back(assetRef);
+            }
+
+            std::sort(shaderAssetRefs.begin(), shaderAssetRefs.end());
+            shaderAssetRefs.erase(
+                std::unique(shaderAssetRefs.begin(), shaderAssetRefs.end()),
+                shaderAssetRefs.end());
+        }
+
+        std::vector<std::string> ResourceManager::GetMeshShaderOptions() const
+        {
+            std::vector<std::string> options = GetBuiltinMeshShaderNames();
+            options.insert(options.end(), shaderAssetRefs.begin(), shaderAssetRefs.end());
+            return options;
         }
 
         Rendering::Texture* ResourceManager::GetTexture(const std::string& path)
@@ -760,6 +913,8 @@ namespace RTBEngine {
         void ResourceManager::Clear()
         {
             shaders.clear();
+            shaderAssetRefs.clear();
+            shaderAssetDataCache.clear();
             textures.clear();
             modelMeshPtrs.clear();
             modelMeshes.clear();

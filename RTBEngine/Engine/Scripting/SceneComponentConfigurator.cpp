@@ -148,8 +148,16 @@ namespace RTBEngine {
             void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp) {
                 Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
 
-                const std::string shaderName = ReadOptionalString(L, tableIndex, "shader", "basic");
-                Rendering::Shader* shader = resources.GetShader(shaderName);
+                std::string shaderName = ReadOptionalString(L, tableIndex, "shader", "");
+                if (shaderName.empty()) {
+                    shaderName = ReadOptionalString(L, tableIndex, "shaderRef", comp->shaderRef);
+                }
+                if (shaderName.empty()) {
+                    shaderName = "basic";
+                }
+                comp->shaderRef = shaderName;
+
+                Rendering::Shader* shader = resources.ResolveShader(shaderName);
                 if (shader) {
                     comp->SetShader(shader);
                 }
