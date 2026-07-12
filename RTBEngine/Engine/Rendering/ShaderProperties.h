@@ -54,6 +54,7 @@ namespace RTBEngine {
                                            const std::string& shaderRef,
                                            const std::string& overrideBlob,
                                            const Math::Vector4& colorRef);
+            static void ApplyEngineUniforms(class Shader* shader);
         };
 
     }

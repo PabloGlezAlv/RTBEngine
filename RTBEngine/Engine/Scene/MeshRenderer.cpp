@@ -266,6 +266,7 @@ namespace RTBEngine {
                 resolvedShaderName,
                 shaderPropertyOverrides,
                 colorRef);
+            Rendering::ShaderProperties::ApplyEngineUniforms(shader);
 
             drawMesh->Draw();
             drawCallCount++;

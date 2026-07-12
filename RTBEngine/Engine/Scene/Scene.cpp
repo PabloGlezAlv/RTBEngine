@@ -220,6 +220,7 @@ namespace {
                 resolvedShaderName,
                 renderer->shaderPropertyOverrides,
                 renderer->colorRef);
+            RTBEngine::Rendering::ShaderProperties::ApplyEngineUniforms(nextShader);
         }
 
         RTBEngine::Rendering::Texture* nextTexture = drawMaterial->GetTexture();

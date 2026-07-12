@@ -2,6 +2,7 @@
 #include "ShaderAsset.h"
 #include "Shader.h"
 #include "../Core/ResourceManager.h"
+#include "../Core/Time.h"
 #include <sstream>
 #include <algorithm>
 #include <cctype>
@@ -318,6 +319,15 @@ namespace RTBEngine {
                     break;
                 }
             }
+        }
+
+        void ShaderProperties::ApplyEngineUniforms(Shader* shader)
+        {
+            if (!shader) {
+                return;
+            }
+
+            shader->SetFloat("uTime", Core::Time::GetTime());
         }
 
     }
