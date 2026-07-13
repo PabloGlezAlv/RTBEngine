@@ -114,6 +114,12 @@ namespace RTBEngine {
             return prefabs.find(name) != prefabs.end();
         }
 
+        std::string PrefabRegistry::GetFilePath(const std::string& name) const
+        {
+            auto it = nameToPaths.find(name);
+            return it != nameToPaths.end() ? it->second : std::string();
+        }
+
         void PrefabRegistry::Clear()
         {
             prefabs.clear();

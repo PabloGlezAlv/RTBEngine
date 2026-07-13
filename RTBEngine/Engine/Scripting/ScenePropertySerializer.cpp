@@ -306,7 +306,13 @@ namespace RTBEngine {
             }
 
             std::string Indent(int level) {
-                return std::string(level * 4, ' ');
+                if (level < 0) {
+                    level = 0;
+                }
+                if (level > 256) {
+                    level = 256;
+                }
+                return std::string(static_cast<size_t>(level) * 4, ' ');
             }
 
         }

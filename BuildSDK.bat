@@ -147,6 +147,7 @@ copy "%THIRD_PARTY_DIR%\bullet3-3.25\build_msvc\lib\Debug\LinearMath_Debug.lib" 
 copy "%THIRD_PARTY_DIR%\bullet3-3.25\build_msvc\lib\Debug\BulletCollision_Debug.lib" "%OUTPUT_DIR%\Lib\Debug\" >nul
 copy "%THIRD_PARTY_DIR%\bullet3-3.25\build_msvc\lib\Debug\BulletDynamics_Debug.lib" "%OUTPUT_DIR%\Lib\Debug\" >nul
 copy "%THIRD_PARTY_DIR%\assimp\lib\Debug\x64\assimp-%TOOLSET%-mtd.lib" "%OUTPUT_DIR%\Lib\Debug\" >nul
+copy "%THIRD_PARTY_DIR%\assimp\lib\Release\x64\assimp-%TOOLSET%-mt.lib" "%OUTPUT_DIR%\Lib\Debug\" >nul
 copy "%THIRD_PARTY_DIR%\lua\lua54.lib" "%OUTPUT_DIR%\Lib\Debug\" >nul
 copy "%THIRD_PARTY_DIR%\fmod\api\core\lib\x64\fmod_vc.lib" "%OUTPUT_DIR%\Lib\Debug\" >nul
 

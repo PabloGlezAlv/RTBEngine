@@ -9,10 +9,16 @@
 
 
 namespace RTBEngine {
+    namespace Reflection {
+        class TypeInfo;
+        struct PropertyInfo;
+    }
+
     namespace ECS {
 
         class GameObject;
         class Component;
+        class Scene;
 
         struct RTB_API AnimationKeyClipSnapshot {
             std::string key;
@@ -68,8 +74,26 @@ namespace RTBEngine {
             const std::string& GetSourceUuid() const { return sourceUuid; }
 
             static void ApplySnapshot(Component* target, const ComponentSnapshot& snap);
+            static void ApplySnapshotProperty(
+                Component* target,
+                const ComponentSnapshot& snap,
+                const Reflection::PropertyInfo* property,
+                Scene* referenceScene,
+                GameObject* referenceRoot);
 
             static void SnapshotComponent(ComponentSnapshot& snap, const Component* comp);
+            static void SnapshotProperty(
+                ComponentSnapshot& snap,
+                const Component* comp,
+                const Reflection::PropertyInfo* property);
+
+            std::unique_ptr<Prefab> DeepClone() const;
+            Prefab* FindMutableChildByPath(const std::vector<std::string>& nodePath);
+            const Prefab* FindChildByPath(const std::vector<std::string>& nodePath) const;
+            static void CopySourceUuidsFrom(const Prefab& source, Prefab& destination);
+
+            std::vector<ComponentSnapshot>& GetMutableSnapshots() { return componentSnapshots; }
+            std::vector<std::unique_ptr<Prefab>>& GetMutableChildPrefabs() { return childPrefabs; }
         private:
             std::string name;
             std::string sourceUuid;

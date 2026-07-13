@@ -55,6 +55,9 @@
 
 // Built-in Components
 #include "Scene/MissingComponent.h"
+#include "Scene/PrefabInstanceResolver.h"
+#include "Scene/PrefabOverrideDiff.h"
+#include "Scene/PrefabOverrideOps.h"
 #include "Scene/MeshRenderer.h"
 #include "Scene/NetworkIdentity.h"
 #include "Scene/NetworkTransform.h"

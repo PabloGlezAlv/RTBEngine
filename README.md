@@ -1162,7 +1162,45 @@ const Math::Vector3&    GetScale()    const;
 ```cpp
 static void SnapshotComponent(ComponentSnapshot& snap, const Component* comp);
 static void ApplySnapshot(Component* target, const ComponentSnapshot& snap);
+static void ApplySnapshotProperty(Component* target, const ComponentSnapshot& snap,
+    const Reflection::PropertyInfo* property, Scene* referenceScene, GameObject* referenceRoot);
+static void SnapshotProperty(ComponentSnapshot& snap, const Component* comp,
+    const Reflection::PropertyInfo* property);
+
+std::unique_ptr<Prefab> DeepClone() const;
 ```
+
+### 6.6.1 Prefab instance overrides (Apply / Revert)
+
+Level scenes store prefab instances as `prefab = "Name"` plus optional `overrides`. Runtime utilities compare live instances against the `PrefabRegistry` baseline:
+
+| API | Header | Role |
+|-----|--------|------|
+| `PrefabInstanceResolver` | `Engine/Scene/PrefabInstanceResolver.h` | Finds instance root, node path, and baseline `Prefab` node |
+| `PrefabOverrideDiff` | `Engine/Scene/PrefabOverrideDiff.h` | Detects overridden transforms, components, and properties |
+| `PrefabOverrideOps` | `Engine/Scene/PrefabOverrideOps.h` | Apply/Revert per property, component, transform, or entire node |
+
+**Applying changes to the prefab asset is granular: one operation per overridden field.** Use `ApplyProperty` (or `ApplyTransform` / `ApplyAddedComponent`) for each value you want to persist into the `.prefab` file. `ApplyProperty` is a no-op when the field matches the registry baseline.
+
+```cpp
+PrefabInstanceContext ctx = PrefabInstanceResolver::Resolve(gameObject);
+const ComponentSnapshot* baseline = PrefabOverrideDiff::FindBaselineSnapshot(
+    ctx.baselineNode, component->GetTypeName());
+
+if (PrefabOverrideDiff::IsPropertyOverridden(component, baseline, prop)) {
+    PrefabOverrideOps::ApplyProperty(gameObject, component, prop);
+}
+```
+
+**Editor workflow (Inspector on a level instance):**
+
+1. Overridden fields are shown with a **bold blue label** (diff vs `PrefabRegistry`).
+2. **Right-click** the property row → **Apply to Prefab** writes only that field to the asset (`PrefabSaver` + `PrefabRegistry::Reload`).
+3. **Right-click** the same row → **Revert** restores the field from the baseline without touching other overrides.
+4. Transform rows and **scene-added components** expose the same per-target context menus.
+5. **Revert All** on the prefab header re-instantiates the node from the asset; **Unlink** clears `prefabName` on the hierarchy.
+
+`ApplyAll` remains available for tools and batch scripts; the default authoring path is per-property Apply. Other instances in the open scene are not auto-refreshed after Apply.
 
 ### 6.7 PrefabRegistry
 
@@ -1180,6 +1218,7 @@ void Clear();
 Prefab* Get(const std::string& name) const;
 Prefab* GetByPath(const std::string& filePath) const;
 bool    Has(const std::string& name) const;
+std::string GetFilePath(const std::string& name) const;
 
 std::function<void(const std::string&)> onPrefabChanged;   // Notification callback
 ```

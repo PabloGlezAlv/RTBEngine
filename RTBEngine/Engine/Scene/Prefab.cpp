@@ -5,7 +5,9 @@
 #include "Component.h"
 #include "MeshRenderer.h"
 #include "SceneManager.h"
+#include "PrefabInstanceResolver.h"
 #include "../Reflection/ListPropertyAccess.h"
+#include "../Reflection/TypeInfo.h"
 #include "../Scripting/ComponentRegistry.h"
 #include "../Scripting/SceneReflectionUtils.h"
 #include "../Core/ResourceManager.h"
@@ -18,6 +20,7 @@
 #include "../Audio/AudioClip.h"
 
 #include <unordered_map>
+#include <functional>
 
 namespace RTBEngine {
     namespace ECS {
@@ -524,6 +527,292 @@ namespace RTBEngine {
         {
             std::vector<GameObject*> discarded;
             return Instantiate(parent, discarded, regenerateUuids);
+        }
+
+        std::unique_ptr<Prefab> Prefab::DeepClone() const
+        {
+            auto clone = std::make_unique<Prefab>(name);
+            clone->sourceUuid = sourceUuid;
+            clone->position = position;
+            clone->rotation = rotation;
+            clone->scale = scale;
+            clone->collisionLayer = collisionLayer;
+            clone->componentSnapshots = componentSnapshots;
+
+            for (const auto& child : childPrefabs) {
+                if (child) {
+                    clone->childPrefabs.push_back(child->DeepClone());
+                }
+            }
+
+            return clone;
+        }
+
+        const Prefab* Prefab::FindChildByPath(const std::vector<std::string>& nodePath) const
+        {
+            return PrefabInstanceResolver::FindBaselineChild(this, nodePath);
+        }
+
+        Prefab* Prefab::FindMutableChildByPath(const std::vector<std::string>& nodePath)
+        {
+            Prefab* current = this;
+            for (const std::string& segment : nodePath) {
+                Prefab* next = nullptr;
+                for (auto& child : current->childPrefabs) {
+                    if (child && child->GetName() == segment) {
+                        next = child.get();
+                        break;
+                    }
+                }
+                if (!next) {
+                    return nullptr;
+                }
+                current = next;
+            }
+            return current;
+        }
+
+        void Prefab::CopySourceUuidsFrom(const Prefab& source, Prefab& destination)
+        {
+            destination.sourceUuid = source.sourceUuid;
+
+            for (auto& destChild : destination.GetMutableChildPrefabs()) {
+                if (!destChild) {
+                    continue;
+                }
+
+                for (const auto& sourceChild : source.GetChildPrefabs()) {
+                    if (sourceChild && sourceChild->GetName() == destChild->GetName()) {
+                        CopySourceUuidsFrom(*sourceChild, *destChild);
+                        break;
+                    }
+                }
+            }
+        }
+
+        void Prefab::SnapshotProperty(
+            ComponentSnapshot& snap,
+            const Component* comp,
+            const Reflection::PropertyInfo* property)
+        {
+            if (!comp || !property) {
+                return;
+            }
+
+            ComponentSnapshot fullSnap;
+            SnapshotComponent(fullSnap, comp);
+            if (snap.typeName.empty()) {
+                snap.typeName = fullSnap.typeName;
+            }
+
+            const size_t offset = property->offset;
+
+            if (property->type == Reflection::PropertyType::String ||
+                property->type == Reflection::PropertyType::AssetRef) {
+                auto it = fullSnap.stringData.find(offset);
+                if (it != fullSnap.stringData.end()) {
+                    snap.stringData[offset] = it->second;
+                } else {
+                    snap.stringData.erase(offset);
+                }
+                return;
+            }
+
+            if (property->type == Reflection::PropertyType::MeshRef ||
+                property->type == Reflection::PropertyType::TextureRef ||
+                property->type == Reflection::PropertyType::AudioClipRef ||
+                property->type == Reflection::PropertyType::GameObjectRef ||
+                property->type == Reflection::PropertyType::ComponentRef) {
+                auto it = fullSnap.ptrPathData.find(offset);
+                if (it != fullSnap.ptrPathData.end()) {
+                    snap.ptrPathData[offset] = it->second;
+                } else {
+                    snap.ptrPathData.erase(offset);
+                }
+                return;
+            }
+
+            if (property->type == Reflection::PropertyType::List) {
+                auto listIt = fullSnap.listStringData.find(offset);
+                if (listIt != fullSnap.listStringData.end()) {
+                    snap.listStringData[offset] = listIt->second;
+                } else {
+                    snap.listStringData.erase(offset);
+                }
+
+                auto clipIt = fullSnap.listAnimationKeyClipData.find(offset);
+                if (clipIt != fullSnap.listAnimationKeyClipData.end()) {
+                    snap.listAnimationKeyClipData[offset] = clipIt->second;
+                } else {
+                    snap.listAnimationKeyClipData.erase(offset);
+                }
+                return;
+            }
+
+            snap.rawData.clear();
+            const uint8_t* raw = fullSnap.rawData.data();
+            const uint8_t* rawEnd = raw + fullSnap.rawData.size();
+            while (raw < rawEnd) {
+                size_t rawOffset = *reinterpret_cast<const size_t*>(raw);
+                raw += sizeof(size_t);
+                size_t rawSize = *reinterpret_cast<const size_t*>(raw);
+                raw += sizeof(size_t);
+
+                if (rawOffset == offset) {
+                    snap.rawData.insert(snap.rawData.end(),
+                        reinterpret_cast<const uint8_t*>(&rawOffset),
+                        reinterpret_cast<const uint8_t*>(&rawOffset) + sizeof(size_t));
+                    snap.rawData.insert(snap.rawData.end(),
+                        reinterpret_cast<const uint8_t*>(&rawSize),
+                        reinterpret_cast<const uint8_t*>(&rawSize) + sizeof(size_t));
+                    snap.rawData.insert(snap.rawData.end(), raw, raw + rawSize);
+                    break;
+                }
+                raw += rawSize;
+            }
+        }
+
+        void Prefab::ApplySnapshotProperty(
+            Component* target,
+            const ComponentSnapshot& snap,
+            const Reflection::PropertyInfo* property,
+            Scene* referenceScene,
+            GameObject* referenceRoot)
+        {
+            if (!target || !property) {
+                return;
+            }
+
+            ComponentSnapshot partial = snap;
+            partial.typeName = snap.typeName;
+            partial.rawData.clear();
+            partial.stringData.clear();
+            partial.ptrPathData.clear();
+            partial.listStringData.clear();
+            partial.listAnimationKeyClipData.clear();
+
+            const size_t offset = property->offset;
+            const size_t size = property->size;
+
+            if (property->type == Reflection::PropertyType::String ||
+                property->type == Reflection::PropertyType::AssetRef) {
+                auto it = snap.stringData.find(offset);
+                if (it != snap.stringData.end()) {
+                    partial.stringData[offset] = it->second;
+                }
+            } else if (property->type == Reflection::PropertyType::List) {
+                auto listIt = snap.listStringData.find(offset);
+                if (listIt != snap.listStringData.end()) {
+                    partial.listStringData[offset] = listIt->second;
+                }
+                auto clipIt = snap.listAnimationKeyClipData.find(offset);
+                if (clipIt != snap.listAnimationKeyClipData.end()) {
+                    partial.listAnimationKeyClipData[offset] = clipIt->second;
+                }
+            } else if (property->type == Reflection::PropertyType::MeshRef ||
+                       property->type == Reflection::PropertyType::TextureRef ||
+                       property->type == Reflection::PropertyType::AudioClipRef ||
+                       property->type == Reflection::PropertyType::GameObjectRef ||
+                       property->type == Reflection::PropertyType::ComponentRef) {
+                auto it = snap.ptrPathData.find(offset);
+                if (it != snap.ptrPathData.end()) {
+                    partial.ptrPathData[offset] = it->second;
+                }
+            } else {
+                const uint8_t* raw = snap.rawData.data();
+                const uint8_t* rawEnd = raw + snap.rawData.size();
+                while (raw < rawEnd) {
+                    size_t rawOffset = *reinterpret_cast<const size_t*>(raw);
+                    raw += sizeof(size_t);
+                    size_t rawSize = *reinterpret_cast<const size_t*>(raw);
+                    raw += sizeof(size_t);
+
+                    if (rawOffset == offset && rawSize == size) {
+                        partial.rawData.insert(partial.rawData.end(),
+                            reinterpret_cast<const uint8_t*>(&rawOffset),
+                            reinterpret_cast<const uint8_t*>(&rawOffset) + sizeof(size_t));
+                        partial.rawData.insert(partial.rawData.end(),
+                            reinterpret_cast<const uint8_t*>(&rawSize),
+                            reinterpret_cast<const uint8_t*>(&rawSize) + sizeof(size_t));
+                        partial.rawData.insert(partial.rawData.end(), raw, raw + rawSize);
+                        break;
+                    }
+                    raw += rawSize;
+                }
+            }
+
+            ApplySnapshot(target, partial);
+
+            if (property->type == Reflection::PropertyType::GameObjectRef ||
+                property->type == Reflection::PropertyType::ComponentRef) {
+                auto it = snap.ptrPathData.find(offset);
+                if (it == snap.ptrPathData.end()) {
+                    return;
+                }
+
+                void* data = property->GetMutableData(target);
+                if (!data) {
+                    return;
+                }
+
+                if (property->type == Reflection::PropertyType::GameObjectRef) {
+                    GameObject* resolved = nullptr;
+                    if (!it->second.empty()) {
+                        if (referenceRoot) {
+                            std::function<GameObject*(GameObject*)> findByUuid = [&](GameObject* node) -> GameObject* {
+                                if (!node) return nullptr;
+                                if (node->GetUUID() == it->second) return node;
+                                for (GameObject* child : node->GetChildren()) {
+                                    if (GameObject* found = findByUuid(child)) return found;
+                                }
+                                return nullptr;
+                            };
+                            resolved = findByUuid(referenceRoot);
+                        }
+                        if (!resolved && referenceScene) {
+                            resolved = referenceScene->FindGameObjectByUUID(it->second);
+                        }
+                    }
+                    *static_cast<GameObject**>(data) = resolved;
+                    return;
+                }
+
+                const size_t slash = it->second.find('/');
+                if (slash == std::string::npos) {
+                    return;
+                }
+
+                const std::string uuid = it->second.substr(0, slash);
+                const std::string typeName = it->second.substr(slash + 1);
+                GameObject* targetGO = nullptr;
+                if (referenceRoot) {
+                    std::function<GameObject*(GameObject*)> findByUuid = [&](GameObject* node) -> GameObject* {
+                        if (!node) return nullptr;
+                        if (node->GetUUID() == uuid) return node;
+                        for (GameObject* child : node->GetChildren()) {
+                            if (GameObject* found = findByUuid(child)) return found;
+                        }
+                        return nullptr;
+                    };
+                    targetGO = findByUuid(referenceRoot);
+                }
+                if (!targetGO && referenceScene) {
+                    targetGO = referenceScene->FindGameObjectByUUID(uuid);
+                }
+
+                Component* resolvedComponent = nullptr;
+                if (targetGO) {
+                    for (const auto& comp : targetGO->GetComponents()) {
+                        if (comp && std::string(comp->GetTypeName()) == typeName) {
+                            resolvedComponent = comp.get();
+                            break;
+                        }
+                    }
+                }
+                *static_cast<Component**>(data) = resolvedComponent;
+            }
+
+            target->OnValidate();
         }
 
     }

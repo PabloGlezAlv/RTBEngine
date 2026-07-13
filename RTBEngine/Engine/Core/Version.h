@@ -1,6 +1,6 @@
 #pragma once
 
-#include <RTBEngine/RTBEngineAPI.h>
+#include "../RTBEngineAPI.h"
 
 namespace RTBEngine::Core
 {

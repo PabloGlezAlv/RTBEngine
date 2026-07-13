@@ -288,9 +288,6 @@ namespace RTBEngine {
                 }
 
                 if (existing) {
-                    if (!childUuid.empty() && existing->GetUUID() != childUuid) {
-                        existing->SetUUID(childUuid);
-                    }
                     ApplySceneGameObjectFromTable(L, childTableIndex, scene, existing, parentingRequests, uuidRefRequests);
                 } else {
                     ECS::GameObject* child = ProcessGameObject(L, childTableIndex, scene, parentingRequests, uuidRefRequests);
@@ -326,6 +323,7 @@ namespace RTBEngine {
             std::vector<ECS::GameObject*> childGOs;
             ECS::GameObject* go = prefab->Instantiate(nullptr, childGOs);
             go->SetName(name);
+            go->SetPrefabName(prefabName);
             if (!uuid.empty())
                 go->SetUUID(uuid);
 

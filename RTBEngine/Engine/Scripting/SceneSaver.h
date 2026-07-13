@@ -27,6 +27,8 @@ namespace RTBEngine {
             static void WriteComponents(std::ofstream& file, const ECS::GameObject* go, int indent);
             static void WritePrefabInstance(std::ofstream& file, const ECS::GameObject* go, int indent);
             static void WritePrefabOverrides(std::ofstream& file, const ECS::GameObject* go, int indent);
+            static void WritePrefabNodePersistence(std::ofstream& file, const ECS::GameObject* go, int indent,
+                const ECS::Prefab* baselineNode);
 
         };
 

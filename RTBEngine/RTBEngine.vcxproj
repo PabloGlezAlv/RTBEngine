@@ -288,6 +288,9 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Data\DataAssetRegistry.cpp" />
     <ClCompile Include="Engine\Scene\ComponentQuery.cpp" />
     <ClCompile Include="Engine\Scene\PrefabRegistry.cpp" />
+    <ClCompile Include="Engine\Scene\PrefabInstanceResolver.cpp" />
+    <ClCompile Include="Engine\Scene\PrefabOverrideDiff.cpp" />
+    <ClCompile Include="Engine\Scene\PrefabOverrideOps.cpp" />
     <ClCompile Include="ThirdParty\stb\stb_image.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui_draw.cpp" />
@@ -487,6 +490,9 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Data\DataAssetRegistry.h" />
     <ClInclude Include="Engine\Scene\ComponentQuery.h" />
     <ClInclude Include="Engine\Scene\PrefabRegistry.h" />
+    <ClInclude Include="Engine\Scene\PrefabInstanceResolver.h" />
+    <ClInclude Include="Engine\Scene\PrefabOverrideDiff.h" />
+    <ClInclude Include="Engine\Scene\PrefabOverrideOps.h" />
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imgui.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\imconfig.h" />
