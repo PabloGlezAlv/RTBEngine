@@ -65,15 +65,41 @@ namespace RTBEngine {
         }
 
         void MeshRenderer::OnAwake() {
-            SyncProperties();
-        }
-
-        void MeshRenderer::OnUpdate(float deltaTime) {
-            SyncProperties();
+            propertiesDirty = true;
+            SyncPropertiesIfDirty();
         }
 
         void MeshRenderer::OnValidate() {
+            propertiesDirty = true;
+            SyncPropertiesIfDirty();
+        }
+
+        void MeshRenderer::EnsureShaderOverrideCache() {
+            const std::string resolvedShaderName = shaderRef.empty() ? "basic" : shaderRef;
+            if (!shaderOverrideCache.Matches(resolvedShaderName, shaderPropertyOverrides)) {
+                shaderOverrideCache.Rebuild(resolvedShaderName, shaderPropertyOverrides);
+            }
+        }
+
+        void MeshRenderer::PrepareForRender() {
+            SyncPropertiesIfDirty();
+            SyncMaterialColorIfNeeded();
+            EnsureShaderOverrideCache();
+        }
+
+        void MeshRenderer::SyncPropertiesIfDirty() {
+            if (!propertiesDirty) {
+                return;
+            }
+
             SyncProperties();
+            propertiesDirty = false;
+        }
+
+        void MeshRenderer::SyncMaterialColorIfNeeded() {
+            if (material && material->GetColor() != colorRef) {
+                material->SetColor(colorRef);
+            }
         }
 
         void MeshRenderer::SyncProperties() {
@@ -114,12 +140,15 @@ namespace RTBEngine {
                 }
                 material->SetColor(colorRef);
             }
+
+            EnsureShaderOverrideCache();
         }
 
         void MeshRenderer::SetMesh(Rendering::Mesh* newMesh)
         {
             mesh = newMesh;
             meshRef = newMesh;
+            propertiesDirty = true;
         }
 
         void MeshRenderer::SetMeshes(const std::vector<Rendering::Mesh*>& meshList)
@@ -140,6 +169,7 @@ namespace RTBEngine {
                 mesh = meshList[0];
                 meshRef = meshList[0];
             }
+            propertiesDirty = true;
         }
 
         void MeshRenderer::SetMaterialForMesh(int index, Rendering::Material* mat)
@@ -203,18 +233,21 @@ namespace RTBEngine {
             // Sync proxy so SyncProperties() doesn't clobber the texture on next frame
             textureRef = mat->GetTexture();
             colorRef = mat->GetColor();
+            propertiesDirty = true;
         }
 
         void MeshRenderer::SetTexture(Rendering::Texture* tex) {
             if (material) {
                 material->SetTexture(tex);
                 textureRef = tex;
+                propertiesDirty = true;
             }
         }
 
         void MeshRenderer::SetShader(Rendering::Shader* shader) {
             if (material) {
                 material->SetShader(shader);
+                propertiesDirty = true;
             }
         }
 
@@ -240,6 +273,8 @@ namespace RTBEngine {
                 return;
             }
 
+            PrepareForRender();
+
             Rendering::Shader* shader = drawMaterial->GetShader();
             if (!shader) {
                 RTB_WARN(std::string("[RENDER] GO='") + owner->GetName() + "' shader is null");
@@ -250,6 +285,7 @@ namespace RTBEngine {
             // previous instanced batch cannot leak uUseInstancing=true into this draw.
             shader->SetBool("uUseInstancing", false);
             shader->SetMatrix4("uModel", owner->GetWorldMatrix());
+            Rendering::ShaderProperties::ApplyEngineUniforms(shader);
 
             Animation::Animator* animator = GetActiveAnimator();
             if (animator && animator->ShouldSkinMesh()) {
@@ -261,12 +297,7 @@ namespace RTBEngine {
             }
 
             const std::string resolvedShaderName = shaderRef.empty() ? "basic" : shaderRef;
-            Rendering::ShaderProperties::ApplyExtraUniforms(
-                shader,
-                resolvedShaderName,
-                shaderPropertyOverrides,
-                colorRef);
-            Rendering::ShaderProperties::ApplyEngineUniforms(shader);
+            shaderOverrideCache.ApplyExtraUniforms(shader, resolvedShaderName, colorRef);
 
             drawMesh->Draw();
             drawCallCount++;
@@ -278,6 +309,8 @@ namespace RTBEngine {
             if (!isEnabled || !owner || !owner->IsActiveInHierarchy()) {
                 return;
             }
+
+            PrepareForRender();
 
             if (multiMesh) {
                 RenderMultiMesh();

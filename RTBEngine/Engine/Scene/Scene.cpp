@@ -200,6 +200,7 @@ namespace {
 			nextShader->Bind();
 			RTBEngine::Rendering::LightingUBO::GetInstance().Bind();
 			RTBEngine::Rendering::CameraUBO::GetInstance().Bind();
+			RTBEngine::Rendering::ShaderProperties::ApplyEngineUniforms(nextShader);
 			state.shader = nextShader;
 			state.material = nullptr;
 			state.texture = reinterpret_cast<RTBEngine::Rendering::Texture*>(static_cast<uintptr_t>(1));
@@ -213,14 +214,13 @@ namespace {
         }
 
         if (renderer) {
+            renderer->PrepareForRender();
             const std::string resolvedShaderName =
                 renderer->shaderRef.empty() ? "basic" : renderer->shaderRef;
-            RTBEngine::Rendering::ShaderProperties::ApplyExtraUniforms(
+            renderer->shaderOverrideCache.ApplyExtraUniforms(
                 nextShader,
                 resolvedShaderName,
-                renderer->shaderPropertyOverrides,
                 renderer->colorRef);
-            RTBEngine::Rendering::ShaderProperties::ApplyEngineUniforms(nextShader);
         }
 
         RTBEngine::Rendering::Texture* nextTexture = drawMaterial->GetTexture();

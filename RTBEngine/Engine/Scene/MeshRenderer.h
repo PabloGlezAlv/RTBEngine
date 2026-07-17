@@ -4,6 +4,7 @@
 #include "../Reflection/PropertyMacros.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Material.h"
+#include "../Rendering/ShaderProperties.h"
 #include <vector>
 #include <memory>
 #include <cstdint>
@@ -66,8 +67,10 @@ namespace RTBEngine {
             static void AddInstancedDrawStats(uint32_t indexCount, uint32_t instanceCount);
 
             virtual void OnAwake() override;
-            virtual void OnUpdate(float deltaTime) override;
             virtual void OnValidate() override;
+
+            void EnsureShaderOverrideCache();
+            void PrepareForRender();
 
             // Reflected properties (Proxy)
             Rendering::Mesh* meshRef = nullptr;
@@ -75,6 +78,7 @@ namespace RTBEngine {
             Math::Vector4 colorRef = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
             std::string shaderRef = "basic";
             std::string shaderPropertyOverrides;
+            Rendering::ShaderPropertyOverrideCache shaderOverrideCache;
             int meshIndex = 0;
             bool multiMesh = false;
 
@@ -90,9 +94,12 @@ namespace RTBEngine {
             std::vector<std::unique_ptr<Rendering::Material>> meshMaterials;
 
             void SyncProperties();
+            void SyncPropertiesIfDirty();
+            void SyncMaterialColorIfNeeded();
             void RenderMultiMesh();
 
             float occlusionFadeAlpha = 1.0f;
+            bool propertiesDirty = true;
 
             // Cached ancestor animator; invalidated when GameObject::GetHierarchyVersion() changes.
             Animation::Animator* cachedAnimator = nullptr;
