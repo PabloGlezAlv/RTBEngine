@@ -19,6 +19,11 @@ RTBEngine::Rendering::Mesh::Mesh(const std::vector<Vertex>& vertices, const std:
 
 RTBEngine::Rendering::Mesh::~Mesh()
 {
+	if (!RHI::RenderDevice::HasDevice()) {
+		VAO = VBO = EBO = instanceVBO = instanceColorVBO = RHI::kInvalidGpuId;
+		return;
+	}
+
 	auto& device = Device();
 	if (VAO != RHI::kInvalidGpuId) {
 		device.DestroyVertexArray(VAO);

@@ -28,7 +28,9 @@ namespace RTBEngine {
 
         Shader::~Shader() {
             if (programID != RHI::kInvalidGpuId) {
-                Device().DestroyShaderProgram(programID);
+                if (RHI::RenderDevice::HasDevice()) {
+                    Device().DestroyShaderProgram(programID);
+                }
                 programID = RHI::kInvalidGpuId;
             }
         }

@@ -15,6 +15,10 @@ namespace RTBEngine {
         Framebuffer::Framebuffer() {}
 
         Framebuffer::~Framebuffer() {
+            if (!RHI::RenderDevice::HasDevice()) {
+                fboID = colorTextureID = depthTextureID = RHI::kInvalidGpuId;
+                return;
+            }
             DeleteTextures();
             if (fboID != RHI::kInvalidGpuId) {
                 Device().DestroyFramebuffer(fboID);

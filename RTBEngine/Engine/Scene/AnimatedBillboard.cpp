@@ -192,6 +192,13 @@ namespace RTBEngine {
 
         void AnimatedBillboard::ReleaseRenderResources()
         {
+            if (!Rendering::RHI::RenderDevice::HasDevice()) {
+                vao = Rendering::RHI::kInvalidGpuId;
+                vbo = Rendering::RHI::kInvalidGpuId;
+                shader = nullptr;
+                return;
+            }
+
             auto& device = Rendering::RHI::RenderDevice::Get();
             if (vbo != Rendering::RHI::kInvalidGpuId) {
                 device.DestroyBuffer(vbo);

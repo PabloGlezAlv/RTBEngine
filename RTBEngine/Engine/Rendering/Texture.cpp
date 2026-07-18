@@ -18,7 +18,9 @@ namespace RTBEngine {
         Texture::~Texture()
         {
             if (textureID != RHI::kInvalidGpuId) {
-                Device().DestroyTexture(textureID);
+                if (RHI::RenderDevice::HasDevice()) {
+                    Device().DestroyTexture(textureID);
+                }
                 textureID = RHI::kInvalidGpuId;
             }
         }

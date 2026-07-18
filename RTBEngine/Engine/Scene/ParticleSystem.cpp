@@ -105,6 +105,12 @@ namespace RTBEngine {
                     return;
                 }
 
+                if (!Rendering::RHI::RenderDevice::HasDevice()) {
+                    g_particleShared.quadVao = Rendering::RHI::kInvalidGpuId;
+                    g_particleShared.quadVbo = Rendering::RHI::kInvalidGpuId;
+                    return;
+                }
+
                 auto& device = Device();
                 if (g_particleShared.quadVao != Rendering::RHI::kInvalidGpuId) {
                     device.DestroyVertexArray(g_particleShared.quadVao);
@@ -696,6 +702,15 @@ namespace RTBEngine {
         // Deletes this emitter's instance VBO and drops the shared quad ref-count.
         void ParticleSystem::ReleaseRenderResources()
         {
+            if (!Rendering::RHI::RenderDevice::HasDevice()) {
+                instanceVbo = Rendering::RHI::kInvalidGpuId;
+                g_particleShared.quadVao = Rendering::RHI::kInvalidGpuId;
+                g_particleShared.quadVbo = Rendering::RHI::kInvalidGpuId;
+                g_particleShared.refCount = 0;
+                shader = nullptr;
+                return;
+            }
+
             if (instanceVbo != Rendering::RHI::kInvalidGpuId) {
                 Device().DestroyBuffer(instanceVbo);
                 instanceVbo = Rendering::RHI::kInvalidGpuId;

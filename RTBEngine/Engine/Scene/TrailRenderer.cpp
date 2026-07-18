@@ -126,6 +126,13 @@ namespace RTBEngine {
 
         void TrailRenderer::ReleaseRenderResources()
         {
+            if (!Rendering::RHI::RenderDevice::HasDevice()) {
+                vao = Rendering::RHI::kInvalidGpuId;
+                vbo = Rendering::RHI::kInvalidGpuId;
+                shader = nullptr;
+                return;
+            }
+
             auto& device = Rendering::RHI::RenderDevice::Get();
             if (vao != Rendering::RHI::kInvalidGpuId) {
                 device.DestroyVertexArray(vao);
