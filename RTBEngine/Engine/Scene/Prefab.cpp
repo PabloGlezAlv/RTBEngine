@@ -378,7 +378,11 @@ namespace RTBEngine {
                 [&](const Prefab& nodePrefab, GameObject* nodeParent) -> GameObject*
             {
                 auto* go = new GameObject(nodePrefab.name);
-                go->SetPrefabName(nodePrefab.name);
+                // Only the instance root is a prefab instance. Child nodes keep empty prefabName
+                // so SceneSaver does not treat them as nested prefab assets.
+                if (&nodePrefab == this) {
+                    go->SetPrefabName(nodePrefab.name);
+                }
                 go->GetTransform().SetPosition(nodePrefab.position);
                 go->GetTransform().SetRotation(nodePrefab.rotation);
                 go->GetTransform().SetScale(nodePrefab.scale);

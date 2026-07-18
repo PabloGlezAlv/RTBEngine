@@ -1,6 +1,7 @@
 #include "SceneSaver.h"
 #include <sstream>
 #include <filesystem>
+#include <unordered_set>
 
 #include "ScenePropertySerializer.h"
 #include "../Scene/Scene.h"
@@ -39,9 +40,11 @@ namespace RTBEngine {
                 }
             }
 
-            std::ofstream file(outputPath);
+            // Write to a temp file first so a mid-save failure cannot truncate the real scene.
+            const std::filesystem::path tempPath = outputPath.string() + ".tmp";
+            std::ofstream file(tempPath, std::ios::binary | std::ios::trunc);
             if (!file.is_open()) {
-                RTB_ERROR("SceneSaver: Failed to open file for writing: " + filePath);
+                RTB_ERROR("SceneSaver: Failed to open temp file for writing: " + tempPath.string());
                 return false;
             }
 
@@ -55,11 +58,35 @@ namespace RTBEngine {
                 file << "    }\n";
                 file << "end\n";
 
+                file.flush();
+                if (!file) {
+                    file.close();
+                    std::filesystem::remove(tempPath, ec);
+                    RTB_ERROR("SceneSaver: Failed while writing temp scene file: " + filePath);
+                    return false;
+                }
                 file.close();
+
+                std::filesystem::rename(tempPath, outputPath, ec);
+                if (ec) {
+                    std::filesystem::copy_file(
+                        tempPath,
+                        outputPath,
+                        std::filesystem::copy_options::overwrite_existing,
+                        ec);
+                    std::filesystem::remove(tempPath, ec);
+                    if (ec) {
+                        RTB_ERROR("SceneSaver: Failed to replace scene file: " + filePath + " (" + ec.message() + ")");
+                        return false;
+                    }
+                }
+
                 RTB_INFO("SceneSaver: Successfully saved scene to: " + filePath);
                 return true;
             }
             catch (const std::exception& e) {
+                file.close();
+                std::filesystem::remove(tempPath, ec);
                 RTB_ERROR("SceneSaver: Exception during save: " + std::string(e.what()));
                 return false;
             }
@@ -84,9 +111,10 @@ namespace RTBEngine {
 
             file << "        gameObjects = {\n";
 
+            std::unordered_set<const ECS::GameObject*> visited;
             for (const auto& go : gameObjects) {
                 if (go->GetParent() == nullptr) {
-                    WriteGameObject(file, go.get(), 3);
+                    WriteGameObject(file, go.get(), 3, nullptr, visited);
                 }
             }
 
@@ -110,9 +138,14 @@ namespace RTBEngine {
         }
 
         void SceneSaver::WriteGameObject(std::ofstream& file, const ECS::GameObject* go, int indent,
-            const ECS::Prefab* baselinePrefab)
+            const ECS::Prefab* baselinePrefab, std::unordered_set<const ECS::GameObject*>& visited)
         {
-            if (go->IsTransient()) {
+            if (!go || go->IsTransient() || go->IsAnimatorBone()) {
+                return;
+            }
+
+            if (!visited.insert(go).second) {
+                RTB_WARN("SceneSaver: skipped cyclic/duplicate GameObject '" + go->GetName() + "'");
                 return;
             }
 
@@ -202,7 +235,7 @@ namespace RTBEngine {
                     } else if (baselinePrefab) {
                         childBaseline = FindDirectChildPrefab(baselinePrefab, child->GetName());
                     }
-                    WriteGameObject(file, child, indent + 2, childBaseline);
+                    WriteGameObject(file, child, indent + 2, childBaseline, visited);
                 }
                 file << ind << "    }\n";
             }

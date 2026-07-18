@@ -2,6 +2,7 @@
 #include "../RTBEngineAPI.h"
 #include <string>
 #include <fstream>
+#include <unordered_set>
 
 namespace RTBEngine {
     namespace ECS {
@@ -22,7 +23,8 @@ namespace RTBEngine {
             static void WriteSceneHeader(std::ofstream& file, const ECS::Scene* scene);
             static void WriteGameObjects(std::ofstream& file, const ECS::Scene* scene);
             static void WriteGameObject(std::ofstream& file, const ECS::GameObject* go, int indent,
-                const ECS::Prefab* baselinePrefab = nullptr);
+                const ECS::Prefab* baselinePrefab,
+                std::unordered_set<const ECS::GameObject*>& visited);
             static void WriteTransform(std::ofstream& file, const ECS::GameObject* go, int indent);
             static void WriteComponents(std::ofstream& file, const ECS::GameObject* go, int indent);
             static void WritePrefabInstance(std::ofstream& file, const ECS::GameObject* go, int indent);
