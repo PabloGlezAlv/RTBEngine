@@ -2,6 +2,7 @@
 
 #include "../RTBEngineAPI.h"
 #include "Component.h"
+#include "IPoolable.h"
 #include "../Rendering/ParticleTypes.h"
 #include "../Reflection/PropertyMacros.h"
 #include "../Math/Color.h"
@@ -27,7 +28,7 @@ namespace RTBEngine {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
-        class RTB_API ParticleSystem : public Component {
+        class RTB_API ParticleSystem : public Component, public IPoolable {
         public:
             ParticleSystem();
             ~ParticleSystem() override;
@@ -41,14 +42,19 @@ namespace RTBEngine {
             void OnValidate() override;
             void OnDestroy() override;
 
+            void OnPoolAcquire() override;
+            void OnPoolRelease() override;
+
             void Tick(float deltaTime);
             void Render(Rendering::Camera* camera);
 
             void Play();
             void Stop();
             void Pause();
+            void Restart();
             bool IsPlaying() const { return playing; }
             bool IsPaused() const { return paused; }
+            bool HasCompletedPlayback() const { return hasCompletedPlayback; }
 
             void Emit(int count);
             int GetActiveParticleCount() const;
@@ -110,11 +116,14 @@ namespace RTBEngine {
             bool EnsureRenderResources();
             void ReleaseRenderResources();
             void KillAllParticles();
+            void ClearSimulation();
+            void BeginPlayback(bool emitBurstIfRateZero);
             void ApplyPlaybackSettings();
             void TryDestroyOwnerWhenFinished();
             void DrawInstances();
             int GetEffectiveFrameCount() const;
             bool UsesTextureSheet() const;
+            bool IsBurstEmitter() const;
 
             std::vector<Rendering::Particle> particles;
             std::vector<ParticleInstanceData> instanceData;
@@ -127,6 +136,7 @@ namespace RTBEngine {
             bool playing = false;
             bool paused = false;
             bool userStopped = false;
+            bool hasCompletedPlayback = false;
 
             GLuint instanceVbo = 0;
             Rendering::Shader* shader = nullptr;

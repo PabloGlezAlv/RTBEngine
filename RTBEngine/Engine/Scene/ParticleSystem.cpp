@@ -161,6 +161,16 @@ namespace RTBEngine {
             ApplyPlaybackSettings();
         }
 
+        void ParticleSystem::OnPoolAcquire()
+        {
+            Restart();
+        }
+
+        void ParticleSystem::OnPoolRelease()
+        {
+            Stop();
+        }
+
         // Advances simulation, refreshes the GPU instance buffer, and destroys the owner when configured.
         void ParticleSystem::OnUpdate(float deltaTime)
         {
@@ -209,17 +219,42 @@ namespace RTBEngine {
             activeInstanceCount = 0;
         }
 
+        void ParticleSystem::ClearSimulation()
+        {
+            emissionAccumulator = 0.0f;
+            totalEmitted = 0;
+            hasCompletedPlayback = false;
+            destroyOwnerTriggered = false;
+            KillAllParticles();
+            UploadInstanceBuffer();
+        }
+
+        bool ParticleSystem::IsBurstEmitter() const
+        {
+            return emissionRate <= kMinEmissionRate;
+        }
+
+        void ParticleSystem::BeginPlayback(bool emitBurstIfRateZero)
+        {
+            userStopped = false;
+            playing = true;
+            paused = false;
+            hasCompletedPlayback = false;
+            destroyOwnerTriggered = false;
+
+            if (emitBurstIfRateZero && IsBurstEmitter()) {
+                Emit(burstCount);
+                UploadInstanceBuffer();
+            }
+        }
+
         void ParticleSystem::ApplyPlaybackSettings()
         {
             if (!playOnAwake || userStopped) {
                 return;
             }
 
-            Play();
-            if (emissionRate <= kMinEmissionRate) {
-                Emit(burstCount);
-                Tick(0.001f);
-            }
+            Restart();
         }
 
         void ParticleSystem::RebuildFreeSlots()
@@ -267,10 +302,7 @@ namespace RTBEngine {
         // Resumes emission without clearing particles already alive in the pool.
         void ParticleSystem::Play()
         {
-            userStopped = false;
-            playing = true;
-            paused = false;
-            destroyOwnerTriggered = false;
+            BeginPlayback(false);
         }
 
         // Clears the pool, resets counters, and blocks playOnAwake until the next validate/load.
@@ -279,11 +311,13 @@ namespace RTBEngine {
             userStopped = true;
             playing = false;
             paused = false;
-            emissionAccumulator = 0.0f;
-            totalEmitted = 0;
-            destroyOwnerTriggered = false;
-            KillAllParticles();
-            UploadInstanceBuffer();
+            ClearSimulation();
+        }
+
+        void ParticleSystem::Restart()
+        {
+            ClearSimulation();
+            BeginPlayback(true);
         }
 
         // Freezes simulation while keeping visible particles in the pool.
@@ -303,6 +337,7 @@ namespace RTBEngine {
 
             playing = true;
             paused = false;
+            hasCompletedPlayback = false;
 
             for (int i = 0; i < count; ++i) {
                 SpawnParticle();
@@ -525,6 +560,7 @@ namespace RTBEngine {
 
             if (!loop && totalEmitted > 0 && activeParticleCount == 0) {
                 playing = false;
+                hasCompletedPlayback = true;
             }
 
             UploadInstanceBuffer();
@@ -532,11 +568,7 @@ namespace RTBEngine {
 
         void ParticleSystem::TryDestroyOwnerWhenFinished()
         {
-            if (loop || !destroyOwnerWhenFinished || destroyOwnerTriggered || totalEmitted <= 0) {
-                return;
-            }
-
-            if (IsPlaying() || GetActiveParticleCount() > 0) {
+            if (loop || !destroyOwnerWhenFinished || destroyOwnerTriggered || !hasCompletedPlayback) {
                 return;
             }
 

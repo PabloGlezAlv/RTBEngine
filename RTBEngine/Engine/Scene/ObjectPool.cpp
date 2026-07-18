@@ -4,13 +4,11 @@
 #include "../Core/ResourceManager.h"
 #include "GameObject.h"
 #include "IPoolable.h"
-#include "ParticleSystem.h"
 #include "PrefabRegistry.h"
 #include "Scene.h"
 #include "SceneManager.h"
 
 #include <algorithm>
-#include <functional>
 
 namespace {
     void SetHierarchyActive(RTBEngine::ECS::GameObject* root, bool active)
@@ -22,22 +20,6 @@ namespace {
         root->SetActive(active);
         for (RTBEngine::ECS::GameObject* child : root->GetChildren()) {
             SetHierarchyActive(child, active);
-        }
-    }
-
-    void ForEachParticleSystem(RTBEngine::ECS::GameObject* root,
-                               const std::function<void(RTBEngine::ECS::ParticleSystem*)>& visitor)
-    {
-        if (!root || !visitor) {
-            return;
-        }
-
-        if (auto* particleSystem = root->GetComponent<RTBEngine::ECS::ParticleSystem>()) {
-            visitor(particleSystem);
-        }
-
-        for (RTBEngine::ECS::GameObject* child : root->GetChildren()) {
-            ForEachParticleSystem(child, visitor);
         }
     }
 
@@ -186,16 +168,6 @@ namespace RTBEngine {
             }
 
             SetHierarchyActive(instance, true);
-
-            ForEachParticleSystem(instance, [](ParticleSystem* particleSystem) {
-                if (!particleSystem) {
-                    return;
-                }
-
-                particleSystem->Stop();
-                particleSystem->Play();
-            });
-
             InvokePoolableCallbacks(instance, true);
         }
 
@@ -206,13 +178,6 @@ namespace RTBEngine {
             }
 
             InvokePoolableCallbacks(instance, false);
-
-            ForEachParticleSystem(instance, [](ParticleSystem* particleSystem) {
-                if (particleSystem) {
-                    particleSystem->Stop();
-                }
-            });
-
             SetHierarchyActive(instance, false);
         }
 
