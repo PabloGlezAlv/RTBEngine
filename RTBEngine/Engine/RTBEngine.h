@@ -15,7 +15,6 @@
 #include "ECS/World.h"
 #include "ECS/EcsStats.h"
 #include "ECS/ProjectileSimulation.h"
-#include "ECS/SwarmSimulation.h"
 #include "Scripting/LatentActions.h"
 
 // Scene & Components

@@ -2,7 +2,6 @@
 
 #include "../RTBEngineAPI.h"
 #include "Components/ProjectileComponents.h"
-#include "Components/SwarmComponents.h"
 #include "EcsStats.h"
 #include "Entity.h"
 #include "SparseSet.h"
@@ -154,9 +153,6 @@ namespace RTBEngine {
             ProjectileSimulationStats& GetProjectileStats() { return projectileStats; }
             const ProjectileSimulationStats& GetProjectileStats() const { return projectileStats; }
 
-            SwarmSimulationStats& GetSwarmStats() { return swarmStats; }
-            const SwarmSimulationStats& GetSwarmStats() const { return swarmStats; }
-
         private:
             template<typename T>
             ComponentStorageAdapter<T>& GetStorage()
@@ -188,7 +184,6 @@ namespace RTBEngine {
             std::uint32_t aliveEntityCount = 0;
             EcsSimulationStats simulationStats{};
             ProjectileSimulationStats projectileStats{};
-            SwarmSimulationStats swarmStats{};
         };
 
     }

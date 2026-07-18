@@ -198,7 +198,6 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Rendering\Frustum.cpp" />
     <ClCompile Include="Engine\Core\Application.cpp" />
     <ClCompile Include="Engine\ECS\ProjectileSimulation.cpp" />
-    <ClCompile Include="Engine\ECS\SwarmSimulation.cpp" />
     <ClCompile Include="Engine\ECS\SystemScheduler.cpp" />
     <ClCompile Include="Engine\ECS\World.cpp" />
     <ClCompile Include="Engine\Core\Time.cpp" />
@@ -497,11 +496,9 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Data\DataAsset.h" />
     <ClInclude Include="Engine\Data\DataAssetRegistry.h" />
     <ClInclude Include="Engine\ECS\Components\ProjectileComponents.h" />
-    <ClInclude Include="Engine\ECS\Components\SwarmComponents.h" />
     <ClInclude Include="Engine\ECS\Entity.h" />
     <ClInclude Include="Engine\ECS\EcsStats.h" />
     <ClInclude Include="Engine\ECS\ProjectileSimulation.h" />
-    <ClInclude Include="Engine\ECS\SwarmSimulation.h" />
     <ClInclude Include="Engine\ECS\SparseSet.h" />
     <ClInclude Include="Engine\ECS\SystemScheduler.h" />
     <ClInclude Include="Engine\ECS\World.h" />

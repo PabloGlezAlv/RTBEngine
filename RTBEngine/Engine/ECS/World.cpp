@@ -90,7 +90,6 @@ namespace RTBEngine {
             aliveEntityCount = 0;
             simulationStats = {};
             projectileStats = {};
-            swarmStats = {};
         }
 
         void World::Tick(SystemPhase phase, float deltaTime)
