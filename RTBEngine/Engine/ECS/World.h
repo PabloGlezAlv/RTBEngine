@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../RTBEngineAPI.h"
-#include "Components/ProjectileComponents.h"
 #include "EcsStats.h"
 #include "Entity.h"
 #include "SparseSet.h"
@@ -150,9 +149,6 @@ namespace RTBEngine {
             EcsSimulationStats& GetSimulationStats() { return simulationStats; }
             const EcsSimulationStats& GetSimulationStats() const { return simulationStats; }
 
-            ProjectileSimulationStats& GetProjectileStats() { return projectileStats; }
-            const ProjectileSimulationStats& GetProjectileStats() const { return projectileStats; }
-
         private:
             template<typename T>
             ComponentStorageAdapter<T>& GetStorage()
@@ -183,7 +179,6 @@ namespace RTBEngine {
             SystemScheduler scheduler;
             std::uint32_t aliveEntityCount = 0;
             EcsSimulationStats simulationStats{};
-            ProjectileSimulationStats projectileStats{};
         };
 
     }

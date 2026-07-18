@@ -6,6 +6,9 @@
 #include <Windows.h>
 
 namespace RTBEngine {
+    namespace ECS {
+        class World;
+    }
     namespace Scene {
         class Component;
         class GameObject;
@@ -27,6 +30,9 @@ namespace RTBEngine {
 
             //Unloads the current GameScripts.dll
             void UnloadScripts();
+
+            // Registers game-owned ECS systems exported by GameScripts.dll.
+            void InitializeGameEcs(ECS::World& world);
 
             bool IsLoaded() const { return dllHandle != nullptr; }
             const std::string& GetLoadedPath() const { return loadedPath; }

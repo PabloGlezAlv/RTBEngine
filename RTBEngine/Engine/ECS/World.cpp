@@ -89,7 +89,6 @@ namespace RTBEngine {
             freeEntityIndices.clear();
             aliveEntityCount = 0;
             simulationStats = {};
-            projectileStats = {};
         }
 
         void World::Tick(SystemPhase phase, float deltaTime)

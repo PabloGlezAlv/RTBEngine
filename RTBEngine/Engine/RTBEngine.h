@@ -14,7 +14,8 @@
 #include "ECS/Entity.h"
 #include "ECS/World.h"
 #include "ECS/EcsStats.h"
-#include "ECS/ProjectileSimulation.h"
+#include "ECS/Components/LocalTransform.h"
+#include "ECS/Components/VisualLink.h"
 #include "Scripting/LatentActions.h"
 
 // Scene & Components

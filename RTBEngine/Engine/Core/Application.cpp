@@ -31,7 +31,6 @@
 #include "../Rendering/Skybox.h"
 #include "../ECS/World.h"
 #include "../ECS/EcsStats.h"
-#include "../ECS/ProjectileSimulation.h"
 #include "../Rendering/Cubemap.h"
 #include "../Rendering/Lighting/LightingUBO.h"
 #include "../Rendering/CameraUBO.h"
@@ -358,8 +357,8 @@ bool RTBEngine::Core::Application::Initialize()
 	}
 
 	ecsWorld = new ECS::World();
-	ECS::RegisterDefaultSystems(*ecsWorld);
 	ECS::World::SetActive(ecsWorld);
+	Scripting::ScriptManager::GetInstance().InitializeGameEcs(*ecsWorld);
 
 	return true;
 }

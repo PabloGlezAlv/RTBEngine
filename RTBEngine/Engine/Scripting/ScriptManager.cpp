@@ -1,6 +1,7 @@
 #include "ScriptManager.h"
 #include "../Data/DataAsset.h"
 #include "../Data/DataAssetRegistry.h"
+#include "../ECS/World.h"
 #include "ScriptBridgeABI.h"
 #include "../Core/Logger.h"
 #include "../Core/ResourceManager.h"
@@ -346,7 +347,26 @@ namespace RTBEngine {
 
             loadedPath = dllPath;
             RTB_INFO("ScriptManager: Loaded '" + dllPath + "'");
+
+            if (ECS::World* world = ECS::World::GetActive()) {
+                InitializeGameEcs(*world);
+            }
+
             return true;
+        }
+
+        void ScriptManager::InitializeGameEcs(ECS::World& world)
+        {
+            if (!dllHandle) {
+                return;
+            }
+
+            using InitEcsFunc = void(*)(ECS::World*);
+            auto* initializeEcs = reinterpret_cast<InitEcsFunc>(
+                GetProcAddress(dllHandle, "RTBScripts_InitializeEcs"));
+            if (initializeEcs) {
+                initializeEcs(&world);
+            }
         }
 
         void ScriptManager::UnloadScripts()
@@ -367,6 +387,10 @@ namespace RTBEngine {
             // otherwise FreeLibrary leaves their vtables dangling and a later delete
             // (e.g. on shutdown or the next reload) reads freed module memory and crashes.
             RTBEngine::Core::ResourceManager::GetInstance().ClearDataAssets();
+
+            if (ECS::World* world = ECS::World::GetActive()) {
+                world->GetScheduler().Clear();
+            }
 
             // Remove all types that came from this DLL before freeing it.
             // Component factories inside the DLL become dangling pointers after FreeLibrary.
