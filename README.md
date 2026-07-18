@@ -2,13 +2,13 @@
 
 A 3D game engine written in **C++17**, compiled as `RTBEngine.dll` with an import library (`RTBEngine.lib`). RTBEngine provides a complete set of subsystems for building games and interactive real-time applications on Windows: a **hybrid GameObject–Component + ECS** architecture, OpenGL rendering with shadow mapping, Bullet-based rigid-body physics, FMOD spatial audio, SDL2 input, skeletal animation, Lua-based scene serialization, a macro-driven reflection system, and an ImGui-compatible UI framework.
 
-> **Note:** Authoring uses `RTBEngine::Scene` (`Engine/Scene/`). Dense simulation uses **`RTBEngine::ECS`** (`Engine/ECS/`): hybrid ECS with sparse-set storage. Projectiles are the first vertical slice; GameObjects remain the editor/scripting surface.
+> **Note:** Authoring uses `RTBEngine::Scene` (`Engine/Scene/`). Dense simulation uses **`RTBEngine::ECS`** (`Engine/ECS/`): hybrid ECS with sparse-set storage. The engine provides `World`, `LocalTransform`, `VisualLink`, and instanced `MeshRenderer`; game systems (projectiles, benchmarks) register from GameScripts via `RTBScripts_InitializeEcs`.
 
-**Version:** `0.8.0` — see [`CHANGELOG.md`](CHANGELOG.md).
+**Version:** `0.9.0` — see [`CHANGELOG.md`](CHANGELOG.md).
 
 | Constant | Value | Header |
 |----------|-------|--------|
-| Engine semver | `0.8.0` | `Engine/Core/Version.h` → `RTBEngine::Core::VersionInfo` |
+| Engine semver | `0.9.0` | `Engine/Core/Version.h` → `RTBEngine::Core::VersionInfo` |
 | RTBN protocol | `4` | `Engine/Online/OnlineMessageCodec.h` |
 | Script Bridge ABI | `4` | `Engine/Scripting/ScriptBridgeABI.h` |
 | NavMesh file format | `1` | `Engine/Navigation/NavMeshFile.cpp` |

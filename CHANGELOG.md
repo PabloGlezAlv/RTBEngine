@@ -1,10 +1,10 @@
 # Changelog — RTBEngine
 
-**Current version:** `0.8.0` (tag `0.8.0`)
+**Current version:** `0.9.0`
 
 API documentation: [`README.md`](README.md)
 
-**Compatibility:** use with **RTBEngineEditor 0.8.x**. After SDK or Script Bridge ABI changes: rebuild the engine → `BuildSDK.bat` → `GameScripts`.
+**Compatibility:** use with **RTBEngineEditor 0.9.x**. After SDK or Script Bridge ABI changes: rebuild the engine → `BuildSDK.bat` → `GameScripts`.
 
 ---
 
@@ -18,10 +18,30 @@ API documentation: [`README.md`](README.md)
 
 ---
 
+## [0.9.0] — 2026
+
+### Added
+- **`MeshRenderer` GPU instancing** (generic): `SetInstances`, `SetInstanceColors`, `ClearInstances`, `RenderInstanced`. One renderer can draw N copies without N GameObjects.
+- Shared **`MeshDrawSubmit`** backend for single and instanced opaque draws.
+- Per-instance color support in `basic.vert` / `basic.frag` (`uUseInstanceColor`).
+- Generic ECS components: **`LocalTransform`**, **`VisualLink`** (scene proxy link).
+- Generic **`EcsSimulationStats`** (alive entity count + simulation phase ms) via `Application::GetEcsSimulationStats()`.
+- **`ScriptManager::InitializeGameEcs`**: loads game-owned ECS systems from GameScripts (`RTBScripts_InitializeEcs`).
+
+### Changed
+- Hybrid ECS frame order stays: Scene `Update` → ECS `Simulation` → Fixed/Physics → Scene `LateUpdate` → ECS `Presentation` → Render.
+- Opaque scene pass skips renderers with explicit instance buffers, then draws them with `RenderInstanced()`.
+- Engine ECS core is infrastructure-only: game simulation (projectiles, swarm benchmarks) registers from **GameScripts**, not from engine defaults.
+
+### Removed
+- Engine-owned **`ProjectileSimulation`** / **`ProjectileComponents`** (moved to GameScripts).
+- Engine-owned swarm simulation / swarm stats (test-only; lives in editor GameScripts).
+- World APIs **`GetProjectileStats`** / **`GetSwarmStats`** (replaced by generic `GetSimulationStats`).
+
 ## [0.8.0] — 2026
 
 ### Added
-- **Hybrid ECS** (`RTBEngine::ECS` under `Engine/ECS/`): sparse-set `World`, `Entity`, `SystemScheduler`. Authoring stays in `RTBEngine::Scene` (former legacy `ECS` namespace renamed). First consumer: projectile flight via pooled GameObject proxy + `ProjectileComponent` bridge. Editor stats: ECS projectile count / sim ms.
+- **Hybrid ECS** (`RTBEngine::ECS` under `Engine/ECS/`): sparse-set `World`, `Entity`, `SystemScheduler`. Authoring stays in `RTBEngine::Scene` (former legacy `ECS` namespace renamed). First vertical slice: projectile flight via pooled GameObject proxy + `ProjectileComponent` bridge.
 - Global engine uniforms (`uTime`, etc.) and shader support.
 - **ShaderAsset**: custom shaders as `.rtbshader` assets with reflected properties.
 - Shadow pass with **GPU instancing** for identical static meshes.
