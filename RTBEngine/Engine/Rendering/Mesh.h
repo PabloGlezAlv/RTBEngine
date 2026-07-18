@@ -5,6 +5,7 @@
 #include <vector>
 #include "Vertex.h"
 #include "../Math/Vectors/Vector3.h"
+#include "../Math/Vectors/Vector4.h"
 #include "../Math/Matrix/Matrix4.h"
 
 
@@ -26,6 +27,9 @@ namespace RTBEngine {
             // buffer (configuring attributes 5-8 with divisor 1 on first use) and issues a single
             // instanced draw. Used to batch identical non-skinned opaque meshes.
             void UploadInstanceData(const Math::Matrix4* matrices, std::size_t count);
+            // Optional per-instance colors (attribute location 9). Call after UploadInstanceData
+            // with the same instance count when the shader enables uUseInstanceColor.
+            void UploadInstanceColors(const Math::Vector4* colors, std::size_t count);
             void DrawInstanced(GLsizei instanceCount) const;
 
             unsigned int GetVertexCount() const { return vertexCount; }
@@ -49,6 +53,7 @@ namespace RTBEngine {
             GLuint VBO;
             GLuint EBO;
             GLuint instanceVBO = 0;
+            GLuint instanceColorVBO = 0;
 
             unsigned int vertexCount;
             unsigned int indexCount;

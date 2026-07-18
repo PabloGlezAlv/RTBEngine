@@ -1,5 +1,6 @@
 #include "MeshRenderer.h"
 #include "GameObject.h"
+#include "MeshDrawSubmit.h"
 #include "../Rendering/Lighting/Light.h"
 #include "../Rendering/Lighting/LightingUBO.h"
 #include "../Rendering/CameraUBO.h"
@@ -72,6 +73,47 @@ namespace RTBEngine {
         void MeshRenderer::OnValidate() {
             propertiesDirty = true;
             SyncPropertiesIfDirty();
+        }
+
+        void MeshRenderer::OnDestroy()
+        {
+            ClearInstances();
+        }
+
+        void MeshRenderer::SetInstances(const Math::Matrix4* matrices, std::size_t count)
+        {
+            instanceMatrices.clear();
+            if (!matrices || count == 0) {
+                useInstanceColors = false;
+                instanceColors.clear();
+                return;
+            }
+
+            instanceMatrices.assign(matrices, matrices + count);
+            useInstanceColors = false;
+            instanceColors.clear();
+        }
+
+        void MeshRenderer::SetInstanceColors(const Math::Vector4* colors, std::size_t count)
+        {
+            instanceColors.clear();
+            useInstanceColors = false;
+            if (!colors || count == 0) {
+                return;
+            }
+            if (count != instanceMatrices.size()) {
+                RTB_WARN("[MeshRenderer] SetInstanceColors count must match SetInstances count");
+                return;
+            }
+            instanceColors.assign(colors, colors + count);
+            useInstanceColors = true;
+        }
+
+        void MeshRenderer::ClearInstances()
+        {
+            instanceMatrices.clear();
+            instanceColors.clear();
+            useInstanceColors = false;
         }
 
         void MeshRenderer::EnsureShaderOverrideCache() {
@@ -281,27 +323,55 @@ namespace RTBEngine {
                 return;
             }
 
-            // Single-draw path: ensure the instanced code path in the shader is disabled so a
-            // previous instanced batch cannot leak uUseInstancing=true into this draw.
-            shader->SetBool("uUseInstancing", false);
-            shader->SetMatrix4("uModel", owner->GetWorldMatrix());
             Rendering::ShaderProperties::ApplyEngineUniforms(shader);
-
-            Animation::Animator* animator = GetActiveAnimator();
-            if (animator && animator->ShouldSkinMesh()) {
-                shader->SetBool("uHasAnimation", true);
-                animator->BindBoneMatrices();
-            }
-            else {
-                shader->SetBool("uHasAnimation", false);
-            }
 
             const std::string resolvedShaderName = shaderRef.empty() ? "basic" : shaderRef;
             shaderOverrideCache.ApplyExtraUniforms(shader, resolvedShaderName, colorRef);
 
-            drawMesh->Draw();
-            drawCallCount++;
-            triangleCount += drawMesh->GetIndexCount() / 3;
+            Animation::Animator* animator = GetActiveAnimator();
+            const bool hasAnimation = animator && animator->ShouldSkinMesh();
+            SubmitSingleMeshDraw(drawMesh, shader, owner->GetWorldMatrix(), hasAnimation, animator);
+        }
+
+        void MeshRenderer::RenderInstanced()
+        {
+            if (!isEnabled || !owner || !owner->IsActiveInHierarchy()) {
+                return;
+            }
+            if (instanceMatrices.empty() || multiMesh) {
+                return;
+            }
+
+            PrepareForRender();
+
+            if (!mesh) {
+                return;
+            }
+
+            Rendering::Material* mat = material.get();
+            if (!mat) {
+                return;
+            }
+
+            Rendering::Shader* shader = mat->GetShader();
+            if (!shader) {
+                return;
+            }
+
+            mat->Bind();
+            Rendering::LightingUBO::GetInstance().Bind();
+            Rendering::CameraUBO::GetInstance().Bind();
+            Rendering::ShaderProperties::ApplyEngineUniforms(shader);
+
+            SubmitInstancedMeshDraw(
+                mesh,
+                shader,
+                instanceMatrices.data(),
+                instanceMatrices.size(),
+                useInstanceColors ? instanceColors.data() : nullptr,
+                useInstanceColors);
+
+            mat->Unbind();
         }
 
         void MeshRenderer::Render()

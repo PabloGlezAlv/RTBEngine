@@ -2,6 +2,8 @@
 
 #include "../RTBEngineAPI.h"
 #include "Components/ProjectileComponents.h"
+#include "Components/SwarmComponents.h"
+#include "EcsStats.h"
 #include "Entity.h"
 #include "SparseSet.h"
 #include "SystemScheduler.h"
@@ -102,8 +104,9 @@ namespace RTBEngine {
             void ForEach(Fn&& fn)
             {
                 auto& storage = GetStorage<T>().storage;
-                for (Entity entity : storage.Entities()) {
-                    fn(entity, storage.Get(entity));
+                const auto& entities = storage.Entities();
+                for (std::size_t i = 0; i < entities.size(); ++i) {
+                    fn(entities[i], storage.At(i));
                 }
             }
 
@@ -111,9 +114,12 @@ namespace RTBEngine {
             void ForEach(Fn&& fn)
             {
                 auto& primary = GetStorage<T1>().storage;
-                for (Entity entity : primary.Entities()) {
-                    if (auto* second = GetStorage<T2>().storage.TryGet(entity)) {
-                        fn(entity, primary.Get(entity), *second);
+                auto& secondary = GetStorage<T2>().storage;
+                const auto& entities = primary.Entities();
+                for (std::size_t i = 0; i < entities.size(); ++i) {
+                    Entity entity = entities[i];
+                    if (T2* second = secondary.TryGet(entity)) {
+                        fn(entity, primary.At(i), *second);
                     }
                 }
             }
@@ -122,11 +128,15 @@ namespace RTBEngine {
             void ForEach(Fn&& fn)
             {
                 auto& primary = GetStorage<T1>().storage;
-                for (Entity entity : primary.Entities()) {
-                    T2* second = GetStorage<T2>().storage.TryGet(entity);
-                    T3* third = GetStorage<T3>().storage.TryGet(entity);
+                auto& secondary = GetStorage<T2>().storage;
+                auto& tertiary = GetStorage<T3>().storage;
+                const auto& entities = primary.Entities();
+                for (std::size_t i = 0; i < entities.size(); ++i) {
+                    Entity entity = entities[i];
+                    T2* second = secondary.TryGet(entity);
+                    T3* third = tertiary.TryGet(entity);
                     if (second && third) {
-                        fn(entity, primary.Get(entity), *second, *third);
+                        fn(entity, primary.At(i), *second, *third);
                     }
                 }
             }
@@ -136,8 +146,16 @@ namespace RTBEngine {
 
             void Tick(SystemPhase phase, float deltaTime);
 
+            std::uint32_t GetAliveEntityCount() const { return aliveEntityCount; }
+
+            EcsSimulationStats& GetSimulationStats() { return simulationStats; }
+            const EcsSimulationStats& GetSimulationStats() const { return simulationStats; }
+
             ProjectileSimulationStats& GetProjectileStats() { return projectileStats; }
             const ProjectileSimulationStats& GetProjectileStats() const { return projectileStats; }
+
+            SwarmSimulationStats& GetSwarmStats() { return swarmStats; }
+            const SwarmSimulationStats& GetSwarmStats() const { return swarmStats; }
 
         private:
             template<typename T>
@@ -167,7 +185,10 @@ namespace RTBEngine {
             std::vector<Entity> entityGenerations;
             std::vector<std::uint32_t> freeEntityIndices;
             SystemScheduler scheduler;
+            std::uint32_t aliveEntityCount = 0;
+            EcsSimulationStats simulationStats{};
             ProjectileSimulationStats projectileStats{};
+            SwarmSimulationStats swarmStats{};
         };
 
     }

@@ -21,6 +21,7 @@ API documentation: [`README.md`](README.md)
 ## [0.8.0] — 2026
 
 ### Added
+- **Hybrid ECS** (`RTBEngine::ECS` under `Engine/ECS/`): sparse-set `World`, `Entity`, `SystemScheduler`. Authoring stays in `RTBEngine::Scene` (former legacy `ECS` namespace renamed). First consumer: projectile flight via pooled GameObject proxy + `ProjectileComponent` bridge. Editor stats: ECS projectile count / sim ms.
 - Global engine uniforms (`uTime`, etc.) and shader support.
 - **ShaderAsset**: custom shaders as `.rtbshader` assets with reflected properties.
 - Shadow pass with **GPU instancing** for identical static meshes.

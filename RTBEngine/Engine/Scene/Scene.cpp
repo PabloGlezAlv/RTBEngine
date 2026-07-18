@@ -16,6 +16,7 @@
 #include "TrailRenderer.h"
 #include "ParticleSystem.h"
 #include "AnimatedBillboard.h"
+#include "MeshDrawSubmit.h"
 #include "../UI/Canvas.h"
 #include "../Core/Logger.h"
 #include "../Core/TypeId.h"
@@ -987,6 +988,11 @@ void RTBEngine::Scene::Scene::Render(Rendering::Camera* camera)
 			continue;
 		}
 
+		// Explicit instance buffers are drawn after the single-mesh batch pass.
+		if (renderer->GetInstanceCount() > 0) {
+			continue;
+		}
+
 		Math::Vector3 localMin, localMax;
 		renderer->GetCombinedAABB(localMin, localMax);
 
@@ -1048,14 +1054,11 @@ void RTBEngine::Scene::Scene::Render(Rendering::Camera* camera)
 
 			Rendering::Shader* shader = first.material->GetShader();
 			if (shader && !instanceMatrices.empty()) {
-				shader->SetBool("uUseInstancing", true);
-				shader->SetBool("uHasAnimation", false);
-				first.mesh->UploadInstanceData(instanceMatrices.data(), instanceMatrices.size());
-				first.mesh->DrawInstanced(static_cast<GLsizei>(instanceMatrices.size()));
-				shader->SetBool("uUseInstancing", false);
-				MeshRenderer::AddInstancedDrawStats(
-					first.mesh->GetIndexCount(),
-					static_cast<uint32_t>(instanceMatrices.size()));
+				SubmitInstancedMeshDraw(
+					first.mesh,
+					shader,
+					instanceMatrices.data(),
+					instanceMatrices.size());
 			}
 		}
 		else {
@@ -1065,6 +1068,19 @@ void RTBEngine::Scene::Scene::Render(Rendering::Camera* camera)
 		}
 
 		i = j;
+	}
+
+	for (MeshRenderer* renderer : GetCachedMeshRenderers()) {
+		if (!renderer || !renderer->IsEnabled() || renderer->GetInstanceCount() == 0) {
+			continue;
+		}
+
+		GameObject* gameObject = renderer->GetOwner();
+		if (!gameObject || !gameObject->IsActiveInHierarchy()) {
+			continue;
+		}
+
+		renderer->RenderInstanced();
 	}
 
 	--iterationDepth;

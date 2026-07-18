@@ -31,6 +31,7 @@ namespace RTBEngine {
             shader->SetVector3("uDiffuseColor", diffuseColor);
             shader->SetFloat("uShininess", shininess);
             shader->SetBool("uHasTexture", texture != nullptr);
+            shader->SetBool("uUseInstanceColor", false);
             if (texture) {
                 shader->SetInt("uTexture", 0);
             }

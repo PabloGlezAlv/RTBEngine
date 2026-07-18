@@ -8,6 +8,7 @@
 #include <vector>
 #include <memory>
 #include <cstdint>
+#include <cstddef>
 
 namespace RTBEngine {
     namespace Animation {
@@ -36,6 +37,13 @@ namespace RTBEngine {
             void SetTexture(Rendering::Texture* tex);
             void SetShader(Rendering::Shader* shader);
 
+            // GPU instancing: when instanceCount > 0, RenderInstanced() draws N copies without N GameObjects.
+            void SetInstances(const Math::Matrix4* matrices, std::size_t count);
+            void SetInstanceColors(const Math::Vector4* colors, std::size_t count);
+            void ClearInstances();
+            std::size_t GetInstanceCount() const { return instanceMatrices.size(); }
+            bool HasInstanceColors() const { return useInstanceColors && !instanceColors.empty(); }
+
             //Multi-mesh API
             void SetMeshes(const std::vector<Rendering::Mesh*>& meshList);
             void SetMaterialForMesh(int index, Rendering::Material* mat);
@@ -49,6 +57,7 @@ namespace RTBEngine {
             void SetOcclusionFadeAlpha(float alpha);
 
             void Render();
+            void RenderInstanced();
             void RenderDraw(Rendering::Mesh* drawMesh, Rendering::Material* drawMaterial);
 
             // Animator that skins this renderer, searched up the hierarchy and cached until the
@@ -68,6 +77,7 @@ namespace RTBEngine {
 
             virtual void OnAwake() override;
             virtual void OnValidate() override;
+            virtual void OnDestroy() override;
 
             void EnsureShaderOverrideCache();
             void PrepareForRender();
@@ -92,6 +102,11 @@ namespace RTBEngine {
             //Multi-mesh state
             std::vector<Rendering::Mesh*> meshes;
             std::vector<std::unique_ptr<Rendering::Material>> meshMaterials;
+
+            // Explicit GPU instancing buffers (optional).
+            std::vector<Math::Matrix4> instanceMatrices;
+            std::vector<Math::Vector4> instanceColors;
+            bool useInstanceColors = false;
 
             void SyncProperties();
             void SyncPropertiesIfDirty();

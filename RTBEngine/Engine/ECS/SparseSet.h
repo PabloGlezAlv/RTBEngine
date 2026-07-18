@@ -3,6 +3,7 @@
 #include "Entity.h"
 #include <cassert>
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 namespace RTBEngine {
@@ -60,6 +61,11 @@ namespace RTBEngine {
 
             const std::vector<Entity>& Entities() const { return dense; }
 
+            std::uint32_t DenseIndex(Entity entity) const
+            {
+                return sparse[entity.index];
+            }
+
         private:
             std::vector<std::uint32_t> sparse;
             std::vector<Entity> dense;
@@ -80,6 +86,18 @@ namespace RTBEngine {
             {
                 return const_cast<ComponentStorage*>(this)->Get(entity);
             }
+
+            T& At(std::size_t denseIndex)
+            {
+                return data[denseIndex];
+            }
+
+            const T& At(std::size_t denseIndex) const
+            {
+                return data[denseIndex];
+            }
+
+            std::size_t Size() const { return data.size(); }
 
             template<typename... Args>
             T& Emplace(Entity entity, Args&&... args)
@@ -118,24 +136,22 @@ namespace RTBEngine {
 
             T* TryGet(Entity entity)
             {
-                return Has(entity) ? &Get(entity) : nullptr;
+                if (!Has(entity)) {
+                    return nullptr;
+                }
+                return &data[IndexOf(entity)];
             }
 
             const T* TryGet(Entity entity) const
             {
-                return Has(entity) ? &Get(entity) : nullptr;
+                return const_cast<ComponentStorage*>(this)->TryGet(entity);
             }
 
         private:
             std::size_t IndexOf(Entity entity) const
             {
-                const auto& dense = entities.Entities();
-                for (std::size_t i = 0; i < dense.size(); ++i) {
-                    if (dense[i] == entity) {
-                        return i;
-                    }
-                }
-                return dense.size();
+                // O(1) sparse lookup.
+                return static_cast<std::size_t>(entities.DenseIndex(entity));
             }
 
             SparseSet entities;

@@ -1,8 +1,9 @@
 #include "ProjectileSimulation.h"
+#include "SwarmSimulation.h"
+#include "World.h"
 
 #include "../Physics/PhysicsWorld.h"
 #include "../Scene/GameObject.h"
-#include "World.h"
 
 #include <algorithm>
 #include <chrono>
@@ -116,8 +117,12 @@ namespace RTBEngine {
 
             void TickProjectilePresentationSystem(World& world, float /*deltaTime*/)
             {
-                world.ForEach<LocalTransform, ProjectileVisualLink>(
-                    [](Entity /*entity*/, LocalTransform& transform, ProjectileVisualLink& visualLink) {
+                // Only projectile visuals — swarm agents sync inside TickSwarmMotionSystem.
+                world.ForEach<LocalTransform, ProjectileVisualLink, ProjectileFlight>(
+                    [](Entity /*entity*/,
+                       LocalTransform& transform,
+                       ProjectileVisualLink& visualLink,
+                       ProjectileFlight& /*flight*/) {
                         if (!visualLink.visual) {
                             return;
                         }
@@ -140,6 +145,8 @@ namespace RTBEngine {
                 [](World& activeWorld, float deltaTime) {
                     TickProjectilePresentationSystem(activeWorld, deltaTime);
                 });
+
+            RegisterSwarmSystems(world);
         }
 
         Entity CreateProjectileEntity(World& world,

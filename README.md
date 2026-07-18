@@ -369,13 +369,38 @@ Whenever the public ABI changes, rebuild the engine and regenerate the SDK befor
 
 ## 4. Architecture Overview
 
-RTBEngine is organized around three concepts:
+RTBEngine is organized around four concepts:
 
-1. **Application** — owns the platform layer (window, OpenGL context, device), drives the main loop, and coordinates all subsystems.
-2. **Scene / SceneManager** — manages the active collection of `GameObject` instances. Scene loading now goes through deferred requests so the active scene can be replaced at a safe point without leaving subsystems half torn down.
-3. **Component** — the unit of behavior. Every distinct feature of a `GameObject` (rendering, physics, audio, scripts) is a `Component`. Components interact through their owner `GameObject` and the global singleton subsystems.
+1. **Application** — owns the platform layer (window, OpenGL context, device), drives the main loop, and coordinates all subsystems (including the ECS `World`).
+2. **Scene / SceneManager** — manages the active collection of `GameObject` instances. Scene loading goes through deferred requests so the active scene can be replaced at a safe point without leaving subsystems half torn down.
+3. **Component** — the unit of authoring behavior. Every distinct feature of a `GameObject` (rendering, physics, audio, scripts) is a `Component`. Components interact through their owner `GameObject` and global subsystems.
+4. **ECS::World** — optional data-oriented registry for dense simulation (projectiles today). Lives alongside Scene; it does **not** replace GameObjects.
 
-This is a **hybrid** model: `RTBEngine::Scene` for authoring (GameObject–Component OOP) and `RTBEngine::ECS` for dense simulation (sparse-set World, SoA component storage). Projectiles use ECS for flight; visuals and combat callbacks stay on pooled Scene GameObjects.
+### Hybrid Scene + ECS
+
+| Concern | `RTBEngine::Scene` | `RTBEngine::ECS` |
+|---------|--------------------|------------------|
+| Storage | `GameObject` + polymorphic `Component*` (AoS) | `Entity` + sparse-set / dense SoA arrays |
+| Update | `virtual OnUpdate` per component | Systems over matching components (no virtuals) |
+| Hierarchy | Parent/children transforms | Flat `LocalTransform` (no hierarchy) |
+| Authoring | Prefabs, Lua, Inspector, reflection | POD structs; spawned from code / bridges |
+| Best for | Characters, UI, unique actors | Hundreds of identical short-lived units |
+
+**Design intent:** keep the Unity-like authoring surface that the editor and `GameScripts` already use, and add ECS only where the OOP update loop does not scale. A full Scene→ECS migration would break reflection, Script Bridge ABI, Bullet `GameObject*` user pointers, and online identities without a proportional win for most gameplay objects.
+
+**Projectile vertical slice (proxy pattern):**
+
+1. Gameplay still spawns a pooled prefab (`ObjectPool` → `GameObject` + `ProjectileComponent`).
+2. `BeginFlight` / `Initialize` creates an `ECS::Entity` with `LocalTransform`, `ProjectileFlight`, `ProjectilePhysicsContext`, `ProjectilePendingHit`, `ProjectileVisualLink`.
+3. While the entity is alive, `ProjectileComponent::OnUpdate` is a no-op (flight is not paid per virtual call).
+4. `Application` runs `ecsWorld->Tick(Simulation)` after `Scene::Update`: batch integrate motion + `SphereCastClosest`.
+5. `ProjectileComponent::OnLateUpdate` reads pending hits, applies damage/VFX/audio (OOP path), updates trails, and destroys when flight ends.
+6. `Tick(Presentation)` syncs ECS position onto the visual `GameObject` transform.
+7. Scene unload clears entities (`World::Clear`); registered systems remain for the next scene.
+
+Headers: `Engine/ECS/Entity.h`, `World.h`, `SparseSet.h`, `SystemScheduler.h`, `ProjectileSimulation.h`, `Components/ProjectileComponents.h`.
+
+Editor stats overlay shows **ECS Entities** count and **ECS Sim ms** (`Application::GetEcsSimulationStats()`).
 
 ### Main Loop
 
@@ -385,13 +410,15 @@ Application::Run()
     deltaTime = ComputeDelta()
     ProcessInput()            ← SDL events → InputManager
     SceneManager::ProcessPendingSceneLoad()
-    Update(deltaTime)         ← Scene::Update → all GameObjects → all Components
-                              ← PhysicsSystem::Update (fixed step)
-                              ← AudioSystem::Update
-    SceneManager::ProcessPendingSceneLoad()
-    RenderShadowPass()        ← depth-only render for shadow-casting lights
-    RenderGeometryPass()      ← full lit render with shadow texture
-    ImGui::Render()           ← editor/debug overlay
+    Update(deltaTime)
+      Scene::Update           ← GameObjects / Components (projectile OnUpdate skipped if ECS)
+      ECS::Tick(Simulation)   ← dense projectile flight + queries
+      FixedUpdate + Physics
+      Scene::LateUpdate       ← projectile bridge (hits / trail / pool release)
+      ECS::Tick(Presentation) ← sync LocalTransform → visual GO
+    RenderShadowPass()
+    RenderGeometryPass()
+    ImGui::Render()
     Window::SwapBuffers()
 ```
 
@@ -761,7 +788,7 @@ void Clear();        // Destroy all cached assets
 
 ## 6. Scene & Components Subsystem
 
-The scene layer lives under `Engine/Scene/` (`RTBEngine::Scene`). The ECS simulation layer lives under `Engine/ECS/` (`RTBEngine::ECS`).
+The scene layer lives under `Engine/Scene/` (`RTBEngine::Scene`). The ECS simulation layer lives under `Engine/ECS/` (`RTBEngine::ECS`). See [§4 Hybrid Scene + ECS](#hybrid-scene--ecs) for the design, update order, and projectile proxy pattern.
 
 ### 6.1 Component
 

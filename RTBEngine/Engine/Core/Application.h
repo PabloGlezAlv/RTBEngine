@@ -19,7 +19,7 @@ namespace RTBEngine {
 
     namespace ECS {
         class World;
-        struct ProjectileSimulationStats;
+        struct EcsSimulationStats;
     }
 
     namespace Rendering {
@@ -70,7 +70,7 @@ namespace RTBEngine {
             void RebuildPhysicsForScene(Scene::Scene* scene);
             void InitializePhysicsForScene(Scene::Scene* scene);
             Physics::PhysicsWorld* GetPhysicsWorld() const { return physicsWorld; }
-            const ECS::ProjectileSimulationStats& GetProjectileSimulationStats() const;
+            const ECS::EcsSimulationStats& GetEcsSimulationStats() const;
 
         private:
             bool InitializeImGui();

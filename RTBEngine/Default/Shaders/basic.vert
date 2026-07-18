@@ -10,16 +10,19 @@ layout(location = 5) in vec4 aInstanceMatrix0;
 layout(location = 6) in vec4 aInstanceMatrix1;
 layout(location = 7) in vec4 aInstanceMatrix2;
 layout(location = 8) in vec4 aInstanceMatrix3;
+layout(location = 9) in vec4 aInstanceColor;
 
 out vec3 vColor;
 out vec2 vTexCoords;
 out vec3 vNormal;
 out vec3 vFragPos;
 out vec4 vFragPosLightSpace;
+out vec4 vInstanceColor;
 
 uniform mat4 uModel;
 uniform mat4 uLightSpaceMatrix;
 uniform bool uUseInstancing;
+uniform bool uUseInstanceColor;
 
 layout(std140, binding = 1) uniform CameraData {
     mat4 view;
@@ -84,4 +87,5 @@ void main() {
     vFragPos = vec3(modelMatrix * totalPosition);
     vNormal = mat3(transpose(inverse(modelMatrix))) * totalNormal;
     vFragPosLightSpace = uLightSpaceMatrix * vec4(vFragPos, 1.0);
+    vInstanceColor = uUseInstanceColor ? aInstanceColor : vec4(1.0);
 }

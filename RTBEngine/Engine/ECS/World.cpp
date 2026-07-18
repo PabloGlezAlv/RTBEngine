@@ -1,5 +1,7 @@
 #include "World.h"
 
+#include <chrono>
+
 namespace RTBEngine {
     namespace ECS {
 
@@ -45,6 +47,8 @@ namespace RTBEngine {
             }
 
             entityGenerations[entity.index] = entity;
+            ++aliveEntityCount;
+            simulationStats.aliveEntityCount = aliveEntityCount;
             return entity;
         }
 
@@ -59,6 +63,10 @@ namespace RTBEngine {
             // Bump generation so the destroyed handle becomes invalid immediately.
             entityGenerations[entity.index].generation = entity.generation + 1;
             entityGenerations[entity.index].index = entity.index;
+            if (aliveEntityCount > 0) {
+                --aliveEntityCount;
+            }
+            simulationStats.aliveEntityCount = aliveEntityCount;
         }
 
         bool World::IsAlive(Entity entity) const
@@ -79,12 +87,24 @@ namespace RTBEngine {
             storages.clear();
             entityGenerations.clear();
             freeEntityIndices.clear();
-            // Keep registered systems across scene reloads.
+            aliveEntityCount = 0;
+            simulationStats = {};
             projectileStats = {};
+            swarmStats = {};
         }
 
         void World::Tick(SystemPhase phase, float deltaTime)
         {
+            if (phase == SystemPhase::Simulation) {
+                const auto start = std::chrono::steady_clock::now();
+                scheduler.Tick(phase, *this, deltaTime);
+                const auto end = std::chrono::steady_clock::now();
+                simulationStats.lastSimulationMilliseconds =
+                    std::chrono::duration<double, std::milli>(end - start).count();
+                simulationStats.aliveEntityCount = aliveEntityCount;
+                return;
+            }
+
             scheduler.Tick(phase, *this, deltaTime);
         }
 

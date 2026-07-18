@@ -30,6 +30,11 @@ RTBEngine::Rendering::Mesh::~Mesh()
 		glDeleteBuffers(1, &instanceVBO);
 		instanceVBO = 0;
 	}
+
+	if (instanceColorVBO != 0) {
+		glDeleteBuffers(1, &instanceColorVBO);
+		instanceColorVBO = 0;
+	}
 }
 
 void RTBEngine::Rendering::Mesh::Draw() const
@@ -73,6 +78,38 @@ void RTBEngine::Rendering::Mesh::UploadInstanceData(const Math::Matrix4* matrice
 		GL_ARRAY_BUFFER,
 		static_cast<GLsizeiptr>(count * sizeof(Math::Matrix4)),
 		matrices,
+		GL_DYNAMIC_DRAW);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+}
+
+void RTBEngine::Rendering::Mesh::UploadInstanceColors(const Math::Vector4* colors, std::size_t count)
+{
+	if (!colors || count == 0) {
+		return;
+	}
+
+	glBindVertexArray(VAO);
+
+	const bool needsAttribSetup = (instanceColorVBO == 0);
+	if (needsAttribSetup) {
+		glGenBuffers(1, &instanceColorVBO);
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, instanceColorVBO);
+
+	if (needsAttribSetup) {
+		constexpr GLuint location = 9;
+		glEnableVertexAttribArray(location);
+		glVertexAttribPointer(location, 4, GL_FLOAT, GL_FALSE, sizeof(Math::Vector4), reinterpret_cast<void*>(0));
+		glVertexAttribDivisor(location, 1);
+	}
+
+	glBufferData(
+		GL_ARRAY_BUFFER,
+		static_cast<GLsizeiptr>(count * sizeof(Math::Vector4)),
+		colors,
 		GL_DYNAMIC_DRAW);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);

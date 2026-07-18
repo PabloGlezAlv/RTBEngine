@@ -5,6 +5,7 @@ in vec2 vTexCoords;
 in vec3 vNormal;
 in vec3 vFragPos;
 in vec4 vFragPosLightSpace;
+in vec4 vInstanceColor;
 
 out vec4 FragColor;
 
@@ -13,6 +14,7 @@ uniform sampler2D uTexture;
 uniform bool uHasTexture;
 uniform vec4 uColor;
 uniform vec3 uDiffuseColor;
+uniform bool uUseInstanceColor;
 
 layout(std140, binding = 1) uniform CameraData {
     mat4 view;
@@ -107,9 +109,10 @@ void main() {
 
     vec3 albedo = uDiffuseColor * texColor.rgb;
     vec3 litColor = result * albedo;
-    vec3 tint = min(uColor.rgb, vec3(1.0));
-    vec3 flashAdd = max(uColor.rgb - vec3(1.0), vec3(0.0));
-    FragColor = vec4(litColor * tint + flashAdd, texColor.a * uColor.a);
+    vec4 effectiveColor = uUseInstanceColor ? vInstanceColor : uColor;
+    vec3 tint = min(effectiveColor.rgb, vec3(1.0));
+    vec3 flashAdd = max(effectiveColor.rgb - vec3(1.0), vec3(0.0));
+    FragColor = vec4(litColor * tint + flashAdd, texColor.a * effectiveColor.a);
 }
 
 

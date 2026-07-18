@@ -12,6 +12,7 @@
 #include "../Scene/BoxColliderComponent.h"
 #include "../Scene/SphereColliderComponent.h"
 #include "../Scene/CapsuleColliderComponent.h"
+#include "../Scene/MeshDrawSubmit.h"
 #include "../Scene/MeshRenderer.h"
 #include "../Animation/Animator.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
@@ -29,6 +30,7 @@
 #include "../Scene/SceneManager.h"
 #include "../Rendering/Skybox.h"
 #include "../ECS/World.h"
+#include "../ECS/EcsStats.h"
 #include "../ECS/ProjectileSimulation.h"
 #include "../Rendering/Cubemap.h"
 #include "../Rendering/Lighting/LightingUBO.h"
@@ -717,11 +719,11 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(Scene::Scene* scene, Ren
 			}
 
 			if (!instanceMatrices.empty()) {
-				shader->SetBool("uUseInstancing", true);
-				shader->SetBool("uHasAnimation", false);
-				mesh->UploadInstanceData(instanceMatrices.data(), instanceMatrices.size());
-				mesh->DrawInstanced(static_cast<GLsizei>(instanceMatrices.size()));
-				shader->SetBool("uUseInstancing", false);
+				Scene::SubmitInstancedMeshDraw(
+					mesh,
+					shader,
+					instanceMatrices.data(),
+					instanceMatrices.size());
 			}
 		}
 		else {
@@ -835,10 +837,10 @@ void RTBEngine::Core::Application::ResetPhysics()
 
 }
 
-const RTBEngine::ECS::ProjectileSimulationStats& RTBEngine::Core::Application::GetProjectileSimulationStats() const
+const RTBEngine::ECS::EcsSimulationStats& RTBEngine::Core::Application::GetEcsSimulationStats() const
 {
-	static const RTBEngine::ECS::ProjectileSimulationStats kEmptyStats{};
-	return ecsWorld ? ecsWorld->GetProjectileStats() : kEmptyStats;
+	static const RTBEngine::ECS::EcsSimulationStats kEmptyStats{};
+	return ecsWorld ? ecsWorld->GetSimulationStats() : kEmptyStats;
 }
 
 void RTBEngine::Core::Application::RebuildPhysicsForScene(Scene::Scene* scene)
