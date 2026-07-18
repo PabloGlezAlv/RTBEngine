@@ -27,6 +27,7 @@ namespace RTBEngine {
         class MeshRenderer;
         class TrailRenderer;
         class ParticleSystem;
+        class AnimatedBillboard;
         class RigidBodyComponent;
         class Occludable;
         class OcclusionTarget;
@@ -76,6 +77,7 @@ namespace RTBEngine {
             const std::vector<LightComponent*>& GetCachedLightComponents() const;
             const std::vector<TrailRenderer*>& GetCachedTrailRenderers() const;
             const std::vector<ParticleSystem*>& GetCachedParticleSystems() const;
+            const std::vector<AnimatedBillboard*>& GetCachedAnimatedBillboards() const;
             const std::vector<RTBEngine::UI::Canvas*>& GetCachedCanvases() const;
             const std::vector<RigidBodyComponent*>& GetCachedRigidBodies() const;
             const std::vector<Occludable*>& GetCachedOccludables() const;
@@ -130,6 +132,7 @@ namespace RTBEngine {
             mutable std::vector<LightComponent*> cachedLightComponents;
             mutable std::vector<TrailRenderer*> cachedTrailRenderers;
             mutable std::vector<ParticleSystem*> cachedParticleSystems;
+            mutable std::vector<AnimatedBillboard*> cachedAnimatedBillboards;
             mutable std::vector<RTBEngine::UI::Canvas*> cachedCanvases;
             mutable std::vector<RigidBodyComponent*> cachedRigidBodies;
             mutable std::vector<Occludable*> cachedOccludables;

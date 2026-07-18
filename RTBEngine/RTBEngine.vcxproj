@@ -227,6 +227,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Scene\NetworkTransform.cpp" />
     <ClCompile Include="Engine\Scene\TrailRenderer.cpp" />
     <ClCompile Include="Engine\Scene\ParticleSystem.cpp" />
+    <ClCompile Include="Engine\Scene\AnimatedBillboard.cpp" />
     <ClCompile Include="Engine\Scene\Scene.cpp" />
     <ClCompile Include="Engine\Scene\SceneLifecycle.cpp" />
     <ClCompile Include="Engine\Rendering\CameraUBO.cpp" />
@@ -417,6 +418,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Scene\NetworkTransform.h" />
     <ClInclude Include="Engine\Scene\TrailRenderer.h" />
     <ClInclude Include="Engine\Scene\ParticleSystem.h" />
+    <ClInclude Include="Engine\Scene\AnimatedBillboard.h" />
     <ClInclude Include="Engine\Rendering\ParticleTypes.h" />
     <ClInclude Include="Engine\Scene\Scene.h" />
     <ClInclude Include="Engine\Scene\SceneLifecycle.h" />

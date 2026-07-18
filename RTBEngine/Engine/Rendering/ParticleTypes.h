@@ -26,5 +26,10 @@ namespace RTBEngine {
             Box
         };
 
+        enum class ParticleBlendMode {
+            Alpha,
+            Additive
+        };
+
     }
 }

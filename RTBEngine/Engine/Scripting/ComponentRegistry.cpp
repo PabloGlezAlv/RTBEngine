@@ -19,6 +19,8 @@
 #include "../Scene/CameraComponent.h"
 #include "../Scene/FreeLookCamera.h"
 #include "../Scene/TrailRenderer.h"
+#include "../Scene/ParticleSystem.h"
+#include "../Scene/AnimatedBillboard.h"
 #include "../Scene/Occludable.h"
 #include "../Scene/OcclusionTarget.h"
 #include "../Scene/OcclusionFadeController.h"
@@ -111,6 +113,7 @@ namespace RTBEngine {
             RegisterComponent("FreeLookCamera", []() { return new ECS::FreeLookCamera(); });
             RegisterComponent("TrailRenderer", []() { return new ECS::TrailRenderer(); });
             RegisterComponent("ParticleSystem", []() { return new ECS::ParticleSystem(); });
+            RegisterComponent("AnimatedBillboard", []() { return new ECS::AnimatedBillboard(); });
             RegisterComponent("NetworkIdentity", []() { return new ECS::NetworkIdentity(); });
             RegisterComponent("NetworkTransform", []() { return new ECS::NetworkTransform(); });
             RegisterComponent("Occludable", []() { return new ECS::Occludable(); });

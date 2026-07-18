@@ -136,6 +136,7 @@ namespace RTBEngine {
             RTB_PROPERTY_RANGE(textureSheetRows, 1, 32)
             RTB_PROPERTY_RANGE(textureSheetFrameCount, 1, 1024)
             RTB_PROPERTY_RANGE(textureSheetFramesPerSecond, 0.0f, 120.0f)
+            RTB_PROPERTY_ENUM(blendMode, "Alpha", "Additive")
         RTB_END_REGISTER(ParticleSystem)
 
         ParticleSystem::ParticleSystem()
@@ -734,18 +735,26 @@ namespace RTBEngine {
                 shader->SetInt("uDiffuse", 0);
             }
 
-            // Pass 1: color mask off, depth write on — record particle silhouettes in the Z-buffer.
-            glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-            glDepthMask(GL_TRUE);
-            glDisable(GL_BLEND);
-            DrawInstances();
+            const bool additive = (blendMode == Rendering::ParticleBlendMode::Additive);
 
-            // Pass 2: color on, depth write off, GL_LEQUAL — blend against opaque geometry and pass-1 depth.
+            if (!additive) {
+                // Pass 1: color mask off, depth write on — record particle silhouettes in the Z-buffer.
+                glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+                glDepthMask(GL_TRUE);
+                glDisable(GL_BLEND);
+                DrawInstances();
+            }
+
+            // Pass 2: color on, depth write off — alpha blend or additive glow.
             glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
             glDepthMask(GL_FALSE);
-            glDepthFunc(GL_LEQUAL);
+            glDepthFunc(additive ? GL_LEQUAL : GL_LEQUAL);
             glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            if (additive) {
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+            } else {
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            }
             DrawInstances();
 
             if (textureRef) {

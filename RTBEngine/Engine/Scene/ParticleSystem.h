@@ -86,6 +86,7 @@ namespace RTBEngine {
             int textureSheetRows = 1;
             int textureSheetFrameCount = 1;
             float textureSheetFramesPerSecond = 12.0f;
+            Rendering::ParticleBlendMode blendMode = Rendering::ParticleBlendMode::Alpha;
 
             RTB_COMPONENT(ParticleSystem)
 

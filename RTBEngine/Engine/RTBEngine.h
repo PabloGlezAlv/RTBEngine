@@ -72,6 +72,7 @@
 #include "Scene/CameraComponent.h"
 #include "Scene/TrailRenderer.h"
 #include "Scene/ParticleSystem.h"
+#include "Scene/AnimatedBillboard.h"
 
 // UI
 #include "UI/Canvas.h"

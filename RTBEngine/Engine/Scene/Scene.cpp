@@ -15,6 +15,7 @@
 #include "OcclusionTarget.h"
 #include "TrailRenderer.h"
 #include "ParticleSystem.h"
+#include "AnimatedBillboard.h"
 #include "../UI/Canvas.h"
 #include "../Core/Logger.h"
 #include "../Core/TypeId.h"
@@ -466,6 +467,7 @@ void RTBEngine::ECS::Scene::RebuildComponentCaches() const
 	cachedLightComponents.clear();
 	cachedTrailRenderers.clear();
 	cachedParticleSystems.clear();
+	cachedAnimatedBillboards.clear();
 	cachedCanvases.clear();
 	cachedRigidBodies.clear();
 	cachedOccludables.clear();
@@ -505,6 +507,10 @@ void RTBEngine::ECS::Scene::RebuildComponentCaches() const
 
 			if (ParticleSystem* particleSystem = gameObject->GetComponent<ParticleSystem>()) {
 				cachedParticleSystems.push_back(particleSystem);
+			}
+
+			if (AnimatedBillboard* animatedBillboard = gameObject->GetComponent<AnimatedBillboard>()) {
+				cachedAnimatedBillboards.push_back(animatedBillboard);
 			}
 
 			if (RTBEngine::UI::Canvas* canvas = gameObject->GetComponent<RTBEngine::UI::Canvas>()) {
@@ -551,6 +557,12 @@ const std::vector<RTBEngine::ECS::ParticleSystem*>& RTBEngine::ECS::Scene::GetCa
 {
 	EnsureComponentCaches();
 	return cachedParticleSystems;
+}
+
+const std::vector<RTBEngine::ECS::AnimatedBillboard*>& RTBEngine::ECS::Scene::GetCachedAnimatedBillboards() const
+{
+	EnsureComponentCaches();
+	return cachedAnimatedBillboards;
 }
 
 const std::vector<RTBEngine::UI::Canvas*>& RTBEngine::ECS::Scene::GetCachedCanvases() const
@@ -1122,6 +1134,19 @@ void RTBEngine::ECS::Scene::RenderTransparentEffects(Rendering::Camera* camera)
 		}
 
 		particleSystem->Render(camera);
+	}
+
+	for (AnimatedBillboard* animatedBillboard : GetCachedAnimatedBillboards()) {
+		if (!animatedBillboard || !animatedBillboard->IsEnabled()) {
+			continue;
+		}
+
+		GameObject* gameObject = animatedBillboard->GetOwner();
+		if (!gameObject || !gameObject->IsActiveInHierarchy()) {
+			continue;
+		}
+
+		animatedBillboard->Render(camera);
 	}
 	--iterationDepth;
 	FlushPendingCommands();
