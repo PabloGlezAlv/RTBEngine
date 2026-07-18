@@ -132,6 +132,10 @@ namespace RTBEngine {
             RTB_PROPERTY(simulateInEditMode)
             RTB_PROPERTY(destroyOwnerWhenFinished)
             RTB_PROPERTY_RANGE(burstCount, 1, 256)
+            RTB_PROPERTY_RANGE(textureSheetColumns, 1, 32)
+            RTB_PROPERTY_RANGE(textureSheetRows, 1, 32)
+            RTB_PROPERTY_RANGE(textureSheetFrameCount, 1, 1024)
+            RTB_PROPERTY_RANGE(textureSheetFramesPerSecond, 0.0f, 120.0f)
         RTB_END_REGISTER(ParticleSystem)
 
         ParticleSystem::ParticleSystem()
@@ -177,6 +181,10 @@ namespace RTBEngine {
             boxSize.y = std::max(boxSize.y, 0.0f);
             boxSize.z = std::max(boxSize.z, 0.0f);
             burstCount = std::clamp(burstCount, 1, 256);
+            textureSheetColumns = std::clamp(textureSheetColumns, 1, 32);
+            textureSheetRows = std::clamp(textureSheetRows, 1, 32);
+            textureSheetFrameCount = std::clamp(textureSheetFrameCount, 1, 1024);
+            textureSheetFramesPerSecond = std::max(textureSheetFramesPerSecond, 0.0f);
             if (loop) {
                 destroyOwnerWhenFinished = false;
             }
@@ -456,6 +464,11 @@ namespace RTBEngine {
             particle.age = 0.0f;
             particle.size = startSize;
             particle.color = startColor;
+            if (UsesTextureSheet()) {
+                particle.animationOffset = RandomRange(0.0f, static_cast<float>(GetEffectiveFrameCount()));
+            } else {
+                particle.animationOffset = 0.0f;
+            }
             activeSlots.push_back(slot);
             ++totalEmitted;
             ++activeParticleCount;
@@ -566,6 +579,14 @@ namespace RTBEngine {
                 instance.position = worldPosition;
                 instance.color = Math::Vector4(particle.color.r, particle.color.g, particle.color.b, particle.color.a);
                 instance.size = std::max(particle.size, kMinParticleSize);
+                if (UsesTextureSheet() && textureSheetFramesPerSecond > 0.0f) {
+                    const int frameCount = GetEffectiveFrameCount();
+                    const float animatedFrame = particle.animationOffset + particle.age * textureSheetFramesPerSecond;
+                    const int frameIndex = static_cast<int>(animatedFrame) % frameCount;
+                    instance.frame = static_cast<float>(frameIndex);
+                } else {
+                    instance.frame = 0.0f;
+                }
                 ++activeInstanceCount;
             }
 
@@ -616,10 +637,13 @@ namespace RTBEngine {
                 glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, color));
                 glEnableVertexAttribArray(4);
                 glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, size));
+                glEnableVertexAttribArray(5);
+                glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, frame));
 
                 glVertexAttribDivisor(2, 1);
                 glVertexAttribDivisor(3, 1);
                 glVertexAttribDivisor(4, 1);
+                glVertexAttribDivisor(5, 1);
 
                 glBindVertexArray(0);
                 glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -659,6 +683,8 @@ namespace RTBEngine {
             glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, color));
             glEnableVertexAttribArray(4);
             glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, size));
+            glEnableVertexAttribArray(5);
+            glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, frame));
             glDrawArraysInstanced(GL_TRIANGLES, 0, 6, activeInstanceCount);
             glBindVertexArray(0);
         }
@@ -697,6 +723,11 @@ namespace RTBEngine {
             shader->Bind();
             Rendering::CameraUBO::GetInstance().Bind();
             shader->SetBool("uHasTexture", textureRef != nullptr);
+            const bool sheetEnabled = UsesTextureSheet();
+            shader->SetBool("uSheetEnabled", sheetEnabled);
+            shader->SetInt("uSheetColumns", textureSheetColumns);
+            shader->SetInt("uSheetRows", textureSheetRows);
+            shader->SetInt("uSheetFrameCount", GetEffectiveFrameCount());
 
             if (textureRef) {
                 textureRef->Bind(0);
@@ -745,6 +776,17 @@ namespace RTBEngine {
             } else {
                 glDisable(GL_BLEND);
             }
+        }
+
+        int ParticleSystem::GetEffectiveFrameCount() const
+        {
+            const int gridFrames = std::max(1, textureSheetColumns * textureSheetRows);
+            return std::clamp(textureSheetFrameCount, 1, gridFrames);
+        }
+
+        bool ParticleSystem::UsesTextureSheet() const
+        {
+            return textureSheetColumns > 1 || textureSheetRows > 1 || GetEffectiveFrameCount() > 1;
         }
 
     }

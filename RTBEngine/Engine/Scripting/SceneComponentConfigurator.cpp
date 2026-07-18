@@ -7,6 +7,7 @@
 #include "../Scene/GameObject.h"
 #include "../Scene/MeshRenderer.h"
 #include "../Scene/LightComponent.h"
+#include "../Rendering/Lighting/Light.h"
 #include "../Scene/AudioSourceComponent.h"
 #include "../Scene/RigidBodyComponent.h"
 #include "../Scene/BoxColliderComponent.h"
@@ -204,9 +205,30 @@ namespace RTBEngine {
                 }
             }
 
+            Rendering::LightType ReadLightType(lua_State* L, int tableIndex, Rendering::LightType defaultType) {
+                lua_getfield(L, tableIndex, "lightType");
+                Rendering::LightType result = defaultType;
+                if (lua_isnumber(L, -1)) {
+                    result = static_cast<Rendering::LightType>(static_cast<int>(lua_tonumber(L, -1)));
+                }
+                else if (lua_isstring(L, -1)) {
+                    const std::string typeStr = lua_tostring(L, -1);
+                    if (typeStr == "Directional") {
+                        result = Rendering::LightType::Directional;
+                    }
+                    else if (typeStr == "Point") {
+                        result = Rendering::LightType::Point;
+                    }
+                    else if (typeStr == "Spot") {
+                        result = Rendering::LightType::Spot;
+                    }
+                }
+                lua_pop(L, 1);
+                return result;
+            }
+
             void ConfigureLightComponent(lua_State* L, int tableIndex, ECS::LightComponent* comp) {
-                const int lightTypeInt = ReadOptionalInt(L, tableIndex, "lightType", 0);
-                comp->lightType = static_cast<Rendering::LightType>(lightTypeInt);
+                comp->lightType = ReadLightType(L, tableIndex, comp->lightType);
 
                 const Math::Vector4 colorV4 = ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
                 comp->color = Math::Color(colorV4.x, colorV4.y, colorV4.z, colorV4.w);

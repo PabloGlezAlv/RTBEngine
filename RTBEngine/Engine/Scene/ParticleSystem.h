@@ -82,6 +82,11 @@ namespace RTBEngine {
 
             int burstCount = 10;
 
+            int textureSheetColumns = 1;
+            int textureSheetRows = 1;
+            int textureSheetFrameCount = 1;
+            float textureSheetFramesPerSecond = 12.0f;
+
             RTB_COMPONENT(ParticleSystem)
 
         private:
@@ -89,6 +94,7 @@ namespace RTBEngine {
                 Math::Vector3 position;
                 Math::Vector4 color;
                 float size = 0.0f;
+                float frame = 0.0f;
             };
 
             void ResizePool();
@@ -106,6 +112,8 @@ namespace RTBEngine {
             void ApplyPlaybackSettings();
             void TryDestroyOwnerWhenFinished();
             void DrawInstances();
+            int GetEffectiveFrameCount() const;
+            bool UsesTextureSheet() const;
 
             std::vector<Rendering::Particle> particles;
             std::vector<ParticleInstanceData> instanceData;

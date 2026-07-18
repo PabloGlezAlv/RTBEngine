@@ -14,6 +14,7 @@ namespace RTBEngine {
             float size = 1.0f;
             float lifetime = 0.0f;
             float age = 0.0f;
+            float animationOffset = 0.0f;
 
             bool IsAlive() const { return lifetime > 0.0f && age < lifetime; }
         };
