@@ -1,21 +1,48 @@
 #include "Texture.h"
+#include "RHI/RenderDevice.h"
 #include "../../ThirdParty/stb/stb_image.h"
-#include <iostream>
-#include "../RTBEngine.h"
+#include "../Core/Logger.h"
 
 namespace RTBEngine {
     namespace Rendering {
 
-        Texture::Texture()
-            : textureID(0), width(0), height(0), channels(0)
-        {
+        namespace {
+            RHI::IRenderDevice& Device()
+            {
+                return RHI::RenderDevice::Get();
+            }
         }
+
+        Texture::Texture() = default;
 
         Texture::~Texture()
         {
-            if (textureID != 0) {
-                glDeleteTextures(1, &textureID);
+            if (textureID != RHI::kInvalidGpuId) {
+                Device().DestroyTexture(textureID);
+                textureID = RHI::kInvalidGpuId;
             }
+        }
+
+        RHI::TextureFilter Texture::ToRHIFilter(TextureFilter filter)
+        {
+            return filter == TextureFilter::Nearest ? RHI::TextureFilter::Nearest : RHI::TextureFilter::Linear;
+        }
+
+        RHI::TextureWrap Texture::ToRHIWrap(TextureWrap wrap)
+        {
+            switch (wrap) {
+            case TextureWrap::ClampToEdge: return RHI::TextureWrap::ClampToEdge;
+            case TextureWrap::MirroredRepeat: return RHI::TextureWrap::MirroredRepeat;
+            case TextureWrap::Repeat:
+            default: return RHI::TextureWrap::Repeat;
+            }
+        }
+
+        RHI::TextureFormat Texture::FormatFromChannels(int channels)
+        {
+            if (channels == 1) return RHI::TextureFormat::R8;
+            if (channels == 3) return RHI::TextureFormat::SRGB8;
+            return RHI::TextureFormat::SRGBA8;
         }
 
         bool Texture::LoadFromFile(const std::string& path, bool flipVertically)
@@ -28,32 +55,12 @@ namespace RTBEngine {
                 return false;
             }
 
-            glGenTextures(1, &textureID);
-            glBindTexture(GL_TEXTURE_2D, textureID);
-
-            GLenum format = GL_RGB;
-            GLenum internalFormat = GL_RGB;
-            if (channels == 1) {
-                format = GL_RED;
-                internalFormat = GL_RED;
-            }
-            else if (channels == 3) {
-                format = GL_RGB;
-                internalFormat = GL_SRGB8;
-            }
-            else if (channels == 4) {
-                format = GL_RGBA;
-                internalFormat = GL_SRGB8_ALPHA8;
-            }
-
-            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-            glGenerateMipmap(GL_TEXTURE_2D);
-
+            textureID = Device().CreateTexture2D();
+            Device().SetTexture2DData(textureID, FormatFromChannels(channels), width, height, data, true);
             SetFilter(TextureFilter::Linear, TextureFilter::Linear);
             SetWrap(TextureWrap::Repeat, TextureWrap::Repeat);
 
             stbi_image_free(data);
-
             return true;
         }
 
@@ -68,30 +75,10 @@ namespace RTBEngine {
             height = h;
             channels = ch;
 
-            glGenTextures(1, &textureID);
-            glBindTexture(GL_TEXTURE_2D, textureID);
-
-            GLenum format = GL_RGB;
-            GLenum internalFormat = GL_RGB;
-            if (channels == 1) {
-                format = GL_RED;
-                internalFormat = GL_RED;
-            }
-            else if (channels == 3) {
-                format = GL_RGB;
-                internalFormat = GL_SRGB8;
-            }
-            else if (channels == 4) {
-                format = GL_RGBA;
-                internalFormat = GL_SRGB8_ALPHA8;
-            }
-
-            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-            glGenerateMipmap(GL_TEXTURE_2D);
-
+            textureID = Device().CreateTexture2D();
+            Device().SetTexture2DData(textureID, FormatFromChannels(channels), width, height, data, true);
             SetFilter(TextureFilter::Linear, TextureFilter::Linear);
             SetWrap(TextureWrap::Repeat, TextureWrap::Repeat);
-
             return true;
         }
 
@@ -102,43 +89,20 @@ namespace RTBEngine {
                 return false;
             }
 
-            // Don't flip - embedded textures from FBX are already correctly oriented
-            // (Assimp already flips UVs via aiProcess_FlipUVs)
             stbi_set_flip_vertically_on_load(false);
 
-            // stbi_load_from_memory decodes PNG/JPG/etc from memory buffer
             unsigned char* pixels = stbi_load_from_memory(data, dataSize, &width, &height, &channels, 0);
             if (!pixels) {
                 RTB_ERROR("Failed to decode compressed texture from memory");
                 return false;
             }
 
-            glGenTextures(1, &textureID);
-            glBindTexture(GL_TEXTURE_2D, textureID);
-
-            GLenum format = GL_RGB;
-            GLenum internalFormat = GL_RGB;
-            if (channels == 1) {
-                format = GL_RED;
-                internalFormat = GL_RED;
-            }
-            else if (channels == 3) {
-                format = GL_RGB;
-                internalFormat = GL_SRGB8;
-            }
-            else if (channels == 4) {
-                format = GL_RGBA;
-                internalFormat = GL_SRGB8_ALPHA8;
-            }
-
-            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, pixels);
-            glGenerateMipmap(GL_TEXTURE_2D);
-
+            textureID = Device().CreateTexture2D();
+            Device().SetTexture2DData(textureID, FormatFromChannels(channels), width, height, pixels, true);
             SetFilter(TextureFilter::Linear, TextureFilter::Linear);
             SetWrap(TextureWrap::Repeat, TextureWrap::Repeat);
 
             stbi_image_free(pixels);
-
             return true;
         }
 
@@ -147,73 +111,34 @@ namespace RTBEngine {
             this->height = height;
             this->channels = 1;
 
-            glGenTextures(1, &textureID);
-            glBindTexture(GL_TEXTURE_2D, textureID);
-
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0,
-                GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-
+            textureID = Device().CreateTexture2D();
+            Device().SetTexture2DData(textureID, RHI::TextureFormat::Depth32F, width, height, nullptr, false);
             SetDepthTextureParams();
-
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            return textureID != 0;
+            return textureID != RHI::kInvalidGpuId;
         }
 
         void Texture::SetDepthTextureParams() {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-
-            float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-            glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+            Device().SetTexture2DDepthShadowParams(textureID);
         }
 
         void Texture::Bind(unsigned int slot) const
         {
-            glActiveTexture(GL_TEXTURE0 + slot);
-            glBindTexture(GL_TEXTURE_2D, textureID);
+            Device().BindTexture2D(textureID, slot);
         }
 
         void Texture::Unbind() const
         {
-            glBindTexture(GL_TEXTURE_2D, 0);
+            Device().UnbindTexture2D();
         }
 
         void Texture::SetFilter(TextureFilter minFilter, TextureFilter magFilter)
         {
-            glBindTexture(GL_TEXTURE_2D, textureID);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GetGLFilter(minFilter));
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GetGLFilter(magFilter));
+            Device().SetTexture2DFilter(textureID, ToRHIFilter(minFilter), ToRHIFilter(magFilter));
         }
 
         void Texture::SetWrap(TextureWrap wrapS, TextureWrap wrapT)
         {
-            glBindTexture(GL_TEXTURE_2D, textureID);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GetGLWrap(wrapS));
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GetGLWrap(wrapT));
-        }
-
-        GLenum Texture::GetGLFilter(TextureFilter filter) const
-        {
-            switch (filter) {
-            case TextureFilter::Nearest: return GL_NEAREST;
-            case TextureFilter::Linear:  return GL_LINEAR;
-            default: return GL_LINEAR;
-            }
-        }
-
-        GLenum Texture::GetGLWrap(TextureWrap wrap) const
-        {
-            switch (wrap) {
-            case TextureWrap::Repeat:         return GL_REPEAT;
-            case TextureWrap::ClampToEdge:    return GL_CLAMP_TO_EDGE;
-            case TextureWrap::MirroredRepeat: return GL_MIRRORED_REPEAT;
-            default: return GL_REPEAT;
-            }
+            Device().SetTexture2DWrap(textureID, ToRHIWrap(wrapS), ToRHIWrap(wrapT));
         }
 
     }

@@ -1,22 +1,30 @@
 #include "Framebuffer.h"
-#include <iostream>
-#include "../RTBEngine.h"
+#include "RHI/RenderDevice.h"
+#include "../Core/Logger.h"
 
 namespace RTBEngine {
     namespace Rendering {
+
+        namespace {
+            RHI::IRenderDevice& Device()
+            {
+                return RHI::RenderDevice::Get();
+            }
+        }
 
         Framebuffer::Framebuffer() {}
 
         Framebuffer::~Framebuffer() {
             DeleteTextures();
-            if (fboID != 0) {
-                glDeleteFramebuffers(1, &fboID);
+            if (fboID != RHI::kInvalidGpuId) {
+                Device().DestroyFramebuffer(fboID);
+                fboID = RHI::kInvalidGpuId;
             }
         }
 
         bool Framebuffer::Create() {
-            glGenFramebuffers(1, &fboID);
-            return fboID != 0;
+            fboID = Device().CreateFramebuffer();
+            return fboID != RHI::kInvalidGpuId;
         }
 
         bool Framebuffer::CreateWithColorAndDepth(int w, int h) {
@@ -55,58 +63,45 @@ namespace RTBEngine {
         }
 
         void Framebuffer::CreateTextures() {
-            // Create color texture
-            glGenTextures(1, &colorTextureID);
-            glBindTexture(GL_TEXTURE_2D, colorTextureID);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTextureID, 0);
+            auto& device = Device();
+            colorTextureID = device.CreateColorTextureForFramebuffer(width, height);
+            device.AttachFramebufferColorTexture(fboID, colorTextureID);
 
-            // Create depth texture
-            glGenTextures(1, &depthTextureID);
-            glBindTexture(GL_TEXTURE_2D, depthTextureID);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTextureID, 0);
-
-            glBindTexture(GL_TEXTURE_2D, 0);
+            depthTextureID = device.CreateDepthTextureForFramebuffer(width, height);
+            device.AttachFramebufferDepthTexture(fboID, depthTextureID);
         }
 
         void Framebuffer::DeleteTextures() {
-            if (colorTextureID != 0) {
-                glDeleteTextures(1, &colorTextureID);
-                colorTextureID = 0;
+            auto& device = Device();
+            if (colorTextureID != RHI::kInvalidGpuId) {
+                device.DestroyTexture(colorTextureID);
+                colorTextureID = RHI::kInvalidGpuId;
             }
-            if (depthTextureID != 0) {
-                glDeleteTextures(1, &depthTextureID);
-                depthTextureID = 0;
+            if (depthTextureID != RHI::kInvalidGpuId) {
+                device.DestroyTexture(depthTextureID);
+                depthTextureID = RHI::kInvalidGpuId;
             }
         }
 
         void Framebuffer::Bind() const {
-            glBindFramebuffer(GL_FRAMEBUFFER, fboID);
+            Device().BindFramebuffer(fboID);
         }
 
         void Framebuffer::Unbind() const {
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            Device().UnbindFramebuffer();
         }
 
-        void Framebuffer::AttachDepthTexture(GLuint textureID) {
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, textureID, 0);
-            glDrawBuffer(GL_NONE);
-            glReadBuffer(GL_NONE);
+        void Framebuffer::AttachDepthTexture(unsigned int textureID) {
+            Device().AttachFramebufferDepthTexture(fboID, textureID);
+            Device().SetFramebufferDrawReadNone();
         }
 
-        void Framebuffer::AttachColorTexture(GLuint textureID) {
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureID, 0);
+        void Framebuffer::AttachColorTexture(unsigned int textureID) {
+            Device().AttachFramebufferColorTexture(fboID, textureID);
         }
 
         bool Framebuffer::IsComplete() const {
-            return glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+            return Device().IsFramebufferComplete();
         }
 
     }

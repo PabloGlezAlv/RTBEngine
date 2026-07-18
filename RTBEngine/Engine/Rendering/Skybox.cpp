@@ -3,14 +3,13 @@
 #include "Shader.h"
 #include "Camera.h"
 #include "CameraUBO.h"
+#include "RHI/RenderDevice.h"
 #include "../Math/Matrix/Matrix4.h"
 
 namespace RTBEngine {
     namespace Rendering {
 
-        // Cube vertices 
         static const float skyboxVertices[] = {
-            // Back face (-Z)
             -1.0f,  1.0f, -1.0f,
             -1.0f, -1.0f, -1.0f,
              1.0f, -1.0f, -1.0f,
@@ -18,7 +17,6 @@ namespace RTBEngine {
              1.0f,  1.0f, -1.0f,
             -1.0f,  1.0f, -1.0f,
 
-            // Front face (+Z)
             -1.0f, -1.0f,  1.0f,
             -1.0f,  1.0f,  1.0f,
              1.0f,  1.0f,  1.0f,
@@ -26,7 +24,6 @@ namespace RTBEngine {
              1.0f, -1.0f,  1.0f,
             -1.0f, -1.0f,  1.0f,
 
-            // Left face (-X)
             -1.0f,  1.0f,  1.0f,
             -1.0f,  1.0f, -1.0f,
             -1.0f, -1.0f, -1.0f,
@@ -34,7 +31,6 @@ namespace RTBEngine {
             -1.0f, -1.0f,  1.0f,
             -1.0f,  1.0f,  1.0f,
 
-            // Right face (+X)
              1.0f,  1.0f, -1.0f,
              1.0f,  1.0f,  1.0f,
              1.0f, -1.0f,  1.0f,
@@ -42,7 +38,6 @@ namespace RTBEngine {
              1.0f, -1.0f, -1.0f,
              1.0f,  1.0f, -1.0f,
 
-             // Top face (+Y)
              -1.0f,  1.0f,  1.0f,
               1.0f,  1.0f,  1.0f,
               1.0f,  1.0f, -1.0f,
@@ -50,7 +45,6 @@ namespace RTBEngine {
              -1.0f,  1.0f, -1.0f,
              -1.0f,  1.0f,  1.0f,
 
-             // Bottom face (-Y)
              -1.0f, -1.0f, -1.0f,
               1.0f, -1.0f, -1.0f,
               1.0f, -1.0f,  1.0f,
@@ -59,8 +53,15 @@ namespace RTBEngine {
              -1.0f, -1.0f, -1.0f
         };
 
+        namespace {
+            RHI::IRenderDevice& Device()
+            {
+                return RHI::RenderDevice::Get();
+            }
+        }
+
         Skybox::Skybox()
-            : cubemap(nullptr), shader(nullptr), enabled(true), VAO(0), VBO(0) {
+            : cubemap(nullptr), shader(nullptr), enabled(true) {
         }
 
         Skybox::~Skybox() {
@@ -84,28 +85,30 @@ namespace RTBEngine {
         }
 
         void Skybox::CreateCubeMesh() {
-            glGenVertexArrays(1, &VAO);
-            glGenBuffers(1, &VBO);
+            auto& device = Device();
+            VAO = device.CreateVertexArray();
+            VBO = device.CreateBuffer();
 
-            glBindVertexArray(VAO);
-            glBindBuffer(GL_ARRAY_BUFFER, VBO);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
-
-            // Position attribute (location = 0)
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-
-            glBindVertexArray(0);
+            device.BindVertexArray(VAO);
+            device.SetArrayBufferData(VBO, skyboxVertices, sizeof(skyboxVertices), RHI::BufferUsage::Static);
+            device.EnableVertexAttribFloat(0, 3, static_cast<int>(3 * sizeof(float)), 0);
+            device.UnbindVertexArray();
         }
 
         void Skybox::DeleteCubeMesh() {
-            if (VAO != 0) {
-                glDeleteVertexArrays(1, &VAO);
-                VAO = 0;
+            if (!RHI::RenderDevice::HasDevice()) {
+                VAO = RHI::kInvalidGpuId;
+                VBO = RHI::kInvalidGpuId;
+                return;
             }
-            if (VBO != 0) {
-                glDeleteBuffers(1, &VBO);
-                VBO = 0;
+            auto& device = Device();
+            if (VAO != RHI::kInvalidGpuId) {
+                device.DestroyVertexArray(VAO);
+                VAO = RHI::kInvalidGpuId;
+            }
+            if (VBO != RHI::kInvalidGpuId) {
+                device.DestroyBuffer(VBO);
+                VBO = RHI::kInvalidGpuId;
             }
         }
 
@@ -114,29 +117,25 @@ namespace RTBEngine {
                 return;
             }
 
-            glDisable(GL_CULL_FACE);
-
-            // Change depth function so skybox passes depth test at maximum depth (1.0)
-            glDepthFunc(GL_LEQUAL);
+            auto& device = Device();
+            device.SetCullFace(false);
+            device.SetDepthFunc(RHI::DepthFunc::LEqual);
 
             shader->Bind();
             CameraUBO::GetInstance().Bind();
             shader->SetInt("uSkybox", 0);
 
-            // Bind cubemap and draw
             cubemap->Bind(0);
 
-            glBindVertexArray(VAO);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-            glBindVertexArray(0);
+            device.BindVertexArray(VAO);
+            device.DrawArrays(RHI::PrimitiveTopology::Triangles, 0, 36);
+            device.UnbindVertexArray();
 
             cubemap->Unbind();
             shader->Unbind();
 
-            // Restore default depth function
-            glDepthFunc(GL_LESS);
-
-            glEnable(GL_CULL_FACE);
+            device.SetDepthFunc(RHI::DepthFunc::Less);
+            device.SetCullFace(true);
         }
 
     }

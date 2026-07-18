@@ -1,10 +1,10 @@
 #pragma once
 #include "../RTBEngineAPI.h"
-#include <GL/glew.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
 #include "../Math/Math.h"
+#include "RHI/RenderTypes.h"
 
 namespace RTBEngine {
     namespace Rendering {
@@ -12,7 +12,7 @@ namespace RTBEngine {
 #pragma warning(push)
 #pragma warning(disable: 4251)
         // Binding point for the per-animator bone matrices UBO (BoneData block).
-        static constexpr GLuint kBoneUBOBindingPoint = 2;
+        static constexpr unsigned int kBoneUBOBindingPoint = RHI::kBoneUBOBinding;
 
         class RTB_API Shader {
         public:
@@ -30,7 +30,7 @@ namespace RTBEngine {
             void Bind() const;
             void Unbind() const;
 
-            GLuint GetProgramID() const { return programID; }
+            unsigned int GetProgramID() const { return programID; }
             bool IsCompiled() const { return isCompiled; }
 
             void SetBool(const std::string& name, bool value);
@@ -42,14 +42,12 @@ namespace RTBEngine {
             void SetMatrix4(const std::string& name, const Math::Matrix4& value);
 
         private:
-            GLuint CompileShader(GLenum type, const std::string& source);
-            bool LinkProgram(GLuint vertexShader, GLuint fragmentShader);
             std::string ReadFile(const std::string& filePath);
-            GLint GetUniformLocation(const std::string& name);
+            int GetUniformLocation(const std::string& name);
 
-            GLuint programID;
-            bool isCompiled;
-            std::unordered_map<std::string, GLint> uniformCache;
+            RHI::GpuId programID = RHI::kInvalidGpuId;
+            bool isCompiled = false;
+            std::unordered_map<std::string, int> uniformCache;
         };
 #pragma warning(pop)
 

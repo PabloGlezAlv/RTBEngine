@@ -1,8 +1,8 @@
 #pragma once
 #include "../RTBEngineAPI.h"
-#include <GL/glew.h>
 #include <string>
 #include <array>
+#include "RHI/RenderTypes.h"
 
 namespace RTBEngine {
     namespace Rendering {
@@ -28,11 +28,11 @@ namespace RTBEngine {
             void Bind(unsigned int slot = 0) const;
             void Unbind() const;
 
-            GLuint GetID() const { return textureID; }
-            bool IsLoaded() const { return textureID != 0; }
+            unsigned int GetID() const { return textureID; }
+            bool IsLoaded() const { return textureID != RHI::kInvalidGpuId; }
 
         private:
-            GLuint textureID = 0;
+            RHI::GpuId textureID = RHI::kInvalidGpuId;
         };
 
     }

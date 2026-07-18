@@ -63,7 +63,7 @@ namespace RTBEngine {
 				static_cast<int>(tintColor.w * 255)
 			);
 
-			GLuint texID = texture->GetID();
+			unsigned int texID = texture->GetID();
 			drawList->AddImage((ImTextureID)(intptr_t)texID, min, max, uv0, uv1, tint);
 		}
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../RTBEngineAPI.h"
-#include <GL/glew.h>
+#include "../RHI/RenderTypes.h"
 #include <cstdint>
 #include <vector>
 
@@ -12,7 +12,7 @@ namespace RTBEngine {
 
         static constexpr int kMaxPointLightsUBO = 8;
         static constexpr int kMaxSpotLightsUBO = 8;
-        static constexpr GLuint kLightingUBOBindingPoint = 0;
+        static constexpr unsigned int kLightingUBOBindingPoint = RHI::kLightingUBOBinding;
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
@@ -30,7 +30,7 @@ namespace RTBEngine {
             LightingUBO(const LightingUBO&) = delete;
             LightingUBO& operator=(const LightingUBO&) = delete;
 
-            GLuint buffer = 0;
+            RHI::GpuId buffer = RHI::kInvalidGpuId;
         };
 #pragma warning(pop)
 

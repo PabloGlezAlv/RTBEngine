@@ -1,5 +1,4 @@
 #include "ShadowMap.h"
-#include <GL/glew.h>
 
 namespace RTBEngine {
     namespace Rendering {

@@ -1,6 +1,6 @@
 #pragma once
 #include "../RTBEngineAPI.h"
-#include <GL/glew.h>
+#include "RHI/RenderTypes.h"
 
 namespace RTBEngine {
     namespace Rendering {
@@ -18,13 +18,13 @@ namespace RTBEngine {
             void Resize(int width, int height);
             void Bind() const;
             void Unbind() const;
-            void AttachDepthTexture(GLuint textureID);
-            void AttachColorTexture(GLuint textureID);
+            void AttachDepthTexture(unsigned int textureID);
+            void AttachColorTexture(unsigned int textureID);
             bool IsComplete() const;
 
-            GLuint GetID() const { return fboID; }
-            GLuint GetColorTextureID() const { return colorTextureID; }
-            GLuint GetDepthTextureID() const { return depthTextureID; }
+            unsigned int GetID() const { return fboID; }
+            unsigned int GetColorTextureID() const { return colorTextureID; }
+            unsigned int GetDepthTextureID() const { return depthTextureID; }
             int GetWidth() const { return width; }
             int GetHeight() const { return height; }
 
@@ -32,9 +32,9 @@ namespace RTBEngine {
             void CreateTextures();
             void DeleteTextures();
 
-            GLuint fboID = 0;
-            GLuint colorTextureID = 0;
-            GLuint depthTextureID = 0;
+            RHI::GpuId fboID = RHI::kInvalidGpuId;
+            RHI::GpuId colorTextureID = RHI::kInvalidGpuId;
+            RHI::GpuId depthTextureID = RHI::kInvalidGpuId;
             int width = 0;
             int height = 0;
         };

@@ -1,84 +1,75 @@
 #include "Cubemap.h"
+#include "RHI/RenderDevice.h"
 #include <stb_image.h>
-#include <iostream>
-#include "../RTBEngine.h"
+#include "../Core/Logger.h"
 #include <array>
 
 namespace RTBEngine {
     namespace Rendering {
 
-        Cubemap::Cubemap() : textureID(0) {
+        namespace {
+            RHI::IRenderDevice& Device()
+            {
+                return RHI::RenderDevice::Get();
+            }
+
+            RHI::TextureFormat FormatFromChannels(int channels)
+            {
+                if (channels == 1) return RHI::TextureFormat::R8;
+                if (channels == 4) return RHI::TextureFormat::RGBA8;
+                return RHI::TextureFormat::RGB8;
+            }
         }
 
+        Cubemap::Cubemap() = default;
+
         Cubemap::~Cubemap() {
-            if (textureID != 0) {
-                glDeleteTextures(1, &textureID);
+            if (textureID != RHI::kInvalidGpuId && RHI::RenderDevice::HasDevice()) {
+                Device().DestroyTexture(textureID);
+                textureID = RHI::kInvalidGpuId;
             }
         }
 
         bool Cubemap::LoadFromFolder(const std::string& folderPath, const std::string& extension) {
-            
             std::array<std::string, 6> facePaths = {
-                folderPath + "/right" + extension,   // +X
-                folderPath + "/left" + extension,    // -X
-                folderPath + "/top" + extension,     // +Y
-                folderPath + "/bottom" + extension,  // -Y
-                folderPath + "/front" + extension,   // +Z
-                folderPath + "/back" + extension     // -Z
+                folderPath + "/right" + extension,
+                folderPath + "/left" + extension,
+                folderPath + "/top" + extension,
+                folderPath + "/bottom" + extension,
+                folderPath + "/front" + extension,
+                folderPath + "/back" + extension
             };
             return LoadFromFiles(facePaths);
         }
 
         bool Cubemap::LoadFromFiles(const std::array<std::string, 6>& facePaths) {
-            glGenTextures(1, &textureID);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
-
-            GLenum targets[6] = {
-                GL_TEXTURE_CUBE_MAP_POSITIVE_X,  // right
-                GL_TEXTURE_CUBE_MAP_NEGATIVE_X,  // left
-                GL_TEXTURE_CUBE_MAP_POSITIVE_Y,  // top
-                GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,  // bottom
-                GL_TEXTURE_CUBE_MAP_POSITIVE_Z,  // front
-                GL_TEXTURE_CUBE_MAP_NEGATIVE_Z   // back
-            };
+            auto& device = Device();
+            textureID = device.CreateCubemap();
 
             stbi_set_flip_vertically_on_load(false);
 
             for (int i = 0; i < 6; i++) {
-                int width, height, channels;
+                int width = 0, height = 0, channels = 0;
                 unsigned char* data = stbi_load(facePaths[i].c_str(), &width, &height, &channels, 0);
 
                 if (!data) {
                     RTB_ERROR("Failed to load cubemap face: " + facePaths[i]);
-                    glDeleteTextures(1, &textureID);
-                    textureID = 0;
+                    device.DestroyTexture(textureID);
+                    textureID = RHI::kInvalidGpuId;
                     return false;
                 }
-                
-                GLenum format = GL_RGB;
-                if (channels == 1) format = GL_RED;
-                else if (channels == 3) format = GL_RGB;
-                else if (channels == 4) format = GL_RGBA;
 
-
-                glTexImage2D(targets[i], 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-
+                device.SetCubemapFace(textureID, i, FormatFromChannels(channels), width, height, data);
                 stbi_image_free(data);
             }
 
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+            device.SetCubemapFilterWrap(textureID);
             return true;
         }
 
         bool Cubemap::CreateSolidColor(float r, float g, float b) {
-            glGenTextures(1, &textureID);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+            auto& device = Device();
+            textureID = device.CreateCubemap();
 
             unsigned char color[3] = {
                 static_cast<unsigned char>(r * 255),
@@ -87,26 +78,19 @@ namespace RTBEngine {
             };
 
             for (int i = 0; i < 6; i++) {
-                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, color);
+                device.SetCubemapFace(textureID, i, RHI::TextureFormat::RGB8, 1, 1, color);
             }
 
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+            device.SetCubemapFilterWrap(textureID);
             return true;
         }
 
         void Cubemap::Bind(unsigned int slot) const {
-            glActiveTexture(GL_TEXTURE0 + slot);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+            Device().BindCubemap(textureID, slot);
         }
 
         void Cubemap::Unbind() const {
-            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+            Device().UnbindTexture2D();
         }
 
     }

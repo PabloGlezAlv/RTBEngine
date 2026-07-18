@@ -24,7 +24,8 @@
 #include "../Rendering/Font.h"
 #include "../Rendering/Shader.h"
 #include "../Rendering/Texture.h"
-#include <GL/glew.h>
+#include "../Rendering/RHI/RenderDevice.h"
+#include "../Rendering/RHI/RenderTypes.h"
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <algorithm>
@@ -59,53 +60,51 @@ namespace RTBEngine {
 			private:
 				void Draw(const WorldUIVertex* vertices, size_t vertexCount) {
 					EnsureInitialized();
-					if (vao == 0 || vbo == 0 || !vertices || vertexCount == 0) return;
+					if (vao == Rendering::RHI::kInvalidGpuId
+						|| vbo == Rendering::RHI::kInvalidGpuId
+						|| !vertices
+						|| vertexCount == 0) {
+						return;
+					}
 
-					// Upload the current UI mesh and draw it as a triangle list.
-					glBindVertexArray(vao);
-					glBindBuffer(GL_ARRAY_BUFFER, vbo);
-					const GLsizeiptr bytes = static_cast<GLsizeiptr>(vertexCount * sizeof(WorldUIVertex));
-					if (bytes > bufferCapacity) {
-						glBufferData(GL_ARRAY_BUFFER, bytes, vertices, GL_DYNAMIC_DRAW);
-						bufferCapacity = bytes;
-					}
-					else {
-						glBufferSubData(GL_ARRAY_BUFFER, 0, bytes, vertices);
-					}
-					glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount));
-					glBindVertexArray(0);
+					auto& device = Rendering::RHI::RenderDevice::Get();
+					device.BindVertexArray(vao);
+					device.SetArrayBufferData(
+						vbo,
+						vertices,
+						vertexCount * sizeof(WorldUIVertex),
+						Rendering::RHI::BufferUsage::Dynamic);
+					device.DrawArrays(
+						Rendering::RHI::PrimitiveTopology::Triangles,
+						0,
+						static_cast<int>(vertexCount));
+					device.UnbindVertexArray();
 				}
 
 				void EnsureInitialized() {
-					if (vao != 0 && vbo != 0) return;
+					if (vao != Rendering::RHI::kInvalidGpuId && vbo != Rendering::RHI::kInvalidGpuId) return;
 
-					// One small dynamic vertex layout is enough for images, panels, and generated text quads.
-					glGenVertexArrays(1, &vao);
-					glGenBuffers(1, &vbo);
+					auto& device = Rendering::RHI::RenderDevice::Get();
+					vao = device.CreateVertexArray();
+					vbo = device.CreateBuffer();
 
-					glBindVertexArray(vao);
-					glBindBuffer(GL_ARRAY_BUFFER, vbo);
-					glBufferData(GL_ARRAY_BUFFER,
-						static_cast<GLsizeiptr>(sizeof(WorldUIVertex) * 6),
+					device.BindVertexArray(vao);
+					device.SetArrayBufferData(
+						vbo,
 						nullptr,
-						GL_DYNAMIC_DRAW);
+						sizeof(WorldUIVertex) * 6,
+						Rendering::RHI::BufferUsage::Dynamic);
 
-					glEnableVertexAttribArray(0);
-					glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
-						sizeof(WorldUIVertex),
-						reinterpret_cast<void*>(offsetof(WorldUIVertex, x)));
+					device.EnableVertexAttribFloat(
+						0, 3, static_cast<int>(sizeof(WorldUIVertex)), offsetof(WorldUIVertex, x));
+					device.EnableVertexAttribFloat(
+						1, 2, static_cast<int>(sizeof(WorldUIVertex)), offsetof(WorldUIVertex, u));
 
-					glEnableVertexAttribArray(1);
-					glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
-						sizeof(WorldUIVertex),
-						reinterpret_cast<void*>(offsetof(WorldUIVertex, u)));
-
-					glBindVertexArray(0);
+					device.UnbindVertexArray();
 				}
 
-				GLuint vao = 0;
-				GLuint vbo = 0;
-				GLsizeiptr bufferCapacity = static_cast<GLsizeiptr>(sizeof(WorldUIVertex) * 6);
+				Rendering::RHI::GpuId vao = Rendering::RHI::kInvalidGpuId;
+				Rendering::RHI::GpuId vbo = Rendering::RHI::kInvalidGpuId;
 			};
 
 			WorldUIQuadRenderer& GetWorldUIQuadRenderer() {
@@ -234,7 +233,7 @@ namespace RTBEngine {
 				Rendering::Font* activeFont = ResolveTextFont(text);
 				if (!activeFont) return;
 
-				const GLuint atlasTextureID = activeFont->GetAtlasTextureID(effectiveFontSize);
+				const unsigned int atlasTextureID = activeFont->GetAtlasTextureID(effectiveFontSize);
 				if (atlasTextureID == 0) return;
 
 				const std::string& value = text->GetText();
@@ -286,10 +285,9 @@ namespace RTBEngine {
 
 				shader->SetBool("uHasTexture", true);
 				shader->SetVector4("uColor", text->GetColor());
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, atlasTextureID);
+				Rendering::RHI::RenderDevice::Get().BindTexture2D(atlasTextureID, 0);
 				GetWorldUIQuadRenderer().Draw(worldVertices);
-				glBindTexture(GL_TEXTURE_2D, 0);
+				Rendering::RHI::RenderDevice::Get().UnbindTexture2D();
 			}
 
 			void RenderWorldSpaceElement(Canvas* canvas, UIElement* element, Rendering::Shader* shader) {
@@ -387,26 +385,17 @@ namespace RTBEngine {
 			Rendering::Shader* shader = Core::ResourceManager::GetInstance().GetShader("ui_world");
 			if (!shader) return;
 
-			GLboolean wasDepthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
-			GLboolean wasBlendEnabled = glIsEnabled(GL_BLEND);
-			GLboolean wasCullFaceEnabled = glIsEnabled(GL_CULL_FACE);
-			GLboolean wasDepthMaskEnabled = GL_TRUE;
-			GLint previousBlendSrcRgb = GL_ONE;
-			GLint previousBlendDstRgb = GL_ZERO;
-			GLint previousBlendSrcAlpha = GL_ONE;
-			GLint previousBlendDstAlpha = GL_ZERO;
-			glGetBooleanv(GL_DEPTH_WRITEMASK, &wasDepthMaskEnabled);
-			glGetIntegerv(GL_BLEND_SRC_RGB, &previousBlendSrcRgb);
-			glGetIntegerv(GL_BLEND_DST_RGB, &previousBlendDstRgb);
-			glGetIntegerv(GL_BLEND_SRC_ALPHA, &previousBlendSrcAlpha);
-			glGetIntegerv(GL_BLEND_DST_ALPHA, &previousBlendDstAlpha);
+			auto& device = Rendering::RHI::RenderDevice::Get();
 
-			// Draw world UI as transparent scene geometry: depth-tested, alpha-blended, and double-sided.
-			glEnable(GL_DEPTH_TEST);
-			glDepthMask(GL_FALSE);
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			glDisable(GL_CULL_FACE);
+			device.SetDepthTest(true);
+			device.SetDepthWrite(false);
+			device.SetBlend(true);
+			device.SetBlendFuncSeparate(
+				Rendering::RHI::BlendFactor::SrcAlpha,
+				Rendering::RHI::BlendFactor::OneMinusSrcAlpha,
+				Rendering::RHI::BlendFactor::SrcAlpha,
+				Rendering::RHI::BlendFactor::OneMinusSrcAlpha);
+			device.SetCullFace(false);
 
 			shader->Bind();
 			Rendering::CameraUBO::GetInstance().Bind();
@@ -431,25 +420,10 @@ namespace RTBEngine {
 
 			shader->Unbind();
 
-			glDepthMask(wasDepthMaskEnabled);
-			if (wasBlendEnabled) {
-				glEnable(GL_BLEND);
-			} else {
-				glDisable(GL_BLEND);
-			}
-			glBlendFuncSeparate(previousBlendSrcRgb, previousBlendDstRgb, previousBlendSrcAlpha, previousBlendDstAlpha);
-
-			if (wasCullFaceEnabled) {
-				glEnable(GL_CULL_FACE);
-			} else {
-				glDisable(GL_CULL_FACE);
-			}
-
-			if (wasDepthTestEnabled) {
-				glEnable(GL_DEPTH_TEST);
-			} else {
-				glDisable(GL_DEPTH_TEST);
-			}
+			device.SetDepthWrite(true);
+			device.SetBlend(false);
+			device.SetCullFace(true);
+			device.SetDepthTest(true);
 		}
 
 		void CanvasSystem::ClearState() {

@@ -9,6 +9,7 @@
 #include "../Rendering/CameraUBO.h"
 #include "../Rendering/Shader.h"
 #include "../Rendering/Texture.h"
+#include "../Rendering/RHI/RenderDevice.h"
 
 #include <algorithm>
 #include <cmath>
@@ -25,14 +26,19 @@ namespace RTBEngine {
             constexpr int kMinMaxParticles = 1;
             constexpr int kMaxMaxParticles = 8192;
 
+            RTBEngine::Rendering::RHI::IRenderDevice& Device()
+            {
+                return RTBEngine::Rendering::RHI::RenderDevice::Get();
+            }
+
             struct QuadVertex {
                 Math::Vector2 corner;
                 Math::Vector2 uv;
             };
 
             struct ParticleSharedResources {
-                GLuint quadVao = 0;
-                GLuint quadVbo = 0;
+                Rendering::RHI::GpuId quadVao = Rendering::RHI::kInvalidGpuId;
+                Rendering::RHI::GpuId quadVbo = Rendering::RHI::kInvalidGpuId;
                 int refCount = 0;
             };
 
@@ -61,7 +67,8 @@ namespace RTBEngine {
             // Attributes 0 (corner) and 1 (uv) are per-vertex; instance data is bound separately.
             bool EnsureSharedQuadResources()
             {
-                if (g_particleShared.quadVao != 0 && g_particleShared.quadVbo != 0) {
+                if (g_particleShared.quadVao != Rendering::RHI::kInvalidGpuId
+                    && g_particleShared.quadVbo != Rendering::RHI::kInvalidGpuId) {
                     return true;
                 }
 
@@ -74,37 +81,38 @@ namespace RTBEngine {
                     { Math::Vector2(-0.5f, 0.5f), Math::Vector2(0.0f, 1.0f) },
                 };
 
-                glGenVertexArrays(1, &g_particleShared.quadVao);
-                glGenBuffers(1, &g_particleShared.quadVbo);
+                auto& device = Device();
+                g_particleShared.quadVao = device.CreateVertexArray();
+                g_particleShared.quadVbo = device.CreateBuffer();
 
-                glBindVertexArray(g_particleShared.quadVao);
-                glBindBuffer(GL_ARRAY_BUFFER, g_particleShared.quadVbo);
-                glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-                glEnableVertexAttribArray(0);
-                glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(QuadVertex), (void*)0);
-                glEnableVertexAttribArray(1);
-                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(QuadVertex), (void*)offsetof(QuadVertex, uv));
-
-                glBindVertexArray(0);
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
-                return g_particleShared.quadVao != 0;
+                device.BindVertexArray(g_particleShared.quadVao);
+                device.SetArrayBufferData(
+                    g_particleShared.quadVbo,
+                    vertices,
+                    sizeof(vertices),
+                    Rendering::RHI::BufferUsage::Static);
+                device.EnableVertexAttribFloat(
+                    0, 2, static_cast<int>(sizeof(QuadVertex)), offsetof(QuadVertex, corner));
+                device.EnableVertexAttribFloat(
+                    1, 2, static_cast<int>(sizeof(QuadVertex)), offsetof(QuadVertex, uv));
+                device.UnbindVertexArray();
+                return g_particleShared.quadVao != Rendering::RHI::kInvalidGpuId;
             }
 
-            // Destroys the shared quad when no ParticleSystem still references it.
             void ReleaseSharedQuadResources()
             {
                 if (g_particleShared.refCount > 0) {
                     return;
                 }
 
-                if (g_particleShared.quadVao != 0) {
-                    glDeleteVertexArrays(1, &g_particleShared.quadVao);
-                    g_particleShared.quadVao = 0;
+                auto& device = Device();
+                if (g_particleShared.quadVao != Rendering::RHI::kInvalidGpuId) {
+                    device.DestroyVertexArray(g_particleShared.quadVao);
+                    g_particleShared.quadVao = Rendering::RHI::kInvalidGpuId;
                 }
-                if (g_particleShared.quadVbo != 0) {
-                    glDeleteBuffers(1, &g_particleShared.quadVbo);
-                    g_particleShared.quadVbo = 0;
+                if (g_particleShared.quadVbo != Rendering::RHI::kInvalidGpuId) {
+                    device.DestroyBuffer(g_particleShared.quadVbo);
+                    g_particleShared.quadVbo = Rendering::RHI::kInvalidGpuId;
                 }
             }
         }
@@ -628,13 +636,13 @@ namespace RTBEngine {
             }
 
             // Replace the instance buffer contents for this frame (position, color, size per particle).
-            glBindBuffer(GL_ARRAY_BUFFER, instanceVbo);
+            auto& device = Device();
             if (activeInstanceCount > 0) {
-                glBufferData(
-                    GL_ARRAY_BUFFER,
-                    static_cast<GLsizeiptr>(activeInstanceCount * sizeof(ParticleInstanceData)),
+                device.SetArrayBufferData(
+                    instanceVbo,
                     instanceData.data(),
-                    GL_DYNAMIC_DRAW);
+                    static_cast<std::size_t>(activeInstanceCount * sizeof(ParticleInstanceData)),
+                    Rendering::RHI::BufferUsage::Dynamic);
             }
         }
 
@@ -655,31 +663,29 @@ namespace RTBEngine {
                 return false;
             }
 
-            if (instanceVbo == 0) {
-                glGenBuffers(1, &instanceVbo);
+            if (instanceVbo == Rendering::RHI::kInvalidGpuId) {
+                auto& device = Device();
+                instanceVbo = device.CreateBuffer();
 
-                glBindVertexArray(g_particleShared.quadVao);
-                glBindBuffer(GL_ARRAY_BUFFER, instanceVbo);
-                glBufferData(GL_ARRAY_BUFFER, sizeof(ParticleInstanceData), nullptr, GL_DYNAMIC_DRAW);
+                device.BindVertexArray(g_particleShared.quadVao);
+                device.SetArrayBufferData(
+                    instanceVbo,
+                    nullptr,
+                    sizeof(ParticleInstanceData),
+                    Rendering::RHI::BufferUsage::Dynamic);
 
-                // Instance attributes advance once per particle, not once per quad vertex.
-                const GLsizei stride = static_cast<GLsizei>(sizeof(ParticleInstanceData));
-                glEnableVertexAttribArray(2);
-                glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
-                glEnableVertexAttribArray(3);
-                glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, color));
-                glEnableVertexAttribArray(4);
-                glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, size));
-                glEnableVertexAttribArray(5);
-                glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, frame));
+                const int stride = static_cast<int>(sizeof(ParticleInstanceData));
+                device.EnableVertexAttribFloat(2, 3, stride, offsetof(ParticleInstanceData, position));
+                device.EnableVertexAttribFloat(3, 4, stride, offsetof(ParticleInstanceData, color));
+                device.EnableVertexAttribFloat(4, 1, stride, offsetof(ParticleInstanceData, size));
+                device.EnableVertexAttribFloat(5, 1, stride, offsetof(ParticleInstanceData, frame));
 
-                glVertexAttribDivisor(2, 1);
-                glVertexAttribDivisor(3, 1);
-                glVertexAttribDivisor(4, 1);
-                glVertexAttribDivisor(5, 1);
+                device.SetVertexAttribDivisor(2, 1);
+                device.SetVertexAttribDivisor(3, 1);
+                device.SetVertexAttribDivisor(4, 1);
+                device.SetVertexAttribDivisor(5, 1);
 
-                glBindVertexArray(0);
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
+                device.UnbindVertexArray();
 
                 ++g_particleShared.refCount;
             }
@@ -690,9 +696,9 @@ namespace RTBEngine {
         // Deletes this emitter's instance VBO and drops the shared quad ref-count.
         void ParticleSystem::ReleaseRenderResources()
         {
-            if (instanceVbo != 0) {
-                glDeleteBuffers(1, &instanceVbo);
-                instanceVbo = 0;
+            if (instanceVbo != Rendering::RHI::kInvalidGpuId) {
+                Device().DestroyBuffer(instanceVbo);
+                instanceVbo = Rendering::RHI::kInvalidGpuId;
 
                 if (g_particleShared.refCount > 0) {
                     --g_particleShared.refCount;
@@ -703,23 +709,24 @@ namespace RTBEngine {
             shader = nullptr;
         }
 
-        // Draws one shared quad (6 vertices) instanced activeInstanceCount times as camera-facing billboards.
         void ParticleSystem::DrawInstances()
         {
-            glBindVertexArray(g_particleShared.quadVao);
-            // Re-bind instance pointers after glBufferData may have changed the active ARRAY_BUFFER.
-            glBindBuffer(GL_ARRAY_BUFFER, instanceVbo);
-            const GLsizei stride = static_cast<GLsizei>(sizeof(ParticleInstanceData));
-            glEnableVertexAttribArray(2);
-            glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
-            glEnableVertexAttribArray(3);
-            glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, color));
-            glEnableVertexAttribArray(4);
-            glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, size));
-            glEnableVertexAttribArray(5);
-            glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(ParticleInstanceData, frame));
-            glDrawArraysInstanced(GL_TRIANGLES, 0, 6, activeInstanceCount);
-            glBindVertexArray(0);
+            auto& device = Device();
+            device.BindVertexArray(g_particleShared.quadVao);
+            device.BindArrayBuffer(instanceVbo);
+
+            const int stride = static_cast<int>(sizeof(ParticleInstanceData));
+            device.EnableVertexAttribFloat(2, 3, stride, offsetof(ParticleInstanceData, position));
+            device.EnableVertexAttribFloat(3, 4, stride, offsetof(ParticleInstanceData, color));
+            device.EnableVertexAttribFloat(4, 1, stride, offsetof(ParticleInstanceData, size));
+            device.EnableVertexAttribFloat(5, 1, stride, offsetof(ParticleInstanceData, frame));
+
+            device.DrawArraysInstanced(
+                Rendering::RHI::PrimitiveTopology::Triangles,
+                0,
+                6,
+                activeInstanceCount);
+            device.UnbindVertexArray();
         }
 
         // Renders billboard particles in two passes: depth silhouette, then alpha-blended color.
@@ -737,22 +744,11 @@ namespace RTBEngine {
                 return;
             }
 
-            // Preserve GL state so later renderers (UI, ImGui) are unaffected.
-            const GLboolean wasBlendEnabled = glIsEnabled(GL_BLEND);
-            const GLboolean wasDepthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
-            const GLboolean wasCullFaceEnabled = glIsEnabled(GL_CULL_FACE);
-            GLboolean wasDepthMask = GL_TRUE;
-            GLboolean previousColorMask[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
-            GLint previousDepthFunc = GL_LESS;
-            glGetBooleanv(GL_DEPTH_WRITEMASK, &wasDepthMask);
-            glGetBooleanv(GL_COLOR_WRITEMASK, previousColorMask);
-            glGetIntegerv(GL_DEPTH_FUNC, &previousDepthFunc);
+            auto& device = Device();
+            device.SetDepthTest(true);
+            device.SetCullFace(false);
+            device.SetDepthFunc(Rendering::RHI::DepthFunc::Less);
 
-            glEnable(GL_DEPTH_TEST);
-            glDisable(GL_CULL_FACE); // Billboards must be visible from both sides.
-            glDepthFunc(GL_LESS);
-
-            // Vertex shader builds each quad from uCameraRight/Up; fragment shader multiplies by instance color.
             shader->Bind();
             Rendering::CameraUBO::GetInstance().Bind();
             shader->SetBool("uHasTexture", textureRef != nullptr);
@@ -770,22 +766,28 @@ namespace RTBEngine {
             const bool additive = (blendMode == Rendering::ParticleBlendMode::Additive);
 
             if (!additive) {
-                // Pass 1: color mask off, depth write on — record particle silhouettes in the Z-buffer.
-                glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-                glDepthMask(GL_TRUE);
-                glDisable(GL_BLEND);
+                device.SetColorMask(false, false, false, false);
+                device.SetDepthWrite(true);
+                device.SetBlend(false);
                 DrawInstances();
             }
 
-            // Pass 2: color on, depth write off — alpha blend or additive glow.
-            glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-            glDepthMask(GL_FALSE);
-            glDepthFunc(additive ? GL_LEQUAL : GL_LEQUAL);
-            glEnable(GL_BLEND);
+            device.SetColorMask(true, true, true, true);
+            device.SetDepthWrite(false);
+            device.SetDepthFunc(Rendering::RHI::DepthFunc::LEqual);
+            device.SetBlend(true);
             if (additive) {
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+                device.SetBlendFuncSeparate(
+                    Rendering::RHI::BlendFactor::SrcAlpha,
+                    Rendering::RHI::BlendFactor::One,
+                    Rendering::RHI::BlendFactor::SrcAlpha,
+                    Rendering::RHI::BlendFactor::One);
             } else {
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                device.SetBlendFuncSeparate(
+                    Rendering::RHI::BlendFactor::SrcAlpha,
+                    Rendering::RHI::BlendFactor::OneMinusSrcAlpha,
+                    Rendering::RHI::BlendFactor::SrcAlpha,
+                    Rendering::RHI::BlendFactor::OneMinusSrcAlpha);
             }
             DrawInstances();
 
@@ -794,29 +796,12 @@ namespace RTBEngine {
             }
             shader->Unbind();
 
-            // Restore the previous GL state after drawing particles.
-            glDepthFunc(previousDepthFunc);
-            glColorMask(
-                previousColorMask[0],
-                previousColorMask[1],
-                previousColorMask[2],
-                previousColorMask[3]);
-            glDepthMask(wasDepthMask ? GL_TRUE : GL_FALSE);
-            if (wasCullFaceEnabled) {
-                glEnable(GL_CULL_FACE);
-            } else {
-                glDisable(GL_CULL_FACE);
-            }
-            if (wasDepthTestEnabled) {
-                glEnable(GL_DEPTH_TEST);
-            } else {
-                glDisable(GL_DEPTH_TEST);
-            }
-            if (wasBlendEnabled) {
-                glEnable(GL_BLEND);
-            } else {
-                glDisable(GL_BLEND);
-            }
+            device.SetDepthFunc(Rendering::RHI::DepthFunc::Less);
+            device.SetColorMask(true, true, true, true);
+            device.SetDepthWrite(true);
+            device.SetBlend(false);
+            device.SetCullFace(true);
+            device.SetDepthTest(true);
         }
 
         int ParticleSystem::GetEffectiveFrameCount() const

@@ -4,12 +4,10 @@
 #include "Component.h"
 #include "IPoolable.h"
 #include "../Rendering/ParticleTypes.h"
+#include "../Rendering/RHI/RenderTypes.h"
 #include "../Reflection/PropertyMacros.h"
 #include "../Math/Color.h"
 #include "../Math/Vectors/Vector3.h"
-
-#include <GL/glew.h>
-#include <cstddef>
 #include <vector>
 
 namespace RTBEngine {
@@ -138,7 +136,7 @@ namespace RTBEngine {
             bool userStopped = false;
             bool hasCompletedPlayback = false;
 
-            GLuint instanceVbo = 0;
+            Rendering::RHI::GpuId instanceVbo = Rendering::RHI::kInvalidGpuId;
             Rendering::Shader* shader = nullptr;
             int activeInstanceCount = 0;
             int activeParticleCount = 0;

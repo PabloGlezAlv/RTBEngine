@@ -1,7 +1,7 @@
 #pragma once
 #include "../RTBEngineAPI.h"
-#include <GL/glew.h>
 #include <string>
+#include "RHI/RenderTypes.h"
 
 namespace RTBEngine {
     namespace Rendering {
@@ -45,16 +45,17 @@ namespace RTBEngine {
             int GetWidth() const { return width; }
             int GetHeight() const { return height; }
             int GetChannels() const { return channels; }
-            GLuint GetID() const { return textureID; }
+            unsigned int GetID() const { return textureID; }
 
         private:
-            GLenum GetGLFilter(TextureFilter filter) const;
-            GLenum GetGLWrap(TextureWrap wrap) const;
+            static RHI::TextureFilter ToRHIFilter(TextureFilter filter);
+            static RHI::TextureWrap ToRHIWrap(TextureWrap wrap);
+            static RHI::TextureFormat FormatFromChannels(int channels);
 
-            GLuint textureID;
-            int width;
-            int height;
-            int channels;
+            RHI::GpuId textureID = RHI::kInvalidGpuId;
+            int width = 0;
+            int height = 0;
+            int channels = 0;
         };
 
     }

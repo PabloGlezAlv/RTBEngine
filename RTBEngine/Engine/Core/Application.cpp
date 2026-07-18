@@ -3,6 +3,8 @@
 #include "Time.h"
 #include "Scheduler.h"
 #include "../Input/Input.h"
+#include "../Rendering/RHI/RenderDevice.h"
+#include "../Rendering/RHI/RenderDeviceFactory.h"
 #include "../Rendering/Rendering.h"
 #include "../Scene/Scene.h"
 #include "../Scene/GameObject.h"
@@ -153,7 +155,8 @@ bool RTBEngine::Core::Application::InitializeImGui()
 
 	ImGui::StyleColorsDark();
 
-	if (!ImGui_ImplSDL2_InitForOpenGL(window->GetSDLWindow(), SDL_GL_GetCurrentContext())) {
+	void* glContext = Rendering::RHI::RenderDevice::Get().GetNativeContext();
+	if (!ImGui_ImplSDL2_InitForOpenGL(window->GetSDLWindow(), glContext)) {
 		RTB_ERROR("Application::InitializeImGui - Failed to initialize ImGui SDL2 backend");
 		return false;
 	}
@@ -176,8 +179,8 @@ void RTBEngine::Core::Application::ShutdownImGui()
 {
 	// Ensure the main GL context is current before releasing ImGui GL resources.
 	// ViewportsEnable can leave a different context active after rendering.
-	if (window) {
-		SDL_GL_MakeCurrent(window->GetSDLWindow(), window->GetGLContext());
+	if (Rendering::RHI::RenderDevice::HasDevice()) {
+		Rendering::RHI::RenderDevice::Get().MakeCurrent();
 	}
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplSDL2_Shutdown();
@@ -189,9 +192,20 @@ bool RTBEngine::Core::Application::Initialize()
 	ClearQuitRequest();
 
 	window = std::make_unique<Window>(config.window.title, config.window.width, config.window.height, config.window.fullscreen, config.window.maximized);
-	if (!window->Initialize()) {
+	if (!window->Initialize(config.rendering.graphicsAPI)) {
 		RTB_ERROR("Failed to initialize Window");
 		return false;
+	}
+
+	{
+		auto device = Rendering::RHI::RenderDeviceFactory::Create(config.rendering.graphicsAPI);
+		if (!device || !device->Initialize(window->GetSDLWindow(), config.window.vSync)) {
+			RTB_ERROR("Failed to initialize RenderDevice");
+			return false;
+		}
+		Rendering::RHI::RenderDevice::Set(std::move(device));
+		RTB_INFO(std::string("RenderDevice ready: ")
+			+ Rendering::RHI::GraphicsAPIToString(Rendering::RHI::RenderDevice::Get().GetAPI()));
 	}
 
 	window->SetResizeCallback([this](int width, int height) {
@@ -446,6 +460,7 @@ void RTBEngine::Core::Application::Shutdown()
 
 	Audio::AudioSystem::GetInstance().Shutdown();
 
+	Rendering::RHI::RenderDevice::Shutdown();
 	window.reset();
 }
 
@@ -623,22 +638,23 @@ void RTBEngine::Core::Application::RenderShadowPass(Scene::Scene* scene)
 		Rendering::ShadowMap* shadowMap = dirLight->GetShadowMap();
 		shadowMap->BindForWriting();
 
-		glViewport(0, 0, shadowMap->GetResolution(), shadowMap->GetResolution());
-		glClear(GL_DEPTH_BUFFER_BIT);
+		auto& device = Rendering::RHI::RenderDevice::Get();
+		device.SetViewport(0, 0, shadowMap->GetResolution(), shadowMap->GetResolution());
+		device.Clear(Rendering::RHI::ClearMask::Depth);
 
 		// Disable culling to render all faces (fixes shadow issues with single-sided geometry)
-		glDisable(GL_CULL_FACE);
+		device.SetCullFace(false);
 		// Frustum for lighning
 		Rendering::Frustum shadowFrustum;
 		shadowFrustum.ExtractPlanes(lightSpaceMatrix);
 		RenderSceneDepthOnly(scene, shadowShader, shadowFrustum);
 
-		glEnable(GL_CULL_FACE);
+		device.SetCullFace(true);
 
 		shadowMap->Unbind();
 	}
 
-	glViewport(0, 0, window->GetWidth(), window->GetHeight());
+	Rendering::RHI::RenderDevice::Get().SetViewport(0, 0, window->GetWidth(), window->GetHeight());
 }
 
 void RTBEngine::Core::Application::RenderSceneDepthOnly(Scene::Scene* scene, Rendering::Shader* shader, const Rendering::Frustum& frustum)
@@ -754,9 +770,10 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(Scene::Scene* scene, Ren
 
 void RTBEngine::Core::Application::RenderGeometryPass(Scene::Scene* scene, Rendering::Camera* camera)
 {
-	glClearColor(config.rendering.clearColorR, config.rendering.clearColorG,
+	auto& device = Rendering::RHI::RenderDevice::Get();
+	device.SetClearColor(config.rendering.clearColorR, config.rendering.clearColorG,
 		config.rendering.clearColorB, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	device.Clear(Rendering::RHI::ClearMask::ColorDepth);
 
 	Rendering::Shader* shader = ResourceManager::GetInstance().GetShader("basic");
 	if (!shader) return;
@@ -982,7 +999,9 @@ void RTBEngine::Core::Application::DetachPhysicsHierarchy(Scene::GameObject* roo
 
 void RTBEngine::Core::Application::OnWindowResized(int width, int height)
 {
-	glViewport(0, 0, width, height);
+	if (Rendering::RHI::RenderDevice::HasDevice()) {
+		Rendering::RHI::RenderDevice::Get().SetViewport(0, 0, width, height);
+	}
 
 	Scene::Scene* scene = Scene::SceneManager::GetInstance().GetActiveScene();
 	if (scene && scene->GetActiveCamera()) {

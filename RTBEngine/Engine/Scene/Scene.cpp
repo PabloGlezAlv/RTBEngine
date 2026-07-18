@@ -26,6 +26,7 @@
 #include "../Rendering/Shader.h"
 #include "../Rendering/ShaderProperties.h"
 #include "../Rendering/Texture.h"
+#include "../Rendering/RHI/RenderDevice.h"
 
 namespace {
 	RTBEngine::Scene::CameraComponent* FindCameraComponent(
@@ -240,8 +241,8 @@ namespace {
 		const RTBEngine::Rendering::Material* bMaterial = b.material;
 		const RTBEngine::Rendering::Shader* aShader = aMaterial ? aMaterial->GetShader() : nullptr;
 		const RTBEngine::Rendering::Shader* bShader = bMaterial ? bMaterial->GetShader() : nullptr;
-		const GLuint aProgram = aShader ? aShader->GetProgramID() : 0;
-		const GLuint bProgram = bShader ? bShader->GetProgramID() : 0;
+		const unsigned int aProgram = aShader ? aShader->GetProgramID() : 0;
+		const unsigned int bProgram = bShader ? bShader->GetProgramID() : 0;
 
 		if (aProgram != bProgram) {
 			return aProgram < bProgram;
@@ -353,16 +354,15 @@ namespace {
 				return TransparentMeshDrawFartherFirst(a, b, cameraPosition);
 			});
 
-		const GLboolean wasBlendEnabled = glIsEnabled(GL_BLEND);
-		const GLboolean wasDepthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
-		const GLboolean wasCullFaceEnabled = glIsEnabled(GL_CULL_FACE);
-		GLboolean wasDepthMaskEnabled = GL_TRUE;
-		glGetBooleanv(GL_DEPTH_WRITEMASK, &wasDepthMaskEnabled);
-
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glEnable(GL_DEPTH_TEST);
-		glDepthMask(GL_FALSE);
+		auto& device = RTBEngine::Rendering::RHI::RenderDevice::Get();
+		device.SetBlend(true);
+		device.SetBlendFuncSeparate(
+			RTBEngine::Rendering::RHI::BlendFactor::SrcAlpha,
+			RTBEngine::Rendering::RHI::BlendFactor::OneMinusSrcAlpha,
+			RTBEngine::Rendering::RHI::BlendFactor::SrcAlpha,
+			RTBEngine::Rendering::RHI::BlendFactor::OneMinusSrcAlpha);
+		device.SetDepthTest(true);
+		device.SetDepthWrite(false);
 
 		OpaqueRenderBatchState batchState;
 		for (const OpaqueMeshDraw& draw : sortedDraws) {
@@ -370,28 +370,10 @@ namespace {
 			draw.renderer->RenderDraw(draw.mesh, draw.material);
 		}
 
-		if (wasCullFaceEnabled) {
-			glEnable(GL_CULL_FACE);
-		}
-		else {
-			glDisable(GL_CULL_FACE);
-		}
-
-		if (wasDepthTestEnabled) {
-			glEnable(GL_DEPTH_TEST);
-		}
-		else {
-			glDisable(GL_DEPTH_TEST);
-		}
-
-		if (wasBlendEnabled) {
-			glEnable(GL_BLEND);
-		}
-		else {
-			glDisable(GL_BLEND);
-		}
-
-		glDepthMask(wasDepthMaskEnabled);
+		device.SetDepthWrite(true);
+		device.SetBlend(false);
+		device.SetCullFace(true);
+		device.SetDepthTest(true);
 	}
 }
 

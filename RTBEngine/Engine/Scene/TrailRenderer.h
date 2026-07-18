@@ -5,8 +5,8 @@
 #include "../Math/Vectors/Vector3.h"
 #include "../Math/Vectors/Vector4.h"
 #include "../Reflection/PropertyMacros.h"
+#include "../Rendering/RHI/RenderTypes.h"
 
-#include <GL/glew.h>
 #include <cstddef>
 #include <vector>
 
@@ -59,8 +59,8 @@ namespace RTBEngine {
         private:
             std::vector<Math::Vector3> points;
             float globalAlphaScale = 1.0f;
-            GLuint vao = 0;
-            GLuint vbo = 0;
+            Rendering::RHI::GpuId vao = Rendering::RHI::kInvalidGpuId;
+            Rendering::RHI::GpuId vbo = Rendering::RHI::kInvalidGpuId;
             Rendering::Shader* shader = nullptr;
 
             bool EnsureRenderResources();

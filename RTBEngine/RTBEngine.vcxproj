@@ -186,6 +186,9 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Scene\FreeLookCamera.cpp" />
     <ClCompile Include="Engine\Rendering\Cubemap.cpp" />
     <ClCompile Include="Engine\Rendering\FrameBuffer.cpp" />
+    <ClCompile Include="Engine\Rendering\RHI\RenderDevice.cpp" />
+    <ClCompile Include="Engine\Rendering\RHI\RenderDeviceFactory.cpp" />
+    <ClCompile Include="Engine\Rendering\RHI\OpenGL\OpenGLRenderDevice.cpp" />
     <ClCompile Include="Engine\Scripting\ComponentRegistry.cpp" />
     <ClCompile Include="Engine\Scripting\ScriptManager.cpp" />
     <ClCompile Include="Engine\Scene\AudioSourceComponent.cpp" />
@@ -344,6 +347,12 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Scene\FreeLookCamera.h" />
     <ClInclude Include="Engine\Rendering\Cubemap.h" />
     <ClInclude Include="Engine\Rendering\FrameBuffer.h" />
+    <ClInclude Include="Engine\Rendering\RHI\GraphicsAPI.h" />
+    <ClInclude Include="Engine\Rendering\RHI\IRenderDevice.h" />
+    <ClInclude Include="Engine\Rendering\RHI\OpenGL\OpenGLRenderDevice.h" />
+    <ClInclude Include="Engine\Rendering\RHI\RenderDevice.h" />
+    <ClInclude Include="Engine\Rendering\RHI\RenderDeviceFactory.h" />
+    <ClInclude Include="Engine\Rendering\RHI\RenderTypes.h" />
     <ClInclude Include="Engine\RTBEngine.h" />
     <ClInclude Include="Engine\Online\CompositeOnlineBackend.h" />
     <ClInclude Include="Engine\Online\LanOnlineBackend.h" />

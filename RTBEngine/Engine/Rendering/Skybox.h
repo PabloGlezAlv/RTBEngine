@@ -1,6 +1,6 @@
 #pragma once
 #include "../RTBEngineAPI.h"
-#include <GL/glew.h>
+#include "RHI/RenderTypes.h"
 
 namespace RTBEngine {
     namespace Rendering {
@@ -22,17 +22,13 @@ namespace RTBEngine {
             Skybox(const Skybox&) = delete;
             Skybox& operator=(const Skybox&) = delete;
 
-            // Initialize with cubemap and shader
             bool Initialize(Cubemap* cubemap, Shader* shader);
 
-            // Change cubemap at runtime
             void SetCubemap(Cubemap* cubemap);
             Cubemap* GetCubemap() const { return cubemap; }
 
-            // Render the skybox
             void Render(Camera* camera);
 
-            // Enable/disable rendering
             void SetEnabled(bool enabled) { this->enabled = enabled; }
             bool IsEnabled() const { return enabled; }
 
@@ -44,9 +40,8 @@ namespace RTBEngine {
             Shader* shader = nullptr;
             bool enabled = true;
 
-            // OpenGL buffers for cube mesh
-            GLuint VAO = 0;
-            GLuint VBO = 0;
+            RHI::GpuId VAO = RHI::kInvalidGpuId;
+            RHI::GpuId VBO = RHI::kInvalidGpuId;
         };
 
     }

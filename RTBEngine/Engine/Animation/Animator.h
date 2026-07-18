@@ -5,7 +5,7 @@
 #include "Skeleton.h"
 #include "AnimationClip.h"
 #include "../Reflection/PropertyMacros.h"
-#include <GL/glew.h>
+#include "../Rendering/RHI/RenderTypes.h"
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -143,7 +143,7 @@ namespace RTBEngine {
             std::vector<Rendering::Mesh*> meshes;
 
             // Per-animator GPU buffer holding finalBoneTransforms (std140 BoneData block).
-            GLuint boneMatricesUBO = 0;
+            Rendering::RHI::GpuId boneMatricesUBO = Rendering::RHI::kInvalidGpuId;
             bool boneMatricesDirty = true;
 
             std::vector<Math::Matrix4> currentLocalTransforms;

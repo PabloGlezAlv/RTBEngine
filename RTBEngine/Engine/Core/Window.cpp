@@ -1,5 +1,5 @@
 #include "Window.h"
-#include <iostream>
+#include "../Rendering/RHI/RenderDevice.h"
 #include "../RTBEngine.h"
 
 RTBEngine::Core::Window::Window(const std::string& title, int width, int height, bool fullscreen, bool maximized) : title(title),
@@ -8,10 +8,8 @@ height(height),
 fullscreen(fullscreen),
 maximized(maximized),
 sdlWindow(nullptr),
-glContext(nullptr),
 shouldClose(false)
 {
-
 }
 
 RTBEngine::Core::Window::~Window()
@@ -19,27 +17,33 @@ RTBEngine::Core::Window::~Window()
 	Shutdown();
 }
 
-bool RTBEngine::Core::Window::Initialize()
+bool RTBEngine::Core::Window::Initialize(Rendering::RHI::GraphicsAPI api)
 {
-	//Initialize SDL
+	graphicsAPI = api;
+
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
 		RTB_ERROR("Error: Failed to initialize SDL2: " + std::string(SDL_GetError()));
 		return false;
 	}
 
-	//Initialize OpenGL version
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+	Uint32 windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
 
-	Uint32 windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
+	// GL attributes must be set before SDL_CreateWindow for OpenGL windows.
+	if (graphicsAPI == Rendering::RHI::GraphicsAPI::OpenGL
+		|| graphicsAPI == Rendering::RHI::GraphicsAPI::Vulkan) {
+		// Phase 1: Vulkan falls back to OpenGL, so always prepare an OpenGL-capable window.
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+		SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+		SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+		windowFlags |= SDL_WINDOW_OPENGL;
+	}
+
 	if (maximized) {
 		windowFlags |= SDL_WINDOW_MAXIMIZED;
 	}
 
-	//Create window
 	sdlWindow = SDL_CreateWindow(
 		title.c_str(),
 		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -52,55 +56,29 @@ bool RTBEngine::Core::Window::Initialize()
 		return false;
 	}
 
-	//Create OpenGL context
-	glContext = SDL_GL_CreateContext(sdlWindow);
-
-	if (!glContext) {
-		RTB_ERROR("Error: Failed to create OpenGL context: " + std::string(SDL_GetError()));
-		return false;
-	}
-
-	glewExperimental = GL_TRUE;
-	GLenum glewError = glewInit();
-	if (glewError != GLEW_OK) {
-		RTB_ERROR("Error: Failed to initialize GLEW: " + std::string((const char*)glewGetErrorString(glewError)));
-		return false;
-	}
-
-	// Enable OpenGL features
-	glEnable(GL_DEPTH_TEST);        // Enable depth testing
-	glDepthFunc(GL_LESS);            // Depth test passes if fragment is closer
-	glEnable(GL_CULL_FACE);          // Enable face culling
-	glCullFace(GL_BACK);             // Cull back faces
-	glFrontFace(GL_CCW);             // Front faces are counter-clockwise
-
-	SDL_GL_SetSwapInterval(1); // ENABLE V-SYNC
-
-	// Apply fullscreen if configured
 	if (fullscreen) {
 		SDL_SetWindowFullscreen(sdlWindow, SDL_WINDOW_FULLSCREEN_DESKTOP);
 		isFullscreen = true;
 	}
 
-	// Read back the real size SDL assigned (maximize/fullscreen/DPI may differ from config)
 	SDL_GetWindowSize(sdlWindow, &width, &height);
-
 	return true;
 }
 
 void RTBEngine::Core::Window::SwapBuffers()
 {
-	SDL_GL_SwapWindow(sdlWindow);
+	if (Rendering::RHI::RenderDevice::HasDevice()) {
+		Rendering::RHI::RenderDevice::Get().Present();
+		return;
+	}
+
+	if (sdlWindow) {
+		SDL_GL_SwapWindow(sdlWindow);
+	}
 }
 
 void RTBEngine::Core::Window::Shutdown()
 {
-	if (glContext)
-	{
-		SDL_GL_DeleteContext(glContext);
-		glContext = nullptr;
-	}
-
 	if (sdlWindow)
 	{
 		SDL_DestroyWindow(sdlWindow);
@@ -117,11 +95,9 @@ void RTBEngine::Core::Window::SetFullscreen(bool enabled)
 	}
 
 	if (enabled) {
-		// Fullscreen borderless mode (keeps desktop resolution)
 		SDL_SetWindowFullscreen(sdlWindow, SDL_WINDOW_FULLSCREEN_DESKTOP);
 	}
 	else {
-		// Return to windowed mode
 		SDL_SetWindowFullscreen(sdlWindow, 0);
 	}
 
@@ -134,10 +110,7 @@ void RTBEngine::Core::Window::SetMouseCaptured(bool captured)
 		return;
 	}
 
-	// Relative mode: hides cursor and captures mouse movement
 	SDL_SetRelativeMouseMode(captured ? SDL_TRUE : SDL_FALSE);
-
-	// Also control cursor visibility
 	SDL_ShowCursor(captured ? SDL_DISABLE : SDL_ENABLE);
 
 	isMouseCaptured = IsMouseCaptured();

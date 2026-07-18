@@ -58,7 +58,7 @@ namespace RTBEngine {
             if (useInstanceColors && instanceColors) {
                 mesh->UploadInstanceColors(instanceColors, instanceCount);
             }
-            mesh->DrawInstanced(static_cast<GLsizei>(instanceCount));
+            mesh->DrawInstanced(static_cast<int>(instanceCount));
 
             shader->SetBool("uUseInstancing", false);
             shader->SetBool("uUseInstanceColor", false);

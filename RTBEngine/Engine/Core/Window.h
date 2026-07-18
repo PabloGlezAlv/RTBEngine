@@ -1,9 +1,9 @@
 #pragma once
 #include "../RTBEngineAPI.h"
 #include <SDL.h>
-#include "GL/glew.h"
 #include <string>
 #include <functional>
+#include "../Rendering/RHI/GraphicsAPI.h"
 
 namespace RTBEngine {
     namespace Core {
@@ -14,14 +14,14 @@ namespace RTBEngine {
 
 			~Window();
 
-			bool Initialize();
+			// Creates the OS window. Graphics context is created later by IRenderDevice.
+			bool Initialize(Rendering::RHI::GraphicsAPI graphicsAPI = Rendering::RHI::GraphicsAPI::OpenGL);
 
 			void SwapBuffers();
 
 			void Shutdown();
 
 			SDL_Window* GetSDLWindow() const { return sdlWindow; }
-		SDL_GLContext GetGLContext() const { return glContext; }
 
 			int GetWidth() const { return width; }
 			int GetHeight() const { return height; }
@@ -29,15 +29,12 @@ namespace RTBEngine {
 			bool GetShouldClose() const { return shouldClose; }
 			void SetShouldClose(bool value) { shouldClose = value; }
 
-			// Fullscreen control
 			void SetFullscreen(bool enabled);
 			bool IsFullscreen() const { return isFullscreen; }
 
-			// Mouse capture control
 			void SetMouseCaptured(bool captured);
 			bool IsMouseCaptured() const;
 
-			// Cursor visibility control
 			void SetCursorVisible(bool visible);
 			bool IsCursorVisible() const;
 
@@ -58,8 +55,8 @@ namespace RTBEngine {
 			bool isMouseCaptured = false;
 			bool isCursorVisible = true;
 
-			SDL_Window* sdlWindow;
-			SDL_GLContext glContext;
+			SDL_Window* sdlWindow = nullptr;
+			Rendering::RHI::GraphicsAPI graphicsAPI = Rendering::RHI::GraphicsAPI::OpenGL;
 
 			WindowResizeCallback resizeCallback = nullptr;
 

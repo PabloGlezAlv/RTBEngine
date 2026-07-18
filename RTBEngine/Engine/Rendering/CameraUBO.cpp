@@ -1,6 +1,6 @@
 #include "CameraUBO.h"
-
 #include "Camera.h"
+#include "RHI/RenderDevice.h"
 
 #include <cstdint>
 #include <cstring>
@@ -28,6 +28,11 @@ namespace RTBEngine {
             {
                 std::memcpy(buffer + offset, &value.x, sizeof(float) * 3);
             }
+
+            RHI::IRenderDevice& Device()
+            {
+                return RHI::RenderDevice::Get();
+            }
         }
 
         CameraUBO& CameraUBO::GetInstance()
@@ -38,17 +43,15 @@ namespace RTBEngine {
 
         CameraUBO::CameraUBO()
         {
-            glGenBuffers(1, &buffer);
-            glBindBuffer(GL_UNIFORM_BUFFER, buffer);
-            glBufferData(GL_UNIFORM_BUFFER, CameraUBOLayout::kBufferSize, nullptr, GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
+            buffer = Device().CreateBuffer();
+            Device().SetUniformBufferData(buffer, nullptr, CameraUBOLayout::kBufferSize, RHI::BufferUsage::Dynamic);
         }
 
         CameraUBO::~CameraUBO()
         {
-            if (buffer != 0) {
-                glDeleteBuffers(1, &buffer);
-                buffer = 0;
+            if (buffer != RHI::kInvalidGpuId && RHI::RenderDevice::HasDevice()) {
+                Device().DestroyBuffer(buffer);
+                buffer = RHI::kInvalidGpuId;
             }
         }
 
@@ -65,14 +68,12 @@ namespace RTBEngine {
                 WriteVec3(data, CameraUBOLayout::kCameraUp, camera->GetUp());
             }
 
-            glBindBuffer(GL_UNIFORM_BUFFER, buffer);
-            glBufferSubData(GL_UNIFORM_BUFFER, 0, CameraUBOLayout::kBufferSize, data);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
+            Device().UpdateUniformBufferData(buffer, data, CameraUBOLayout::kBufferSize);
         }
 
         void CameraUBO::Bind() const
         {
-            glBindBufferBase(GL_UNIFORM_BUFFER, kCameraUBOBindingPoint, buffer);
+            Device().BindUniformBufferBase(buffer, kCameraUBOBindingPoint);
         }
 
     }

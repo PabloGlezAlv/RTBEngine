@@ -3,6 +3,7 @@
 #include "../Rendering/ModelLoader.h"
 #include "../Rendering/FbxBinding.h"
 #include "../Rendering/Shader.h"
+#include "../Rendering/RHI/RenderDevice.h"
 #include "../Core/ResourceManager.h"
 #include "../Scene/MeshRenderer.h"
 #include "../Scene/GameObject.h"
@@ -544,14 +545,13 @@ namespace RTBEngine {
 
         void Animator::BindBoneMatrices()
         {
-            constexpr GLsizeiptr kBufferSize =
-                static_cast<GLsizeiptr>(Rendering::Shader::MaxBoneTransforms) * 16 * sizeof(float);
+            auto& device = Rendering::RHI::RenderDevice::Get();
+            constexpr std::size_t kBufferSize =
+                static_cast<std::size_t>(Rendering::Shader::MaxBoneTransforms) * 16 * sizeof(float);
 
-            if (boneMatricesUBO == 0) {
-                glGenBuffers(1, &boneMatricesUBO);
-                glBindBuffer(GL_UNIFORM_BUFFER, boneMatricesUBO);
-                glBufferData(GL_UNIFORM_BUFFER, kBufferSize, nullptr, GL_DYNAMIC_DRAW);
-                glBindBuffer(GL_UNIFORM_BUFFER, 0);
+            if (boneMatricesUBO == Rendering::RHI::kInvalidGpuId) {
+                boneMatricesUBO = device.CreateBuffer();
+                device.SetUniformBufferData(boneMatricesUBO, nullptr, kBufferSize, Rendering::RHI::BufferUsage::Dynamic);
                 boneMatricesDirty = true;
             }
 
@@ -560,25 +560,24 @@ namespace RTBEngine {
                     finalBoneTransforms.size(),
                     static_cast<size_t>(Rendering::Shader::MaxBoneTransforms));
                 if (count > 0) {
-                    glBindBuffer(GL_UNIFORM_BUFFER, boneMatricesUBO);
-                    glBufferSubData(
-                        GL_UNIFORM_BUFFER,
-                        0,
-                        static_cast<GLsizeiptr>(count * 16 * sizeof(float)),
-                        finalBoneTransforms.data());
-                    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+                    device.UpdateUniformBufferData(
+                        boneMatricesUBO,
+                        finalBoneTransforms.data(),
+                        count * 16 * sizeof(float));
                 }
                 boneMatricesDirty = false;
             }
 
-            glBindBufferBase(GL_UNIFORM_BUFFER, Rendering::kBoneUBOBindingPoint, boneMatricesUBO);
+            device.BindUniformBufferBase(boneMatricesUBO, Rendering::kBoneUBOBindingPoint);
         }
 
         void Animator::ReleaseBoneMatricesUBO()
         {
-            if (boneMatricesUBO != 0) {
-                glDeleteBuffers(1, &boneMatricesUBO);
-                boneMatricesUBO = 0;
+            if (boneMatricesUBO != Rendering::RHI::kInvalidGpuId) {
+                if (Rendering::RHI::RenderDevice::HasDevice()) {
+                    Rendering::RHI::RenderDevice::Get().DestroyBuffer(boneMatricesUBO);
+                }
+                boneMatricesUBO = Rendering::RHI::kInvalidGpuId;
             }
         }
 

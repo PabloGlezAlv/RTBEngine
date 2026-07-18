@@ -5,6 +5,7 @@
 #include "../Rendering/Camera.h"
 #include "../Rendering/CameraUBO.h"
 #include "../Rendering/Shader.h"
+#include "../Rendering/RHI/RenderDevice.h"
 
 #include <algorithm>
 
@@ -100,37 +101,39 @@ namespace RTBEngine {
                 return false;
             }
 
-            if (vao != 0 && vbo != 0) {
+            if (vao != Rendering::RHI::kInvalidGpuId && vbo != Rendering::RHI::kInvalidGpuId) {
                 return true;
             }
 
-            glGenVertexArrays(1, &vao);
-            glGenBuffers(1, &vbo);
+            auto& device = Rendering::RHI::RenderDevice::Get();
+            vao = device.CreateVertexArray();
+            vbo = device.CreateBuffer();
 
-            glBindVertexArray(vao);
-            glBindBuffer(GL_ARRAY_BUFFER, vbo);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(TrailVertex), nullptr, GL_DYNAMIC_DRAW);
+            device.BindVertexArray(vao);
+            device.SetArrayBufferData(
+                vbo,
+                nullptr,
+                sizeof(TrailVertex),
+                Rendering::RHI::BufferUsage::Dynamic);
 
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(TrailVertex), (void*)0);
-            glEnableVertexAttribArray(1);
-            glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(TrailVertex), (void*)offsetof(TrailVertex, color));
+            device.EnableVertexAttribFloat(0, 3, static_cast<int>(sizeof(TrailVertex)), offsetof(TrailVertex, position));
+            device.EnableVertexAttribFloat(1, 4, static_cast<int>(sizeof(TrailVertex)), offsetof(TrailVertex, color));
 
-            glBindVertexArray(0);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            device.UnbindVertexArray();
 
             return true;
         }
 
         void TrailRenderer::ReleaseRenderResources()
         {
-            if (vao != 0) {
-                glDeleteVertexArrays(1, &vao);
-                vao = 0;
+            auto& device = Rendering::RHI::RenderDevice::Get();
+            if (vao != Rendering::RHI::kInvalidGpuId) {
+                device.DestroyVertexArray(vao);
+                vao = Rendering::RHI::kInvalidGpuId;
             }
-            if (vbo != 0) {
-                glDeleteBuffers(1, &vbo);
-                vbo = 0;
+            if (vbo != Rendering::RHI::kInvalidGpuId) {
+                device.DestroyBuffer(vbo);
+                vbo = Rendering::RHI::kInvalidGpuId;
             }
             shader = nullptr;
         }
@@ -210,55 +213,39 @@ namespace RTBEngine {
                 return;
             }
 
-            // Upload the generated triangle vertices for this frame.
-            glBindBuffer(GL_ARRAY_BUFFER, vbo);
-            glBufferData(
-                GL_ARRAY_BUFFER,
-                static_cast<GLsizeiptr>(vertices.size() * sizeof(TrailVertex)),
+            auto& device = Rendering::RHI::RenderDevice::Get();
+            device.SetArrayBufferData(
+                vbo,
                 vertices.data(),
-                GL_DYNAMIC_DRAW);
+                vertices.size() * sizeof(TrailVertex),
+                Rendering::RHI::BufferUsage::Dynamic);
 
-            // Preserve the GL state touched by this component so later renderers are unaffected.
-            const GLboolean wasBlendEnabled = glIsEnabled(GL_BLEND);
-            const GLboolean wasDepthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
-            const GLboolean wasCullFaceEnabled = glIsEnabled(GL_CULL_FACE);
-            GLboolean wasDepthMaskEnabled = GL_TRUE;
-            glGetBooleanv(GL_DEPTH_WRITEMASK, &wasDepthMaskEnabled);
+            device.SetDepthTest(true);
+            device.SetDepthWrite(false);
+            device.SetBlend(true);
+            device.SetBlendFuncSeparate(
+                Rendering::RHI::BlendFactor::SrcAlpha,
+                Rendering::RHI::BlendFactor::OneMinusSrcAlpha,
+                Rendering::RHI::BlendFactor::SrcAlpha,
+                Rendering::RHI::BlendFactor::OneMinusSrcAlpha);
+            device.SetCullFace(false);
 
-            glEnable(GL_BLEND); // Enable alpha colors
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glEnable(GL_DEPTH_TEST); // Visible just when in front
-            glDepthMask(GL_FALSE); // Avoid z-fighting with floor geometry
-            glDisable(GL_CULL_FACE); // Visible from both sides
-
-            // The shader only needs the camera view-projection because vertices are already in world space.
             shader->Bind();
             Rendering::CameraUBO::GetInstance().Bind();
 
-            // Draw the uploaded quads as triangles.
-            glBindVertexArray(vao);
-            glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size()));
-            glBindVertexArray(0);
+            device.BindVertexArray(vao);
+            device.DrawArrays(
+                Rendering::RHI::PrimitiveTopology::Triangles,
+                0,
+                static_cast<int>(vertices.size()));
+            device.UnbindVertexArray();
 
             shader->Unbind();
 
-            // Restore the previous GL state after drawing the trail.
-            if (wasCullFaceEnabled) {
-                glEnable(GL_CULL_FACE);
-            } else {
-                glDisable(GL_CULL_FACE);
-            }
-            if (wasDepthTestEnabled) {
-                glEnable(GL_DEPTH_TEST);
-            } else {
-                glDisable(GL_DEPTH_TEST);
-            }
-            if (wasBlendEnabled) {
-                glEnable(GL_BLEND);
-            } else {
-                glDisable(GL_BLEND);
-            }
-            glDepthMask(wasDepthMaskEnabled);
+            device.SetDepthWrite(true);
+            device.SetBlend(false);
+            device.SetCullFace(true);
+            device.SetDepthTest(true);
         }
 
     }

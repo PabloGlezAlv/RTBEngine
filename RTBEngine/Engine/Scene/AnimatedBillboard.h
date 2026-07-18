@@ -3,11 +3,10 @@
 #include "../RTBEngineAPI.h"
 #include "Component.h"
 #include "../Rendering/ParticleTypes.h"
+#include "../Rendering/RHI/RenderTypes.h"
 #include "../Reflection/PropertyMacros.h"
 #include "../Math/Color.h"
 #include "../Math/Vectors/Vector2.h"
-
-#include <GL/glew.h>
 
 namespace RTBEngine {
     namespace Rendering {
@@ -73,8 +72,8 @@ namespace RTBEngine {
 
             float animationTime = 0.0f;
             bool playing = false;
-            GLuint vao = 0;
-            GLuint vbo = 0;
+            Rendering::RHI::GpuId vao = Rendering::RHI::kInvalidGpuId;
+            Rendering::RHI::GpuId vbo = Rendering::RHI::kInvalidGpuId;
             Rendering::Shader* shader = nullptr;
         };
 #pragma warning(pop)

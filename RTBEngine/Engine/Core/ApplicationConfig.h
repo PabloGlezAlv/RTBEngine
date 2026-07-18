@@ -1,6 +1,7 @@
 #pragma once
 #include "../RTBEngineAPI.h"
 #include "../Online/OnlineConfig.h"
+#include "../Rendering/RHI/GraphicsAPI.h"
 #include <string>
 #include "../Math/Vectors/Vector3.h"
 
@@ -23,6 +24,7 @@ namespace RTBEngine {
         };
 
         struct RenderingConfig {
+            Rendering::RHI::GraphicsAPI graphicsAPI = Rendering::RHI::GraphicsAPI::OpenGL;
             float clearColorR = 0.1f;
             float clearColorG = 0.1f;
             float clearColorB = 0.1f;

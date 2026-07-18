@@ -1,14 +1,14 @@
 #pragma once
 
 #include "../RTBEngineAPI.h"
-#include <GL/glew.h>
+#include "RHI/RenderTypes.h"
 
 namespace RTBEngine {
     namespace Rendering {
 
         class Camera;
 
-        static constexpr GLuint kCameraUBOBindingPoint = 1;
+        static constexpr unsigned int kCameraUBOBindingPoint = RHI::kCameraUBOBinding;
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
@@ -26,7 +26,7 @@ namespace RTBEngine {
             CameraUBO(const CameraUBO&) = delete;
             CameraUBO& operator=(const CameraUBO&) = delete;
 
-            GLuint buffer = 0;
+            RHI::GpuId buffer = RHI::kInvalidGpuId;
         };
 #pragma warning(pop)
 

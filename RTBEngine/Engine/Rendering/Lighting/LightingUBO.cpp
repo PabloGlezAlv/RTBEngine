@@ -3,6 +3,7 @@
 #include "DirectionalLight.h"
 #include "PointLight.h"
 #include "SpotLight.h"
+#include "../RHI/RenderDevice.h"
 
 #include <cstring>
 
@@ -36,6 +37,11 @@ namespace RTBEngine {
             {
                 std::memcpy(buffer + offset, &value, sizeof(std::int32_t));
             }
+
+            RHI::IRenderDevice& Device()
+            {
+                return RHI::RenderDevice::Get();
+            }
         }
 
         LightingUBO& LightingUBO::GetInstance()
@@ -46,17 +52,15 @@ namespace RTBEngine {
 
         LightingUBO::LightingUBO()
         {
-            glGenBuffers(1, &buffer);
-            glBindBuffer(GL_UNIFORM_BUFFER, buffer);
-            glBufferData(GL_UNIFORM_BUFFER, LightingUBOLayout::kBufferSize, nullptr, GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
+            buffer = Device().CreateBuffer();
+            Device().SetUniformBufferData(buffer, nullptr, LightingUBOLayout::kBufferSize, RHI::BufferUsage::Dynamic);
         }
 
         LightingUBO::~LightingUBO()
         {
-            if (buffer != 0) {
-                glDeleteBuffers(1, &buffer);
-                buffer = 0;
+            if (buffer != RHI::kInvalidGpuId && RHI::RenderDevice::HasDevice()) {
+                Device().DestroyBuffer(buffer);
+                buffer = RHI::kInvalidGpuId;
             }
         }
 
@@ -132,14 +136,12 @@ namespace RTBEngine {
             WriteInt32(data, LightingUBOLayout::kNumPointLights, pointLightIndex);
             WriteInt32(data, LightingUBOLayout::kNumSpotLights, spotLightIndex);
 
-            glBindBuffer(GL_UNIFORM_BUFFER, buffer);
-            glBufferSubData(GL_UNIFORM_BUFFER, 0, LightingUBOLayout::kBufferSize, data);
-            glBindBuffer(GL_UNIFORM_BUFFER, 0);
+            Device().UpdateUniformBufferData(buffer, data, LightingUBOLayout::kBufferSize);
         }
 
         void LightingUBO::Bind() const
         {
-            glBindBufferBase(GL_UNIFORM_BUFFER, kLightingUBOBindingPoint, buffer);
+            Device().BindUniformBufferBase(buffer, kLightingUBOBindingPoint);
         }
 
     }

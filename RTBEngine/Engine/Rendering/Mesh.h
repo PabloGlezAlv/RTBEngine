@@ -1,12 +1,12 @@
 #pragma once
 #include "../RTBEngineAPI.h"
-#include <GL/glew.h>
 #include <cstddef>
 #include <vector>
 #include "Vertex.h"
 #include "../Math/Vectors/Vector3.h"
 #include "../Math/Vectors/Vector4.h"
 #include "../Math/Matrix/Matrix4.h"
+#include "RHI/RenderTypes.h"
 
 
 // Guide from: https://learnopengl.com/Model-Loading/Mesh
@@ -30,7 +30,7 @@ namespace RTBEngine {
             // Optional per-instance colors (attribute location 9). Call after UploadInstanceData
             // with the same instance count when the shader enables uUseInstanceColor.
             void UploadInstanceColors(const Math::Vector4* colors, std::size_t count);
-            void DrawInstanced(GLsizei instanceCount) const;
+            void DrawInstanced(int instanceCount) const;
 
             unsigned int GetVertexCount() const { return vertexCount; }
             unsigned int GetIndexCount() const { return indexCount; }
@@ -49,20 +49,18 @@ namespace RTBEngine {
             void SetupMesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices);
             void CalculateAABB(const std::vector<Vertex>& vertices);
 
-            GLuint VAO;
-            GLuint VBO;
-            GLuint EBO;
-            GLuint instanceVBO = 0;
-            GLuint instanceColorVBO = 0;
+            RHI::GpuId VAO = RHI::kInvalidGpuId;
+            RHI::GpuId VBO = RHI::kInvalidGpuId;
+            RHI::GpuId EBO = RHI::kInvalidGpuId;
+            RHI::GpuId instanceVBO = RHI::kInvalidGpuId;
+            RHI::GpuId instanceColorVBO = RHI::kInvalidGpuId;
 
-            unsigned int vertexCount;
-            unsigned int indexCount;
+            unsigned int vertexCount = 0;
+            unsigned int indexCount = 0;
 
-            // Bounding box
             Math::Vector3 aabbMin;
             Math::Vector3 aabbMax;
 
-            // Material index (-1 = no material)
             int materialIndex = -1;
         };
 

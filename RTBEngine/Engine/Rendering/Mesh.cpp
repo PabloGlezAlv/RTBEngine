@@ -1,9 +1,17 @@
 #include "Mesh.h"
+#include "RHI/RenderDevice.h"
 #include <cstdint>
 #include <limits>
 
+namespace {
+    RTBEngine::Rendering::RHI::IRenderDevice& Device()
+    {
+        return RTBEngine::Rendering::RHI::RenderDevice::Get();
+    }
+}
+
 RTBEngine::Rendering::Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices)
-	:VAO(0), VBO(0), EBO(0), vertexCount(static_cast<unsigned int>(vertices.size())), indexCount(static_cast<unsigned int>(indices.size()))
+	: vertexCount(static_cast<unsigned int>(vertices.size())), indexCount(static_cast<unsigned int>(indices.size()))
 {
 	SetupMesh(vertices, indices);
 	CalculateAABB(vertices);
@@ -11,38 +19,35 @@ RTBEngine::Rendering::Mesh::Mesh(const std::vector<Vertex>& vertices, const std:
 
 RTBEngine::Rendering::Mesh::~Mesh()
 {
-	if (VAO != 0) {
-		glDeleteVertexArrays(1, &VAO);
-		VAO = 0;
+	auto& device = Device();
+	if (VAO != RHI::kInvalidGpuId) {
+		device.DestroyVertexArray(VAO);
+		VAO = RHI::kInvalidGpuId;
 	}
-
-	if (VBO != 0) {
-		glDeleteBuffers(1, &VBO);
-		VBO = 0;
+	if (VBO != RHI::kInvalidGpuId) {
+		device.DestroyBuffer(VBO);
+		VBO = RHI::kInvalidGpuId;
 	}
-
-	if (EBO != 0) {
-		glDeleteBuffers(1, &EBO);
-		EBO = 0;
+	if (EBO != RHI::kInvalidGpuId) {
+		device.DestroyBuffer(EBO);
+		EBO = RHI::kInvalidGpuId;
 	}
-
-	if (instanceVBO != 0) {
-		glDeleteBuffers(1, &instanceVBO);
-		instanceVBO = 0;
+	if (instanceVBO != RHI::kInvalidGpuId) {
+		device.DestroyBuffer(instanceVBO);
+		instanceVBO = RHI::kInvalidGpuId;
 	}
-
-	if (instanceColorVBO != 0) {
-		glDeleteBuffers(1, &instanceColorVBO);
-		instanceColorVBO = 0;
+	if (instanceColorVBO != RHI::kInvalidGpuId) {
+		device.DestroyBuffer(instanceColorVBO);
+		instanceColorVBO = RHI::kInvalidGpuId;
 	}
 }
 
 void RTBEngine::Rendering::Mesh::Draw() const
 {
-	glBindVertexArray(VAO);
-	glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
-	glBindVertexArray(0);
-
+	auto& device = Device();
+	device.BindVertexArray(VAO);
+	device.DrawIndexed(RHI::PrimitiveTopology::Triangles, static_cast<int>(indexCount), RHI::IndexType::UInt32);
+	device.UnbindVertexArray();
 }
 
 void RTBEngine::Rendering::Mesh::UploadInstanceData(const Math::Matrix4* matrices, std::size_t count)
@@ -51,37 +56,33 @@ void RTBEngine::Rendering::Mesh::UploadInstanceData(const Math::Matrix4* matrice
 		return;
 	}
 
-	glBindVertexArray(VAO);
+	auto& device = Device();
+	device.BindVertexArray(VAO);
 
-	// Configure the mat4 instance attribute (locations 5-8) the first time this mesh is instanced.
-	// A mat4 attribute occupies four vec4 slots; the whole attribute advances once per instance.
-	const bool needsAttribSetup = (instanceVBO == 0);
+	const bool needsAttribSetup = (instanceVBO == RHI::kInvalidGpuId);
 	if (needsAttribSetup) {
-		glGenBuffers(1, &instanceVBO);
+		instanceVBO = device.CreateBuffer();
 	}
 
-	glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+	device.SetArrayBufferData(
+		instanceVBO,
+		matrices,
+		count * sizeof(Math::Matrix4),
+		RHI::BufferUsage::Dynamic);
 
 	if (needsAttribSetup) {
-		const GLsizei stride = static_cast<GLsizei>(sizeof(Math::Matrix4));
-		for (GLuint i = 0; i < 4; ++i) {
-			const GLuint location = 5 + i;
-			glEnableVertexAttribArray(location);
-			glVertexAttribPointer(
-				location, 4, GL_FLOAT, GL_FALSE, stride,
-				reinterpret_cast<void*>(static_cast<std::uintptr_t>(i * sizeof(float) * 4)));
-			glVertexAttribDivisor(location, 1);
+		const int stride = static_cast<int>(sizeof(Math::Matrix4));
+		for (unsigned int i = 0; i < 4; ++i) {
+			const unsigned int location = 5 + i;
+			device.EnableVertexAttribFloat(
+				location, 4, stride,
+				static_cast<std::size_t>(i * sizeof(float) * 4));
+			device.SetVertexAttribDivisor(location, 1);
 		}
 	}
 
-	glBufferData(
-		GL_ARRAY_BUFFER,
-		static_cast<GLsizeiptr>(count * sizeof(Math::Matrix4)),
-		matrices,
-		GL_DYNAMIC_DRAW);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
+	device.BindArrayBuffer(RHI::kInvalidGpuId);
+	device.UnbindVertexArray();
 }
 
 void RTBEngine::Rendering::Mesh::UploadInstanceColors(const Math::Vector4* colors, std::size_t count)
@@ -90,82 +91,65 @@ void RTBEngine::Rendering::Mesh::UploadInstanceColors(const Math::Vector4* color
 		return;
 	}
 
-	glBindVertexArray(VAO);
+	auto& device = Device();
+	device.BindVertexArray(VAO);
 
-	const bool needsAttribSetup = (instanceColorVBO == 0);
+	const bool needsAttribSetup = (instanceColorVBO == RHI::kInvalidGpuId);
 	if (needsAttribSetup) {
-		glGenBuffers(1, &instanceColorVBO);
+		instanceColorVBO = device.CreateBuffer();
 	}
 
-	glBindBuffer(GL_ARRAY_BUFFER, instanceColorVBO);
-
-	if (needsAttribSetup) {
-		constexpr GLuint location = 9;
-		glEnableVertexAttribArray(location);
-		glVertexAttribPointer(location, 4, GL_FLOAT, GL_FALSE, sizeof(Math::Vector4), reinterpret_cast<void*>(0));
-		glVertexAttribDivisor(location, 1);
-	}
-
-	glBufferData(
-		GL_ARRAY_BUFFER,
-		static_cast<GLsizeiptr>(count * sizeof(Math::Vector4)),
+	device.SetArrayBufferData(
+		instanceColorVBO,
 		colors,
-		GL_DYNAMIC_DRAW);
+		count * sizeof(Math::Vector4),
+		RHI::BufferUsage::Dynamic);
 
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
+	if (needsAttribSetup) {
+		constexpr unsigned int location = 9;
+		device.EnableVertexAttribFloat(location, 4, static_cast<int>(sizeof(Math::Vector4)), 0);
+		device.SetVertexAttribDivisor(location, 1);
+	}
+
+	device.BindArrayBuffer(RHI::kInvalidGpuId);
+	device.UnbindVertexArray();
 }
 
-void RTBEngine::Rendering::Mesh::DrawInstanced(GLsizei instanceCount) const
+void RTBEngine::Rendering::Mesh::DrawInstanced(int instanceCount) const
 {
 	if (instanceCount <= 0) {
 		return;
 	}
 
-	glBindVertexArray(VAO);
-	glDrawElementsInstanced(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0, instanceCount);
-	glBindVertexArray(0);
+	auto& device = Device();
+	device.BindVertexArray(VAO);
+	device.DrawIndexedInstanced(
+		RHI::PrimitiveTopology::Triangles,
+		static_cast<int>(indexCount),
+		RHI::IndexType::UInt32,
+		instanceCount);
+	device.UnbindVertexArray();
 }
 
 void RTBEngine::Rendering::Mesh::SetupMesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices)
 {
-	//Create buffers/arrays
-	glGenVertexArrays(1, &VAO); //Vertex Array Object 
-	glGenBuffers(1, &VBO); //Vertex Buffer Object
-	glGenBuffers(1, &EBO); //Element Buffer Object
+	auto& device = Device();
+	VAO = device.CreateVertexArray();
+	VBO = device.CreateBuffer();
+	EBO = device.CreateBuffer();
 
-	//Activate VAO
-	glBindVertexArray(VAO);
+	device.BindVertexArray(VAO);
+	device.SetArrayBufferData(VBO, vertices.data(), vertices.size() * sizeof(Vertex), RHI::BufferUsage::Static);
+	device.SetElementBufferData(EBO, indices.data(), indices.size() * sizeof(unsigned int), RHI::BufferUsage::Static);
 
-	// Load data into vertex buffers
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+	const int stride = static_cast<int>(sizeof(Vertex));
+	device.EnableVertexAttribFloat(0, 3, stride, offsetof(Vertex, position));
+	device.EnableVertexAttribFloat(1, 3, stride, offsetof(Vertex, normal));
+	device.EnableVertexAttribFloat(2, 2, stride, offsetof(Vertex, texCoords));
+	device.EnableVertexAttribInt(3, 4, stride, offsetof(Vertex, boneIndices));
+	device.EnableVertexAttribFloat(4, 4, stride, offsetof(Vertex, boneWeights));
 
-	// Load data into element buffer
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-
-	// VAO save info Position (location 0) -> glVertexAttribPointer for float
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
-	glEnableVertexAttribArray(0);
-
-	// VAO save info Normal (location 1)
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-	glEnableVertexAttribArray(1);
-
-	// VAO save info TexCoords (location 2)
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
-	glEnableVertexAttribArray(2);
-
-	// VAO save info BoneIndices (location 3) -> glVertexAttribIPointer for integers
-	glVertexAttribIPointer(3, 4, GL_INT, sizeof(Vertex), (void*)offsetof(Vertex, boneIndices));
-	glEnableVertexAttribArray(3);
-
-	// VAO save info BoneWeights (location 4)
-	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, boneWeights));
-	glEnableVertexAttribArray(4);
-
-	glBindVertexArray(0);
+	device.UnbindVertexArray();
 }
 
 void RTBEngine::Rendering::Mesh::CalculateAABB(const std::vector<Vertex>& vertices)

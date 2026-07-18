@@ -8,6 +8,7 @@
 #include "../Rendering/CameraUBO.h"
 #include "../Rendering/Shader.h"
 #include "../Rendering/Texture.h"
+#include "../Rendering/RHI/RenderDevice.h"
 
 #include <algorithm>
 #include <cmath>
@@ -159,7 +160,7 @@ namespace RTBEngine {
                 return false;
             }
 
-            if (vao != 0 && vbo != 0) {
+            if (vao != Rendering::RHI::kInvalidGpuId && vbo != Rendering::RHI::kInvalidGpuId) {
                 return true;
             }
 
@@ -172,29 +173,33 @@ namespace RTBEngine {
                 { Math::Vector2(-0.5f, 0.5f), Math::Vector2(0.0f, 1.0f) },
             };
 
-            glGenVertexArrays(1, &vao);
-            glGenBuffers(1, &vbo);
-            glBindVertexArray(vao);
-            glBindBuffer(GL_ARRAY_BUFFER, vbo);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(BillboardVertex), (void*)0);
-            glEnableVertexAttribArray(1);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(BillboardVertex), (void*)offsetof(BillboardVertex, uv));
-            glBindVertexArray(0);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-            return vao != 0;
+            auto& device = Rendering::RHI::RenderDevice::Get();
+            vao = device.CreateVertexArray();
+            vbo = device.CreateBuffer();
+            device.BindVertexArray(vao);
+            device.SetArrayBufferData(
+                vbo,
+                vertices,
+                sizeof(vertices),
+                Rendering::RHI::BufferUsage::Static);
+            device.EnableVertexAttribFloat(
+                0, 2, static_cast<int>(sizeof(BillboardVertex)), offsetof(BillboardVertex, corner));
+            device.EnableVertexAttribFloat(
+                1, 2, static_cast<int>(sizeof(BillboardVertex)), offsetof(BillboardVertex, uv));
+            device.UnbindVertexArray();
+            return vao != Rendering::RHI::kInvalidGpuId;
         }
 
         void AnimatedBillboard::ReleaseRenderResources()
         {
-            if (vbo != 0) {
-                glDeleteBuffers(1, &vbo);
-                vbo = 0;
+            auto& device = Rendering::RHI::RenderDevice::Get();
+            if (vbo != Rendering::RHI::kInvalidGpuId) {
+                device.DestroyBuffer(vbo);
+                vbo = Rendering::RHI::kInvalidGpuId;
             }
-            if (vao != 0) {
-                glDeleteVertexArrays(1, &vao);
-                vao = 0;
+            if (vao != Rendering::RHI::kInvalidGpuId) {
+                device.DestroyVertexArray(vao);
+                vao = Rendering::RHI::kInvalidGpuId;
             }
             shader = nullptr;
         }
@@ -211,21 +216,24 @@ namespace RTBEngine {
                 return;
             }
 
-            const GLboolean wasBlendEnabled = glIsEnabled(GL_BLEND);
-            const GLboolean wasDepthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
-            const GLboolean wasCullFaceEnabled = glIsEnabled(GL_CULL_FACE);
-            GLboolean wasDepthMask = GL_TRUE;
-            glGetBooleanv(GL_DEPTH_WRITEMASK, &wasDepthMask);
-
-            glEnable(GL_DEPTH_TEST);
-            glDisable(GL_CULL_FACE);
-            glDepthMask(GL_FALSE);
-            glDepthFunc(GL_LEQUAL);
-            glEnable(GL_BLEND);
+            auto& device = Rendering::RHI::RenderDevice::Get();
+            device.SetDepthTest(true);
+            device.SetCullFace(false);
+            device.SetDepthWrite(false);
+            device.SetDepthFunc(Rendering::RHI::DepthFunc::LEqual);
+            device.SetBlend(true);
             if (blendMode == Rendering::ParticleBlendMode::Additive) {
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+                device.SetBlendFuncSeparate(
+                    Rendering::RHI::BlendFactor::SrcAlpha,
+                    Rendering::RHI::BlendFactor::One,
+                    Rendering::RHI::BlendFactor::SrcAlpha,
+                    Rendering::RHI::BlendFactor::One);
             } else {
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                device.SetBlendFuncSeparate(
+                    Rendering::RHI::BlendFactor::SrcAlpha,
+                    Rendering::RHI::BlendFactor::OneMinusSrcAlpha,
+                    Rendering::RHI::BlendFactor::SrcAlpha,
+                    Rendering::RHI::BlendFactor::OneMinusSrcAlpha);
             }
 
             const Math::Vector3 worldPosition = GetOwner()->GetWorldPosition();
@@ -248,31 +256,20 @@ namespace RTBEngine {
                 shader->SetInt("uDiffuse", 0);
             }
 
-            glBindVertexArray(vao);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-            glBindVertexArray(0);
+            device.BindVertexArray(vao);
+            device.DrawArrays(Rendering::RHI::PrimitiveTopology::Triangles, 0, 6);
+            device.UnbindVertexArray();
 
             if (textureRef) {
                 textureRef->Unbind();
             }
             shader->Unbind();
 
-            glDepthMask(wasDepthMask ? GL_TRUE : GL_FALSE);
-            if (wasCullFaceEnabled) {
-                glEnable(GL_CULL_FACE);
-            } else {
-                glDisable(GL_CULL_FACE);
-            }
-            if (wasDepthTestEnabled) {
-                glEnable(GL_DEPTH_TEST);
-            } else {
-                glDisable(GL_DEPTH_TEST);
-            }
-            if (wasBlendEnabled) {
-                glEnable(GL_BLEND);
-            } else {
-                glDisable(GL_BLEND);
-            }
+            device.SetDepthWrite(true);
+            device.SetDepthFunc(Rendering::RHI::DepthFunc::Less);
+            device.SetBlend(false);
+            device.SetCullFace(true);
+            device.SetDepthTest(true);
         }
 
     }
