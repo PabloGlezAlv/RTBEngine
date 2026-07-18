@@ -143,6 +143,14 @@ void RTBEngine::Core::Application::ClearQuitRequest()
 
 bool RTBEngine::Core::Application::InitializeImGui()
 {
+	// Vulkan MVP has no ImGui renderer backend yet; skip ImGui rather than
+	// crashing the OpenGL-only ImGui init path.
+	if (Rendering::RHI::RenderDevice::Get().GetAPI() == Rendering::RHI::GraphicsAPI::Vulkan) {
+		RTB_WARN("Application::InitializeImGui - ImGui is not supported on the Vulkan backend yet; continuing without ImGui");
+		imguiInitialized = false;
+		return true;
+	}
+
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	if (!ImGui::GetCurrentContext()) {
@@ -158,15 +166,18 @@ bool RTBEngine::Core::Application::InitializeImGui()
 	void* glContext = Rendering::RHI::RenderDevice::Get().GetNativeContext();
 	if (!ImGui_ImplSDL2_InitForOpenGL(window->GetSDLWindow(), glContext)) {
 		RTB_ERROR("Application::InitializeImGui - Failed to initialize ImGui SDL2 backend");
+		ImGui::DestroyContext();
 		return false;
 	}
 
 	if (!ImGui_ImplOpenGL3_Init("#version 330")) {
 		RTB_ERROR("Application::InitializeImGui - Failed to initialize ImGui OpenGL3 backend");
 		ImGui_ImplSDL2_Shutdown();
+		ImGui::DestroyContext();
 		return false;
 	}
 
+	imguiInitialized = true;
 	return true;
 }
  
@@ -177,6 +188,10 @@ bool RTBEngine::Core::Application::InitializeImGui()
 
 void RTBEngine::Core::Application::ShutdownImGui()
 {
+	if (!imguiInitialized) {
+		return;
+	}
+
 	// Ensure the main GL context is current before releasing ImGui GL resources.
 	// ViewportsEnable can leave a different context active after rendering.
 	if (Rendering::RHI::RenderDevice::HasDevice()) {
@@ -185,6 +200,7 @@ void RTBEngine::Core::Application::ShutdownImGui()
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplSDL2_Shutdown();
 	ImGui::DestroyContext();
+	imguiInitialized = false;
 }
 
 bool RTBEngine::Core::Application::Initialize()
@@ -327,8 +343,10 @@ bool RTBEngine::Core::Application::Initialize()
 		return false;
 	}
 
-	// Load fonts after ImGui context is ready
-	resources.GetDefaultFont();
+	// Load fonts after ImGui context is ready (skipped on Vulkan MVP without ImGui).
+	if (imguiInitialized) {
+		resources.GetDefaultFont();
+	}
 
 	RTB_INFO("RTBEngine Initialized Successfully");
 
@@ -471,7 +489,7 @@ void RTBEngine::Core::Application::ProcessInput()
 	SDL_Event event;
 	while (SDL_PollEvent(&event))
 	{
-		if (!(IsMouseOwnedByGameplay(window.get()) && IsMouseUiEvent(event))) {
+		if (imguiInitialized && !(IsMouseOwnedByGameplay(window.get()) && IsMouseUiEvent(event))) {
 			ImGui_ImplSDL2_ProcessEvent(&event);
 		}
 		input.ProcessEvent(event);
@@ -562,6 +580,17 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 
 void RTBEngine::Core::Application::Render()
 {
+	// Vulkan MVP: no mesh/shadow/ImGui pipeline yet. Just clear and present so the
+	// window shows a colored framebuffer instead of crashing on OpenGL-only render paths.
+	if (Rendering::RHI::RenderDevice::Get().GetAPI() == Rendering::RHI::GraphicsAPI::Vulkan) {
+		auto& device = Rendering::RHI::RenderDevice::Get();
+		device.SetClearColor(config.rendering.clearColorR, config.rendering.clearColorG,
+			config.rendering.clearColorB, 1.0f);
+		device.Clear(Rendering::RHI::ClearMask::ColorDepth);
+		window->SwapBuffers();
+		return;
+	}
+
 	Scene::Scene* scene = Scene::SceneManager::GetInstance().GetActiveScene();
 	if (!scene) return;
 

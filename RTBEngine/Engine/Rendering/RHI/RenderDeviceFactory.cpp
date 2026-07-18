@@ -1,5 +1,6 @@
 #include "RenderDeviceFactory.h"
 #include "OpenGL/OpenGLRenderDevice.h"
+#include "Vulkan/VulkanRenderDevice.h"
 #include "../../Core/Logger.h"
 
 namespace RTBEngine {
@@ -8,18 +9,15 @@ namespace RTBEngine {
 
             std::unique_ptr<IRenderDevice> RenderDeviceFactory::Create(GraphicsAPI requestedAPI)
             {
-                GraphicsAPI api = requestedAPI;
-                if (api == GraphicsAPI::Vulkan) {
-                    RTB_WARN("GraphicsAPI::Vulkan is not available yet (Phase 1). Falling back to OpenGL.");
-                    api = GraphicsAPI::OpenGL;
-                }
-
-                if (api == GraphicsAPI::OpenGL) {
+                switch (requestedAPI) {
+                case GraphicsAPI::Vulkan:
+                    return std::make_unique<VulkanRenderDevice>();
+                case GraphicsAPI::OpenGL:
+                    return std::make_unique<OpenGLRenderDevice>();
+                default:
+                    RTB_ERROR("RenderDeviceFactory: unsupported GraphicsAPI, using OpenGL");
                     return std::make_unique<OpenGLRenderDevice>();
                 }
-
-                RTB_ERROR("RenderDeviceFactory: unsupported GraphicsAPI, using OpenGL");
-                return std::make_unique<OpenGLRenderDevice>();
             }
 
         }

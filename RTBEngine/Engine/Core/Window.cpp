@@ -28,10 +28,12 @@ bool RTBEngine::Core::Window::Initialize(Rendering::RHI::GraphicsAPI api)
 
 	Uint32 windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
 
-	// GL attributes must be set before SDL_CreateWindow for OpenGL windows.
-	if (graphicsAPI == Rendering::RHI::GraphicsAPI::OpenGL
-		|| graphicsAPI == Rendering::RHI::GraphicsAPI::Vulkan) {
-		// Phase 1: Vulkan falls back to OpenGL, so always prepare an OpenGL-capable window.
+	if (graphicsAPI == Rendering::RHI::GraphicsAPI::Vulkan) {
+		// Vulkan creates its own surface via SDL_Vulkan_CreateSurface; no GL attributes needed.
+		windowFlags |= SDL_WINDOW_VULKAN;
+	}
+	else {
+		// GL attributes must be set before SDL_CreateWindow for OpenGL windows.
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);

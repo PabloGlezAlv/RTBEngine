@@ -90,6 +90,7 @@ namespace RTBEngine {
             std::uint32_t lastTime = 0;
 
             std::unique_ptr<Window> window;
+            bool imguiInitialized = false;
             Physics::PhysicsWorld* physicsWorld = nullptr;
             Physics::PhysicsSystem* physicsSystem = nullptr;
             ECS::World* ecsWorld = nullptr;

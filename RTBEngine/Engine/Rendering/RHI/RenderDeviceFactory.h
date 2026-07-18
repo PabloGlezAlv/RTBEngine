@@ -13,7 +13,7 @@ namespace RTBEngine {
 
             class RTB_API RenderDeviceFactory {
             public:
-                // Creates a device for the requested API. Vulkan falls back to OpenGL in Phase 1.
+                // Creates a device for the requested API (OpenGL or Vulkan).
                 static std::unique_ptr<IRenderDevice> Create(GraphicsAPI requestedAPI);
             };
 
