@@ -45,11 +45,11 @@ namespace RTBEngine {
         }
 
         void ComponentRegistry::RegisterComponent(const std::string& typeName,
-            std::function<ECS::Component* ()> factory) {
+            std::function<Scene::Component* ()> factory) {
             factories[typeName] = factory;
         }
 
-        ECS::Component* ComponentRegistry::CreateComponent(const std::string& typeName) {
+        Scene::Component* ComponentRegistry::CreateComponent(const std::string& typeName) {
             auto it = factories.find(typeName);
             if (it != factories.end()) {
                 return it->second();
@@ -69,7 +69,7 @@ namespace RTBEngine {
             return Reflection::TypeRegistry::GetInstance().GetTypeInfo(typeName);
         }
 
-        void ComponentRegistry::DestroyComponent(const std::string& typeName, ECS::Component* component) const {
+        void ComponentRegistry::DestroyComponent(const std::string& typeName, Scene::Component* component) const {
             if (!component) {
                 return;
             }
@@ -100,25 +100,25 @@ namespace RTBEngine {
         }
 
         void ComponentRegistry::RegisterBuiltInComponents() {
-            RegisterComponent("MeshRenderer", []() { return new ECS::MeshRenderer(); });
-            RegisterComponent("LightComponent", []() { return new ECS::LightComponent(); });
-            RegisterComponent("AudioSourceComponent", []() { return new ECS::AudioSourceComponent(); });
-            RegisterComponent("RigidBodyComponent", []() { return new ECS::RigidBodyComponent(); });
-            RegisterComponent("BoxColliderComponent", []() { return new ECS::BoxColliderComponent(); });
-            RegisterComponent("SphereColliderComponent", []() { return new ECS::SphereColliderComponent(); });
-            RegisterComponent("CapsuleColliderComponent", []() { return new ECS::CapsuleColliderComponent(); });
-            RegisterComponent("NavGridComponent", []() { return new ECS::NavGridComponent(); });
-            RegisterComponent("NavAgentComponent", []() { return new ECS::NavAgentComponent(); });
-            RegisterComponent("CameraComponent", []() { return new ECS::CameraComponent(); });
-            RegisterComponent("FreeLookCamera", []() { return new ECS::FreeLookCamera(); });
-            RegisterComponent("TrailRenderer", []() { return new ECS::TrailRenderer(); });
-            RegisterComponent("ParticleSystem", []() { return new ECS::ParticleSystem(); });
-            RegisterComponent("AnimatedBillboard", []() { return new ECS::AnimatedBillboard(); });
-            RegisterComponent("NetworkIdentity", []() { return new ECS::NetworkIdentity(); });
-            RegisterComponent("NetworkTransform", []() { return new ECS::NetworkTransform(); });
-            RegisterComponent("Occludable", []() { return new ECS::Occludable(); });
-            RegisterComponent("OcclusionTarget", []() { return new ECS::OcclusionTarget(); });
-            RegisterComponent("OcclusionFadeController", []() { return new ECS::OcclusionFadeController(); });
+            RegisterComponent("MeshRenderer", []() { return new Scene::MeshRenderer(); });
+            RegisterComponent("LightComponent", []() { return new Scene::LightComponent(); });
+            RegisterComponent("AudioSourceComponent", []() { return new Scene::AudioSourceComponent(); });
+            RegisterComponent("RigidBodyComponent", []() { return new Scene::RigidBodyComponent(); });
+            RegisterComponent("BoxColliderComponent", []() { return new Scene::BoxColliderComponent(); });
+            RegisterComponent("SphereColliderComponent", []() { return new Scene::SphereColliderComponent(); });
+            RegisterComponent("CapsuleColliderComponent", []() { return new Scene::CapsuleColliderComponent(); });
+            RegisterComponent("NavGridComponent", []() { return new Scene::NavGridComponent(); });
+            RegisterComponent("NavAgentComponent", []() { return new Scene::NavAgentComponent(); });
+            RegisterComponent("CameraComponent", []() { return new Scene::CameraComponent(); });
+            RegisterComponent("FreeLookCamera", []() { return new Scene::FreeLookCamera(); });
+            RegisterComponent("TrailRenderer", []() { return new Scene::TrailRenderer(); });
+            RegisterComponent("ParticleSystem", []() { return new Scene::ParticleSystem(); });
+            RegisterComponent("AnimatedBillboard", []() { return new Scene::AnimatedBillboard(); });
+            RegisterComponent("NetworkIdentity", []() { return new Scene::NetworkIdentity(); });
+            RegisterComponent("NetworkTransform", []() { return new Scene::NetworkTransform(); });
+            RegisterComponent("Occludable", []() { return new Scene::Occludable(); });
+            RegisterComponent("OcclusionTarget", []() { return new Scene::OcclusionTarget(); });
+            RegisterComponent("OcclusionFadeController", []() { return new Scene::OcclusionFadeController(); });
             RegisterComponent("Animator", []() { return new Animation::Animator(); });
             RegisterComponent("Canvas", []() { return new UI::Canvas(); });
             RegisterComponent("UIText", []() { return new UI::UIText(); });

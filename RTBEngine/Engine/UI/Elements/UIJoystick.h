@@ -15,7 +15,7 @@ namespace RTBEngine {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
-		class RTB_API UIJoystick : public ECS::Component,
+		class RTB_API UIJoystick : public Scene::Component,
 		                           public IPointerDownHandler,
 		                           public IBeginDragHandler,
 		                           public IDragHandler,

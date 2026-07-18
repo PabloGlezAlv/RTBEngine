@@ -28,6 +28,8 @@
 #include "../Scene/PrefabRegistry.h"
 #include "../Scene/SceneManager.h"
 #include "../Rendering/Skybox.h"
+#include "../ECS/World.h"
+#include "../ECS/ProjectileSimulation.h"
 #include "../Rendering/Cubemap.h"
 #include "../Rendering/Lighting/LightingUBO.h"
 #include "../Rendering/CameraUBO.h"
@@ -70,15 +72,15 @@ namespace {
 		return window->IsMouseCaptured() || !window->IsCursorVisible();
 	}
 
-	void CollectHierarchy(RTBEngine::ECS::GameObject* root,
-		std::vector<RTBEngine::ECS::GameObject*>& outHierarchy)
+	void CollectHierarchy(RTBEngine::Scene::GameObject* root,
+		std::vector<RTBEngine::Scene::GameObject*>& outHierarchy)
 	{
 		if (!root) {
 			return;
 		}
 
 		outHierarchy.push_back(root);
-		for (RTBEngine::ECS::GameObject* child : root->GetChildren()) {
+		for (RTBEngine::Scene::GameObject* child : root->GetChildren()) {
 			CollectHierarchy(child, outHierarchy);
 		}
 	}
@@ -87,14 +89,14 @@ namespace {
 	// grouped by mesh and drawn with instancing when possible.
 	struct ShadowDraw {
 		RTBEngine::Rendering::Mesh* mesh = nullptr;
-		RTBEngine::ECS::MeshRenderer* renderer = nullptr;
+		RTBEngine::Scene::MeshRenderer* renderer = nullptr;
 	};
 
 	// Reused across shadow passes to avoid per-frame heap allocations.
 	thread_local std::vector<ShadowDraw> g_shadowDrawScratch;
 	thread_local std::vector<RTBEngine::Math::Matrix4> g_shadowInstanceScratch;
 
-	bool ShadowDrawIsSkinned(RTBEngine::ECS::MeshRenderer* renderer)
+	bool ShadowDrawIsSkinned(RTBEngine::Scene::MeshRenderer* renderer)
 	{
 		if (!renderer) {
 			return false;
@@ -222,9 +224,9 @@ bool RTBEngine::Core::Application::Initialize()
 	if (!config.initialScenePath.empty()) {
 		namespace fs = std::filesystem;
 		const fs::path assetsPath = fs::current_path() / "Assets";
-		ECS::PrefabRegistry::GetInstance().Clear();
+		Scene::PrefabRegistry::GetInstance().Clear();
 		if (fs::exists(assetsPath) && fs::is_directory(assetsPath)) {
-			ECS::PrefabRegistry::GetInstance().LoadAll(assetsPath.string());
+			Scene::PrefabRegistry::GetInstance().LoadAll(assetsPath.string());
 		}
 	}
 
@@ -315,24 +317,27 @@ bool RTBEngine::Core::Application::Initialize()
 
 	RTB_INFO("RTBEngine Initialized Successfully");
 
-	ECS::SceneManager& sceneMgr = ECS::SceneManager::GetInstance();
+	Scene::SceneManager& sceneMgr = Scene::SceneManager::GetInstance();
 	sceneMgr.Initialize();
-	sceneMgr.SetOnHierarchyAdded([this](ECS::GameObject* root) {
+	sceneMgr.SetOnHierarchyAdded([this](Scene::GameObject* root) {
 		InitializePhysicsForHierarchy(root);
 	});
-	sceneMgr.SetOnHierarchyDeactivated([this](ECS::GameObject* root) {
+	sceneMgr.SetOnHierarchyDeactivated([this](Scene::GameObject* root) {
 		DetachPhysicsHierarchy(root);
 	});
 
-	sceneMgr.SetOnSceneUnloading([this](ECS::Scene* /*scene*/) {
+	sceneMgr.SetOnSceneUnloading([this](Scene::Scene* /*scene*/) {
 		UI::CanvasSystem::GetInstance().ClearState();
+		if (ecsWorld) {
+			ecsWorld->Clear();
+		}
 		// Remove all Bullet objects from the world BEFORE GameObjects are destroyed.
 		// This prevents btDbvtBroadphase::destroyProxy from accessing a freed proxy
 		// when ~BoxColliderComponent() deletes the raw btCollisionObject.
 		ResetPhysics();
 	});
 
-	sceneMgr.SetOnSceneLoaded([this](ECS::Scene* scene) {
+	sceneMgr.SetOnSceneLoaded([this](Scene::Scene* scene) {
 		// Physics was already reset by onSceneUnloading before scene destruction.
 		InitializePhysicsForScene(scene);
 
@@ -350,6 +355,9 @@ bool RTBEngine::Core::Application::Initialize()
 		}
 	}
 
+	ecsWorld = new ECS::World();
+	ECS::RegisterDefaultSystems(*ecsWorld);
+	ECS::World::SetActive(ecsWorld);
 
 	return true;
 }
@@ -410,7 +418,13 @@ void RTBEngine::Core::Application::Shutdown()
 
 	// Destroy the scene while physics is still alive so component OnDestroy paths
 	// can detach Bullet state through the normal scene-unloading callback.
-	ECS::SceneManager::GetInstance().Shutdown();
+	Scene::SceneManager::GetInstance().Shutdown();
+
+	if (ecsWorld) {
+		ECS::World::SetActive(nullptr);
+		delete ecsWorld;
+		ecsWorld = nullptr;
+	}
 
 	if (physicsSystem) {
 		delete physicsSystem;
@@ -476,14 +490,14 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 
 	Online::OnlineSystem::GetInstance().Tick(deltaTime);
 
-	ECS::SceneManager& sceneMgr = ECS::SceneManager::GetInstance();
+	Scene::SceneManager& sceneMgr = Scene::SceneManager::GetInstance();
 	sceneMgr.ProcessPendingSceneLoad();
 
 	if (IsQuitRequested()) {
 		return;
 	}
 
-	ECS::Scene* scene = sceneMgr.GetActiveScene();
+	Scene::Scene* scene = sceneMgr.GetActiveScene();
 	if (!scene) return;
 
 	if (physicsSystem) {
@@ -491,6 +505,10 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 	}
 
 	scene->Update(deltaTime);
+
+	if (ecsWorld) {
+		ecsWorld->Tick(ECS::SystemPhase::Simulation, deltaTime);
+	}
 
 	if (IsQuitRequested()) {
 		return;
@@ -520,17 +538,21 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 	}
 
 	scene->LateUpdate(deltaTime);
+
+	if (ecsWorld) {
+		ecsWorld->Tick(ECS::SystemPhase::Presentation, deltaTime);
+	}
 }
 
 void RTBEngine::Core::Application::Render()
 {
-	ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
+	Scene::Scene* scene = Scene::SceneManager::GetInstance().GetActiveScene();
 	if (!scene) return;
 
 	Rendering::Camera* activeCamera = scene->GetActiveCamera();
 	if (!activeCamera) return;
 
-	if (ECS::CameraComponent* activeCameraComponent = scene->GetMainCamera()) {
+	if (Scene::CameraComponent* activeCameraComponent = scene->GetMainCamera()) {
 		activeCameraComponent->SyncNow();
 		activeCamera = activeCameraComponent->GetCamera();
 		if (!activeCamera) {
@@ -574,17 +596,17 @@ void RTBEngine::Core::Application::Render()
 	window->SwapBuffers();
 }
 
-void RTBEngine::Core::Application::RenderShadowPass(ECS::Scene* scene)
+void RTBEngine::Core::Application::RenderShadowPass(Scene::Scene* scene)
 {
 	Rendering::Shader* shadowShader = ResourceManager::GetInstance().GetShader("shadow");
 	if (!shadowShader) return;
 
 	shadowShader->Bind();
 
-	for (ECS::LightComponent* lightComp : scene->GetCachedLightComponents()) {
+	for (Scene::LightComponent* lightComp : scene->GetCachedLightComponents()) {
 		if (!lightComp || !lightComp->GetLight()) continue;
 
-		ECS::GameObject* go = lightComp->GetOwner();
+		Scene::GameObject* go = lightComp->GetOwner();
 		if (!go || !go->IsActiveInHierarchy()) continue;
 
 		if (lightComp->GetLight()->GetType() != Rendering::LightType::Directional) continue;
@@ -618,17 +640,17 @@ void RTBEngine::Core::Application::RenderShadowPass(ECS::Scene* scene)
 	glViewport(0, 0, window->GetWidth(), window->GetHeight());
 }
 
-void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rendering::Shader* shader, const Rendering::Frustum& frustum)
+void RTBEngine::Core::Application::RenderSceneDepthOnly(Scene::Scene* scene, Rendering::Shader* shader, const Rendering::Frustum& frustum)
 {
 	// 1) Collect every visible mesh into a flat list. Culling stays per-renderer
 	//    (using the combined AABB), matching the previous behaviour.
 	std::vector<ShadowDraw>& draws = g_shadowDrawScratch;
 	draws.clear();
 
-	for (ECS::MeshRenderer* meshRenderer : scene->GetCachedMeshRenderers()) {
+	for (Scene::MeshRenderer* meshRenderer : scene->GetCachedMeshRenderers()) {
 		if (!meshRenderer || !meshRenderer->IsEnabled()) continue;
 
-		ECS::GameObject* go = meshRenderer->GetOwner();
+		Scene::GameObject* go = meshRenderer->GetOwner();
 		if (!go || !go->IsActiveInHierarchy()) continue;
 
 		// Frustum culling
@@ -688,7 +710,7 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rende
 			instanceMatrices.clear();
 			instanceMatrices.reserve(runLength);
 			for (std::size_t k = i; k < j; ++k) {
-				ECS::GameObject* owner = draws[k].renderer ? draws[k].renderer->GetOwner() : nullptr;
+				Scene::GameObject* owner = draws[k].renderer ? draws[k].renderer->GetOwner() : nullptr;
 				if (owner) {
 					instanceMatrices.push_back(owner->GetWorldMatrix());
 				}
@@ -704,8 +726,8 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rende
 		}
 		else {
 			for (std::size_t k = i; k < j; ++k) {
-				ECS::MeshRenderer* renderer = draws[k].renderer;
-				ECS::GameObject* owner = renderer ? renderer->GetOwner() : nullptr;
+				Scene::MeshRenderer* renderer = draws[k].renderer;
+				Scene::GameObject* owner = renderer ? renderer->GetOwner() : nullptr;
 				if (!owner) continue;
 
 				shader->SetBool("uUseInstancing", false);
@@ -729,7 +751,7 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(ECS::Scene* scene, Rende
 }
 
 
-void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Rendering::Camera* camera)
+void RTBEngine::Core::Application::RenderGeometryPass(Scene::Scene* scene, Rendering::Camera* camera)
 {
 	glClearColor(config.rendering.clearColorR, config.rendering.clearColorG,
 		config.rendering.clearColorB, 1.0f);
@@ -744,10 +766,10 @@ void RTBEngine::Core::Application::RenderGeometryPass(ECS::Scene* scene, Renderi
 	activeLights.reserve(scene->GetCachedLightComponents().size());
 	Rendering::DirectionalLight* shadowCastingLight = nullptr;
 
-	for (ECS::LightComponent* lightComp : scene->GetCachedLightComponents()) {
+	for (Scene::LightComponent* lightComp : scene->GetCachedLightComponents()) {
 		if (!lightComp || !lightComp->IsEnabled() || !lightComp->GetLight()) continue;
 
-		ECS::GameObject* go = lightComp->GetOwner();
+		Scene::GameObject* go = lightComp->GetOwner();
 		if (!go || !go->IsActiveInHierarchy()) continue;
 
 		Rendering::Light* light = lightComp->GetLight();
@@ -813,7 +835,13 @@ void RTBEngine::Core::Application::ResetPhysics()
 
 }
 
-void RTBEngine::Core::Application::RebuildPhysicsForScene(ECS::Scene* scene)
+const RTBEngine::ECS::ProjectileSimulationStats& RTBEngine::Core::Application::GetProjectileSimulationStats() const
+{
+	static const RTBEngine::ECS::ProjectileSimulationStats kEmptyStats{};
+	return ecsWorld ? ecsWorld->GetProjectileStats() : kEmptyStats;
+}
+
+void RTBEngine::Core::Application::RebuildPhysicsForScene(Scene::Scene* scene)
 {
 	if (!scene) {
 		ResetPhysics();
@@ -832,13 +860,13 @@ void RTBEngine::Core::Application::RebuildPhysicsForScene(ECS::Scene* scene)
 	InitializePhysicsForScene(scene);
 }
 
-void RTBEngine::Core::Application::InitializePhysicsForGameObject(ECS::GameObject* gameObject)
+void RTBEngine::Core::Application::InitializePhysicsForGameObject(Scene::GameObject* gameObject)
 {
 	if (!gameObject || !physicsSystem) {
 		return;
 	}
 
-	ECS::BoxColliderComponent* boxCollider = gameObject->GetComponent<ECS::BoxColliderComponent>();
+	Scene::BoxColliderComponent* boxCollider = gameObject->GetComponent<Scene::BoxColliderComponent>();
 	if (boxCollider) {
 		if (!boxCollider->GetBulletCollisionObject() && !boxCollider->GetPhysicsWorld()) {
 			physicsSystem->InitializeCollider(gameObject, boxCollider);
@@ -846,7 +874,7 @@ void RTBEngine::Core::Application::InitializePhysicsForGameObject(ECS::GameObjec
 		return;
 	}
 
-	ECS::SphereColliderComponent* sphereCollider = gameObject->GetComponent<ECS::SphereColliderComponent>();
+	Scene::SphereColliderComponent* sphereCollider = gameObject->GetComponent<Scene::SphereColliderComponent>();
 	if (sphereCollider) {
 		if (!sphereCollider->GetBulletCollisionObject() && !sphereCollider->GetPhysicsWorld()) {
 			physicsSystem->InitializeCollider(gameObject, sphereCollider);
@@ -854,7 +882,7 @@ void RTBEngine::Core::Application::InitializePhysicsForGameObject(ECS::GameObjec
 		return;
 	}
 
-	ECS::CapsuleColliderComponent* capsuleCollider = gameObject->GetComponent<ECS::CapsuleColliderComponent>();
+	Scene::CapsuleColliderComponent* capsuleCollider = gameObject->GetComponent<Scene::CapsuleColliderComponent>();
 	if (capsuleCollider &&
 		!capsuleCollider->GetBulletCollisionObject() &&
 		!capsuleCollider->GetPhysicsWorld()) {
@@ -862,7 +890,7 @@ void RTBEngine::Core::Application::InitializePhysicsForGameObject(ECS::GameObjec
 	}
 }
 
-void RTBEngine::Core::Application::InitializePhysicsForScene(ECS::Scene* scene)
+void RTBEngine::Core::Application::InitializePhysicsForScene(Scene::Scene* scene)
 {
 	if (!scene || !physicsSystem)
 		return;
@@ -873,30 +901,30 @@ void RTBEngine::Core::Application::InitializePhysicsForScene(ECS::Scene* scene)
 	}
 }
 
-void RTBEngine::Core::Application::InitializePhysicsForHierarchy(ECS::GameObject* root)
+void RTBEngine::Core::Application::InitializePhysicsForHierarchy(Scene::GameObject* root)
 {
 	if (!root) {
 		return;
 	}
 
-	std::vector<ECS::GameObject*> hierarchy;
+	std::vector<Scene::GameObject*> hierarchy;
 	CollectHierarchy(root, hierarchy);
 
-	for (ECS::GameObject* gameObject : hierarchy) {
+	for (Scene::GameObject* gameObject : hierarchy) {
 		InitializePhysicsForGameObject(gameObject);
 	}
 }
 
-void RTBEngine::Core::Application::DetachPhysicsFromGameObject(ECS::GameObject* gameObject)
+void RTBEngine::Core::Application::DetachPhysicsFromGameObject(Scene::GameObject* gameObject)
 {
 	if (!gameObject) {
 		return;
 	}
 
-	ECS::BoxColliderComponent* boxCollider = gameObject->GetComponent<ECS::BoxColliderComponent>();
-	ECS::SphereColliderComponent* sphereCollider = gameObject->GetComponent<ECS::SphereColliderComponent>();
-	ECS::CapsuleColliderComponent* capsuleCollider = gameObject->GetComponent<ECS::CapsuleColliderComponent>();
-	ECS::RigidBodyComponent* rbComp = gameObject->GetComponent<ECS::RigidBodyComponent>();
+	Scene::BoxColliderComponent* boxCollider = gameObject->GetComponent<Scene::BoxColliderComponent>();
+	Scene::SphereColliderComponent* sphereCollider = gameObject->GetComponent<Scene::SphereColliderComponent>();
+	Scene::CapsuleColliderComponent* capsuleCollider = gameObject->GetComponent<Scene::CapsuleColliderComponent>();
+	Scene::RigidBodyComponent* rbComp = gameObject->GetComponent<Scene::RigidBodyComponent>();
 	Physics::RigidBody* rigidBody = (rbComp && rbComp->HasRigidBody()) ? rbComp->GetRigidBody() : nullptr;
 	btRigidBody* bulletBody = rigidBody ? rigidBody->GetBulletRigidBody() : nullptr;
 
@@ -937,16 +965,16 @@ void RTBEngine::Core::Application::DetachPhysicsFromGameObject(ECS::GameObject* 
 	detachStaticCollider(capsuleCollider);
 }
 
-void RTBEngine::Core::Application::DetachPhysicsHierarchy(ECS::GameObject* root)
+void RTBEngine::Core::Application::DetachPhysicsHierarchy(Scene::GameObject* root)
 {
 	if (!root) {
 		return;
 	}
 
-	std::vector<ECS::GameObject*> hierarchy;
+	std::vector<Scene::GameObject*> hierarchy;
 	CollectHierarchy(root, hierarchy);
 
-	for (ECS::GameObject* gameObject : hierarchy) {
+	for (Scene::GameObject* gameObject : hierarchy) {
 		DetachPhysicsFromGameObject(gameObject);
 	}
 }
@@ -955,7 +983,7 @@ void RTBEngine::Core::Application::OnWindowResized(int width, int height)
 {
 	glViewport(0, 0, width, height);
 
-	ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
+	Scene::Scene* scene = Scene::SceneManager::GetInstance().GetActiveScene();
 	if (scene && scene->GetActiveCamera()) {
 		float aspectRatio = static_cast<float>(width) / static_cast<float>(height);
 		scene->GetActiveCamera()->SetAspectRatio(aspectRatio);

@@ -7,7 +7,7 @@
 
 namespace RTBEngine {
 
-    namespace ECS {
+    namespace Scene {
         class GameObject;
     }
 
@@ -66,8 +66,8 @@ namespace RTBEngine {
 
             bool IsInitialized() const { return bulletRigidBody != nullptr; }
 
-            void SetOwner(ECS::GameObject* gameObject) { owner = gameObject; }
-            ECS::GameObject* GetOwner() const { return owner; }
+            void SetOwner(Scene::GameObject* gameObject) { owner = gameObject; }
+            Scene::GameObject* GetOwner() const { return owner; }
 
             void SetPhysicsWorld(PhysicsWorld* world) { physicsWorldRef = world; }
             PhysicsWorld* GetPhysicsWorld() const { return physicsWorldRef; }
@@ -81,7 +81,7 @@ namespace RTBEngine {
 
             std::unique_ptr<btRigidBody> bulletRigidBody;
 
-            ECS::GameObject* owner = nullptr;
+            Scene::GameObject* owner = nullptr;
             PhysicsWorld* physicsWorldRef = nullptr;
         };
 #pragma warning(pop)

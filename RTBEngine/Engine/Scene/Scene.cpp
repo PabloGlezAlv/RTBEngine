@@ -27,8 +27,8 @@
 #include "../Rendering/Texture.h"
 
 namespace {
-	RTBEngine::ECS::CameraComponent* FindCameraComponent(
-		const std::vector<std::unique_ptr<RTBEngine::ECS::GameObject>>& objects,
+	RTBEngine::Scene::CameraComponent* FindCameraComponent(
+		const std::vector<std::unique_ptr<RTBEngine::Scene::GameObject>>& objects,
 		bool requireActive,
 		bool requireMain)
 	{
@@ -41,7 +41,7 @@ namespace {
 				continue;
 			}
 
-			RTBEngine::ECS::CameraComponent* camera = gameObject->GetComponent<RTBEngine::ECS::CameraComponent>();
+			RTBEngine::Scene::CameraComponent* camera = gameObject->GetComponent<RTBEngine::Scene::CameraComponent>();
 			if (!camera || !camera->GetCamera()) {
 				continue;
 			}
@@ -57,15 +57,15 @@ namespace {
 	}
 
 	void SetMainCameraFlag(
-		std::vector<std::unique_ptr<RTBEngine::ECS::GameObject>>& objects,
-		RTBEngine::ECS::CameraComponent* selectedCamera)
+		std::vector<std::unique_ptr<RTBEngine::Scene::GameObject>>& objects,
+		RTBEngine::Scene::CameraComponent* selectedCamera)
 	{
 		for (const auto& gameObject : objects) {
 			if (!gameObject) {
 				continue;
 			}
 
-			RTBEngine::ECS::CameraComponent* camera = gameObject->GetComponent<RTBEngine::ECS::CameraComponent>();
+			RTBEngine::Scene::CameraComponent* camera = gameObject->GetComponent<RTBEngine::Scene::CameraComponent>();
 			if (camera) {
 				camera->SetAsMain(camera == selectedCamera);
 			}
@@ -73,14 +73,14 @@ namespace {
 	}
 
 	void CollectHierarchyPostOrder(
-		RTBEngine::ECS::GameObject* root,
-		std::vector<RTBEngine::ECS::GameObject*>& outHierarchy)
+		RTBEngine::Scene::GameObject* root,
+		std::vector<RTBEngine::Scene::GameObject*>& outHierarchy)
 	{
 		if (!root) {
 			return;
 		}
 
-		for (RTBEngine::ECS::GameObject* child : root->GetChildren()) {
+		for (RTBEngine::Scene::GameObject* child : root->GetChildren()) {
 			CollectHierarchyPostOrder(child, outHierarchy);
 		}
 
@@ -88,11 +88,11 @@ namespace {
 	}
 
 	void DestroyOwnedGameObject(
-		std::vector<std::unique_ptr<RTBEngine::ECS::GameObject>>& objects,
-		RTBEngine::ECS::GameObject* target)
+		std::vector<std::unique_ptr<RTBEngine::Scene::GameObject>>& objects,
+		RTBEngine::Scene::GameObject* target)
 	{
 		auto it = std::find_if(objects.begin(), objects.end(),
-			[target](const std::unique_ptr<RTBEngine::ECS::GameObject>& obj) {
+			[target](const std::unique_ptr<RTBEngine::Scene::GameObject>& obj) {
 				return obj.get() == target;
 			});
 
@@ -102,10 +102,10 @@ namespace {
 	}
 
 	bool HasQueuedAncestor(
-		RTBEngine::ECS::GameObject* candidate,
-		const std::unordered_set<RTBEngine::ECS::GameObject*>& queuedRemovals)
+		RTBEngine::Scene::GameObject* candidate,
+		const std::unordered_set<RTBEngine::Scene::GameObject*>& queuedRemovals)
 	{
-		for (RTBEngine::ECS::GameObject* parent = candidate ? candidate->GetParent() : nullptr;
+		for (RTBEngine::Scene::GameObject* parent = candidate ? candidate->GetParent() : nullptr;
 			parent;
 			parent = parent->GetParent()) {
 			if (queuedRemovals.find(parent) != queuedRemovals.end()) {
@@ -117,22 +117,22 @@ namespace {
 	}
 
 	bool ContainsGameObject(
-		const std::vector<std::unique_ptr<RTBEngine::ECS::GameObject>>& objects,
-		RTBEngine::ECS::GameObject* target)
+		const std::vector<std::unique_ptr<RTBEngine::Scene::GameObject>>& objects,
+		RTBEngine::Scene::GameObject* target)
 	{
 		if (!target) {
 			return false;
 		}
 
 		return std::any_of(objects.begin(), objects.end(),
-			[target](const std::unique_ptr<RTBEngine::ECS::GameObject>& obj) {
+			[target](const std::unique_ptr<RTBEngine::Scene::GameObject>& obj) {
 				return obj.get() == target;
 			});
 	}
 
 	void PrunePendingLifecycleRoots(
-		std::vector<RTBEngine::ECS::GameObject*>& pendingLifecycleRoots,
-		const std::unordered_set<RTBEngine::ECS::GameObject*>& removed)
+		std::vector<RTBEngine::Scene::GameObject*>& pendingLifecycleRoots,
+		const std::unordered_set<RTBEngine::Scene::GameObject*>& removed)
 	{
 		if (removed.empty() || pendingLifecycleRoots.empty()) {
 			return;
@@ -142,14 +142,14 @@ namespace {
 			std::remove_if(
 				pendingLifecycleRoots.begin(),
 				pendingLifecycleRoots.end(),
-				[&removed](RTBEngine::ECS::GameObject* root) {
+				[&removed](RTBEngine::Scene::GameObject* root) {
 					return !root || removed.find(root) != removed.end();
 				}),
 			pendingLifecycleRoots.end());
 	}
 
 	struct OpaqueMeshDraw {
-		RTBEngine::ECS::MeshRenderer* renderer = nullptr;
+		RTBEngine::Scene::MeshRenderer* renderer = nullptr;
 		RTBEngine::Rendering::Mesh* mesh = nullptr;
 		RTBEngine::Rendering::Material* material = nullptr;
 	};
@@ -172,7 +172,7 @@ namespace {
 
 	// A draw is skinned when its renderer is bound to an animator currently posing bones.
 	// Skinned meshes cannot be instanced (each needs its own model/bone matrices).
-	bool DrawIsSkinned(RTBEngine::ECS::MeshRenderer* renderer)
+	bool DrawIsSkinned(RTBEngine::Scene::MeshRenderer* renderer)
 	{
 		if (!renderer) {
 			return false;
@@ -182,7 +182,7 @@ namespace {
 	}
 
 	void ApplyOpaqueDrawMaterial(
-		RTBEngine::ECS::MeshRenderer* renderer,
+		RTBEngine::Scene::MeshRenderer* renderer,
 		RTBEngine::Rendering::Material* drawMaterial,
 		OpaqueRenderBatchState& state)
 	{
@@ -264,13 +264,13 @@ namespace {
 		return a.renderer < b.renderer;
 	}
 
-	bool RequiresOcclusionFadePass(RTBEngine::ECS::MeshRenderer* renderer)
+	bool RequiresOcclusionFadePass(RTBEngine::Scene::MeshRenderer* renderer)
 	{
 		return renderer && renderer->GetOcclusionFadeAlpha() < 0.999f;
 	}
 
 	void CollectMeshDraws(
-		RTBEngine::ECS::MeshRenderer* renderer,
+		RTBEngine::Scene::MeshRenderer* renderer,
 		std::vector<OpaqueMeshDraw>& opaqueDraws,
 		std::vector<OpaqueMeshDraw>& transparentDraws)
 	{
@@ -308,7 +308,7 @@ namespace {
 	}
 
 	void CollectOpaqueMeshDraws(
-		RTBEngine::ECS::MeshRenderer* renderer,
+		RTBEngine::Scene::MeshRenderer* renderer,
 		std::vector<OpaqueMeshDraw>& outDraws)
 	{
 		g_discardDrawScratch.clear();
@@ -394,11 +394,11 @@ namespace {
 	}
 }
 
-RTBEngine::ECS::Scene::Scene(const std::string& name) : name(name)
+RTBEngine::Scene::Scene::Scene(const std::string& name) : name(name)
 {
 }
 
-RTBEngine::ECS::Scene::~Scene()
+RTBEngine::Scene::Scene::~Scene()
 {
 	while (!gameObjects.empty()) {
 		GameObject* root = nullptr;
@@ -446,12 +446,12 @@ RTBEngine::ECS::Scene::~Scene()
 	gameObjectsByUuid.clear();
 }
 
-void RTBEngine::ECS::Scene::InvalidateComponentCaches()
+void RTBEngine::Scene::Scene::InvalidateComponentCaches()
 {
 	componentCachesDirty = true;
 }
 
-void RTBEngine::ECS::Scene::EnsureComponentCaches() const
+void RTBEngine::Scene::Scene::EnsureComponentCaches() const
 {
 	if (!componentCachesDirty) {
 		return;
@@ -461,7 +461,7 @@ void RTBEngine::ECS::Scene::EnsureComponentCaches() const
 	componentCachesDirty = false;
 }
 
-void RTBEngine::ECS::Scene::RebuildComponentCaches() const
+void RTBEngine::Scene::Scene::RebuildComponentCaches() const
 {
 	cachedMeshRenderers.clear();
 	cachedLightComponents.clear();
@@ -535,61 +535,61 @@ void RTBEngine::ECS::Scene::RebuildComponentCaches() const
 	collectFromGameObjects(pendingAdds);
 }
 
-const std::vector<RTBEngine::ECS::MeshRenderer*>& RTBEngine::ECS::Scene::GetCachedMeshRenderers() const
+const std::vector<RTBEngine::Scene::MeshRenderer*>& RTBEngine::Scene::Scene::GetCachedMeshRenderers() const
 {
 	EnsureComponentCaches();
 	return cachedMeshRenderers;
 }
 
-const std::vector<RTBEngine::ECS::LightComponent*>& RTBEngine::ECS::Scene::GetCachedLightComponents() const
+const std::vector<RTBEngine::Scene::LightComponent*>& RTBEngine::Scene::Scene::GetCachedLightComponents() const
 {
 	EnsureComponentCaches();
 	return cachedLightComponents;
 }
 
-const std::vector<RTBEngine::ECS::TrailRenderer*>& RTBEngine::ECS::Scene::GetCachedTrailRenderers() const
+const std::vector<RTBEngine::Scene::TrailRenderer*>& RTBEngine::Scene::Scene::GetCachedTrailRenderers() const
 {
 	EnsureComponentCaches();
 	return cachedTrailRenderers;
 }
 
-const std::vector<RTBEngine::ECS::ParticleSystem*>& RTBEngine::ECS::Scene::GetCachedParticleSystems() const
+const std::vector<RTBEngine::Scene::ParticleSystem*>& RTBEngine::Scene::Scene::GetCachedParticleSystems() const
 {
 	EnsureComponentCaches();
 	return cachedParticleSystems;
 }
 
-const std::vector<RTBEngine::ECS::AnimatedBillboard*>& RTBEngine::ECS::Scene::GetCachedAnimatedBillboards() const
+const std::vector<RTBEngine::Scene::AnimatedBillboard*>& RTBEngine::Scene::Scene::GetCachedAnimatedBillboards() const
 {
 	EnsureComponentCaches();
 	return cachedAnimatedBillboards;
 }
 
-const std::vector<RTBEngine::UI::Canvas*>& RTBEngine::ECS::Scene::GetCachedCanvases() const
+const std::vector<RTBEngine::UI::Canvas*>& RTBEngine::Scene::Scene::GetCachedCanvases() const
 {
 	EnsureComponentCaches();
 	return cachedCanvases;
 }
 
-const std::vector<RTBEngine::ECS::RigidBodyComponent*>& RTBEngine::ECS::Scene::GetCachedRigidBodies() const
+const std::vector<RTBEngine::Scene::RigidBodyComponent*>& RTBEngine::Scene::Scene::GetCachedRigidBodies() const
 {
 	EnsureComponentCaches();
 	return cachedRigidBodies;
 }
 
-const std::vector<RTBEngine::ECS::Occludable*>& RTBEngine::ECS::Scene::GetCachedOccludables() const
+const std::vector<RTBEngine::Scene::Occludable*>& RTBEngine::Scene::Scene::GetCachedOccludables() const
 {
 	EnsureComponentCaches();
 	return cachedOccludables;
 }
 
-const std::vector<RTBEngine::ECS::OcclusionTarget*>& RTBEngine::ECS::Scene::GetCachedOcclusionTargets() const
+const std::vector<RTBEngine::Scene::OcclusionTarget*>& RTBEngine::Scene::Scene::GetCachedOcclusionTargets() const
 {
 	EnsureComponentCaches();
 	return cachedOcclusionTargets;
 }
 
-const std::vector<RTBEngine::ECS::Component*>& RTBEngine::ECS::Scene::GetCachedComponentsByTypeName(
+const std::vector<RTBEngine::Scene::Component*>& RTBEngine::Scene::Scene::GetCachedComponentsByTypeName(
 	const char* typeName) const
 {
 	static const std::vector<Component*> kEmpty;
@@ -608,7 +608,7 @@ const std::vector<RTBEngine::ECS::Component*>& RTBEngine::ECS::Scene::GetCachedC
 	return iterator->second;
 }
 
-const std::vector<RTBEngine::ECS::Component*>& RTBEngine::ECS::Scene::GetCachedComponentsByTypeId(
+const std::vector<RTBEngine::Scene::Component*>& RTBEngine::Scene::Scene::GetCachedComponentsByTypeId(
 	std::uint32_t typeId) const
 {
 	static const std::vector<Component*> kEmpty;
@@ -627,7 +627,7 @@ const std::vector<RTBEngine::ECS::Component*>& RTBEngine::ECS::Scene::GetCachedC
 	return iterator->second;
 }
 
-void RTBEngine::ECS::Scene::RegisterGameObjectUuid(GameObject* gameObject)
+void RTBEngine::Scene::Scene::RegisterGameObjectUuid(GameObject* gameObject)
 {
 	if (!gameObject) {
 		return;
@@ -646,7 +646,7 @@ void RTBEngine::ECS::Scene::RegisterGameObjectUuid(GameObject* gameObject)
 	gameObjectsByUuid[uuid] = gameObject;
 }
 
-void RTBEngine::ECS::Scene::UnregisterGameObjectUuid(GameObject* gameObject)
+void RTBEngine::Scene::Scene::UnregisterGameObjectUuid(GameObject* gameObject)
 {
 	if (!gameObject) {
 		return;
@@ -663,7 +663,7 @@ void RTBEngine::ECS::Scene::UnregisterGameObjectUuid(GameObject* gameObject)
 	}
 }
 
-void RTBEngine::ECS::Scene::RegisterGameObjectHierarchy(GameObject* root)
+void RTBEngine::Scene::Scene::RegisterGameObjectHierarchy(GameObject* root)
 {
 	if (!root) {
 		return;
@@ -676,7 +676,7 @@ void RTBEngine::ECS::Scene::RegisterGameObjectHierarchy(GameObject* root)
 	}
 }
 
-void RTBEngine::ECS::Scene::UnregisterGameObjectHierarchy(GameObject* root)
+void RTBEngine::Scene::Scene::UnregisterGameObjectHierarchy(GameObject* root)
 {
 	if (!root) {
 		return;
@@ -689,7 +689,7 @@ void RTBEngine::ECS::Scene::UnregisterGameObjectHierarchy(GameObject* root)
 	UnregisterGameObjectUuid(root);
 }
 
-void RTBEngine::ECS::Scene::AssignGameObjectOwnership(GameObject* gameObject)
+void RTBEngine::Scene::Scene::AssignGameObjectOwnership(GameObject* gameObject)
 {
 	if (!gameObject) {
 		return;
@@ -698,7 +698,7 @@ void RTBEngine::ECS::Scene::AssignGameObjectOwnership(GameObject* gameObject)
 	gameObject->SetOwningScene(this);
 }
 
-void RTBEngine::ECS::Scene::ClearGameObjectOwnership(GameObject* gameObject)
+void RTBEngine::Scene::Scene::ClearGameObjectOwnership(GameObject* gameObject)
 {
 	if (!gameObject) {
 		return;
@@ -707,7 +707,7 @@ void RTBEngine::ECS::Scene::ClearGameObjectOwnership(GameObject* gameObject)
 	gameObject->SetOwningScene(nullptr);
 }
 
-void RTBEngine::ECS::Scene::AddGameObject(GameObject* gameObject, bool queueLifecycle)
+void RTBEngine::Scene::Scene::AddGameObject(GameObject* gameObject, bool queueLifecycle)
 {
 	if (iterationDepth > 0) {
 		pendingAdds.push_back(std::unique_ptr<GameObject>(gameObject));
@@ -725,7 +725,7 @@ void RTBEngine::ECS::Scene::AddGameObject(GameObject* gameObject, bool queueLife
 	pendingRenderLog = true;
 }
 
-void RTBEngine::ECS::Scene::BringGameObjectToLife(GameObject* root)
+void RTBEngine::Scene::Scene::BringGameObjectToLife(GameObject* root)
 {
 	if (!root) {
 		return;
@@ -734,7 +734,7 @@ void RTBEngine::ECS::Scene::BringGameObjectToLife(GameObject* root)
 	SceneLifecycle::BringHierarchyToLife(this, root);
 }
 
-void RTBEngine::ECS::Scene::QueueLifecycleInitialization(GameObject* root)
+void RTBEngine::Scene::Scene::QueueLifecycleInitialization(GameObject* root)
 {
 	if (!root) {
 		return;
@@ -745,7 +745,7 @@ void RTBEngine::ECS::Scene::QueueLifecycleInitialization(GameObject* root)
 	}
 }
 
-bool RTBEngine::ECS::Scene::OwnsGameObject(GameObject* target) const
+bool RTBEngine::Scene::Scene::OwnsGameObject(GameObject* target) const
 {
 	if (!target) {
 		return false;
@@ -758,7 +758,7 @@ bool RTBEngine::ECS::Scene::OwnsGameObject(GameObject* target) const
 	return ContainsGameObject(pendingAdds, target);
 }
 
-void RTBEngine::ECS::Scene::FlushPendingLifecycle()
+void RTBEngine::Scene::Scene::FlushPendingLifecycle()
 {
 	if (!lifecycleComplete || pendingLifecycleRoots.empty()) {
 		return;
@@ -776,7 +776,7 @@ void RTBEngine::ECS::Scene::FlushPendingLifecycle()
 	}
 }
 
-void RTBEngine::ECS::Scene::RemoveGameObject(GameObject* gameObject)
+void RTBEngine::Scene::Scene::RemoveGameObject(GameObject* gameObject)
 {
 	if (!gameObject) {
 		return;
@@ -823,7 +823,7 @@ void RTBEngine::ECS::Scene::RemoveGameObject(GameObject* gameObject)
 	InvalidateComponentCaches();
 }
 
-void RTBEngine::ECS::Scene::FlushPendingCommands()
+void RTBEngine::Scene::Scene::FlushPendingCommands()
 {
 	if (iterationDepth > 0) return;
 
@@ -874,7 +874,7 @@ void RTBEngine::ECS::Scene::FlushPendingCommands()
 	}
 }
 
-RTBEngine::ECS::GameObject* RTBEngine::ECS::Scene::FindGameObject(const std::string& name)
+RTBEngine::Scene::GameObject* RTBEngine::Scene::Scene::FindGameObject(const std::string& name)
 {
 	for (auto& obj : gameObjects) {
 		if (obj && obj->GetName() == name) return obj.get();
@@ -885,7 +885,7 @@ RTBEngine::ECS::GameObject* RTBEngine::ECS::Scene::FindGameObject(const std::str
 	return nullptr;
 }
 
-RTBEngine::ECS::GameObject* RTBEngine::ECS::Scene::FindGameObjectByUUID(const std::string& uuid)
+RTBEngine::Scene::GameObject* RTBEngine::Scene::Scene::FindGameObjectByUUID(const std::string& uuid)
 {
 	if (uuid.empty()) {
 		return nullptr;
@@ -904,7 +904,7 @@ RTBEngine::ECS::GameObject* RTBEngine::ECS::Scene::FindGameObjectByUUID(const st
 	return gameObject;
 }
 
-void RTBEngine::ECS::Scene::PrepareForPlayMode()
+void RTBEngine::Scene::Scene::PrepareForPlayMode()
 {
 	// Editor keeps the same scene between Play sessions; reset OnStart so RoundManager,
 	// UI handlers, etc. run again when entering Play mode.
@@ -933,7 +933,7 @@ void RTBEngine::ECS::Scene::PrepareForPlayMode()
 	}
 }
 
-void RTBEngine::ECS::Scene::Update(float deltaTime)
+void RTBEngine::Scene::Scene::Update(float deltaTime)
 {
 	FlushPendingLifecycle();
 
@@ -945,7 +945,7 @@ void RTBEngine::ECS::Scene::Update(float deltaTime)
 	FlushPendingCommands();
 }
 
-void RTBEngine::ECS::Scene::FixedUpdate(float fixedDeltaTime)
+void RTBEngine::Scene::Scene::FixedUpdate(float fixedDeltaTime)
 {
 	++iterationDepth;
 	for (auto& gameObject : gameObjects) {
@@ -957,7 +957,7 @@ void RTBEngine::ECS::Scene::FixedUpdate(float fixedDeltaTime)
 	Navigation::ProcessSceneNavigationFixedUpdate(this);
 }
 
-void RTBEngine::ECS::Scene::LateUpdate(float deltaTime)
+void RTBEngine::Scene::Scene::LateUpdate(float deltaTime)
 {
 	++iterationDepth;
 	for (auto& gameObject : gameObjects) {
@@ -967,7 +967,7 @@ void RTBEngine::ECS::Scene::LateUpdate(float deltaTime)
 	FlushPendingCommands();
 }
 
-void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
+void RTBEngine::Scene::Scene::Render(Rendering::Camera* camera)
 {
 	if (!camera) return;
 
@@ -1071,7 +1071,7 @@ void RTBEngine::ECS::Scene::Render(Rendering::Camera* camera)
 	FlushPendingCommands();
 }
 
-void RTBEngine::ECS::Scene::RenderTransparentEffects(Rendering::Camera* camera)
+void RTBEngine::Scene::Scene::RenderTransparentEffects(Rendering::Camera* camera)
 {
 	if (!camera) return;
 
@@ -1152,11 +1152,11 @@ void RTBEngine::ECS::Scene::RenderTransparentEffects(Rendering::Camera* camera)
 	FlushPendingCommands();
 }
 
-void RTBEngine::ECS::Scene::SetSkyboxCubemap(Rendering::Cubemap* cubemap) {
+void RTBEngine::Scene::Scene::SetSkyboxCubemap(Rendering::Cubemap* cubemap) {
 	skyboxCubemap = cubemap;
 }
 
-uint32_t RTBEngine::ECS::Scene::GetActiveGameObjectCount() const {
+uint32_t RTBEngine::Scene::Scene::GetActiveGameObjectCount() const {
 	uint32_t count = 0;
 	for (const auto& go : gameObjects) {
 		if (go && go->IsActiveInHierarchy()) count++;
@@ -1164,7 +1164,7 @@ uint32_t RTBEngine::ECS::Scene::GetActiveGameObjectCount() const {
 	return count;
 }
 
-uint32_t RTBEngine::ECS::Scene::GetActiveComponentCount() const {
+uint32_t RTBEngine::Scene::Scene::GetActiveComponentCount() const {
 	uint32_t count = 0;
 	for (const auto& go : gameObjects) {
 		if (go && go->IsActiveInHierarchy()) {
@@ -1174,13 +1174,13 @@ uint32_t RTBEngine::ECS::Scene::GetActiveComponentCount() const {
 	return count;
 }
 
-void RTBEngine::ECS::Scene::SetMainCamera(CameraComponent* camera) {
+void RTBEngine::Scene::Scene::SetMainCamera(CameraComponent* camera) {
 	SetMainCameraFlag(gameObjects, camera);
 	SetMainCameraFlag(pendingAdds, camera);
 }
 
-RTBEngine::ECS::CameraComponent* RTBEngine::ECS::Scene::GetMainCamera() const {
-	RTBEngine::ECS::CameraComponent* camera = FindCameraComponent(gameObjects, false, true);
+RTBEngine::Scene::CameraComponent* RTBEngine::Scene::Scene::GetMainCamera() const {
+	RTBEngine::Scene::CameraComponent* camera = FindCameraComponent(gameObjects, false, true);
 	if (camera) {
 		return camera;
 	}
@@ -1188,8 +1188,8 @@ RTBEngine::ECS::CameraComponent* RTBEngine::ECS::Scene::GetMainCamera() const {
 	return FindCameraComponent(pendingAdds, false, true);
 }
 
-RTBEngine::Rendering::Camera* RTBEngine::ECS::Scene::GetActiveCamera() {
-	RTBEngine::ECS::CameraComponent* camera = FindCameraComponent(gameObjects, true, true);
+RTBEngine::Rendering::Camera* RTBEngine::Scene::Scene::GetActiveCamera() {
+	RTBEngine::Scene::CameraComponent* camera = FindCameraComponent(gameObjects, true, true);
 	if (!camera) {
 		camera = FindCameraComponent(pendingAdds, true, true);
 	}

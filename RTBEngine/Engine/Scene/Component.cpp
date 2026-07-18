@@ -5,7 +5,7 @@
 #include "../Physics/CollisionInfo.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         Component::Component()
             : owner(nullptr)

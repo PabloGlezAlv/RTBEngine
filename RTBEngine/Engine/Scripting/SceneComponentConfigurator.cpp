@@ -146,7 +146,7 @@ namespace RTBEngine {
                 comp->enableDefaultHoverVisuals = ReadOptionalBool(L, tableIndex, "enableDefaultHoverVisuals", comp->enableDefaultHoverVisuals);
             }
 
-            void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp) {
+            void ConfigureMeshRenderer(lua_State* L, int tableIndex, Scene::MeshRenderer* comp) {
                 Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
 
                 std::string shaderName = ReadOptionalString(L, tableIndex, "shader", "");
@@ -227,7 +227,7 @@ namespace RTBEngine {
                 return result;
             }
 
-            void ConfigureLightComponent(lua_State* L, int tableIndex, ECS::LightComponent* comp) {
+            void ConfigureLightComponent(lua_State* L, int tableIndex, Scene::LightComponent* comp) {
                 comp->lightType = ReadLightType(L, tableIndex, comp->lightType);
 
                 const Math::Vector4 colorV4 = ReadOptionalVector4(L, tableIndex, "color", Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
@@ -243,7 +243,7 @@ namespace RTBEngine {
                 comp->SyncProperties();
             }
 
-            void ConfigureAudioSource(lua_State* L, int tableIndex, ECS::AudioSourceComponent* comp) {
+            void ConfigureAudioSource(lua_State* L, int tableIndex, Scene::AudioSourceComponent* comp) {
                 Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
 
                 const std::string clipPath = ReadOptionalString(L, tableIndex, "clip", "");
@@ -260,7 +260,7 @@ namespace RTBEngine {
                 comp->SetPlayOnStart(ReadOptionalBool(L, tableIndex, "playOnStart", false));
             }
 
-            void ConfigureRigidBody(lua_State* L, int tableIndex, ECS::RigidBodyComponent* comp, ECS::GameObject* /*gameObject*/) {
+            void ConfigureRigidBody(lua_State* L, int tableIndex, Scene::RigidBodyComponent* comp, Scene::GameObject* /*gameObject*/) {
                 auto rigidBody = std::make_unique<Physics::RigidBody>();
 
                 const std::string bodyType = ReadOptionalString(L, tableIndex, "bodyType", "Dynamic");
@@ -281,7 +281,7 @@ namespace RTBEngine {
                 comp->SetRigidBody(std::move(rigidBody));
             }
 
-            void ConfigureBoxCollider(lua_State* L, int tableIndex, ECS::BoxColliderComponent* comp, ECS::GameObject* gameObject) {
+            void ConfigureBoxCollider(lua_State* L, int tableIndex, Scene::BoxColliderComponent* comp, Scene::GameObject* gameObject) {
                 Core::ResourceManager& resources = Core::ResourceManager::GetInstance();
 
                 const std::string colliderMesh = ReadOptionalString(L, tableIndex, "mesh", "");
@@ -301,7 +301,7 @@ namespace RTBEngine {
                 comp->SetIsTrigger(ReadOptionalBool(L, tableIndex, "isTrigger", false));
             }
 
-            void ConfigureSphereCollider(lua_State* L, int tableIndex, ECS::SphereColliderComponent* comp, ECS::GameObject* gameObject) {
+            void ConfigureSphereCollider(lua_State* L, int tableIndex, Scene::SphereColliderComponent* comp, Scene::GameObject* gameObject) {
                 const Math::Vector3 scale = gameObject->GetTransform().GetScale();
                 const float radius = ReadOptionalFloat(L, tableIndex, "radius", 0.5f) *
                     std::max(std::abs(scale.x), std::abs(scale.z));
@@ -312,7 +312,7 @@ namespace RTBEngine {
                 comp->SetIsTrigger(ReadOptionalBool(L, tableIndex, "isTrigger", false));
             }
 
-            void ConfigureCapsuleCollider(lua_State* L, int tableIndex, ECS::CapsuleColliderComponent* comp, ECS::GameObject* gameObject) {
+            void ConfigureCapsuleCollider(lua_State* L, int tableIndex, Scene::CapsuleColliderComponent* comp, Scene::GameObject* gameObject) {
                 const Math::Vector3 scale = gameObject->GetTransform().GetScale();
                 const float radius = ReadOptionalFloat(L, tableIndex, "radius", 0.35f) *
                     std::max(std::abs(scale.x), std::abs(scale.z));
@@ -325,7 +325,7 @@ namespace RTBEngine {
                 comp->SetIsTrigger(ReadOptionalBool(L, tableIndex, "isTrigger", false));
             }
 
-            void ConfigureCameraComponent(lua_State* L, int tableIndex, ECS::CameraComponent* comp) {
+            void ConfigureCameraComponent(lua_State* L, int tableIndex, Scene::CameraComponent* comp) {
                 comp->fov               = ReadOptionalFloat(L, tableIndex, "fov", 45.0f);
                 comp->nearClip          = ReadOptionalFloat(L, tableIndex, "nearClip", 0.1f);
                 comp->farClip           = ReadOptionalFloat(L, tableIndex, "farClip", 1000.0f);
@@ -345,7 +345,7 @@ namespace RTBEngine {
                 comp->OnValidate();
             }
 
-            void ConfigureFreeLookCamera(lua_State* L, int tableIndex, ECS::FreeLookCamera* comp) {
+            void ConfigureFreeLookCamera(lua_State* L, int tableIndex, Scene::FreeLookCamera* comp) {
                 comp->SetMoveSpeed(ReadOptionalFloat(L, tableIndex, "moveSpeed", 5.0f));
                 comp->SetLookSpeed(ReadOptionalFloat(L, tableIndex, "lookSpeed", 0.1f));
                 comp->SetRotationSpeed(ReadOptionalFloat(L, tableIndex, "rotationSpeed", 90.0f));
@@ -400,7 +400,7 @@ namespace RTBEngine {
                 }
             }
 
-            void ConfigureNavGrid(lua_State* L, int tableIndex, ECS::NavGridComponent* comp) {
+            void ConfigureNavGrid(lua_State* L, int tableIndex, Scene::NavGridComponent* comp) {
                 (void)L;
                 (void)tableIndex;
                 (void)comp;

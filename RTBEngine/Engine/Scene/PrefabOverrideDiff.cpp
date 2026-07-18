@@ -9,7 +9,7 @@
 #include <cstring>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         namespace {
             const uint8_t* FindRawBytes(const ComponentSnapshot& snap, size_t offset, size_t& outSize)

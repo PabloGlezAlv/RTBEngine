@@ -5,7 +5,7 @@
 #include <unordered_set>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class Scene;
         class GameObject;
         class Prefab;
@@ -17,20 +17,20 @@ namespace RTBEngine {
 
         class RTB_API SceneSaver {
         public:
-            static bool SaveScene(const ECS::Scene* scene, const std::string& filePath);
+            static bool SaveScene(const Scene::Scene* scene, const std::string& filePath);
 
         private:
-            static void WriteSceneHeader(std::ofstream& file, const ECS::Scene* scene);
-            static void WriteGameObjects(std::ofstream& file, const ECS::Scene* scene);
-            static void WriteGameObject(std::ofstream& file, const ECS::GameObject* go, int indent,
-                const ECS::Prefab* baselinePrefab,
-                std::unordered_set<const ECS::GameObject*>& visited);
-            static void WriteTransform(std::ofstream& file, const ECS::GameObject* go, int indent);
-            static void WriteComponents(std::ofstream& file, const ECS::GameObject* go, int indent);
-            static void WritePrefabInstance(std::ofstream& file, const ECS::GameObject* go, int indent);
-            static void WritePrefabOverrides(std::ofstream& file, const ECS::GameObject* go, int indent);
-            static void WritePrefabNodePersistence(std::ofstream& file, const ECS::GameObject* go, int indent,
-                const ECS::Prefab* baselineNode);
+            static void WriteSceneHeader(std::ofstream& file, const Scene::Scene* scene);
+            static void WriteGameObjects(std::ofstream& file, const Scene::Scene* scene);
+            static void WriteGameObject(std::ofstream& file, const Scene::GameObject* go, int indent,
+                const Scene::Prefab* baselinePrefab,
+                std::unordered_set<const Scene::GameObject*>& visited);
+            static void WriteTransform(std::ofstream& file, const Scene::GameObject* go, int indent);
+            static void WriteComponents(std::ofstream& file, const Scene::GameObject* go, int indent);
+            static void WritePrefabInstance(std::ofstream& file, const Scene::GameObject* go, int indent);
+            static void WritePrefabOverrides(std::ofstream& file, const Scene::GameObject* go, int indent);
+            static void WritePrefabNodePersistence(std::ofstream& file, const Scene::GameObject* go, int indent,
+                const Scene::Prefab* baselineNode);
 
         };
 

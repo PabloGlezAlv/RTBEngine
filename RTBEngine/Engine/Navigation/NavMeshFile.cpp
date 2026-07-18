@@ -92,26 +92,26 @@ namespace {
         return in.good();
     }
 
-    void CollectNavMeshRecords(RTBEngine::ECS::Scene* scene, std::vector<RTBEngine::Navigation::NavMeshGridRecord>& outRecords)
+    void CollectNavMeshRecords(RTBEngine::Scene::Scene* scene, std::vector<RTBEngine::Navigation::NavMeshGridRecord>& outRecords)
     {
         outRecords.clear();
         if (!scene) {
             return;
         }
 
-        std::function<void(RTBEngine::ECS::GameObject*)> visit = [&](RTBEngine::ECS::GameObject* gameObject) {
+        std::function<void(RTBEngine::Scene::GameObject*)> visit = [&](RTBEngine::Scene::GameObject* gameObject) {
             if (!gameObject) {
                 return;
             }
 
-            if (auto* navGrid = gameObject->GetComponent<RTBEngine::ECS::NavGridComponent>()) {
+            if (auto* navGrid = gameObject->GetComponent<RTBEngine::Scene::NavGridComponent>()) {
                 RTBEngine::Navigation::NavMeshGridRecord record;
                 if (navGrid->BuildNavMeshRecord(record)) {
                     outRecords.push_back(std::move(record));
                 }
             }
 
-            for (RTBEngine::ECS::GameObject* child : gameObject->GetChildren()) {
+            for (RTBEngine::Scene::GameObject* child : gameObject->GetChildren()) {
                 visit(child);
             }
         };
@@ -138,7 +138,7 @@ namespace RTBEngine {
             return Core::ResourceManager::GetInstance().ResolvePathForRead(scenePath.generic_string());
         }
 
-        bool NavMeshFile::SaveSceneNavMesh(const std::string& sceneAssetPath, ECS::Scene* scene)
+        bool NavMeshFile::SaveSceneNavMesh(const std::string& sceneAssetPath, Scene::Scene* scene)
         {
             if (sceneAssetPath.empty() || !scene) {
                 return false;
@@ -227,7 +227,7 @@ namespace RTBEngine {
             return true;
         }
 
-        bool NavMeshFile::LoadSceneNavMesh(const std::string& sceneAssetPath, ECS::Scene* scene)
+        bool NavMeshFile::LoadSceneNavMesh(const std::string& sceneAssetPath, Scene::Scene* scene)
         {
             if (sceneAssetPath.empty() || !scene) {
                 return false;
@@ -292,8 +292,8 @@ namespace RTBEngine {
                     return false;
                 }
 
-                ECS::NavGridComponent* navGrid =
-                    ECS::NavGridComponent::FindNavGridByOwnerUuid(scene, record.ownerUuid);
+                Scene::NavGridComponent* navGrid =
+                    Scene::NavGridComponent::FindNavGridByOwnerUuid(scene, record.ownerUuid);
                 if (!navGrid) {
                     continue;
                 }

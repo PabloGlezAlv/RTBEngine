@@ -21,20 +21,20 @@ namespace {
 		collider->SetBulletCollisionObject(nullptr, false);
 	}
 
-	void ClearSiblingDynamicColliderRefs(RTBEngine::ECS::GameObject* owner, btRigidBody* bulletBody)
+	void ClearSiblingDynamicColliderRefs(RTBEngine::Scene::GameObject* owner, btRigidBody* bulletBody)
 	{
 		if (!owner || !bulletBody) {
 			return;
 		}
 
-		ClearDynamicColliderRef(owner->GetComponent<RTBEngine::ECS::BoxColliderComponent>(), bulletBody);
-		ClearDynamicColliderRef(owner->GetComponent<RTBEngine::ECS::SphereColliderComponent>(), bulletBody);
-		ClearDynamicColliderRef(owner->GetComponent<RTBEngine::ECS::CapsuleColliderComponent>(), bulletBody);
+		ClearDynamicColliderRef(owner->GetComponent<RTBEngine::Scene::BoxColliderComponent>(), bulletBody);
+		ClearDynamicColliderRef(owner->GetComponent<RTBEngine::Scene::SphereColliderComponent>(), bulletBody);
+		ClearDynamicColliderRef(owner->GetComponent<RTBEngine::Scene::CapsuleColliderComponent>(), bulletBody);
 	}
 }
 
 namespace RTBEngine {
-	namespace ECS {
+	namespace Scene {
 
 		using ThisClass = BoxColliderComponent;
 		RTB_REGISTER_COMPONENT(BoxColliderComponent)

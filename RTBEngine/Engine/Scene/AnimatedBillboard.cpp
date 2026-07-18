@@ -14,7 +14,7 @@
 #include <cstdlib>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         namespace {
             struct BillboardVertex {

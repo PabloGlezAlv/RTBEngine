@@ -7,7 +7,7 @@
 #include "../Math/Vectors/Vector3.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class GameObject;
     }
 
@@ -19,21 +19,21 @@ namespace RTBEngine {
         };
 
         struct RTB_API OverlapSphereHit {
-            ECS::GameObject* gameObject = nullptr;
+            Scene::GameObject* gameObject = nullptr;
             Math::Vector3 point = Math::Vector3(0.0f, 0.0f, 0.0f);
             Math::Vector3 normal = Math::Vector3(0.0f, 1.0f, 0.0f);
             float distance = 0.0f;
         };
 
         struct RTB_API PhysicsQueryHit {
-            ECS::GameObject* gameObject = nullptr;
+            Scene::GameObject* gameObject = nullptr;
             Math::Vector3 point = Math::Vector3(0.0f, 0.0f, 0.0f);
             Math::Vector3 normal = Math::Vector3(0.0f, 1.0f, 0.0f);
             float fraction = 0.0f;
         };
 
         struct RTB_API PhysicsQueryOptions {
-            const ECS::GameObject* ignoredObject = nullptr;
+            const Scene::GameObject* ignoredObject = nullptr;
             bool ignoreIgnoredObjectHierarchy = true;
             bool ignoreTriggers = false;
         };

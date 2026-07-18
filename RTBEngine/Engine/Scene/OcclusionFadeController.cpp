@@ -6,7 +6,7 @@
 #include <algorithm>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         using ThisClass = OcclusionFadeController;
         RTB_REGISTER_COMPONENT(OcclusionFadeController)

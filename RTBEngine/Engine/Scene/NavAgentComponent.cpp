@@ -8,7 +8,7 @@
 #include <algorithm>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         using ThisClass = NavAgentComponent;
         RTB_REGISTER_COMPONENT(NavAgentComponent)

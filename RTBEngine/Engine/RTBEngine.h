@@ -11,6 +11,9 @@
 #include "Core/Scheduler.h"
 #include "Core/CountdownTimer.h"
 #include "Scene/ComponentQuery.h"
+#include "ECS/Entity.h"
+#include "ECS/World.h"
+#include "ECS/ProjectileSimulation.h"
 #include "Scripting/LatentActions.h"
 
 // Scene & Components

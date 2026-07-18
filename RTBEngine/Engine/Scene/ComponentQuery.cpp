@@ -4,7 +4,7 @@
 #include "SceneManager.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         namespace {
 

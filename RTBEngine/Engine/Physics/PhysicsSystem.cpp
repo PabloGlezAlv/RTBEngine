@@ -18,28 +18,28 @@ namespace RTBEngine {
     namespace Physics {
 
         namespace {
-            Math::Vector3 GetColliderCenterOffset(ECS::GameObject* gameObject)
+            Math::Vector3 GetColliderCenterOffset(Scene::GameObject* gameObject)
             {
                 if (!gameObject) {
                     return Math::Vector3(0.0f, 0.0f, 0.0f);
                 }
 
-                if (ECS::CapsuleColliderComponent* capsule = gameObject->GetComponent<ECS::CapsuleColliderComponent>()) {
+                if (Scene::CapsuleColliderComponent* capsule = gameObject->GetComponent<Scene::CapsuleColliderComponent>()) {
                     return capsule->GetCenterOffset();
                 }
 
-                if (ECS::SphereColliderComponent* sphere = gameObject->GetComponent<ECS::SphereColliderComponent>()) {
+                if (Scene::SphereColliderComponent* sphere = gameObject->GetComponent<Scene::SphereColliderComponent>()) {
                     return sphere->GetCenterOffset();
                 }
 
-                if (ECS::BoxColliderComponent* box = gameObject->GetComponent<ECS::BoxColliderComponent>()) {
+                if (Scene::BoxColliderComponent* box = gameObject->GetComponent<Scene::BoxColliderComponent>()) {
                     return box->GetCenterOffset();
                 }
 
                 return Math::Vector3(0.0f, 0.0f, 0.0f);
             }
 
-            btTransform BuildColliderTransform(ECS::Transform& transform, const Math::Vector3& centerOffset)
+            btTransform BuildColliderTransform(Scene::Transform& transform, const Math::Vector3& centerOffset)
             {
                 const Math::Quaternion rotation = transform.GetRotation();
                 const Math::Vector3 worldCenter = transform.GetPosition() + (rotation * centerOffset);
@@ -52,7 +52,7 @@ namespace RTBEngine {
             }
 
             void GetCollisionFiltersForGameObject(
-                const ECS::GameObject* gameObject,
+                const Scene::GameObject* gameObject,
                 int& outGroup,
                 int& outMask)
             {
@@ -64,7 +64,7 @@ namespace RTBEngine {
 
             void AddRigidBodyWithLayer(
                 PhysicsWorld* world,
-                ECS::GameObject* gameObject,
+                Scene::GameObject* gameObject,
                 btRigidBody* body)
             {
                 int group = 0;
@@ -75,7 +75,7 @@ namespace RTBEngine {
 
             void AddCollisionObjectWithLayer(
                 PhysicsWorld* world,
-                ECS::GameObject* gameObject,
+                Scene::GameObject* gameObject,
                 btCollisionObject* object)
             {
                 int group = 0;
@@ -100,7 +100,7 @@ namespace RTBEngine {
             currentCollisions.clear();
         }
 
-        void PhysicsSystem::Update(ECS::Scene* scene, float deltaTime)
+        void PhysicsSystem::Update(Scene::Scene* scene, float deltaTime)
         {
             if (!scene || !physicsWorld)
                 return;
@@ -111,7 +111,7 @@ namespace RTBEngine {
             SyncPhysicsToTransforms(scene, 1.0f);
         }
 
-        void PhysicsSystem::SyncRenderTransforms(ECS::Scene* scene, float interpolationAlpha)
+        void PhysicsSystem::SyncRenderTransforms(Scene::Scene* scene, float interpolationAlpha)
         {
             if (!scene) {
                 return;
@@ -120,12 +120,12 @@ namespace RTBEngine {
             SyncPhysicsToTransforms(scene, Math::Clamp01(interpolationAlpha));
         }
 
-        void PhysicsSystem::InitializeCollider(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider)
+        void PhysicsSystem::InitializeCollider(Scene::GameObject* gameObject, Scene::BoxColliderComponent* boxCollider)
         {
             if (!gameObject || !boxCollider || !physicsWorld)
                 return;
 
-            ECS::RigidBodyComponent* rbComp = gameObject->GetComponent<ECS::RigidBodyComponent>();
+            Scene::RigidBodyComponent* rbComp = gameObject->GetComponent<Scene::RigidBodyComponent>();
 
             if (rbComp && rbComp->HasRigidBody()) {
                 InitializeDynamicBody(gameObject, boxCollider, rbComp);
@@ -135,7 +135,7 @@ namespace RTBEngine {
             }
         }
 
-        void PhysicsSystem::InitializeStaticCollider(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider)
+        void PhysicsSystem::InitializeStaticCollider(Scene::GameObject* gameObject, Scene::BoxColliderComponent* boxCollider)
         {
             Physics::BoxCollider* collider = boxCollider->GetBoxCollider();
             if (!collider)
@@ -145,7 +145,7 @@ namespace RTBEngine {
             if (!shape)
                 return;
 
-            ECS::Transform& transform = gameObject->GetTransform();
+            Scene::Transform& transform = gameObject->GetTransform();
             btTransform btTrans = BuildColliderTransform(transform, collider->GetCenter());
 
             btCollisionObject* collisionObj = new btCollisionObject();
@@ -163,7 +163,7 @@ namespace RTBEngine {
             boxCollider->SetPhysicsWorld(physicsWorld);
         }
 
-        void PhysicsSystem::InitializeDynamicBody(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider, ECS::RigidBodyComponent* rbComp)
+        void PhysicsSystem::InitializeDynamicBody(Scene::GameObject* gameObject, Scene::BoxColliderComponent* boxCollider, Scene::RigidBodyComponent* rbComp)
         {
             Physics::BoxCollider* collider = boxCollider->GetBoxCollider();
             Physics::RigidBody* rigidBody = rbComp->GetRigidBody();
@@ -175,7 +175,7 @@ namespace RTBEngine {
             if (!shape)
                 return;
 
-            ECS::Transform& transform = gameObject->GetTransform();
+            Scene::Transform& transform = gameObject->GetTransform();
             btTransform btTrans = BuildColliderTransform(transform, collider->GetCenter());
 
             btDefaultMotionState* motionState = new btDefaultMotionState(btTrans);
@@ -214,11 +214,11 @@ namespace RTBEngine {
             boxCollider->SetPhysicsWorld(physicsWorld);
         }
 
-        void PhysicsSystem::SyncTransformsToPhysics(ECS::Scene* scene)
+        void PhysicsSystem::SyncTransformsToPhysics(Scene::Scene* scene)
         {
-            for (ECS::RigidBodyComponent* rbComp : scene->GetCachedRigidBodies())
+            for (Scene::RigidBodyComponent* rbComp : scene->GetCachedRigidBodies())
             {
-                ECS::GameObject* gameObject = rbComp ? rbComp->GetOwner() : nullptr;
+                Scene::GameObject* gameObject = rbComp ? rbComp->GetOwner() : nullptr;
                 if (!gameObject || !gameObject->IsActiveInHierarchy())
                     continue;
 
@@ -232,7 +232,7 @@ namespace RTBEngine {
 
                 if (rigidBody->GetType() == RigidBodyType::Kinematic)
                 {
-                    ECS::Transform& transform = gameObject->GetTransform();
+                    Scene::Transform& transform = gameObject->GetTransform();
                     btTransform btTrans = BuildColliderTransform(transform, GetColliderCenterOffset(gameObject));
 
                     btBody->setWorldTransform(btTrans);
@@ -240,11 +240,11 @@ namespace RTBEngine {
             }
         }
 
-        void PhysicsSystem::SyncPhysicsToTransforms(ECS::Scene* scene, float interpolationAlpha)
+        void PhysicsSystem::SyncPhysicsToTransforms(Scene::Scene* scene, float interpolationAlpha)
         {
-            for (ECS::RigidBodyComponent* rbComp : scene->GetCachedRigidBodies())
+            for (Scene::RigidBodyComponent* rbComp : scene->GetCachedRigidBodies())
             {
-                ECS::GameObject* gameObject = rbComp ? rbComp->GetOwner() : nullptr;
+                Scene::GameObject* gameObject = rbComp ? rbComp->GetOwner() : nullptr;
                 if (!gameObject || !gameObject->IsActiveInHierarchy())
                     continue;
 
@@ -278,7 +278,7 @@ namespace RTBEngine {
                     Math::Vector3 position = PhysicsUtils::FromBullet(btPos) -
                         (rotation * GetColliderCenterOffset(gameObject));
 
-                    ECS::Transform& transform = gameObject->GetTransform();
+                    Scene::Transform& transform = gameObject->GetTransform();
                     transform.SetPosition(position);
                     transform.SetRotation(rotation);
                 }
@@ -301,18 +301,18 @@ namespace RTBEngine {
                 const btCollisionObject* objA = manifold->getBody0();
                 const btCollisionObject* objB = manifold->getBody1();
 
-                ECS::GameObject* goA = static_cast<ECS::GameObject*>(objA->getUserPointer());
-                ECS::GameObject* goB = static_cast<ECS::GameObject*>(objB->getUserPointer());
+                Scene::GameObject* goA = static_cast<Scene::GameObject*>(objA->getUserPointer());
+                Scene::GameObject* goB = static_cast<Scene::GameObject*>(objB->getUserPointer());
 
                 if (!goA || !goB)
                     continue;
 
-                ECS::BoxColliderComponent* boxColliderA = goA->GetComponent<ECS::BoxColliderComponent>();
-                ECS::BoxColliderComponent* boxColliderB = goB->GetComponent<ECS::BoxColliderComponent>();
-                ECS::SphereColliderComponent* sphereColliderA = goA->GetComponent<ECS::SphereColliderComponent>();
-                ECS::SphereColliderComponent* sphereColliderB = goB->GetComponent<ECS::SphereColliderComponent>();
-                ECS::CapsuleColliderComponent* capsuleColliderA = goA->GetComponent<ECS::CapsuleColliderComponent>();
-                ECS::CapsuleColliderComponent* capsuleColliderB = goB->GetComponent<ECS::CapsuleColliderComponent>();
+                Scene::BoxColliderComponent* boxColliderA = goA->GetComponent<Scene::BoxColliderComponent>();
+                Scene::BoxColliderComponent* boxColliderB = goB->GetComponent<Scene::BoxColliderComponent>();
+                Scene::SphereColliderComponent* sphereColliderA = goA->GetComponent<Scene::SphereColliderComponent>();
+                Scene::SphereColliderComponent* sphereColliderB = goB->GetComponent<Scene::SphereColliderComponent>();
+                Scene::CapsuleColliderComponent* capsuleColliderA = goA->GetComponent<Scene::CapsuleColliderComponent>();
+                Scene::CapsuleColliderComponent* capsuleColliderB = goB->GetComponent<Scene::CapsuleColliderComponent>();
 
                 bool isTriggerA = (boxColliderA && boxColliderA->IsTrigger()) ||
                     (sphereColliderA && sphereColliderA->IsTrigger()) ||
@@ -377,7 +377,7 @@ namespace RTBEngine {
             previousCollisions = currentCollisions;
         }
 
-        void PhysicsSystem::NotifyCallbacks(ECS::GameObject* object, const CollisionInfo& info, bool isTrigger, CollisionState state)
+        void PhysicsSystem::NotifyCallbacks(Scene::GameObject* object, const CollisionInfo& info, bool isTrigger, CollisionState state)
         {
             if (!object)
                 return;
@@ -406,12 +406,12 @@ namespace RTBEngine {
             }
         }
 
-        void PhysicsSystem::InitializeCollider(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider)
+        void PhysicsSystem::InitializeCollider(Scene::GameObject* gameObject, Scene::SphereColliderComponent* sphereCollider)
         {
             if (!gameObject || !sphereCollider || !physicsWorld)
                 return;
 
-            ECS::RigidBodyComponent* rbComp = gameObject->GetComponent<ECS::RigidBodyComponent>();
+            Scene::RigidBodyComponent* rbComp = gameObject->GetComponent<Scene::RigidBodyComponent>();
 
             if (rbComp && rbComp->HasRigidBody()) {
                 InitializeDynamicBody(gameObject, sphereCollider, rbComp);
@@ -421,7 +421,7 @@ namespace RTBEngine {
             }
         }
 
-        void PhysicsSystem::InitializeStaticCollider(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider)
+        void PhysicsSystem::InitializeStaticCollider(Scene::GameObject* gameObject, Scene::SphereColliderComponent* sphereCollider)
         {
             Physics::SphereCollider* collider = sphereCollider->GetSphereCollider();
             if (!collider)
@@ -431,7 +431,7 @@ namespace RTBEngine {
             if (!shape)
                 return;
 
-            ECS::Transform& transform = gameObject->GetTransform();
+            Scene::Transform& transform = gameObject->GetTransform();
             btTransform btTrans = BuildColliderTransform(transform, collider->GetCenter());
 
             btCollisionObject* collisionObj = new btCollisionObject();
@@ -449,7 +449,7 @@ namespace RTBEngine {
             sphereCollider->SetPhysicsWorld(physicsWorld);
         }
 
-        void PhysicsSystem::InitializeDynamicBody(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider, ECS::RigidBodyComponent* rbComp)
+        void PhysicsSystem::InitializeDynamicBody(Scene::GameObject* gameObject, Scene::SphereColliderComponent* sphereCollider, Scene::RigidBodyComponent* rbComp)
         {
             Physics::SphereCollider* collider = sphereCollider->GetSphereCollider();
             Physics::RigidBody* rigidBody = rbComp->GetRigidBody();
@@ -461,7 +461,7 @@ namespace RTBEngine {
             if (!shape)
                 return;
 
-            ECS::Transform& transform = gameObject->GetTransform();
+            Scene::Transform& transform = gameObject->GetTransform();
             btTransform btTrans = BuildColliderTransform(transform, collider->GetCenter());
 
             btDefaultMotionState* motionState = new btDefaultMotionState(btTrans);
@@ -500,12 +500,12 @@ namespace RTBEngine {
             sphereCollider->SetPhysicsWorld(physicsWorld);
         }
 
-        void PhysicsSystem::InitializeCollider(ECS::GameObject* gameObject, ECS::CapsuleColliderComponent* capsuleCollider)
+        void PhysicsSystem::InitializeCollider(Scene::GameObject* gameObject, Scene::CapsuleColliderComponent* capsuleCollider)
         {
             if (!gameObject || !capsuleCollider || !physicsWorld)
                 return;
 
-            ECS::RigidBodyComponent* rbComp = gameObject->GetComponent<ECS::RigidBodyComponent>();
+            Scene::RigidBodyComponent* rbComp = gameObject->GetComponent<Scene::RigidBodyComponent>();
 
             if (rbComp && rbComp->HasRigidBody()) {
                 InitializeDynamicBody(gameObject, capsuleCollider, rbComp);
@@ -515,7 +515,7 @@ namespace RTBEngine {
             }
         }
 
-        void PhysicsSystem::InitializeStaticCollider(ECS::GameObject* gameObject, ECS::CapsuleColliderComponent* capsuleCollider)
+        void PhysicsSystem::InitializeStaticCollider(Scene::GameObject* gameObject, Scene::CapsuleColliderComponent* capsuleCollider)
         {
             Physics::CapsuleCollider* collider = capsuleCollider->GetCapsuleCollider();
             if (!collider)
@@ -525,7 +525,7 @@ namespace RTBEngine {
             if (!shape)
                 return;
 
-            ECS::Transform& transform = gameObject->GetTransform();
+            Scene::Transform& transform = gameObject->GetTransform();
             btTransform btTrans = BuildColliderTransform(transform, collider->GetCenter());
 
             btCollisionObject* collisionObj = new btCollisionObject();
@@ -543,7 +543,7 @@ namespace RTBEngine {
             capsuleCollider->SetPhysicsWorld(physicsWorld);
         }
 
-        void PhysicsSystem::InitializeDynamicBody(ECS::GameObject* gameObject, ECS::CapsuleColliderComponent* capsuleCollider, ECS::RigidBodyComponent* rbComp)
+        void PhysicsSystem::InitializeDynamicBody(Scene::GameObject* gameObject, Scene::CapsuleColliderComponent* capsuleCollider, Scene::RigidBodyComponent* rbComp)
         {
             Physics::CapsuleCollider* collider = capsuleCollider->GetCapsuleCollider();
             Physics::RigidBody* rigidBody = rbComp->GetRigidBody();
@@ -555,7 +555,7 @@ namespace RTBEngine {
             if (!shape)
                 return;
 
-            ECS::Transform& transform = gameObject->GetTransform();
+            Scene::Transform& transform = gameObject->GetTransform();
             btTransform btTrans = BuildColliderTransform(transform, collider->GetCenter());
 
             btDefaultMotionState* motionState = new btDefaultMotionState(btTrans);

@@ -25,7 +25,7 @@ namespace RTBEngine {
             pendingRequests.clear();
         }
 
-        void NavPathService::RegisterAgent(ECS::NavAgentComponent* agent)
+        void NavPathService::RegisterAgent(Scene::NavAgentComponent* agent)
         {
             if (!agent) {
                 return;
@@ -37,7 +37,7 @@ namespace RTBEngine {
             }
         }
 
-        void NavPathService::UnregisterAgent(ECS::NavAgentComponent* agent)
+        void NavPathService::UnregisterAgent(Scene::NavAgentComponent* agent)
         {
             if (!agent) {
                 return;
@@ -53,7 +53,7 @@ namespace RTBEngine {
             }
         }
 
-        void NavPathService::QueuePathRequest(ECS::NavAgentComponent* agent)
+        void NavPathService::QueuePathRequest(Scene::NavAgentComponent* agent)
         {
             if (!agent || !activeGrid) {
                 return;
@@ -75,7 +75,7 @@ namespace RTBEngine {
 
             int processed = 0;
             while (!pendingRequests.empty() && processed < kMaxPathRequestsPerFrame) {
-                ECS::NavAgentComponent* agent = pendingRequests.front();
+                Scene::NavAgentComponent* agent = pendingRequests.front();
                 pendingRequests.pop_front();
 
                 if (!agent || !agent->IsEnabled() ||
@@ -88,7 +88,7 @@ namespace RTBEngine {
             }
         }
 
-        void NavPathService::ProcessAgentPathNow(ECS::NavAgentComponent* agent)
+        void NavPathService::ProcessAgentPathNow(Scene::NavAgentComponent* agent)
         {
             if (!agent || !activeGrid) {
                 return;
@@ -97,7 +97,7 @@ namespace RTBEngine {
             agent->ProcessPathRequest(*activeGrid, pathfinder);
         }
 
-        void ProcessSceneNavigationFixedUpdate(ECS::Scene* /*scene*/)
+        void ProcessSceneNavigationFixedUpdate(Scene::Scene* /*scene*/)
         {
             NavPathService::GetInstance().ProcessFixedUpdate();
         }

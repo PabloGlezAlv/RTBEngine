@@ -22,7 +22,7 @@
 namespace RTBEngine {
     namespace Scripting {
 
-        bool SceneSaver::SaveScene(const ECS::Scene* scene, const std::string& filePath) {
+        bool SceneSaver::SaveScene(const Scene::Scene* scene, const std::string& filePath) {
             if (!scene) {
                 RTB_ERROR("SceneSaver: Cannot save null scene");
                 return false;
@@ -92,7 +92,7 @@ namespace RTBEngine {
             }
         }
 
-        void SceneSaver::WriteSceneHeader(std::ofstream& file, const ECS::Scene* scene) {
+        void SceneSaver::WriteSceneHeader(std::ofstream& file, const Scene::Scene* scene) {
             file << "        name = \"" << scene->GetName() << "\",\n";
             file << "        skyboxEnabled = " << ScenePropertySerializer::FormatBool(scene->IsSkyboxEnabled()) << ",\n";
 
@@ -106,12 +106,12 @@ namespace RTBEngine {
             }
         }
 
-        void SceneSaver::WriteGameObjects(std::ofstream& file, const ECS::Scene* scene) {
+        void SceneSaver::WriteGameObjects(std::ofstream& file, const Scene::Scene* scene) {
             const auto& gameObjects = scene->GetGameObjects();
 
             file << "        gameObjects = {\n";
 
-            std::unordered_set<const ECS::GameObject*> visited;
+            std::unordered_set<const Scene::GameObject*> visited;
             for (const auto& go : gameObjects) {
                 if (go->GetParent() == nullptr) {
                     WriteGameObject(file, go.get(), 3, nullptr, visited);
@@ -122,7 +122,7 @@ namespace RTBEngine {
         }
 
         namespace {
-            const ECS::Prefab* FindDirectChildPrefab(const ECS::Prefab* prefab, const std::string& childName)
+            const Scene::Prefab* FindDirectChildPrefab(const Scene::Prefab* prefab, const std::string& childName)
             {
                 if (!prefab) {
                     return nullptr;
@@ -137,8 +137,8 @@ namespace RTBEngine {
             }
         }
 
-        void SceneSaver::WriteGameObject(std::ofstream& file, const ECS::GameObject* go, int indent,
-            const ECS::Prefab* baselinePrefab, std::unordered_set<const ECS::GameObject*>& visited)
+        void SceneSaver::WriteGameObject(std::ofstream& file, const Scene::GameObject* go, int indent,
+            const Scene::Prefab* baselinePrefab, std::unordered_set<const Scene::GameObject*>& visited)
         {
             if (!go || go->IsTransient() || go->IsAnimatorBone()) {
                 return;
@@ -149,7 +149,7 @@ namespace RTBEngine {
                 return;
             }
 
-            if (baselinePrefab && !ECS::PrefabOverrideDiff::ShouldPersistPrefabChild(go, baselinePrefab)) {
+            if (baselinePrefab && !Scene::PrefabOverrideDiff::ShouldPersistPrefabChild(go, baselinePrefab)) {
                 return;
             }
 
@@ -160,10 +160,10 @@ namespace RTBEngine {
             file << ind << "    uuid = \"" << go->GetUUID() << "\",\n";
 
             const bool hasRegisteredPrefab = go->IsPrefabInstance() &&
-                ECS::PrefabRegistry::GetInstance().Has(go->GetPrefabName());
+                Scene::PrefabRegistry::GetInstance().Has(go->GetPrefabName());
 
             const bool isPrefabChildOverride = baselinePrefab &&
-                !ECS::PrefabOverrideDiff::IsSceneOnlyChild(go, baselinePrefab) &&
+                !Scene::PrefabOverrideDiff::IsSceneOnlyChild(go, baselinePrefab) &&
                 !hasRegisteredPrefab;
 
             if (!isPrefabChildOverride) {
@@ -180,13 +180,13 @@ namespace RTBEngine {
                 }
             }
 
-            const ECS::Prefab* instancePrefab = nullptr;
+            const Scene::Prefab* instancePrefab = nullptr;
             if (hasRegisteredPrefab) {
-                instancePrefab = ECS::PrefabRegistry::GetInstance().Get(go->GetPrefabName());
+                instancePrefab = Scene::PrefabRegistry::GetInstance().Get(go->GetPrefabName());
                 WritePrefabInstance(file, go, indent);
             }
             else if (baselinePrefab &&
-                !ECS::PrefabOverrideDiff::IsSceneOnlyChild(go, baselinePrefab))
+                !Scene::PrefabOverrideDiff::IsSceneOnlyChild(go, baselinePrefab))
             {
                 WritePrefabNodePersistence(file, go, indent, baselinePrefab);
             }
@@ -196,26 +196,26 @@ namespace RTBEngine {
                 WriteComponents(file, go, indent + 1);
             }
 
-            const ECS::Prefab* childLookupPrefab = instancePrefab ? instancePrefab : baselinePrefab;
-            std::vector<const ECS::GameObject*> persistableChildren;
+            const Scene::Prefab* childLookupPrefab = instancePrefab ? instancePrefab : baselinePrefab;
+            std::vector<const Scene::GameObject*> persistableChildren;
             const auto& children = go->GetChildren();
-            for (const ECS::GameObject* child : children) {
+            for (const Scene::GameObject* child : children) {
                 if (!child) {
                     continue;
                 }
 
                 if (childLookupPrefab &&
-                    ECS::PrefabOverrideDiff::IsSceneOnlyChild(child, childLookupPrefab))
+                    Scene::PrefabOverrideDiff::IsSceneOnlyChild(child, childLookupPrefab))
                 {
                     persistableChildren.push_back(child);
                     continue;
                 }
 
-                const ECS::Prefab* childBaseline = childLookupPrefab
+                const Scene::Prefab* childBaseline = childLookupPrefab
                     ? FindDirectChildPrefab(childLookupPrefab, child->GetName())
                     : nullptr;
                 if (childBaseline &&
-                    ECS::PrefabOverrideDiff::ShouldPersistPrefabChild(child, childBaseline))
+                    Scene::PrefabOverrideDiff::ShouldPersistPrefabChild(child, childBaseline))
                 {
                     persistableChildren.push_back(child);
                     continue;
@@ -228,8 +228,8 @@ namespace RTBEngine {
 
             if (!persistableChildren.empty()) {
                 file << ind << "    children = {\n";
-                for (const ECS::GameObject* child : persistableChildren) {
-                    const ECS::Prefab* childBaseline = nullptr;
+                for (const Scene::GameObject* child : persistableChildren) {
+                    const Scene::Prefab* childBaseline = nullptr;
                     if (instancePrefab) {
                         childBaseline = FindDirectChildPrefab(instancePrefab, child->GetName());
                     } else if (baselinePrefab) {
@@ -244,7 +244,7 @@ namespace RTBEngine {
         }
 
 
-        void SceneSaver::WriteTransform(std::ofstream& file, const ECS::GameObject* go, int indent) {
+        void SceneSaver::WriteTransform(std::ofstream& file, const Scene::GameObject* go, int indent) {
             if (go->IsAnimatorBone()) {
                 return;
             }
@@ -266,7 +266,7 @@ namespace RTBEngine {
                 file << ind << "scale = " << ScenePropertySerializer::FormatVector3(scale) << ",\n";
         }
 
-        void SceneSaver::WriteComponents(std::ofstream& file, const ECS::GameObject* go, int indent) {
+        void SceneSaver::WriteComponents(std::ofstream& file, const Scene::GameObject* go, int indent) {
             std::string ind = ScenePropertySerializer::Indent(indent);
             const auto& components = go->GetComponents();
 
@@ -282,7 +282,7 @@ namespace RTBEngine {
             file << ind << (hasChildren ? "},\n" : "}\n");
         }
 
-        void SceneSaver::WritePrefabInstance(std::ofstream& file, const ECS::GameObject* go, int indent) {
+        void SceneSaver::WritePrefabInstance(std::ofstream& file, const Scene::GameObject* go, int indent) {
             std::string ind = ScenePropertySerializer::Indent(indent);
 
             file << ind << "    prefab = \"" << go->GetPrefabName() << "\",\n";
@@ -294,11 +294,11 @@ namespace RTBEngine {
             file << ind << "    },\n";
         }
 
-        void SceneSaver::WritePrefabOverrides(std::ofstream& file, const ECS::GameObject* go, int indent) {
+        void SceneSaver::WritePrefabOverrides(std::ofstream& file, const Scene::GameObject* go, int indent) {
             std::string ind = ScenePropertySerializer::Indent(indent);
 
-            const ECS::PrefabInstanceContext context = ECS::PrefabInstanceResolver::Resolve(
-                const_cast<ECS::GameObject*>(go));
+            const Scene::PrefabInstanceContext context = Scene::PrefabInstanceResolver::Resolve(
+                const_cast<Scene::GameObject*>(go));
             if (!context.IsValid()) {
                 return;
             }
@@ -310,7 +310,7 @@ namespace RTBEngine {
             for (const auto& comp : components)
             {
                 const std::string typeName = comp->GetTypeName();
-                const ECS::ComponentSnapshot* snap = ECS::PrefabOverrideDiff::FindBaselineSnapshot(
+                const Scene::ComponentSnapshot* snap = Scene::PrefabOverrideDiff::FindBaselineSnapshot(
                     context.baselineNode,
                     typeName.c_str());
 
@@ -321,7 +321,7 @@ namespace RTBEngine {
                 }
 
                 const std::vector<const Reflection::PropertyInfo*> overrideProps =
-                    ECS::PrefabOverrideDiff::GetOverriddenProperties(comp.get(), snap);
+                    Scene::PrefabOverrideDiff::GetOverriddenProperties(comp.get(), snap);
 
                 if (overrideProps.empty()) continue;
 
@@ -339,8 +339,8 @@ namespace RTBEngine {
             file << ind << "},\n";
         }
 
-        void SceneSaver::WritePrefabNodePersistence(std::ofstream& file, const ECS::GameObject* go, int indent,
-            const ECS::Prefab* baselineNode)
+        void SceneSaver::WritePrefabNodePersistence(std::ofstream& file, const Scene::GameObject* go, int indent,
+            const Scene::Prefab* baselineNode)
         {
             if (!go || !baselineNode) {
                 return;
@@ -348,16 +348,16 @@ namespace RTBEngine {
 
             std::string ind = ScenePropertySerializer::Indent(indent);
 
-            if (ECS::PrefabOverrideDiff::IsTransformOverridden(go, baselineNode)) {
+            if (Scene::PrefabOverrideDiff::IsTransformOverridden(go, baselineNode)) {
                 WriteTransform(file, go, indent + 1);
             }
 
-            if (!go->IsActive() && ECS::PrefabOverrideDiff::IsActiveOverridden(go)) {
+            if (!go->IsActive() && Scene::PrefabOverrideDiff::IsActiveOverridden(go)) {
                 file << ind << "    active = "
                     << ScenePropertySerializer::FormatBool(go->IsActive()) << ",\n";
             }
 
-            if (ECS::PrefabOverrideDiff::IsCollisionLayerOverridden(go, baselineNode)) {
+            if (Scene::PrefabOverrideDiff::IsCollisionLayerOverridden(go, baselineNode)) {
                 file << ind << "    collisionLayer = "
                     << ScenePropertySerializer::FormatString(
                         Physics::PhysicsLayerSettings::Get().GetLayerName(go->GetCollisionLayer()))

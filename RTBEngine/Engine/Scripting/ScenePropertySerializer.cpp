@@ -22,7 +22,7 @@ namespace RTBEngine {
             namespace {
             }
 
-            void WriteComponent(std::ofstream& file, const ECS::Component* comp, int indent)
+            void WriteComponent(std::ofstream& file, const Scene::Component* comp, int indent)
             {
                 std::string ind = Indent(indent);
                 const char* typeName = comp->GetTypeName();
@@ -40,7 +40,7 @@ namespace RTBEngine {
                 }
 
                 if (std::string(typeName) == "MissingComponent") {
-                    const auto* missing = static_cast<const ECS::MissingComponent*>(comp);
+                    const auto* missing = static_cast<const Scene::MissingComponent*>(comp);
                     file << ",\n" << ind << "    missingTypeName = \""
                          << missing->GetMissingTypeName() << "\"";
                 }
@@ -48,7 +48,7 @@ namespace RTBEngine {
                 file << "\n" << ind << "},\n";
             }
 
-            void WriteProperty(std::ofstream& file, const ECS::Component* comp,
+            void WriteProperty(std::ofstream& file, const Scene::Component* comp,
                 const Reflection::PropertyInfo& prop, int indent)
             {
                 std::string ind = Indent(indent);
@@ -113,12 +113,12 @@ namespace RTBEngine {
                     break;
                 }
                 case Reflection::PropertyType::GameObjectRef: {
-                    ECS::GameObject* target = *static_cast<ECS::GameObject* const*>(data);
+                    Scene::GameObject* target = *static_cast<Scene::GameObject* const*>(data);
                     file << (target ? FormatString(target->GetUUID()) : "nil");
                     break;
                 }
                 case Reflection::PropertyType::ComponentRef: {
-                    ECS::Component* target = *static_cast<ECS::Component* const*>(data);
+                    Scene::Component* target = *static_cast<Scene::Component* const*>(data);
                     if (target && target->GetOwner()) {
                         std::string ref = target->GetOwner()->GetUUID()
                             + "/" + std::string(target->GetTypeName());
@@ -146,7 +146,7 @@ namespace RTBEngine {
                     case Reflection::ListElementType::String:
                     case Reflection::ListElementType::AssetRef: {
                         const auto* values = Reflection::ListPropertyAccess::GetStringVector(
-                            const_cast<ECS::Component*>(comp), prop);
+                            const_cast<Scene::Component*>(comp), prop);
                         if (values) {
                             for (const auto& value : *values) {
                                 writeEntry(NormalizePath(value));
@@ -156,9 +156,9 @@ namespace RTBEngine {
                     }
                     case Reflection::ListElementType::GameObjectRef: {
                         const auto* values = Reflection::ListPropertyAccess::GetGameObjectVector(
-                            const_cast<ECS::Component*>(comp), prop);
+                            const_cast<Scene::Component*>(comp), prop);
                         if (values) {
-                            for (ECS::GameObject* target : *values) {
+                            for (Scene::GameObject* target : *values) {
                                 writeEntry(target ? target->GetUUID() : "");
                             }
                         }
@@ -166,9 +166,9 @@ namespace RTBEngine {
                     }
                     case Reflection::ListElementType::ComponentRef: {
                         const auto* values = Reflection::ListPropertyAccess::GetComponentVector(
-                            const_cast<ECS::Component*>(comp), prop);
+                            const_cast<Scene::Component*>(comp), prop);
                         if (values) {
-                            for (ECS::Component* target : *values) {
+                            for (Scene::Component* target : *values) {
                                 if (target && target->GetOwner()) {
                                     writeEntry(target->GetOwner()->GetUUID() + "/"
                                         + std::string(target->GetTypeName()));
@@ -181,7 +181,7 @@ namespace RTBEngine {
                     }
                     case Reflection::ListElementType::AnimationKeyClip: {
                         const auto* values = Reflection::ListPropertyAccess::GetAnimationKeyClipVector(
-                            const_cast<ECS::Component*>(comp), prop);
+                            const_cast<Scene::Component*>(comp), prop);
                         if (!values) {
                             break;
                         }

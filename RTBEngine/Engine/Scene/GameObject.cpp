@@ -13,7 +13,7 @@
 
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         static std::string GenerateUUID()
         {
             GUID guid;

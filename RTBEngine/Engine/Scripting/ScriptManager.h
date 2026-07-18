@@ -6,7 +6,7 @@
 #include <Windows.h>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class Component;
         class GameObject;
         class Scene;

@@ -15,7 +15,7 @@ namespace RTBEngine {
     namespace Animation {
 
         namespace {
-            ECS::GameObject* FindDescendantByName(ECS::GameObject* root, const std::string& name)
+            Scene::GameObject* FindDescendantByName(Scene::GameObject* root, const std::string& name)
             {
                 if (!root) {
                     return nullptr;
@@ -23,15 +23,15 @@ namespace RTBEngine {
                 if (root->GetName() == name) {
                     return root;
                 }
-                for (ECS::GameObject* child : root->GetChildren()) {
-                    if (ECS::GameObject* found = FindDescendantByName(child, name)) {
+                for (Scene::GameObject* child : root->GetChildren()) {
+                    if (Scene::GameObject* found = FindDescendantByName(child, name)) {
                         return found;
                     }
                 }
                 return nullptr;
             }
 
-            void SetLocalFromWorld(ECS::GameObject* go, const Math::Matrix4& worldMatrix, ECS::GameObject* parent)
+            void SetLocalFromWorld(Scene::GameObject* go, const Math::Matrix4& worldMatrix, Scene::GameObject* parent)
             {
                 Math::Matrix4 localMatrix = worldMatrix;
                 if (parent) {
@@ -46,7 +46,7 @@ namespace RTBEngine {
                 go->GetTransform().SetScale(localScale);
             }
 
-            void ReparentPreserveWorld(ECS::GameObject* go, ECS::GameObject* newParent)
+            void ReparentPreserveWorld(Scene::GameObject* go, Scene::GameObject* newParent)
             {
                 if (!go || go->GetParent() == newParent) {
                     return;
@@ -57,7 +57,7 @@ namespace RTBEngine {
                 SetLocalFromWorld(go, worldMatrix, newParent);
             }
 
-            void ApplyBindPose(ECS::GameObject* boneGO, const Bone* bone)
+            void ApplyBindPose(Scene::GameObject* boneGO, const Bone* bone)
             {
                 if (!boneGO || !bone) {
                     return;
@@ -219,7 +219,7 @@ namespace RTBEngine {
             EnsureSourcesLoaded();
             ReloadKeyClips();
             if (skeleton && !boneGOsCreated) {
-                ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
+                Scene::Scene* scene = Scene::SceneManager::GetInstance().GetActiveScene();
                 if (scene) {
                     CreateBoneGameObjects(scene);
                 }
@@ -241,7 +241,7 @@ namespace RTBEngine {
 
             // Create bone GameObjects if not already created
             if (skeleton && !boneGOsCreated) {
-                ECS::Scene* scene = ECS::SceneManager::GetInstance().GetActiveScene();
+                Scene::Scene* scene = Scene::SceneManager::GetInstance().GetActiveScene();
                 if (scene) {
                     CreateBoneGameObjects(scene);
                 }
@@ -754,13 +754,13 @@ namespace RTBEngine {
             SyncBoneGameObjects();
         }
 
-        bool Animator::IsBoneGameObject(const ECS::GameObject* go) const
+        bool Animator::IsBoneGameObject(const Scene::GameObject* go) const
         {
             if (!go) {
                 return false;
             }
 
-            for (ECS::GameObject* boneGO : boneGameObjects) {
+            for (Scene::GameObject* boneGO : boneGameObjects) {
                 if (boneGO == go) {
                     return true;
                 }
@@ -768,7 +768,7 @@ namespace RTBEngine {
             return false;
         }
 
-        void Animator::CreateBoneGameObjects(ECS::Scene* scene)
+        void Animator::CreateBoneGameObjects(Scene::Scene* scene)
         {
             EnsureSourcesLoaded();
 
@@ -804,7 +804,7 @@ namespace RTBEngine {
                         }
                     }
 
-                    ECS::GameObject* parentGO = owner;
+                    Scene::GameObject* parentGO = owner;
                     if (bone->parentIndex >= 0) {
                         parentGO = boneGameObjects[bone->parentIndex];
                     }
@@ -812,10 +812,10 @@ namespace RTBEngine {
                         continue;
                     }
 
-                    ECS::GameObject* boneGO = FindDescendantByName(owner, bone->name);
+                    Scene::GameObject* boneGO = FindDescendantByName(owner, bone->name);
                     const bool createdNew = boneGO == nullptr;
                     if (createdNew) {
-                        boneGO = new ECS::GameObject(bone->name);
+                        boneGO = new Scene::GameObject(bone->name);
                         scene->AddGameObject(boneGO);
                         ApplyBindPose(boneGO, bone);
                     }
@@ -860,7 +860,7 @@ namespace RTBEngine {
 
             size_t count = std::min(currentLocalTransforms.size(), boneGameObjects.size());
             for (size_t i = 0; i < count; i++) {
-                ECS::GameObject* boneGO = boneGameObjects[i];
+                Scene::GameObject* boneGO = boneGameObjects[i];
                 if (!boneGO) continue;
 
                 Math::Vector3 pos;
@@ -874,7 +874,7 @@ namespace RTBEngine {
             }
         }
 
-        ECS::GameObject* Animator::GetBoneGameObject(const std::string& boneName) const
+        Scene::GameObject* Animator::GetBoneGameObject(const std::string& boneName) const
         {
             if (!skeleton) return nullptr;
             int idx = skeleton->GetBoneIndex(boneName);
@@ -882,7 +882,7 @@ namespace RTBEngine {
             return boneGameObjects[idx];
         }
 
-        ECS::GameObject* Animator::GetBoneGameObject(int boneIndex) const
+        Scene::GameObject* Animator::GetBoneGameObject(int boneIndex) const
         {
             if (boneIndex < 0 || boneIndex >= static_cast<int>(boneGameObjects.size())) return nullptr;
             return boneGameObjects[boneIndex];

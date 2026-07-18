@@ -18,14 +18,14 @@ namespace RTBEngine {
                 return reinterpret_cast<std::vector<std::string>*>(propertyPtr);
             }
 
-            inline std::vector<ECS::GameObject*>* AsGameObjectVector(void* propertyPtr)
+            inline std::vector<Scene::GameObject*>* AsGameObjectVector(void* propertyPtr)
             {
-                return reinterpret_cast<std::vector<ECS::GameObject*>*>(propertyPtr);
+                return reinterpret_cast<std::vector<Scene::GameObject*>*>(propertyPtr);
             }
 
-            inline std::vector<ECS::Component*>* AsComponentVector(void* propertyPtr)
+            inline std::vector<Scene::Component*>* AsComponentVector(void* propertyPtr)
             {
-                return reinterpret_cast<std::vector<ECS::Component*>*>(propertyPtr);
+                return reinterpret_cast<std::vector<Scene::Component*>*>(propertyPtr);
             }
 
             inline std::vector<Animation::AnimationKeyClip>* AsAnimationKeyClipVector(void* propertyPtr)
@@ -33,23 +33,23 @@ namespace RTBEngine {
                 return reinterpret_cast<std::vector<Animation::AnimationKeyClip>*>(propertyPtr);
             }
 
-            inline std::vector<std::string>* GetStringVector(ECS::Component* component, const PropertyInfo& prop)
+            inline std::vector<std::string>* GetStringVector(Scene::Component* component, const PropertyInfo& prop)
             {
                 return AsStringVector(prop.GetMutableData(component));
             }
 
-            inline std::vector<ECS::GameObject*>* GetGameObjectVector(ECS::Component* component, const PropertyInfo& prop)
+            inline std::vector<Scene::GameObject*>* GetGameObjectVector(Scene::Component* component, const PropertyInfo& prop)
             {
                 return AsGameObjectVector(prop.GetMutableData(component));
             }
 
-            inline std::vector<ECS::Component*>* GetComponentVector(ECS::Component* component, const PropertyInfo& prop)
+            inline std::vector<Scene::Component*>* GetComponentVector(Scene::Component* component, const PropertyInfo& prop)
             {
                 return AsComponentVector(prop.GetMutableData(component));
             }
 
             inline std::vector<Animation::AnimationKeyClip>* GetAnimationKeyClipVector(
-                ECS::Component* component, const PropertyInfo& prop)
+                Scene::Component* component, const PropertyInfo& prop)
             {
                 return AsAnimationKeyClipVector(prop.GetMutableData(component));
             }

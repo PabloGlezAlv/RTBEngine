@@ -8,7 +8,7 @@
 struct ImDrawList;
 
 namespace RTBEngine {
-	namespace ECS {
+	namespace Scene {
 		class Scene;
 		class GameObject;
 	}
@@ -33,7 +33,7 @@ namespace RTBEngine {
 			CanvasSystem(const CanvasSystem&) = delete;
 			CanvasSystem& operator=(const CanvasSystem&) = delete;
 
-			void Update(ECS::Scene* scene);
+			void Update(Scene::Scene* scene);
 			void UpdateAllRectTransforms(const Math::Vector2& screenSize);
 			void ProcessInput(const Math::Vector2& mousePos);
 			void RenderWorldSpace(Rendering::Camera* camera);
@@ -42,26 +42,26 @@ namespace RTBEngine {
 			void ClearState();
 
 			Math::Vector2 GetScreenSize() const { return screenSize; }
-			std::vector<Math::Vector4> GetRaycastRectsForGameObject(ECS::GameObject* gameObject) const;
+			std::vector<Math::Vector4> GetRaycastRectsForGameObject(Scene::GameObject* gameObject) const;
 
 		private:
 			CanvasSystem() = default;
 			~CanvasSystem() = default;
 
-			bool IsGameObjectAlive(ECS::GameObject* gameObject) const;
+			bool IsGameObjectAlive(Scene::GameObject* gameObject) const;
 			UIElement* GetElementUnderMouse(const Math::Vector2& mousePos);
 			bool IsPointInRect(const Math::Vector2& point, const Math::Vector4& rect);
 
 			template<typename THandler, typename TCallback>
-			void ExecuteEvents(ECS::GameObject* target, const PointerEventData& eventData, TCallback callback);
+			void ExecuteEvents(Scene::GameObject* target, const PointerEventData& eventData, TCallback callback);
 
 			Math::Vector2 screenSize;
 			std::vector<Canvas*> activeCanvases;
-			ECS::Scene* activeScene = nullptr;
+			Scene::Scene* activeScene = nullptr;
 
-			ECS::GameObject* hoveredGameObject = nullptr;
-			ECS::GameObject* pressedGameObject = nullptr;
-			ECS::GameObject* draggingGameObject = nullptr;
+			Scene::GameObject* hoveredGameObject = nullptr;
+			Scene::GameObject* pressedGameObject = nullptr;
+			Scene::GameObject* draggingGameObject = nullptr;
 		};
 #pragma warning(pop)
 

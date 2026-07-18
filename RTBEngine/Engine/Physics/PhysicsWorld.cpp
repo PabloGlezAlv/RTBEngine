@@ -71,19 +71,19 @@ namespace {
         gPhysicsDebugQueries.push_back(entry);
     }
 
-    RTBEngine::ECS::GameObject* ResolveHitGameObject(const btCollisionObject* collisionObject)
+    RTBEngine::Scene::GameObject* ResolveHitGameObject(const btCollisionObject* collisionObject)
     {
         if (!collisionObject) {
             return nullptr;
         }
 
-        return static_cast<RTBEngine::ECS::GameObject*>(collisionObject->getUserPointer());
+        return static_cast<RTBEngine::Scene::GameObject*>(collisionObject->getUserPointer());
     }
 
-    bool IsSameOrDescendant(const RTBEngine::ECS::GameObject* candidate,
-                            const RTBEngine::ECS::GameObject* root)
+    bool IsSameOrDescendant(const RTBEngine::Scene::GameObject* candidate,
+                            const RTBEngine::Scene::GameObject* root)
     {
-        for (const RTBEngine::ECS::GameObject* current = candidate; current; current = current->GetParent()) {
+        for (const RTBEngine::Scene::GameObject* current = candidate; current; current = current->GetParent()) {
             if (current == root) {
                 return true;
             }
@@ -108,7 +108,7 @@ namespace {
             return false;
         }
 
-        RTBEngine::ECS::GameObject* hitGameObject = ResolveHitGameObject(collisionObject);
+        RTBEngine::Scene::GameObject* hitGameObject = ResolveHitGameObject(collisionObject);
         if (!hitGameObject) {
             return false;
         }
@@ -187,7 +187,7 @@ namespace {
             seenGameObjects.reserve(count);
         }
 
-        void MarkSeen(RTBEngine::ECS::GameObject* gameObject)
+        void MarkSeen(RTBEngine::Scene::GameObject* gameObject)
         {
             if (gameObject) {
                 seenGameObjects.insert(gameObject);
@@ -220,7 +220,7 @@ namespace {
                 return 0.0f;
             }
 
-            RTBEngine::ECS::GameObject* gameObject = ResolveHitGameObject(hitObject);
+            RTBEngine::Scene::GameObject* gameObject = ResolveHitGameObject(hitObject);
             if (!gameObject || seenGameObjects.find(gameObject) != seenGameObjects.end()) {
                 return 0.0f;
             }
@@ -243,7 +243,7 @@ namespace {
         const btCollisionObject* queryObject = nullptr;
         RTBEngine::Math::Vector3 referencePoint;
         RTBEngine::Physics::PhysicsQueryOptions options;
-        std::unordered_set<RTBEngine::ECS::GameObject*> seenGameObjects;
+        std::unordered_set<RTBEngine::Scene::GameObject*> seenGameObjects;
     };
 
     class AllHitsConvexResultIgnoringObject final : public btCollisionWorld::ConvexResultCallback {
@@ -274,7 +274,7 @@ namespace {
                 return 1.0f;
             }
 
-            RTBEngine::ECS::GameObject* gameObject = ResolveHitGameObject(hitObject);
+            RTBEngine::Scene::GameObject* gameObject = ResolveHitGameObject(hitObject);
             if (!gameObject || seenGameObjects.find(gameObject) != seenGameObjects.end()) {
                 return 1.0f;
             }
@@ -298,7 +298,7 @@ namespace {
         RTBEngine::Math::Vector3 referencePoint;
         float segmentLength = 0.0f;
         RTBEngine::Physics::PhysicsQueryOptions options;
-        std::unordered_set<RTBEngine::ECS::GameObject*> seenGameObjects;
+        std::unordered_set<RTBEngine::Scene::GameObject*> seenGameObjects;
     };
 
     void ConfigureOverlapQueryObject(btCollisionObject& queryObject,

@@ -22,7 +22,7 @@ namespace RTBEngine {
                     return true;
                 }
 
-                if (auto* rigidBody = hit.gameObject->GetComponent<ECS::RigidBodyComponent>()) {
+                if (auto* rigidBody = hit.gameObject->GetComponent<Scene::RigidBodyComponent>()) {
                     if (rigidBody->GetRigidBody()) {
                         return rigidBody->GetRigidBody()->GetType() == Physics::RigidBodyType::Static;
                     }
@@ -57,7 +57,7 @@ namespace RTBEngine {
                 return true;
             }
 
-            Physics::PhysicsQueryOptions MakeQueryOptions(const ECS::GameObject* ignoredObject)
+            Physics::PhysicsQueryOptions MakeQueryOptions(const Scene::GameObject* ignoredObject)
             {
                 Physics::PhysicsQueryOptions options;
                 options.ignoredObject = ignoredObject;
@@ -94,7 +94,7 @@ namespace RTBEngine {
                                         const Math::Vector3& feetPosition,
                                         float agentRadius,
                                         float clearanceHeight,
-                                        const ECS::GameObject* ignoredGround)
+                                        const Scene::GameObject* ignoredGround)
             {
                 // Vertical ray from feet to clearanceHeight — low ceilings mark the cell blocked.
                 const Math::Vector3 start(
@@ -117,7 +117,7 @@ namespace RTBEngine {
             bool HasHorizontalObstruction(Physics::PhysicsWorld& physicsWorld,
                                           const Math::Vector3& agentCenter,
                                           float agentRadius,
-                                          const ECS::GameObject* ignoredGround)
+                                          const Scene::GameObject* ignoredGround)
             {
                 // Eight horizontal rays at agent height, length = agentRadius.
                 static const std::array<Math::Vector3, kHorizontalDirectionCount> directions = {{

@@ -11,19 +11,19 @@
 #include <algorithm>
 
 namespace {
-    void SetHierarchyActive(RTBEngine::ECS::GameObject* root, bool active)
+    void SetHierarchyActive(RTBEngine::Scene::GameObject* root, bool active)
     {
         if (!root) {
             return;
         }
 
         root->SetActive(active);
-        for (RTBEngine::ECS::GameObject* child : root->GetChildren()) {
+        for (RTBEngine::Scene::GameObject* child : root->GetChildren()) {
             SetHierarchyActive(child, active);
         }
     }
 
-    void InvokePoolableCallbacks(RTBEngine::ECS::GameObject* root, bool acquire)
+    void InvokePoolableCallbacks(RTBEngine::Scene::GameObject* root, bool acquire)
     {
         if (!root) {
             return;
@@ -34,7 +34,7 @@ namespace {
                 continue;
             }
 
-            if (auto* poolable = dynamic_cast<RTBEngine::ECS::IPoolable*>(component.get())) {
+            if (auto* poolable = dynamic_cast<RTBEngine::Scene::IPoolable*>(component.get())) {
                 if (acquire) {
                     poolable->OnPoolAcquire();
                 } else {
@@ -43,21 +43,21 @@ namespace {
             }
         }
 
-        for (RTBEngine::ECS::GameObject* child : root->GetChildren()) {
+        for (RTBEngine::Scene::GameObject* child : root->GetChildren()) {
             InvokePoolableCallbacks(child, acquire);
         }
     }
 
-    const RTBEngine::ECS::Prefab* ResolvePrefab(const std::string& prefabPath)
+    const RTBEngine::Scene::Prefab* ResolvePrefab(const std::string& prefabPath)
     {
         if (prefabPath.empty()) {
             return nullptr;
         }
 
-        const RTBEngine::ECS::Prefab* prefab =
-            RTBEngine::ECS::PrefabRegistry::GetInstance().GetByPath(prefabPath);
+        const RTBEngine::Scene::Prefab* prefab =
+            RTBEngine::Scene::PrefabRegistry::GetInstance().GetByPath(prefabPath);
         if (!prefab) {
-            prefab = RTBEngine::ECS::PrefabRegistry::GetInstance().Get(prefabPath);
+            prefab = RTBEngine::Scene::PrefabRegistry::GetInstance().Get(prefabPath);
         }
 
         return prefab;
@@ -65,7 +65,7 @@ namespace {
 }
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         ObjectPool& ObjectPool::GetInstance()
         {
@@ -303,5 +303,5 @@ namespace RTBEngine {
             return instance && instanceRecords.find(instance) != instanceRecords.end();
         }
 
-    } // namespace ECS
+    } // namespace Scene
 } // namespace RTBEngine

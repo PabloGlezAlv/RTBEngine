@@ -3,7 +3,7 @@
 #include "../Math/Math.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         class GameObject;
 

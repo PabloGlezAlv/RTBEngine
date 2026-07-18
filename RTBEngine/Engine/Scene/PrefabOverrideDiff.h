@@ -6,7 +6,7 @@
 #include <vector>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         class GameObject;
         class Component;

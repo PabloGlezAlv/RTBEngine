@@ -1,8 +1,8 @@
 # RTBEngine
 
-A 3D game engine written in **C++17**, compiled as `RTBEngine.dll` with an import library (`RTBEngine.lib`). RTBEngine provides a complete set of subsystems for building games and interactive real-time applications on Windows: a **GameObject–Component** architecture (Unity-style OOP components, not data-oriented ECS), OpenGL rendering with shadow mapping, Bullet-based rigid-body physics, FMOD spatial audio, SDL2 input, skeletal animation, Lua-based scene serialization, a macro-driven reflection system, and an ImGui-compatible UI framework.
+A 3D game engine written in **C++17**, compiled as `RTBEngine.dll` with an import library (`RTBEngine.lib`). RTBEngine provides a complete set of subsystems for building games and interactive real-time applications on Windows: a **hybrid GameObject–Component + ECS** architecture, OpenGL rendering with shadow mapping, Bullet-based rigid-body physics, FMOD spatial audio, SDL2 input, skeletal animation, Lua-based scene serialization, a macro-driven reflection system, and an ImGui-compatible UI framework.
 
-> **Note:** The scene/component layer lives in `Engine/Scene/`. The namespace `RTBEngine::ECS` is a legacy name (to be renamed). The engine does **not** implement a data-oriented Entity-Component-System today. Hybrid ECS support for high-volume simulation (particles, projectiles, crowds) is planned for a future release alongside the existing GameObject model.
+> **Note:** Authoring uses `RTBEngine::Scene` (`Engine/Scene/`). Dense simulation uses **`RTBEngine::ECS`** (`Engine/ECS/`): hybrid ECS with sparse-set storage. Projectiles are the first vertical slice; GameObjects remain the editor/scripting surface.
 
 **Version:** `0.8.0` — see [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -375,7 +375,7 @@ RTBEngine is organized around three concepts:
 2. **Scene / SceneManager** — manages the active collection of `GameObject` instances. Scene loading now goes through deferred requests so the active scene can be replaced at a safe point without leaving subsystems half torn down.
 3. **Component** — the unit of behavior. Every distinct feature of a `GameObject` (rendering, physics, audio, scripts) is a `Component`. Components interact through their owner `GameObject` and the global singleton subsystems.
 
-This is a **GameObject–Component** model: each `GameObject` owns a `Transform`, a hierarchy, and a list of polymorphic `Component` instances with lifecycle hooks. It is **not** a data-oriented ECS (no entity IDs, archetypes, or SoA component storage). Future work may add an optional simulation layer (hybrid ECS) for performance-critical subsystems while keeping GameObjects as the authoring and scripting surface.
+This is a **hybrid** model: `RTBEngine::Scene` for authoring (GameObject–Component OOP) and `RTBEngine::ECS` for dense simulation (sparse-set World, SoA component storage). Projectiles use ECS for flight; visuals and combat callbacks stay on pooled Scene GameObjects.
 
 ### Main Loop
 
@@ -492,8 +492,8 @@ static void ClearQuitRequest();
 
 ```cpp
 void Render();
-void RenderShadowPass(ECS::Scene* scene);
-void RenderGeometryPass(ECS::Scene* scene, Rendering::Camera* camera);
+void RenderShadowPass(Scene::Scene* scene);
+void RenderGeometryPass(Scene::Scene* scene, Rendering::Camera* camera);
 ```
 
 `Render()` orchestrates:
@@ -513,7 +513,7 @@ void RenderGeometryPass(ECS::Scene* scene, Rendering::Camera* camera);
 **Physics helpers:**
 
 ```cpp
-void InitializePhysicsForScene(ECS::Scene* scene);
+void InitializePhysicsForScene(Scene::Scene* scene);
 void ResetPhysics();
 ```
 
@@ -524,11 +524,11 @@ void ResetPhysics();
 **Scene load callbacks (registered in Initialize):**
 
 ```cpp
-sceneMgr.SetOnSceneUnloading([this](ECS::Scene*) {
+sceneMgr.SetOnSceneUnloading([this](Scene::Scene*) {
     ResetPhysics();   // ← fires first, while GameObjects still exist
 });
 
-sceneMgr.SetOnSceneLoaded([this](ECS::Scene* scene) {
+sceneMgr.SetOnSceneLoaded([this](Scene::Scene* scene) {
     InitializePhysicsForScene(scene);   // ← fires after scene is populated
     if (auto* cam = scene->GetActiveCamera())
         cam->SetAspectRatio((float)config.width / config.height);
@@ -761,7 +761,7 @@ void Clear();        // Destroy all cached assets
 
 ## 6. Scene & Components Subsystem
 
-The scene layer lives under `Engine/Scene/`. Public API types are in namespace `RTBEngine::ECS` (legacy name, to be renamed). Symbols such as `ECS::GameObject` and `ECS::Scene` refer to this GameObject–Component layer — not to a data-oriented ECS registry.
+The scene layer lives under `Engine/Scene/` (`RTBEngine::Scene`). The ECS simulation layer lives under `Engine/ECS/` (`RTBEngine::ECS`).
 
 ### 6.1 Component
 
@@ -811,8 +811,8 @@ These are overridden by the `RTB_COMPONENT(ClassName)` macro. Non-reflected comp
 **Owner and enable state:**
 
 ```cpp
-void           SetOwner(ECS::GameObject* owner);
-ECS::GameObject* GetOwner() const;
+void           SetOwner(Scene::GameObject* owner);
+Scene::GameObject* GetOwner() const;
 
 void SetEnabled(bool enabled);
 bool IsEnabled() const;
@@ -1084,14 +1084,14 @@ void UnloadCurrentScene();
 
 ```cpp
 bool         HasActiveScene()     const;
-ECS::Scene*  GetActiveScene()     const;   // Returns nullptr if no scene loaded
+Scene::Scene*  GetActiveScene()     const;   // Returns nullptr if no scene loaded
 const std::string& GetActiveScenePath() const;
 ```
 
 **Callbacks:**
 
 ```cpp
-using SceneCallback = std::function<void(ECS::Scene*)>;
+using SceneCallback = std::function<void(Scene::Scene*)>;
 void SetOnSceneLoaded(SceneCallback callback);
 void SetOnSceneUnloading(SceneCallback callback);
 ```
@@ -1112,7 +1112,7 @@ Dirty state is automatically set when scene content is modified through the edit
 
 ```cpp
 GameObject* Instantiate(const std::string& name = "GameObject", GameObject* parent = nullptr);
-GameObject* Instantiate(const ECS::Prefab& prefab, GameObject* parent = nullptr);
+GameObject* Instantiate(const Scene::Prefab& prefab, GameObject* parent = nullptr);
 ```
 
 `Instantiate` creates a new `GameObject` in the active scene. The second overload uses a `Prefab` to create a fully configured copy with all component snapshots applied.
@@ -2344,7 +2344,7 @@ For each mesh in `modelData`, creates or reuses a `Material` based on the FBX ma
 **Hierarchy builder:**
 
 ```cpp
-ECS::GameObject* BuildFbxHierarchy(ECS::Scene* scene,
+Scene::GameObject* BuildFbxHierarchy(Scene::Scene* scene,
                                     const ModelData& modelData,
                                     const std::string& fbxPath,
                                     Core::ResourceManager& resources);
@@ -2457,8 +2457,8 @@ Math::Quaternion GetRotation() const;
 **Owner:**
 
 ```cpp
-void             SetOwner(ECS::GameObject* owner);
-ECS::GameObject* GetOwner() const;
+void             SetOwner(Scene::GameObject* owner);
+Scene::GameObject* GetOwner() const;
 ```
 
 The owner pointer is stored in the `btRigidBody::setUserPointer()` field so that `PhysicsSystem` can retrieve the `GameObject` from a Bullet collision pair.
@@ -2510,8 +2510,8 @@ Creates a `btSphereShape(radius)`.
 `Engine/Physics/PhysicsSystem.h` — Per-scene update system. Called from `Application::Update`.
 
 ```cpp
-void Update(ECS::Scene* scene, float deltaTime);
-void InitializeCollider(ECS::GameObject* go, ECS::BoxColliderComponent* boxCollider);
+void Update(Scene::Scene* scene, float deltaTime);
+void InitializeCollider(Scene::GameObject* go, Scene::BoxColliderComponent* boxCollider);
 void Reset();
 ```
 
@@ -2535,8 +2535,8 @@ void Reset();
 
 ```cpp
 struct CollisionPair {
-    ECS::GameObject* a;
-    ECS::GameObject* b;
+    Scene::GameObject* a;
+    Scene::GameObject* b;
     bool operator<(const CollisionPair& other) const;
 };
 
@@ -2565,7 +2565,7 @@ At the end of each update, `previousCollisions` = `activeCollisions`. Next frame
 
 ```cpp
 struct CollisionInfo {
-    ECS::GameObject* other;          // The other object in the collision
+    Scene::GameObject* other;          // The other object in the collision
     Math::Vector3    contactPoint;   // World-space contact position
     Math::Vector3    contactNormal;  // Normal pointing from other toward self
     float            penetrationDepth;
@@ -2895,7 +2895,7 @@ bool ShouldSkinMesh() const;
 void SetSkeleton(std::shared_ptr<Skeleton> skel);
 Skeleton* GetSkeleton() const;
 void SetMeshes(const std::vector<Rendering::Mesh*>& loadedMeshes);
-void CreateBoneGameObjects(ECS::Scene* scene);
+void CreateBoneGameObjects(Scene::Scene* scene);
 void SyncBoneGameObjects();
 ```
 
@@ -3132,8 +3132,8 @@ struct PropertyInfo {
     void* GetMutableData(void* objectBase) const;
     const void* GetData(const void* objectBase) const;
 
-    void* GetMutableData(ECS::Component* component) const;
-    const void* GetData(const ECS::Component* component) const;
+    void* GetMutableData(Scene::Component* component) const;
+    const void* GetData(const Scene::Component* component) const;
 };
 ```
 
@@ -3166,15 +3166,15 @@ For typed asset references, `assetType` tells editor tooling which logical asset
 ```cpp
 class TypeInfo {
 public:
-    using FactoryFunc = ECS::Component*(*)(void* context);
-    using DestroyFunc = void(*)(ECS::Component*, void* context);
+    using FactoryFunc = Scene::Component*(*)(void* context);
+    using DestroyFunc = void(*)(Scene::Component*, void* context);
 
     TypeInfo() = default;
     TypeInfo(const char* typeName, FactoryFunc factory = nullptr);
 
     // Component creation/destruction (ABI-safe across DLL boundaries):
-    ECS::Component* Create() const;
-    void Destroy(ECS::Component* c) const;
+    Scene::Component* Create() const;
+    void Destroy(Scene::Component* c) const;
     void SetFactory(FactoryFunc fn, void* ctx);
     void SetDestroyer(DestroyFunc fn, void* ctx);
 
@@ -3206,7 +3206,7 @@ void RegisterType(const std::string& typeName, const TypeInfo& info);
 void UnregisterType(const std::string& typeName);
 bool HasType(const std::string& typeName) const;
 const TypeInfo* GetTypeInfo(const std::string& typeName) const;
-ECS::Component* CreateComponent(const std::string& name) const;
+Scene::Component* CreateComponent(const std::string& name) const;
 
 std::vector<std::string> GetRegisteredTypes() const;
 void ForEachType(void(*callback)(const char* typeName, const TypeInfo* info, void* userData), void* userData) const;
@@ -3440,8 +3440,8 @@ Template specializations for `MakePropertyInfo` are provided for `Vector2`, `Vec
 static ComponentRegistry& GetInstance();
 
 void             RegisterComponent(const std::string& typeName,
-                                   std::function<ECS::Component*()> factory);
-ECS::Component*  CreateComponent(const std::string& typeName) const;
+                                   std::function<Scene::Component*()> factory);
+Scene::Component*  CreateComponent(const std::string& typeName) const;
 bool             HasComponent(const std::string& typeName) const;
 
 // Resolve the registered TypeInfo for a type name (queries TypeRegistry):
@@ -3449,7 +3449,7 @@ const Reflection::TypeInfo* GetComponentTypeInfo(const std::string& typeName) co
 
 // Destroy a component through its registered TypeInfo Destroy function.
 // Use instead of raw delete to keep allocation/deallocation in the same module:
-void DestroyComponent(const std::string& typeName, ECS::Component* component) const;
+void DestroyComponent(const std::string& typeName, Scene::Component* component) const;
 
 void RegisterBuiltInComponents();   // Called by Application::Initialize()
 ```
@@ -3460,7 +3460,7 @@ Script DLLs typically register through `RTB_REGISTER_COMPONENT` static initializ
 
 ### 15.2 SceneLoader
 
-`Engine/Scripting/SceneLoader.h` — Reads `.lua` scene files and populates an `ECS::Scene`.
+`Engine/Scripting/SceneLoader.h` — Reads `.lua` scene files and populates an `Scene::Scene`.
 
 Scene files use a Lua table format:
 
@@ -3614,7 +3614,7 @@ This keeps lifetime, allocation, callback destruction, and captured state in one
 **Recommended ownership pattern for scripts:**
 
 ```cpp
-class MyComponent : public RTBEngine::ECS::Component {
+class MyComponent : public RTBEngine::Scene::Component {
 public:
     void OnUpdate(float deltaTime) override
     {
@@ -3663,7 +3663,7 @@ This is what removes the old "every frame, keep lerping toward a target forever"
 class PrefabLoader {
 public:
     PrefabLoader() = delete;
-    static std::unique_ptr<ECS::Prefab> Load(const std::string& filePath);
+    static std::unique_ptr<Scene::Prefab> Load(const std::string& filePath);
 };
 ```
 
@@ -3677,7 +3677,7 @@ Reads a `.lua` prefab file and constructs a `Prefab` with all component snapshot
 class PrefabSaver {
 public:
     PrefabSaver() = delete;
-    static bool Save(const ECS::Prefab& prefab, const std::string& filePath);
+    static bool Save(const Scene::Prefab& prefab, const std::string& filePath);
 };
 ```
 
@@ -3904,7 +3904,7 @@ Returns a cached list of all `UIElement` descendants. Rebuilt only when `GameObj
 ```cpp
 static CanvasSystem& GetInstance();
 
-void Update(ECS::Scene* scene);
+void Update(Scene::Scene* scene);
 void UpdateAllRectTransforms(const Math::Vector2& customScreenSize);
 void RenderToDrawList(ImDrawList* drawList,
                       const Math::Vector2& screenSize,
@@ -3913,7 +3913,7 @@ void RenderWorldSpace(Rendering::Camera* camera);
 void ClearState();
 
 void ProcessInput(const Math::Vector2& mousePos);
-std::vector<Math::Vector4> GetRaycastRectsForGameObject(ECS::GameObject* gameObject) const;
+std::vector<Math::Vector4> GetRaycastRectsForGameObject(Scene::GameObject* gameObject) const;
 ```
 
 `RenderToDrawList` is the screen-space path used by standalone runtime and the editor Game View overlay. It filters out `Canvas::WorldSpace` canvases so a world-space image is not duplicated as HUD.
@@ -4025,8 +4025,8 @@ Before rendering canvases to a framebuffer, call `Begin()` with the framebuffer'
 struct PointerEventData {
     Math::Vector2    position;       // Current pointer screen position
     Math::Vector2    delta;          // Movement since last event
-    ECS::GameObject* pointerEnter;   // Object currently under pointer
-    ECS::GameObject* pointerPress;   // Object that received the press event
+    Scene::GameObject* pointerEnter;   // Object currently under pointer
+    Scene::GameObject* pointerPress;   // Object that received the press event
     int              button = 0;     // Mouse button index
 };
 ```

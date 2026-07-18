@@ -189,7 +189,7 @@ namespace RTBEngine {
             }
         }
 
-        void PhysicsLayerSettings::ApplyToGameObject(ECS::GameObject* gameObject) const
+        void PhysicsLayerSettings::ApplyToGameObject(Scene::GameObject* gameObject) const
         {
             if (!gameObject) {
                 return;
@@ -208,11 +208,11 @@ namespace RTBEngine {
                 }
             };
 
-            applyFromCollider(gameObject->GetComponent<ECS::BoxColliderComponent>());
-            applyFromCollider(gameObject->GetComponent<ECS::SphereColliderComponent>());
-            applyFromCollider(gameObject->GetComponent<ECS::CapsuleColliderComponent>());
+            applyFromCollider(gameObject->GetComponent<Scene::BoxColliderComponent>());
+            applyFromCollider(gameObject->GetComponent<Scene::SphereColliderComponent>());
+            applyFromCollider(gameObject->GetComponent<Scene::CapsuleColliderComponent>());
 
-            if (ECS::RigidBodyComponent* rigidBodyComponent = gameObject->GetComponent<ECS::RigidBodyComponent>()) {
+            if (Scene::RigidBodyComponent* rigidBodyComponent = gameObject->GetComponent<Scene::RigidBodyComponent>()) {
                 if (RigidBody* rigidBody = rigidBodyComponent->GetRigidBody()) {
                     if (btRigidBody* bulletBody = rigidBody->GetBulletRigidBody()) {
                         ApplyToCollisionObject(bulletBody, layerIndex);

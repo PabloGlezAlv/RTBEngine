@@ -5,7 +5,7 @@
 #include <filesystem>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         PrefabRegistry& PrefabRegistry::GetInstance()
         {

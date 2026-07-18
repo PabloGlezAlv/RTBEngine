@@ -12,16 +12,16 @@ namespace RTBEngine {
 		}
 
 		void UIElement::PropagateDirtyToChildren() {
-			if (ECS::SceneManager::GetInstance().IsSceneUnloading()) {
+			if (Scene::SceneManager::GetInstance().IsSceneUnloading()) {
 				return;
 			}
 
-			ECS::GameObject* owner = GetOwner();
+			Scene::GameObject* owner = GetOwner();
 			if (!owner || owner->IsBeingDestroyed()) {
 				return;
 			}
 
-			for (ECS::GameObject* child : owner->GetChildren()) {
+			for (Scene::GameObject* child : owner->GetChildren()) {
 				if (!child || child->IsBeingDestroyed()) {
 					continue;
 				}
@@ -68,7 +68,7 @@ namespace RTBEngine {
 
 		void UIElement::SetScale(const Math::Vector2& value) {
 			rectTransform.SetScale(value);
-			if (ECS::SceneManager::GetInstance().IsSceneUnloading()) {
+			if (Scene::SceneManager::GetInstance().IsSceneUnloading()) {
 				return;
 			}
 			PropagateDirtyToChildren();
@@ -78,7 +78,7 @@ namespace RTBEngine {
 			rectTransform.SetDirty();
 		}
 
-		void UIElement::OnParentChanged(ECS::GameObject* oldParent, ECS::GameObject* newParent) {
+		void UIElement::OnParentChanged(Scene::GameObject* oldParent, Scene::GameObject* newParent) {
 			(void)oldParent;
 			(void)newParent;
 

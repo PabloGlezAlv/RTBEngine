@@ -64,7 +64,7 @@ namespace {
     }
 
     bool IsOccluderBlockingView(
-        RTBEngine::ECS::Occludable* occludable,
+        RTBEngine::Scene::Occludable* occludable,
         const RTBEngine::Math::Vector3& cameraPosition,
         const RTBEngine::Math::Vector3& focusPosition,
         float defaultBoundsPadding)
@@ -73,8 +73,8 @@ namespace {
             return false;
         }
 
-        RTBEngine::ECS::GameObject* owner = occludable->GetOwner();
-        RTBEngine::ECS::MeshRenderer* renderer = occludable->GetMeshRenderer();
+        RTBEngine::Scene::GameObject* owner = occludable->GetOwner();
+        RTBEngine::Scene::MeshRenderer* renderer = occludable->GetMeshRenderer();
         if (!owner || !renderer || !owner->IsActiveInHierarchy()) {
             return false;
         }
@@ -114,7 +114,7 @@ namespace {
             focusDistance);
     }
 
-    void ApplyFadeAlpha(RTBEngine::ECS::Occludable* occludable, float alpha)
+    void ApplyFadeAlpha(RTBEngine::Scene::Occludable* occludable, float alpha)
     {
         if (!occludable) {
             return;
@@ -123,7 +123,7 @@ namespace {
         const float clampedAlpha = std::clamp(alpha, 0.0f, 1.0f);
         occludable->SetCurrentFadeAlpha(clampedAlpha);
 
-        RTBEngine::ECS::MeshRenderer* renderer = occludable->GetMeshRenderer();
+        RTBEngine::Scene::MeshRenderer* renderer = occludable->GetMeshRenderer();
         if (renderer) {
             renderer->SetOcclusionFadeAlpha(clampedAlpha);
         }
@@ -131,7 +131,7 @@ namespace {
 }
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         void OcclusionFadeSystem::Update(Scene* scene, const OcclusionFadeSettings& settings, float deltaTime)
         {

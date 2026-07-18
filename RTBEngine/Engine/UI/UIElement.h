@@ -9,7 +9,7 @@ namespace RTBEngine {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
-		class RTB_API UIElement : public ECS::Component {
+		class RTB_API UIElement : public Scene::Component {
 		public:
 			UIElement();
 			virtual ~UIElement();
@@ -42,7 +42,7 @@ namespace RTBEngine {
 			Math::Vector2 GetScale() const { return rectTransform.GetScale(); }
 
 			virtual void OnAwake() override;
-			virtual void OnParentChanged(ECS::GameObject* oldParent, ECS::GameObject* newParent) override;
+			virtual void OnParentChanged(Scene::GameObject* oldParent, Scene::GameObject* newParent) override;
 
 			virtual const char* GetTypeName() const override = 0;
 

@@ -9,7 +9,7 @@
 #include <vector>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class GameObject;
 
 #pragma warning(push)
@@ -63,5 +63,5 @@ namespace RTBEngine {
         };
 #pragma warning(pop)
 
-    } // namespace ECS
+    } // namespace Scene
 } // namespace RTBEngine

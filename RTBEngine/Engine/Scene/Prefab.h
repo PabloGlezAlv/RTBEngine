@@ -14,7 +14,7 @@ namespace RTBEngine {
         struct PropertyInfo;
     }
 
-    namespace ECS {
+    namespace Scene {
 
         class GameObject;
         class Component;

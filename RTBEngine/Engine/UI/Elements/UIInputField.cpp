@@ -94,7 +94,7 @@ namespace RTBEngine {
 		}
 
 		void UIInputField::OnAwake() {
-			SetTimeMode(ECS::ComponentTimeMode::Unscaled);
+			SetTimeMode(Scene::ComponentTimeMode::Unscaled);
 			SetUpdateTickEnabled(false);
 		}
 

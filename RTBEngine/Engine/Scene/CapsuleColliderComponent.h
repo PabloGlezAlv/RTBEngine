@@ -15,7 +15,7 @@ namespace RTBEngine {
 class btCollisionObject;
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)

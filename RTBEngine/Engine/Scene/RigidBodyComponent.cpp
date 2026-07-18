@@ -22,19 +22,19 @@ namespace {
         collider->SetBulletCollisionObject(nullptr, false);
     }
 
-    void ClearDynamicColliderRefs(RTBEngine::ECS::GameObject* owner, btRigidBody* bulletBody)
+    void ClearDynamicColliderRefs(RTBEngine::Scene::GameObject* owner, btRigidBody* bulletBody)
     {
         if (!owner || !bulletBody) {
             return;
         }
 
-        ClearDynamicColliderRef(owner->GetComponent<RTBEngine::ECS::BoxColliderComponent>(), bulletBody);
-        ClearDynamicColliderRef(owner->GetComponent<RTBEngine::ECS::SphereColliderComponent>(), bulletBody);
-        ClearDynamicColliderRef(owner->GetComponent<RTBEngine::ECS::CapsuleColliderComponent>(), bulletBody);
+        ClearDynamicColliderRef(owner->GetComponent<RTBEngine::Scene::BoxColliderComponent>(), bulletBody);
+        ClearDynamicColliderRef(owner->GetComponent<RTBEngine::Scene::SphereColliderComponent>(), bulletBody);
+        ClearDynamicColliderRef(owner->GetComponent<RTBEngine::Scene::CapsuleColliderComponent>(), bulletBody);
     }
 
     RTBEngine::Physics::PhysicsWorld* ResolvePhysicsWorld(
-        RTBEngine::ECS::GameObject* owner,
+        RTBEngine::Scene::GameObject* owner,
         RTBEngine::Physics::RigidBody* rigidBody)
     {
         if (rigidBody && rigidBody->GetPhysicsWorld()) {
@@ -45,19 +45,19 @@ namespace {
             return nullptr;
         }
 
-        if (auto* boxCollider = owner->GetComponent<RTBEngine::ECS::BoxColliderComponent>()) {
+        if (auto* boxCollider = owner->GetComponent<RTBEngine::Scene::BoxColliderComponent>()) {
             if (boxCollider->GetPhysicsWorld()) {
                 return boxCollider->GetPhysicsWorld();
             }
         }
 
-        if (auto* sphereCollider = owner->GetComponent<RTBEngine::ECS::SphereColliderComponent>()) {
+        if (auto* sphereCollider = owner->GetComponent<RTBEngine::Scene::SphereColliderComponent>()) {
             if (sphereCollider->GetPhysicsWorld()) {
                 return sphereCollider->GetPhysicsWorld();
             }
         }
 
-        if (auto* capsuleCollider = owner->GetComponent<RTBEngine::ECS::CapsuleColliderComponent>()) {
+        if (auto* capsuleCollider = owner->GetComponent<RTBEngine::Scene::CapsuleColliderComponent>()) {
             if (capsuleCollider->GetPhysicsWorld()) {
                 return capsuleCollider->GetPhysicsWorld();
             }
@@ -66,7 +66,7 @@ namespace {
         return nullptr;
     }
 
-    btTransform BuildColliderTransform(RTBEngine::ECS::GameObject* owner, const RTBEngine::Math::Vector3& centerOffset)
+    btTransform BuildColliderTransform(RTBEngine::Scene::GameObject* owner, const RTBEngine::Math::Vector3& centerOffset)
     {
         btTransform btTrans;
         btTrans.setIdentity();
@@ -75,7 +75,7 @@ namespace {
             return btTrans;
         }
 
-        RTBEngine::ECS::Transform& transform = owner->GetTransform();
+        RTBEngine::Scene::Transform& transform = owner->GetTransform();
         const RTBEngine::Math::Quaternion rotation = transform.GetRotation();
         const RTBEngine::Math::Vector3 worldCenter = transform.GetPosition() + (rotation * centerOffset);
 
@@ -86,7 +86,7 @@ namespace {
 
     template <typename ColliderComponent, typename ColliderType>
     bool RegisterStaticCollider(
-        RTBEngine::ECS::GameObject* owner,
+        RTBEngine::Scene::GameObject* owner,
         ColliderComponent* component,
         ColliderType* collider,
         RTBEngine::Physics::PhysicsWorld* physicsWorld)
@@ -121,22 +121,22 @@ namespace {
     }
 
     bool RegisterRemainingColliderAsStatic(
-        RTBEngine::ECS::GameObject* owner,
+        RTBEngine::Scene::GameObject* owner,
         RTBEngine::Physics::PhysicsWorld* physicsWorld)
     {
         if (!owner || !physicsWorld) {
             return false;
         }
 
-        if (auto* boxCollider = owner->GetComponent<RTBEngine::ECS::BoxColliderComponent>()) {
+        if (auto* boxCollider = owner->GetComponent<RTBEngine::Scene::BoxColliderComponent>()) {
             return RegisterStaticCollider(owner, boxCollider, boxCollider->GetBoxCollider(), physicsWorld);
         }
 
-        if (auto* sphereCollider = owner->GetComponent<RTBEngine::ECS::SphereColliderComponent>()) {
+        if (auto* sphereCollider = owner->GetComponent<RTBEngine::Scene::SphereColliderComponent>()) {
             return RegisterStaticCollider(owner, sphereCollider, sphereCollider->GetSphereCollider(), physicsWorld);
         }
 
-        if (auto* capsuleCollider = owner->GetComponent<RTBEngine::ECS::CapsuleColliderComponent>()) {
+        if (auto* capsuleCollider = owner->GetComponent<RTBEngine::Scene::CapsuleColliderComponent>()) {
             return RegisterStaticCollider(owner, capsuleCollider, capsuleCollider->GetCapsuleCollider(), physicsWorld);
         }
 
@@ -145,7 +145,7 @@ namespace {
 }
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         using ThisClass = RigidBodyComponent;
         RTB_REGISTER_COMPONENT(RigidBodyComponent)

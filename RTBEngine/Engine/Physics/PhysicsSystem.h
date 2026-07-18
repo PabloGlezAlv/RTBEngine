@@ -20,8 +20,8 @@ namespace RTBEngine {
         struct CollisionPair {
 
             CollisionPair() = default;
-            ECS::GameObject* objectA;
-            ECS::GameObject* objectB;
+            Scene::GameObject* objectA;
+            Scene::GameObject* objectB;
             bool isTrigger;
 
             bool operator<(const CollisionPair& other) const {
@@ -42,11 +42,11 @@ namespace RTBEngine {
             PhysicsSystem(PhysicsWorld* physicsWorld);
             ~PhysicsSystem();
 
-            void Update(ECS::Scene* scene, float deltaTime);
-            void SyncRenderTransforms(ECS::Scene* scene, float interpolationAlpha);
-            void InitializeCollider(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider);
-            void InitializeCollider(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider);
-            void InitializeCollider(ECS::GameObject* gameObject, ECS::CapsuleColliderComponent* capsuleCollider);
+            void Update(Scene::Scene* scene, float deltaTime);
+            void SyncRenderTransforms(Scene::Scene* scene, float interpolationAlpha);
+            void InitializeCollider(Scene::GameObject* gameObject, Scene::BoxColliderComponent* boxCollider);
+            void InitializeCollider(Scene::GameObject* gameObject, Scene::SphereColliderComponent* sphereCollider);
+            void InitializeCollider(Scene::GameObject* gameObject, Scene::CapsuleColliderComponent* capsuleCollider);
             void Reset();
 
         private:
@@ -54,20 +54,20 @@ namespace RTBEngine {
             std::set<CollisionPair> currentCollisions;
             PhysicsWorld* physicsWorld;
 
-            void InitializeStaticCollider(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider);
-            void InitializeDynamicBody(ECS::GameObject* gameObject, ECS::BoxColliderComponent* boxCollider, ECS::RigidBodyComponent* rbComp);
+            void InitializeStaticCollider(Scene::GameObject* gameObject, Scene::BoxColliderComponent* boxCollider);
+            void InitializeDynamicBody(Scene::GameObject* gameObject, Scene::BoxColliderComponent* boxCollider, Scene::RigidBodyComponent* rbComp);
 
-            void InitializeStaticCollider(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider);
-            void InitializeDynamicBody(ECS::GameObject* gameObject, ECS::SphereColliderComponent* sphereCollider, ECS::RigidBodyComponent* rbComp);
+            void InitializeStaticCollider(Scene::GameObject* gameObject, Scene::SphereColliderComponent* sphereCollider);
+            void InitializeDynamicBody(Scene::GameObject* gameObject, Scene::SphereColliderComponent* sphereCollider, Scene::RigidBodyComponent* rbComp);
 
-            void InitializeStaticCollider(ECS::GameObject* gameObject, ECS::CapsuleColliderComponent* capsuleCollider);
-            void InitializeDynamicBody(ECS::GameObject* gameObject, ECS::CapsuleColliderComponent* capsuleCollider, ECS::RigidBodyComponent* rbComp);
+            void InitializeStaticCollider(Scene::GameObject* gameObject, Scene::CapsuleColliderComponent* capsuleCollider);
+            void InitializeDynamicBody(Scene::GameObject* gameObject, Scene::CapsuleColliderComponent* capsuleCollider, Scene::RigidBodyComponent* rbComp);
 
-            void SyncTransformsToPhysics(ECS::Scene* scene);
-            void SyncPhysicsToTransforms(ECS::Scene* scene, float interpolationAlpha);
+            void SyncTransformsToPhysics(Scene::Scene* scene);
+            void SyncPhysicsToTransforms(Scene::Scene* scene, float interpolationAlpha);
 
             void ProcessCollisions();
-            void NotifyCallbacks(ECS::GameObject* object, const CollisionInfo& info, bool isTrigger, CollisionState state);
+            void NotifyCallbacks(Scene::GameObject* object, const CollisionInfo& info, bool isTrigger, CollisionState state);
         };
 #pragma warning(pop)
 

@@ -14,7 +14,7 @@ namespace RTBEngine {
         class Animator;
     }
 
-    namespace ECS {
+    namespace Scene {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)

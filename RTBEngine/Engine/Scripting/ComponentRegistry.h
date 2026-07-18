@@ -9,7 +9,7 @@ namespace RTBEngine {
         class TypeInfo;
     }
 
-    namespace ECS {
+    namespace Scene {
         class Component;
     }
 }
@@ -27,16 +27,16 @@ namespace RTBEngine {
 
             // Register a component factory
             void RegisterComponent(const std::string& typeName,
-                std::function<ECS::Component* ()> factory);
+                std::function<Scene::Component* ()> factory);
 
             // Create a component by type name
-            ECS::Component* CreateComponent(const std::string& typeName);
+            Scene::Component* CreateComponent(const std::string& typeName);
 
             // Resolve the registered reflection metadata for a component type name.
             const Reflection::TypeInfo* GetComponentTypeInfo(const std::string& typeName) const;
 
             // Destroy a component using the correct module/heap for its registered type.
-            void DestroyComponent(const std::string& typeName, ECS::Component* component) const;
+            void DestroyComponent(const std::string& typeName, Scene::Component* component) const;
 
             // Check if a component type is registered
             bool HasComponent(const std::string& typeName) const;
@@ -51,7 +51,7 @@ namespace RTBEngine {
             ComponentRegistry(const ComponentRegistry&) = delete;
             ComponentRegistry& operator=(const ComponentRegistry&) = delete;
 
-            std::unordered_map<std::string, std::function<ECS::Component* ()>> factories;
+            std::unordered_map<std::string, std::function<Scene::Component* ()>> factories;
         };
         #pragma warning(pop)
 

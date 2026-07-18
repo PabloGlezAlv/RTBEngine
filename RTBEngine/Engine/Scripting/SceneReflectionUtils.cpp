@@ -25,7 +25,7 @@ namespace RTBEngine {
                 *reinterpret_cast<T*>(dst) = value;
             }
 
-            static const Reflection::TypeInfo* ResolveComponentTypeInfo(const char* componentTypeName, ECS::Component* component) {
+            static const Reflection::TypeInfo* ResolveComponentTypeInfo(const char* componentTypeName, Scene::Component* component) {
                 if (componentTypeName && componentTypeName[0] != '\0') {
                     const Reflection::TypeInfo* registeredType =
                         Reflection::TypeRegistry::GetInstance().GetTypeInfo(componentTypeName);
@@ -40,7 +40,7 @@ namespace RTBEngine {
                 return component ? component->GetTypeInfo() : nullptr;
             }
 
-            void ApplyLuaTableToComponent(lua_State* L, int tableIndex, const char* componentTypeName, ECS::Component* component) {
+            void ApplyLuaTableToComponent(lua_State* L, int tableIndex, const char* componentTypeName, Scene::Component* component) {
                 if (!component) {
                     return;
                 }
@@ -282,11 +282,11 @@ namespace RTBEngine {
                 }
             }
 
-            void ApplyLuaTableToComponent(lua_State* L, int tableIndex, ECS::Component* component) {
+            void ApplyLuaTableToComponent(lua_State* L, int tableIndex, Scene::Component* component) {
                 ApplyLuaTableToComponent(L, tableIndex, component ? component->GetTypeName() : nullptr, component);
             }
 
-            void ClearReferenceProperties(ECS::Component* component, const Reflection::TypeInfo* typeInfoOverride)
+            void ClearReferenceProperties(Scene::Component* component, const Reflection::TypeInfo* typeInfoOverride)
             {
                 const Reflection::TypeInfo* typeInfo = typeInfoOverride;
                 if (!typeInfo && component) {
@@ -313,9 +313,9 @@ namespace RTBEngine {
                     }
 
                     if (prop->type == PropertyType::GameObjectRef) {
-                        *static_cast<ECS::GameObject**>(data) = nullptr;
+                        *static_cast<Scene::GameObject**>(data) = nullptr;
                     } else if (prop->type == PropertyType::ComponentRef) {
-                        *static_cast<ECS::Component**>(data) = nullptr;
+                        *static_cast<Scene::Component**>(data) = nullptr;
                     } else if (prop->type == PropertyType::List) {
                         switch (prop->listElementType) {
                         case ListElementType::GameObjectRef: {

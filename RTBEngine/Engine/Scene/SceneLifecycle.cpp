@@ -8,7 +8,7 @@
 #include <unordered_set>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         namespace {
 

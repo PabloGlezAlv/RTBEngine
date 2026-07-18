@@ -21,7 +21,7 @@ namespace RTBEngine {
         }
 
         void Scheduler::TrackHandle(
-            ECS::Component* owner,
+            Scene::Component* owner,
             Scripting::LatentActionHandle handle,
             bool useUnscaledTime)
         {
@@ -44,7 +44,7 @@ namespace RTBEngine {
         }
 
         Scripting::LatentActionHandle Scheduler::StartSequence(
-            ECS::Component* owner,
+            Scene::Component* owner,
             Scripting::LatentSequence sequence,
             bool useUnscaledTime)
         {
@@ -58,7 +58,7 @@ namespace RTBEngine {
         }
 
         Scripting::LatentActionHandle Scheduler::ScheduleOnce(
-            ECS::Component* owner,
+            Scene::Component* owner,
             float delaySeconds,
             std::function<void()> callback,
             bool useUnscaledTime)
@@ -73,7 +73,7 @@ namespace RTBEngine {
         }
 
         Scripting::LatentActionHandle Scheduler::Invoke(
-            ECS::Component* owner,
+            Scene::Component* owner,
             float delaySeconds,
             std::function<void()> callback,
             bool useUnscaledTime)
@@ -82,7 +82,7 @@ namespace RTBEngine {
         }
 
         Scripting::LatentActionHandle Scheduler::InvokeRepeating(
-            ECS::Component* owner,
+            Scene::Component* owner,
             float initialDelaySeconds,
             float intervalSeconds,
             std::function<void()> callback,
@@ -106,7 +106,7 @@ namespace RTBEngine {
                     return;
                 }
 
-                if (ECS::Component* component = jobRef->owner) {
+                if (Scene::Component* component = jobRef->owner) {
                     if (!component->IsEnabled() || !component->GetOwner() ||
                         !component->GetOwner()->IsActiveInHierarchy()) {
                         jobRef->cancelled = true;
@@ -170,7 +170,7 @@ namespace RTBEngine {
             }
         }
 
-        void Scheduler::CancelRepeatingForOwner(ECS::Component* owner)
+        void Scheduler::CancelRepeatingForOwner(Scene::Component* owner)
         {
             for (const std::shared_ptr<RepeatingJob>& job : repeatingJobs) {
                 if (job && job->owner == owner) {
@@ -182,7 +182,7 @@ namespace RTBEngine {
             }
         }
 
-        void Scheduler::CancelAllForOwner(ECS::Component* owner)
+        void Scheduler::CancelAllForOwner(Scene::Component* owner)
         {
             if (!owner) {
                 return;

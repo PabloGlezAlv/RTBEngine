@@ -80,8 +80,8 @@ public:                                                                         
         static RTBEngine::Reflection::TypeInfo info(#ClassName);                        \
         static bool registrarSet = false;                                               \
         if (!registrarSet) {                                                            \
-            info.SetFactory([](void*) -> RTBEngine::ECS::Component* { return new ClassName(); }, nullptr); \
-            info.SetDestroyer([](RTBEngine::ECS::Component* c, void*) { delete static_cast<ClassName*>(c); }, nullptr); \
+            info.SetFactory([](void*) -> RTBEngine::Scene::Component* { return new ClassName(); }, nullptr); \
+            info.SetDestroyer([](RTBEngine::Scene::Component* c, void*) { delete static_cast<ClassName*>(c); }, nullptr); \
             registrarSet = true;                                                        \
         }                                                                               \
         return info;                                                                    \
@@ -406,10 +406,10 @@ extern "C" void RTBScripts_RegisterLocalProperty(const char* ownerType, const RT
             RTBScriptTypeDesc _rtb_type_desc{};                                              \
             _rtb_type_desc.typeName = #ClassName;                                            \
             _rtb_type_desc.createComponent = []() -> void* {                                  \
-                return static_cast<RTBEngine::ECS::Component*>(new ClassName());              \
+                return static_cast<RTBEngine::Scene::Component*>(new ClassName());              \
             };                                                                                \
             _rtb_type_desc.destroyComponent = [](void* component) {                           \
-                delete static_cast<ClassName*>(static_cast<RTBEngine::ECS::Component*>(component)); \
+                delete static_cast<ClassName*>(static_cast<RTBEngine::Scene::Component*>(component)); \
             };                                                                                \
             _rtb_type_desc.instanceSize = sizeof(ClassName);                                \
             RTBScripts_RegisterLocalType(&_rtb_type_desc);                                    \

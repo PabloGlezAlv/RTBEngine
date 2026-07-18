@@ -61,7 +61,7 @@ namespace RTBEngine {
 			PrepareForHitTest(screenSize);
 
 			for (UIElement* element : cachedUIElements) {
-				ECS::GameObject* elementObject = element ? element->GetOwner() : nullptr;
+				Scene::GameObject* elementObject = element ? element->GetOwner() : nullptr;
 				if (!elementObject || !elementObject->IsActiveInHierarchy()) {
 					continue;
 				}
@@ -73,7 +73,7 @@ namespace RTBEngine {
 		}
 
 		void Canvas::CollectUIElementsIfNeeded() {
-			uint32_t currentVersion = ECS::GameObject::GetHierarchyVersion();
+			uint32_t currentVersion = Scene::GameObject::GetHierarchyVersion();
 			if (!hierarchyDirty && lastHierarchyVersion == currentVersion) return;
 			hierarchyDirty = false;
 			lastHierarchyVersion = currentVersion;
@@ -83,7 +83,7 @@ namespace RTBEngine {
 			if (!owner) return;
 
 			// Helper for recursive collection
-			std::function<void(ECS::GameObject*)> collectRecursive = [&](ECS::GameObject* obj) {
+			std::function<void(Scene::GameObject*)> collectRecursive = [&](Scene::GameObject* obj) {
 				if (!obj) {
 					return;
 				}
@@ -93,7 +93,7 @@ namespace RTBEngine {
 					cachedUIElements.push_back(uiElem);
 				}
 
-				for (ECS::GameObject* child : obj->GetChildren()) {
+				for (Scene::GameObject* child : obj->GetChildren()) {
 					collectRecursive(child);
 				}
 			};
@@ -106,7 +106,7 @@ namespace RTBEngine {
 				return;
 			}
 
-			std::function<void(ECS::GameObject*)> applyRecursive = [&](ECS::GameObject* obj) {
+			std::function<void(Scene::GameObject*)> applyRecursive = [&](Scene::GameObject* obj) {
 				if (!obj || !obj->IsActiveInHierarchy()) {
 					return;
 				}
@@ -123,7 +123,7 @@ namespace RTBEngine {
 					}
 				}
 
-				for (ECS::GameObject* child : obj->GetChildren()) {
+				for (Scene::GameObject* child : obj->GetChildren()) {
 					applyRecursive(child);
 				}
 			};
@@ -139,8 +139,8 @@ namespace RTBEngine {
 			const Math::Vector2 rootSize =
 				renderMode == RenderMode::WorldSpace ? canvasSize : screenSize;
 
-			std::function<void(ECS::GameObject*, const Math::Vector2&, const Math::Vector2&, const Math::Vector2&)> updateRecursive =
-				[&](ECS::GameObject* obj, const Math::Vector2& parentWorldPos, const Math::Vector2& parentWorldSize, const Math::Vector2& parentLossyScale) {
+			std::function<void(Scene::GameObject*, const Math::Vector2&, const Math::Vector2&, const Math::Vector2&)> updateRecursive =
+				[&](Scene::GameObject* obj, const Math::Vector2& parentWorldPos, const Math::Vector2& parentWorldSize, const Math::Vector2& parentLossyScale) {
 					if (!obj || !obj->IsActiveInHierarchy()) {
 						return;
 					}
@@ -162,14 +162,14 @@ namespace RTBEngine {
 						}
 					}
 
-					for (ECS::GameObject* child : obj->GetChildren()) {
+					for (Scene::GameObject* child : obj->GetChildren()) {
 						updateRecursive(child, childParentPos, childParentSize, childParentLossyScale);
 					}
 				};
 
 			const Math::Vector2 rootLossyScale(1.0f, 1.0f);
 			const Math::Vector2 rootPos(0.0f, 0.0f);
-			for (ECS::GameObject* child : owner->GetChildren()) {
+			for (Scene::GameObject* child : owner->GetChildren()) {
 				updateRecursive(child, rootPos, rootSize, rootLossyScale);
 			}
 		}

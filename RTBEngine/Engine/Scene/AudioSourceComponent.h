@@ -12,7 +12,7 @@ namespace RTBEngine {
         class AudioClip;
     }
 
-    namespace ECS {
+    namespace Scene {
 
         class RTB_API AudioSourceComponent : public Component {
         public:

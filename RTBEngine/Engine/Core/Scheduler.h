@@ -10,7 +10,7 @@
 #include <vector>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class Component;
     }
 
@@ -23,25 +23,25 @@ namespace RTBEngine {
             static Scheduler& GetInstance();
 
             Scripting::LatentActionHandle StartSequence(
-                ECS::Component* owner,
+                Scene::Component* owner,
                 Scripting::LatentSequence sequence,
                 bool useUnscaledTime);
 
             Scripting::LatentActionHandle Invoke(
-                ECS::Component* owner,
+                Scene::Component* owner,
                 float delaySeconds,
                 std::function<void()> callback,
                 bool useUnscaledTime);
 
             Scripting::LatentActionHandle InvokeRepeating(
-                ECS::Component* owner,
+                Scene::Component* owner,
                 float initialDelaySeconds,
                 float intervalSeconds,
                 std::function<void()> callback,
                 bool useUnscaledTime);
 
             void Cancel(Scripting::LatentActionHandle handle);
-            void CancelAllForOwner(ECS::Component* owner);
+            void CancelAllForOwner(Scene::Component* owner);
 
             void Tick(float scaledDeltaTime, float unscaledDeltaTime);
 
@@ -49,19 +49,19 @@ namespace RTBEngine {
             Scheduler() = default;
 
             Scripting::LatentActionHandle ScheduleOnce(
-                ECS::Component* owner,
+                Scene::Component* owner,
                 float delaySeconds,
                 std::function<void()> callback,
                 bool useUnscaledTime);
 
             Scripting::LatentActionRunner& SelectRunner(bool useUnscaledTime);
-            void TrackHandle(ECS::Component* owner, Scripting::LatentActionHandle handle, bool useUnscaledTime);
+            void TrackHandle(Scene::Component* owner, Scripting::LatentActionHandle handle, bool useUnscaledTime);
             void UntrackHandle(Scripting::LatentActionHandle handle);
-            void CancelRepeatingForOwner(ECS::Component* owner);
+            void CancelRepeatingForOwner(Scene::Component* owner);
 
             struct RepeatingJob {
                 std::uint64_t id = 0;
-                ECS::Component* owner = nullptr;
+                Scene::Component* owner = nullptr;
                 float intervalSeconds = 0.0f;
                 bool useUnscaledTime = false;
                 std::function<void()> callback;
@@ -72,7 +72,7 @@ namespace RTBEngine {
             Scripting::LatentActionRunner scaledRunner;
             Scripting::LatentActionRunner unscaledRunner;
 
-            std::unordered_map<std::uint64_t, ECS::Component*> handleOwners;
+            std::unordered_map<std::uint64_t, Scene::Component*> handleOwners;
             std::unordered_map<std::uint64_t, bool> handleUsesUnscaledTime;
 
             std::vector<std::shared_ptr<RepeatingJob>> repeatingJobs;

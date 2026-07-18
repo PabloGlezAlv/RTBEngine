@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         class Scene;
 

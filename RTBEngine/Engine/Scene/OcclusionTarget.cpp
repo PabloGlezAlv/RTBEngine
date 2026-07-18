@@ -2,7 +2,7 @@
 #include "GameObject.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         using ThisClass = OcclusionTarget;
         RTB_REGISTER_COMPONENT(OcclusionTarget)

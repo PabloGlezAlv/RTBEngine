@@ -12,7 +12,7 @@
 #include <vector>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         namespace {
             ComponentSnapshot* FindOrCreateMutableSnapshot(Prefab* baselineNode, const char* typeName)

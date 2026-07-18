@@ -4,7 +4,7 @@
 #include <string>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         // Placeholder inserted by SceneLoader when a component type is not found.
         // Preserves the original type name so it can be displayed in the inspector.

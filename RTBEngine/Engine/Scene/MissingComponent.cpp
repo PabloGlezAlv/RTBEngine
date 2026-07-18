@@ -1,7 +1,7 @@
 #include "MissingComponent.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         MissingComponent::MissingComponent() {}
 

@@ -836,21 +836,21 @@ namespace RTBEngine {
             return defaultSkybox.get();
         }
 
-        ECS::Scene* ResourceManager::LoadScene(const std::string& path) {
+        Scene::Scene* ResourceManager::LoadScene(const std::string& path) {
             auto it = scenes.find(path);
             if (it != scenes.end()) {
                 return it->second.get();
             }
 
             const std::string resolvedPath = ResolvePathForRead(path);
-            ECS::Scene* scene = Scripting::SceneLoader::LoadScene(resolvedPath);
+            Scene::Scene* scene = Scripting::SceneLoader::LoadScene(resolvedPath);
             if (scene) {
-                scenes[path] = std::unique_ptr<ECS::Scene>(scene);
+                scenes[path] = std::unique_ptr<Scene::Scene>(scene);
             }
             return scene;
         }
 
-        ECS::Scene* ResourceManager::GetScene(const std::string& path)
+        Scene::Scene* ResourceManager::GetScene(const std::string& path)
         {
             auto it = scenes.find(path);
             if (it != scenes.end()) {

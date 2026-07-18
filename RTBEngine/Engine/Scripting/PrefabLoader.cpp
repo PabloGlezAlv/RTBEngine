@@ -32,8 +32,8 @@ namespace RTBEngine {
 
         static void CaptureLuaReferenceProperties(lua_State* L,
             int compTableIndex,
-            ECS::Component* comp,
-            ECS::ComponentSnapshot& snap)
+            Scene::Component* comp,
+            Scene::ComponentSnapshot& snap)
         {
             const char* typeName = comp->GetTypeName();
             if (!typeName || typeName[0] == '\0') {
@@ -65,7 +65,7 @@ namespace RTBEngine {
         }
 
         //Internal helpers
-        static void LoadComponents(lua_State* L, int nodeTableIndex, ECS::Prefab& prefab)
+        static void LoadComponents(lua_State* L, int nodeTableIndex, Scene::Prefab& prefab)
         {
             lua_getfield(L, nodeTableIndex, "components");
             if (!lua_istable(L, -1))
@@ -90,21 +90,21 @@ namespace RTBEngine {
                 std::string typeName = lua_tostring(L, -1);
                 lua_pop(L, 1);
 
-                ECS::Component* comp = Scripting::ComponentRegistry::GetInstance().CreateComponent(typeName);
+                Scene::Component* comp = Scripting::ComponentRegistry::GetInstance().CreateComponent(typeName);
                 if (!comp) { lua_pop(L, 1); continue; }
 
                 Scripting::SceneReflectionUtils::ApplyLuaTableToComponent(L, compTableIndex, typeName.c_str(), comp);
 
                 if (typeName == "MeshRenderer")
-                    Scripting::SceneComponentConfigurator::ConfigureMeshRenderer(L, compTableIndex, static_cast<ECS::MeshRenderer*>(comp));
+                    Scripting::SceneComponentConfigurator::ConfigureMeshRenderer(L, compTableIndex, static_cast<Scene::MeshRenderer*>(comp));
                 else if (typeName == "LightComponent")
-                    Scripting::SceneComponentConfigurator::ConfigureLightComponent(L, compTableIndex, static_cast<ECS::LightComponent*>(comp));
+                    Scripting::SceneComponentConfigurator::ConfigureLightComponent(L, compTableIndex, static_cast<Scene::LightComponent*>(comp));
                 else if (typeName == "AudioSourceComponent")
-                    Scripting::SceneComponentConfigurator::ConfigureAudioSource(L, compTableIndex, static_cast<ECS::AudioSourceComponent*>(comp));
+                    Scripting::SceneComponentConfigurator::ConfigureAudioSource(L, compTableIndex, static_cast<Scene::AudioSourceComponent*>(comp));
                 else if (typeName == "CameraComponent")
-                    Scripting::SceneComponentConfigurator::ConfigureCameraComponent(L, compTableIndex, static_cast<ECS::CameraComponent*>(comp));
+                    Scripting::SceneComponentConfigurator::ConfigureCameraComponent(L, compTableIndex, static_cast<Scene::CameraComponent*>(comp));
                 else if (typeName == "FreeLookCamera")
-                    Scripting::SceneComponentConfigurator::ConfigureFreeLookCamera(L, compTableIndex, static_cast<ECS::FreeLookCamera*>(comp));
+                    Scripting::SceneComponentConfigurator::ConfigureFreeLookCamera(L, compTableIndex, static_cast<Scene::FreeLookCamera*>(comp));
                 else if (typeName == "Animator")
                     Scripting::SceneComponentConfigurator::ConfigureAnimator(L, compTableIndex, static_cast<Animation::Animator*>(comp));
                 else if (typeName == "Canvas")
@@ -124,8 +124,8 @@ namespace RTBEngine {
 
                 comp->OnValidate();
 
-                ECS::ComponentSnapshot snap;
-                ECS::Prefab::SnapshotComponent(snap, comp);
+                Scene::ComponentSnapshot snap;
+                Scene::Prefab::SnapshotComponent(snap, comp);
                 CaptureLuaReferenceProperties(L, compTableIndex, comp, snap);
 
                 prefab.AddSnapshot(std::move(snap));
@@ -138,7 +138,7 @@ namespace RTBEngine {
             lua_pop(L, 1);
         }
 
-        static void LoadCollisionLayer(lua_State* L, int nodeTableIndex, ECS::Prefab& prefab)
+        static void LoadCollisionLayer(lua_State* L, int nodeTableIndex, Scene::Prefab& prefab)
         {
             lua_getfield(L, nodeTableIndex, "collisionLayer");
             if (lua_isstring(L, -1)) {
@@ -149,7 +149,7 @@ namespace RTBEngine {
             lua_pop(L, 1);
         }
 
-        static void LoadTransform(lua_State* L, int nodeTableIndex, ECS::Prefab& prefab)
+        static void LoadTransform(lua_State* L, int nodeTableIndex, Scene::Prefab& prefab)
         {
             lua_getfield(L, nodeTableIndex, "position");
             if (lua_isuserdata(L, -1)) {
@@ -173,13 +173,13 @@ namespace RTBEngine {
             lua_pop(L, 1);
         }
 
-        static std::unique_ptr<ECS::Prefab> LoadNode(lua_State* L, int nodeTableIndex)
+        static std::unique_ptr<Scene::Prefab> LoadNode(lua_State* L, int nodeTableIndex)
         {
             lua_getfield(L, nodeTableIndex, "name");
             std::string nodeName = lua_isstring(L, -1) ? lua_tostring(L, -1) : "Prefab";
             lua_pop(L, 1);
 
-            auto prefab = std::make_unique<ECS::Prefab>(nodeName);
+            auto prefab = std::make_unique<Scene::Prefab>(nodeName);
 
             lua_getfield(L, nodeTableIndex, "uuid");
             if (lua_isstring(L, -1)) {
@@ -204,7 +204,7 @@ namespace RTBEngine {
                     if (lua_istable(L, -1))
                     {
                         int childNodeIndex = lua_gettop(L);
-                        std::unique_ptr<ECS::Prefab> childPrefab = LoadNode(L, childNodeIndex);
+                        std::unique_ptr<Scene::Prefab> childPrefab = LoadNode(L, childNodeIndex);
                         if (childPrefab)
                             prefab->AddChildPrefab(std::move(childPrefab));
                     }
@@ -217,7 +217,7 @@ namespace RTBEngine {
             return prefab;
         }
 
-        std::unique_ptr<ECS::Prefab> PrefabLoader::Load(const std::string& filePath)
+        std::unique_ptr<Scene::Prefab> PrefabLoader::Load(const std::string& filePath)
         {
             lua_State* L = luaL_newstate();
             luaL_openlibs(L);
@@ -239,7 +239,7 @@ namespace RTBEngine {
             }
 
             int rootTableIndex = lua_gettop(L);
-            std::unique_ptr<ECS::Prefab> prefab = LoadNode(L, rootTableIndex);
+            std::unique_ptr<Scene::Prefab> prefab = LoadNode(L, rootTableIndex);
 
             lua_close(L);
             return prefab;

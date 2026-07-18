@@ -4,7 +4,7 @@
 #include <fstream>
 
 namespace RTBEngine {
-    namespace ECS { class Component; }
+    namespace Scene { class Component; }
     namespace Reflection { struct PropertyInfo; }
     namespace Math {
         class Vector2;
@@ -19,8 +19,8 @@ namespace RTBEngine {
 
         namespace ScenePropertySerializer {
 
-            RTB_API void WriteComponent(std::ofstream& file, const ECS::Component* comp, int indent);
-            RTB_API void WriteProperty(std::ofstream& file, const ECS::Component* comp,
+            RTB_API void WriteComponent(std::ofstream& file, const Scene::Component* comp, int indent);
+            RTB_API void WriteProperty(std::ofstream& file, const Scene::Component* comp,
                 const Reflection::PropertyInfo& prop, int indent);
 
             RTB_API std::string FormatVector2(const Math::Vector2& v);

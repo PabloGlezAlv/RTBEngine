@@ -3,7 +3,7 @@
 #include "../RTBEngineAPI.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         class Scene;
 

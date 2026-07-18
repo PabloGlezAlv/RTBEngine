@@ -28,11 +28,11 @@ namespace RTBEngine {
             return FormatPropertyName(name);
         }
 
-        void* PropertyInfo::GetMutableData(ECS::Component* component) const {
+        void* PropertyInfo::GetMutableData(Scene::Component* component) const {
             return component ? GetMutableData(component->GetActualObject()) : nullptr;
         }
 
-        const void* PropertyInfo::GetData(const ECS::Component* component) const {
+        const void* PropertyInfo::GetData(const Scene::Component* component) const {
             return component ? GetData(component->GetActualObject()) : nullptr;
         }
 
@@ -173,7 +173,7 @@ namespace RTBEngine {
             }
         }
 
-        RTBEngine::ECS::Component* TypeRegistry::CreateComponent(const std::string& typeName) const {
+        RTBEngine::Scene::Component* TypeRegistry::CreateComponent(const std::string& typeName) const {
             auto it = types.find(typeName);
             if (it != types.end()) {
                 return it->second.Create();

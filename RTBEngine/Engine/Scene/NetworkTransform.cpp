@@ -13,7 +13,7 @@
 #include <algorithm>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         using ThisClass = NetworkTransform;
         RTB_REGISTER_COMPONENT(NetworkTransform)

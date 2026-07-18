@@ -5,7 +5,7 @@
 #include "../Reflection/PropertyMacros.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         class MeshRenderer;
 

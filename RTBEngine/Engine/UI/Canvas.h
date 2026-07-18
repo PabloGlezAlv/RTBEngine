@@ -12,7 +12,7 @@ namespace RTBEngine {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
-		class RTB_API Canvas : public ECS::Component {
+		class RTB_API Canvas : public Scene::Component {
 		public:
 			enum class RenderMode {
 				ScreenSpaceOverlay,  // UI always on top, ignores 3D

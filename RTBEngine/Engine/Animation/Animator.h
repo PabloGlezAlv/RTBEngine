@@ -16,7 +16,7 @@ namespace RTBEngine {
     namespace Rendering {
         class Mesh;
     }
-    namespace ECS {
+    namespace Scene {
         class Scene;
         class GameObject;
     }
@@ -37,7 +37,7 @@ namespace RTBEngine {
             std::string key;
         };
 
-        class RTB_API Animator : public ECS::Component {
+        class RTB_API Animator : public Scene::Component {
         public:
             using KeyFinishedCallback = Core::Event<AnimationKeyFinishedEvent>::Callback;
 
@@ -110,12 +110,12 @@ namespace RTBEngine {
             Rendering::Mesh* GetFirstMesh() const { return meshes.empty() ? nullptr : meshes[0]; }
 
             //Bone GameObjects
-            void CreateBoneGameObjects(ECS::Scene* scene);
+            void CreateBoneGameObjects(Scene::Scene* scene);
             void SyncBoneGameObjects();
-            ECS::GameObject* GetBoneGameObject(const std::string& boneName) const;
-            ECS::GameObject* GetBoneGameObject(int boneIndex) const;
+            Scene::GameObject* GetBoneGameObject(const std::string& boneName) const;
+            Scene::GameObject* GetBoneGameObject(int boneIndex) const;
             bool AreBoneGOsCreated() const { return boneGOsCreated; }
-            bool IsBoneGameObject(const ECS::GameObject* go) const;
+            bool IsBoneGameObject(const Scene::GameObject* go) const;
             void SelectClip(const std::string& clipName, bool loop = true);
 
             // Reflected properties (Proxy)
@@ -147,7 +147,7 @@ namespace RTBEngine {
             bool boneMatricesDirty = true;
 
             std::vector<Math::Matrix4> currentLocalTransforms;
-            std::vector<ECS::GameObject*> boneGameObjects;
+            std::vector<Scene::GameObject*> boneGameObjects;
             bool boneGOsCreated = false;
 
             std::string loadedPrimaryPath;

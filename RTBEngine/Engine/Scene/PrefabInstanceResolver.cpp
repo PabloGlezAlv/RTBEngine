@@ -4,7 +4,7 @@
 #include "PrefabRegistry.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         const Prefab* PrefabInstanceResolver::FindBaselineChild(
             const Prefab* rootBaseline,

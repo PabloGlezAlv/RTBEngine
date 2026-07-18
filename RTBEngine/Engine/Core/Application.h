@@ -7,7 +7,7 @@
 #include <memory>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class GameObject;
         class Scene;
     }
@@ -15,6 +15,11 @@ namespace RTBEngine {
     namespace Physics {
         class PhysicsSystem;
         class PhysicsWorld;
+    }
+
+    namespace ECS {
+        class World;
+        struct ProjectileSimulationStats;
     }
 
     namespace Rendering {
@@ -57,26 +62,27 @@ namespace RTBEngine {
             void Update(float deltaTime);
             void Render();
 
-            void RenderShadowPass(ECS::Scene* scene);
-            void RenderGeometryPass(ECS::Scene* scene, Rendering::Camera* camera);
+            void RenderShadowPass(Scene::Scene* scene);
+            void RenderGeometryPass(Scene::Scene* scene, Rendering::Camera* camera);
             void SetIsRunning(bool value) { isRunning = value; }
 
             void ResetPhysics();
-            void RebuildPhysicsForScene(ECS::Scene* scene);
-            void InitializePhysicsForScene(ECS::Scene* scene);
+            void RebuildPhysicsForScene(Scene::Scene* scene);
+            void InitializePhysicsForScene(Scene::Scene* scene);
             Physics::PhysicsWorld* GetPhysicsWorld() const { return physicsWorld; }
+            const ECS::ProjectileSimulationStats& GetProjectileSimulationStats() const;
 
         private:
             bool InitializeImGui();
             void ShutdownImGui();
-            void RenderSceneDepthOnly(ECS::Scene* scene,
+            void RenderSceneDepthOnly(Scene::Scene* scene,
                                       Rendering::Shader* shader,
                                       const Rendering::Frustum& frustum);
             void OnWindowResized(int width, int height);
-            void InitializePhysicsForGameObject(ECS::GameObject* gameObject);
-            void InitializePhysicsForHierarchy(ECS::GameObject* root);
-            void DetachPhysicsFromGameObject(ECS::GameObject* gameObject);
-            void DetachPhysicsHierarchy(ECS::GameObject* root);
+            void InitializePhysicsForGameObject(Scene::GameObject* gameObject);
+            void InitializePhysicsForHierarchy(Scene::GameObject* root);
+            void DetachPhysicsFromGameObject(Scene::GameObject* gameObject);
+            void DetachPhysicsHierarchy(Scene::GameObject* root);
 
             ApplicationConfig config;
             bool isRunning = false;
@@ -86,6 +92,7 @@ namespace RTBEngine {
             std::unique_ptr<Window> window;
             Physics::PhysicsWorld* physicsWorld = nullptr;
             Physics::PhysicsSystem* physicsSystem = nullptr;
+            ECS::World* ecsWorld = nullptr;
             Rendering::Skybox* skybox = nullptr;
             std::function<void()> onQuitRequested;
 

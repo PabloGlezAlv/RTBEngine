@@ -3,7 +3,7 @@
 #include "../Reflection/PropertyMacros.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         using ThisClass = CameraComponent;
         RTB_REGISTER_COMPONENT(CameraComponent)

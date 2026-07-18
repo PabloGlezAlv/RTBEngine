@@ -18,13 +18,13 @@ namespace RTBEngine {
         class Shader;
         class Texture;
     }
-    namespace ECS {
+    namespace Scene {
         class Scene;
     }
 }
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)

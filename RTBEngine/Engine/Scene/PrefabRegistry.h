@@ -6,7 +6,7 @@
 #include <functional>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         class Prefab;
 

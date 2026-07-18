@@ -4,7 +4,7 @@
 #include <fmod.hpp>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         using ThisClass = AudioSourceComponent;
         RTB_REGISTER_COMPONENT(AudioSourceComponent)

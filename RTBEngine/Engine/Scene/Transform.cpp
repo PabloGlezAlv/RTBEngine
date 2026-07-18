@@ -2,7 +2,7 @@
 #include "GameObject.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         Transform::Transform()
             : position(Math::Vector3::Zero())

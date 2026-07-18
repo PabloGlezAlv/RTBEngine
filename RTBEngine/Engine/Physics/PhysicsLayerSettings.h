@@ -9,7 +9,7 @@
 class btCollisionObject;
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class GameObject;
     }
 
@@ -39,7 +39,7 @@ namespace RTBEngine {
             int GetLayerMask(int layerIndex) const;
 
             void ApplyToCollisionObject(::btCollisionObject* object, int layerIndex) const;
-            void ApplyToGameObject(ECS::GameObject* gameObject) const;
+            void ApplyToGameObject(Scene::GameObject* gameObject) const;
 
             static std::filesystem::path GetDefaultSettingsFileName();
 

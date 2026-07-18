@@ -3,7 +3,7 @@
 #include "../RTBEngineAPI.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class GameObject;
         class Scene;
     }
@@ -12,7 +12,7 @@ namespace RTBEngine {
         class PhysicsWorld;
     }
 
-    namespace ECS {
+    namespace Scene {
 
         // Finds a physics world from colliders/rigid bodies on a GameObject (optionally its children).
         RTB_API Physics::PhysicsWorld* ResolvePhysicsWorldFromGameObject(

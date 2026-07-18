@@ -15,7 +15,7 @@ namespace RTBEngine {
             float cursorX = padding.x;
             float cursorY = -padding.y;
 
-            for (ECS::GameObject* child : owner->GetChildren()) {
+            for (Scene::GameObject* child : owner->GetChildren()) {
                 if (!child || !child->IsActiveInHierarchy()) {
                     continue;
                 }

@@ -6,7 +6,7 @@
 #include "../Reflection/PropertyMacros.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         class RTB_API OcclusionFadeController : public Component {
         public:

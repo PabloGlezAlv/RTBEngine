@@ -149,7 +149,7 @@ namespace RTBEngine {
 					0.0f);
 			}
 
-			Math::Matrix4 BuildFaceCameraModelMatrix(ECS::GameObject* canvasObject,
+			Math::Matrix4 BuildFaceCameraModelMatrix(Scene::GameObject* canvasObject,
 			                                       Rendering::Camera* camera,
 			                                       bool lockYAxis) {
 				const Math::Vector3 worldPos = canvasObject->GetWorldPosition();
@@ -295,7 +295,7 @@ namespace RTBEngine {
 			void RenderWorldSpaceElement(Canvas* canvas, UIElement* element, Rendering::Shader* shader) {
 				if (!canvas || !element || !shader) return;
 
-				ECS::GameObject* elementObject = element->GetOwner();
+				Scene::GameObject* elementObject = element->GetOwner();
 				if (!elementObject || !elementObject->IsActiveInHierarchy()) return;
 
 				if (!element->IsVisible() || !element->IsEnabled()) return;
@@ -333,7 +333,7 @@ namespace RTBEngine {
 			}
 		}
 
-		void CanvasSystem::Update(ECS::Scene* scene) {
+		void CanvasSystem::Update(Scene::Scene* scene) {
 			if (!scene) return;
 
 			activeScene = scene;
@@ -344,7 +344,7 @@ namespace RTBEngine {
 					continue;
 				}
 
-				ECS::GameObject* obj = canvas->GetOwner();
+				Scene::GameObject* obj = canvas->GetOwner();
 				if (!obj || !obj->IsActiveInHierarchy()) {
 					continue;
 				}
@@ -414,7 +414,7 @@ namespace RTBEngine {
 
 			for (Canvas* canvas : activeCanvases) {
 				if (!canvas || canvas->GetRenderMode() != Canvas::RenderMode::WorldSpace) continue;
-				ECS::GameObject* canvasObject = canvas->GetOwner();
+				Scene::GameObject* canvasObject = canvas->GetOwner();
 				if (!canvasObject || !canvasObject->IsActiveInHierarchy()) continue;
 
 				// World-space layout still starts from canvas pixels; only the final rendering happens in 3D.
@@ -461,7 +461,7 @@ namespace RTBEngine {
 			draggingGameObject = nullptr;
 		}
 
-		bool CanvasSystem::IsGameObjectAlive(ECS::GameObject* gameObject) const {
+		bool CanvasSystem::IsGameObjectAlive(Scene::GameObject* gameObject) const {
 			if (!activeScene || !gameObject) return false;
 			for (const auto& obj : activeScene->GetGameObjects()) {
 				if (obj.get() == gameObject) return true;
@@ -469,13 +469,13 @@ namespace RTBEngine {
 			return false;
 		}
 
-		std::vector<Math::Vector4> CanvasSystem::GetRaycastRectsForGameObject(ECS::GameObject* gameObject) const {
+		std::vector<Math::Vector4> CanvasSystem::GetRaycastRectsForGameObject(Scene::GameObject* gameObject) const {
 			std::vector<Math::Vector4> rects;
 			if (!gameObject) return rects;
 			for (Canvas* canvas : activeCanvases) {
 				if (canvas->GetRenderMode() == Canvas::RenderMode::WorldSpace) continue;
 				for (UIElement* element : canvas->GetUIElements()) {
-					ECS::GameObject* elementObject = element ? element->GetOwner() : nullptr;
+					Scene::GameObject* elementObject = element ? element->GetOwner() : nullptr;
 					if (!elementObject || !elementObject->IsActiveInHierarchy()) continue;
 
 					if (elementObject == gameObject && element->IsRaycastTarget()) {
@@ -499,7 +499,7 @@ namespace RTBEngine {
 
 				for (auto elemIt = elements.rbegin(); elemIt != elements.rend(); ++elemIt) {
 					UIElement* element = *elemIt;
-					ECS::GameObject* elementObject = element ? element->GetOwner() : nullptr;
+					Scene::GameObject* elementObject = element ? element->GetOwner() : nullptr;
 					if (!elementObject || !elementObject->IsActiveInHierarchy()) continue;
 
 					if (!element->IsVisible() || !element->IsEnabled() || !element->IsRaycastTarget()) continue;
@@ -514,7 +514,7 @@ namespace RTBEngine {
 		}
 
 		template<typename THandler, typename TCallback>
-		void CanvasSystem::ExecuteEvents(ECS::GameObject* target, const PointerEventData& eventData, TCallback callback) {
+		void CanvasSystem::ExecuteEvents(Scene::GameObject* target, const PointerEventData& eventData, TCallback callback) {
 			if (!target) return;
 
 			for (const auto& comp : target->GetComponents()) {
@@ -533,7 +533,7 @@ namespace RTBEngine {
 			Input::InputManager& input = Input::InputManager::GetInstance();
 
 			UIElement* elementUnderMouse = GetElementUnderMouse(mousePos);
-			ECS::GameObject* currentGO = elementUnderMouse ? elementUnderMouse->GetOwner() : nullptr;
+			Scene::GameObject* currentGO = elementUnderMouse ? elementUnderMouse->GetOwner() : nullptr;
 
 			PointerEventData eventData;
 			eventData.position = mousePos;
@@ -593,7 +593,7 @@ namespace RTBEngine {
 						[](IEndDragHandler* h, const PointerEventData& e) { h->OnEndDrag(e); });
 				}
 
-				ECS::GameObject* releaseTarget = pressedGameObject ? pressedGameObject : currentGO;
+				Scene::GameObject* releaseTarget = pressedGameObject ? pressedGameObject : currentGO;
 				if (releaseTarget) {
 					ExecuteEvents<IPointerUpHandler>(releaseTarget, eventData,
 						[](IPointerUpHandler* h, const PointerEventData& e) { h->OnPointerUp(e); });

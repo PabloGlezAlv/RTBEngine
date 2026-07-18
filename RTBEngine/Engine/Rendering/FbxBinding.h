@@ -12,7 +12,7 @@
 #include <memory>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class Scene;
         class GameObject;
     }
@@ -42,8 +42,8 @@ namespace RTBEngine {
 
         // Attach mesh renderers for all meshes in modelData under an existing root GO.
         RTB_API void AttachFbxMeshesToHierarchy(
-            ECS::Scene* scene,
-            ECS::GameObject* rootGO,
+            Scene::Scene* scene,
+            Scene::GameObject* rootGO,
             const ModelData& modelData,
             const FbxBindingResult& binding,
             Shader* basicShader);
@@ -51,8 +51,8 @@ namespace RTBEngine {
         // Build a root+children hierarchy in the scene from a multi-mesh ModelData.
         // Root GameObject holds the Animator (if the FBX has animation data).
         // Each mesh gets its own child GameObject with a MeshRenderer.
-        RTB_API ECS::GameObject* BuildFbxHierarchy(
-            ECS::Scene* scene,
+        RTB_API Scene::GameObject* BuildFbxHierarchy(
+            Scene::Scene* scene,
             const ModelData& modelData,
             const std::string& fbxPath,
             Core::ResourceManager& resources);

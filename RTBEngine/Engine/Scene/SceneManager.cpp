@@ -12,26 +12,26 @@
 #include <vector>
 
 namespace {
-    RTBEngine::ECS::GameObject* FinalizeInstantiation(
-        RTBEngine::ECS::Scene* scene,
-        RTBEngine::ECS::GameObject* root,
-        const std::vector<RTBEngine::ECS::GameObject*>& children,
-        const std::function<void(RTBEngine::ECS::GameObject*)>& onHierarchyAdded)
+    RTBEngine::Scene::GameObject* FinalizeInstantiation(
+        RTBEngine::Scene::Scene* scene,
+        RTBEngine::Scene::GameObject* root,
+        const std::vector<RTBEngine::Scene::GameObject*>& children,
+        const std::function<void(RTBEngine::Scene::GameObject*)>& onHierarchyAdded)
     {
         if (!scene || !root) {
             return nullptr;
         }
 
         scene->AddGameObject(root, false);
-        for (RTBEngine::ECS::GameObject* child : children) {
+        for (RTBEngine::Scene::GameObject* child : children) {
             if (child) {
                 scene->AddGameObject(child, false);
             }
         }
 
-        RTBEngine::ECS::SceneLifecycle::BringHierarchyToLife(scene, root);
+        RTBEngine::Scene::SceneLifecycle::BringHierarchyToLife(scene, root);
         // Runtime spawns (e.g. RoundManager enemies) must receive OnStart without waiting a frame.
-        RTBEngine::ECS::SceneLifecycle::InvokeStartForHierarchy(root);
+        RTBEngine::Scene::SceneLifecycle::InvokeStartForHierarchy(root);
 
         if (onHierarchyAdded) {
             onHierarchyAdded(root);
@@ -40,21 +40,21 @@ namespace {
         return root;
     }
 
-    RTBEngine::ECS::GameObject* InstantiatePrefab(
-        RTBEngine::ECS::Scene* scene,
-        const RTBEngine::ECS::Prefab& prefab,
-        RTBEngine::ECS::GameObject* parent,
+    RTBEngine::Scene::GameObject* InstantiatePrefab(
+        RTBEngine::Scene::Scene* scene,
+        const RTBEngine::Scene::Prefab& prefab,
+        RTBEngine::Scene::GameObject* parent,
         const RTBEngine::Math::Vector3* positionOverride,
         const RTBEngine::Math::Quaternion* rotationOverride,
         bool regenerateUuids,
-        const std::function<void(RTBEngine::ECS::GameObject*)>& onHierarchyAdded)
+        const std::function<void(RTBEngine::Scene::GameObject*)>& onHierarchyAdded)
     {
         if (!scene) {
             return nullptr;
         }
 
-        std::vector<RTBEngine::ECS::GameObject*> children;
-        RTBEngine::ECS::GameObject* root = prefab.Instantiate(parent, children, regenerateUuids);
+        std::vector<RTBEngine::Scene::GameObject*> children;
+        RTBEngine::Scene::GameObject* root = prefab.Instantiate(parent, children, regenerateUuids);
         if (!root) {
             return nullptr;
         }
@@ -67,25 +67,25 @@ namespace {
             root->GetTransform().SetRotation(*rotationOverride);
         }
 
-        RTBEngine::ECS::GameObject* instantiated = FinalizeInstantiation(scene, root, children, onHierarchyAdded);
+        RTBEngine::Scene::GameObject* instantiated = FinalizeInstantiation(scene, root, children, onHierarchyAdded);
         return instantiated;
     }
 
-    void SetHierarchyActive(RTBEngine::ECS::GameObject* root, bool active)
+    void SetHierarchyActive(RTBEngine::Scene::GameObject* root, bool active)
     {
         if (!root) {
             return;
         }
 
         root->SetActive(active);
-        for (RTBEngine::ECS::GameObject* child : root->GetChildren()) {
+        for (RTBEngine::Scene::GameObject* child : root->GetChildren()) {
             SetHierarchyActive(child, active);
         }
     }
 }
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         SceneManager& SceneManager::GetInstance() {
             static SceneManager instance;

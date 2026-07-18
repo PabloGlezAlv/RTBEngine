@@ -14,7 +14,7 @@ namespace RTBEngine {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
-		class RTB_API UIInputField : public ECS::Component,
+		class RTB_API UIInputField : public Scene::Component,
 		                             public IPointerDownHandler
 		{
 		public:

@@ -31,24 +31,24 @@ namespace {
         return -1;
     }
 
-    void ActivateNavGridOnGameObject(RTBEngine::ECS::GameObject* gameObject)
+    void ActivateNavGridOnGameObject(RTBEngine::Scene::GameObject* gameObject)
     {
         if (!gameObject) {
             return;
         }
 
-        if (auto* navGrid = gameObject->GetComponent<RTBEngine::ECS::NavGridComponent>()) {
+        if (auto* navGrid = gameObject->GetComponent<RTBEngine::Scene::NavGridComponent>()) {
             navGrid->RefreshBakedGridState();
         }
 
-        for (RTBEngine::ECS::GameObject* child : gameObject->GetChildren()) {
+        for (RTBEngine::Scene::GameObject* child : gameObject->GetChildren()) {
             ActivateNavGridOnGameObject(child);
         }
     }
 }
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         using ThisClass = NavGridComponent;
         RTB_REGISTER_COMPONENT(NavGridComponent)

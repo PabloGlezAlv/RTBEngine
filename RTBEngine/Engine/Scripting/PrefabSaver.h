@@ -3,7 +3,7 @@
 #include <string>
 
 namespace RTBEngine {
-    namespace ECS { class Prefab; }
+    namespace Scene { class Prefab; }
 
     namespace Scripting {
 
@@ -11,7 +11,7 @@ namespace RTBEngine {
         public:
             PrefabSaver() = delete;
 
-            static bool Save(const ECS::Prefab& prefab, const std::string& filePath);
+            static bool Save(const Scene::Prefab& prefab, const std::string& filePath);
         };
 
     }

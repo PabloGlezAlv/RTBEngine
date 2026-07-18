@@ -185,18 +185,18 @@ namespace RTBEngine {
             }
             else if (desc) {
                 newInfo.SetFactory(
-                    [](void* ctx) -> RTBEngine::ECS::Component* {
+                    [](void* ctx) -> RTBEngine::Scene::Component* {
                         auto* scriptDesc = static_cast<RTBScriptTypeDesc*>(ctx);
                         if (!scriptDesc || !scriptDesc->createComponent) {
                             return nullptr;
                         }
-                        return static_cast<RTBEngine::ECS::Component*>(scriptDesc->createComponent());
+                        return static_cast<RTBEngine::Scene::Component*>(scriptDesc->createComponent());
                     },
                     static_cast<void*>(desc));
                 // The destroyer must run inside GameScripts.dll so that delete uses
                 // the same module/runtime that new used.
                 newInfo.SetDestroyer(
-                    [](RTBEngine::ECS::Component* c, void* ctx) {
+                    [](RTBEngine::Scene::Component* c, void* ctx) {
                         auto* scriptDesc = static_cast<RTBScriptTypeDesc*>(ctx);
                         if (scriptDesc && scriptDesc->destroyComponent) {
                             scriptDesc->destroyComponent(static_cast<void*>(c));
@@ -351,7 +351,7 @@ namespace RTBEngine {
 
         void ScriptManager::UnloadScripts()
         {
-            auto& sceneManager = RTBEngine::ECS::SceneManager::GetInstance();
+            auto& sceneManager = RTBEngine::Scene::SceneManager::GetInstance();
             sceneManager.ClearPendingSceneLoad();
 
             if (dllHandle == nullptr) {

@@ -33,7 +33,7 @@ namespace RTBEngine {
         class TypeInfo;
     }
 
-    namespace ECS {
+    namespace Scene {
 
         class Scene;
 

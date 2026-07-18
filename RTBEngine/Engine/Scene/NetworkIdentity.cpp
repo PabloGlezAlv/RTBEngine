@@ -5,7 +5,7 @@
 #include "../Reflection/PropertyMacros.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         using ThisClass = NetworkIdentity;
         RTB_REGISTER_COMPONENT(NetworkIdentity)

@@ -11,7 +11,7 @@
 #include <algorithm>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         namespace {
             Animation::Animator* FindAnimatorInAncestors(GameObject* start)

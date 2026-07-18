@@ -12,7 +12,7 @@
 #include <unordered_map>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class Component;
     }
 
@@ -132,8 +132,8 @@ namespace RTBEngine {
                 return objectBase ? static_cast<const void*>(static_cast<const char*>(objectBase) + offset) : nullptr;
             }
 
-            void* GetMutableData(ECS::Component* component) const;
-            const void* GetData(const ECS::Component* component) const;
+            void* GetMutableData(Scene::Component* component) const;
+            const void* GetData(const Scene::Component* component) const;
         };
 
         // Uses a real temporary instance instead of a fake probe address because
@@ -155,9 +155,9 @@ namespace RTBEngine {
         class RTB_API TypeInfo {
         public:
             // Raw function pointer — POD, no destructor, safe to copy across /MT module boundaries.
-            using FactoryFunc  = ECS::Component*(*)(void* context);
+            using FactoryFunc  = Scene::Component*(*)(void* context);
             // Raw function pointer — POD, no destructor, safe to copy across /MT module boundaries.
-            using DestroyFunc  = void(*)(ECS::Component*, void* context);
+            using DestroyFunc  = void(*)(Scene::Component*, void* context);
 
             TypeInfo() = default;
             TypeInfo(const char* typeName, FactoryFunc factory = nullptr);
@@ -180,14 +180,14 @@ namespace RTBEngine {
             void SetIsDataAsset(bool value) { isDataAsset = value; }
             bool IsDataAsset() const { return isDataAsset; }
 
-            ECS::Component* Create() const { return factoryFn ? factoryFn(factoryCtx) : nullptr; }
+            Scene::Component* Create() const { return factoryFn ? factoryFn(factoryCtx) : nullptr; }
             void SetFactory(FactoryFunc fn, void* ctx) { factoryFn = fn; factoryCtx = ctx; }
 
             // Destroys a component using the heap that allocated it.
             // Script components are created with new inside GameScripts.dll (/MT heap).
             // Calling delete from a different module crashes; the destroyer runs in the
             // module that allocated, using a raw fn ptr + opaque context (both POD).
-            void Destroy(ECS::Component* c) const { if (destroyFn) destroyFn(c, destroyCtx); else delete c; }
+            void Destroy(Scene::Component* c) const { if (destroyFn) destroyFn(c, destroyCtx); else delete c; }
             void SetDestroyer(DestroyFunc fn, void* ctx) { destroyFn = fn; destroyCtx = ctx; }
 
         private:
@@ -212,7 +212,7 @@ namespace RTBEngine {
             bool HasType(const std::string& typeName) const;
             std::vector<std::string> GetRegisteredTypes() const;
             void ForEachType(void(*callback)(const char* typeName, const TypeInfo* info, void* userData), void* userData) const;
-            ECS::Component* CreateComponent(const std::string& typeName) const;
+            Scene::Component* CreateComponent(const std::string& typeName) const;
 
         private:
             TypeRegistry() = default;

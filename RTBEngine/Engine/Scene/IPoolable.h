@@ -3,7 +3,7 @@
 #include "../RTBEngineAPI.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         class RTB_API IPoolable {
         public:
@@ -13,5 +13,5 @@ namespace RTBEngine {
             virtual void OnPoolRelease() {}
         };
 
-    } // namespace ECS
+    } // namespace Scene
 } // namespace RTBEngine

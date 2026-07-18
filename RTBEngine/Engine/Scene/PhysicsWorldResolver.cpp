@@ -9,7 +9,7 @@
 #include "../Physics/PhysicsWorld.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         // Shared helper for NavGridComponent bake and any system that needs a PhysicsWorld pointer.
         // Walks colliders / rigid bodies on the GameObject tree (depth-first when searchChildren).

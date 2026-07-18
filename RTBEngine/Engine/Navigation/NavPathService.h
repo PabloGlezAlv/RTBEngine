@@ -9,7 +9,7 @@
 #include <vector>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class NavAgentComponent;
         class Scene;
     }
@@ -24,36 +24,36 @@ namespace RTBEngine {
             void SetActiveGrid(NavGrid* grid);
             NavGrid* GetActiveGrid() const { return activeGrid; }
 
-            void RegisterAgent(ECS::NavAgentComponent* agent);
-            void UnregisterAgent(ECS::NavAgentComponent* agent);
+            void RegisterAgent(Scene::NavAgentComponent* agent);
+            void UnregisterAgent(Scene::NavAgentComponent* agent);
 
             // Throttled async path work (processed in Scene::FixedUpdate).
-            void QueuePathRequest(ECS::NavAgentComponent* agent);
+            void QueuePathRequest(Scene::NavAgentComponent* agent);
             void ProcessFixedUpdate();
 
             // Immediate path solve — used on spawn / first SetDestination when waypoints are empty.
-            void ProcessAgentPathNow(ECS::NavAgentComponent* agent);
+            void ProcessAgentPathNow(Scene::NavAgentComponent* agent);
 
-            const std::vector<ECS::NavAgentComponent*>& GetRegisteredAgents() const { return agents; }
+            const std::vector<Scene::NavAgentComponent*>& GetRegisteredAgents() const { return agents; }
 
             void SetDebugEnabled(bool enabled);
             bool IsDebugEnabled() const { return debugEnabled; }
 
-            const ECS::NavAgentComponent* GetDebugAgent() const { return debugAgent; }
-            void SetDebugAgent(const ECS::NavAgentComponent* agent) { debugAgent = agent; }
+            const Scene::NavAgentComponent* GetDebugAgent() const { return debugAgent; }
+            void SetDebugAgent(const Scene::NavAgentComponent* agent) { debugAgent = agent; }
 
         private:
             NavPathService() = default;
 
             NavGrid* activeGrid = nullptr;
             NavPathfinder pathfinder;
-            std::vector<ECS::NavAgentComponent*> agents;
-            std::deque<ECS::NavAgentComponent*> pendingRequests;
+            std::vector<Scene::NavAgentComponent*> agents;
+            std::deque<Scene::NavAgentComponent*> pendingRequests;
             bool debugEnabled = false;
-            const ECS::NavAgentComponent* debugAgent = nullptr;
+            const Scene::NavAgentComponent* debugAgent = nullptr;
         };
 
-        RTB_API void ProcessSceneNavigationFixedUpdate(ECS::Scene* scene);
+        RTB_API void ProcessSceneNavigationFixedUpdate(Scene::Scene* scene);
 
         RTB_API void SetNavGridDebugEnabled(bool enabled);
         RTB_API bool IsNavGridDebugEnabled();

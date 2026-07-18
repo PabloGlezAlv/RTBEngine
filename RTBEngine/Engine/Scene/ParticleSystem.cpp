@@ -16,7 +16,7 @@
 #include <random>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         namespace {
             constexpr float kMinParticleSize = 0.001f;

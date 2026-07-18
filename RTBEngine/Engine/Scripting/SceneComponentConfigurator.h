@@ -3,7 +3,7 @@
 struct lua_State;
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class GameObject;
         class MeshRenderer;
         class LightComponent;
@@ -42,17 +42,17 @@ namespace RTBEngine {
             void ConfigureUILayout(lua_State* L, int tableIndex, UI::UILayoutGroup* comp);
             void SyncUIElementProxies(lua_State* L, int tableIndex, UI::UIElement* comp);
 
-            void ConfigureMeshRenderer(lua_State* L, int tableIndex, ECS::MeshRenderer* comp);
-            void ConfigureLightComponent(lua_State* L, int tableIndex, ECS::LightComponent* comp);
-            void ConfigureAudioSource(lua_State* L, int tableIndex, ECS::AudioSourceComponent* comp);
-            void ConfigureRigidBody(lua_State* L, int tableIndex, ECS::RigidBodyComponent* comp, ECS::GameObject* gameObject);
-            void ConfigureBoxCollider(lua_State* L, int tableIndex, ECS::BoxColliderComponent* comp, ECS::GameObject* gameObject);
-            void ConfigureSphereCollider(lua_State* L, int tableIndex, ECS::SphereColliderComponent* comp, ECS::GameObject* gameObject);
-            void ConfigureCapsuleCollider(lua_State* L, int tableIndex, ECS::CapsuleColliderComponent* comp, ECS::GameObject* gameObject);
-            void ConfigureCameraComponent(lua_State* L, int tableIndex, ECS::CameraComponent* comp);
-            void ConfigureFreeLookCamera(lua_State* L, int tableIndex, ECS::FreeLookCamera* comp);
+            void ConfigureMeshRenderer(lua_State* L, int tableIndex, Scene::MeshRenderer* comp);
+            void ConfigureLightComponent(lua_State* L, int tableIndex, Scene::LightComponent* comp);
+            void ConfigureAudioSource(lua_State* L, int tableIndex, Scene::AudioSourceComponent* comp);
+            void ConfigureRigidBody(lua_State* L, int tableIndex, Scene::RigidBodyComponent* comp, Scene::GameObject* gameObject);
+            void ConfigureBoxCollider(lua_State* L, int tableIndex, Scene::BoxColliderComponent* comp, Scene::GameObject* gameObject);
+            void ConfigureSphereCollider(lua_State* L, int tableIndex, Scene::SphereColliderComponent* comp, Scene::GameObject* gameObject);
+            void ConfigureCapsuleCollider(lua_State* L, int tableIndex, Scene::CapsuleColliderComponent* comp, Scene::GameObject* gameObject);
+            void ConfigureCameraComponent(lua_State* L, int tableIndex, Scene::CameraComponent* comp);
+            void ConfigureFreeLookCamera(lua_State* L, int tableIndex, Scene::FreeLookCamera* comp);
             void ConfigureAnimator(lua_State* L, int tableIndex, Animation::Animator* comp);
-            void ConfigureNavGrid(lua_State* L, int tableIndex, ECS::NavGridComponent* comp);
+            void ConfigureNavGrid(lua_State* L, int tableIndex, Scene::NavGridComponent* comp);
 
         }
     }

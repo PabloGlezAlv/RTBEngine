@@ -22,20 +22,20 @@ namespace {
         collider->SetBulletCollisionObject(nullptr, false);
     }
 
-    void ClearSiblingDynamicColliderRefs(RTBEngine::ECS::GameObject* owner, btRigidBody* bulletBody)
+    void ClearSiblingDynamicColliderRefs(RTBEngine::Scene::GameObject* owner, btRigidBody* bulletBody)
     {
         if (!owner || !bulletBody) {
             return;
         }
 
-        ClearDynamicColliderRef(owner->GetComponent<RTBEngine::ECS::BoxColliderComponent>(), bulletBody);
-        ClearDynamicColliderRef(owner->GetComponent<RTBEngine::ECS::SphereColliderComponent>(), bulletBody);
-        ClearDynamicColliderRef(owner->GetComponent<RTBEngine::ECS::CapsuleColliderComponent>(), bulletBody);
+        ClearDynamicColliderRef(owner->GetComponent<RTBEngine::Scene::BoxColliderComponent>(), bulletBody);
+        ClearDynamicColliderRef(owner->GetComponent<RTBEngine::Scene::SphereColliderComponent>(), bulletBody);
+        ClearDynamicColliderRef(owner->GetComponent<RTBEngine::Scene::CapsuleColliderComponent>(), bulletBody);
     }
 
     void SyncCapsuleShape(btCollisionObject* bulletObject,
                           RTBEngine::Physics::CapsuleCollider* collider,
-                          RTBEngine::ECS::GameObject* owner)
+                          RTBEngine::Scene::GameObject* owner)
     {
         if (!bulletObject || !collider) {
             return;
@@ -51,7 +51,7 @@ namespace {
 
         float mass = 0.0f;
         if (owner) {
-            auto* rbComp = owner->GetComponent<RTBEngine::ECS::RigidBodyComponent>();
+            auto* rbComp = owner->GetComponent<RTBEngine::Scene::RigidBodyComponent>();
             if (rbComp && rbComp->HasRigidBody() && rbComp->GetRigidBody()) {
                 mass = rbComp->GetRigidBody()->GetMass();
             } else if (rbComp) {
@@ -70,14 +70,14 @@ namespace {
     }
 
     void SyncCapsuleTransform(btCollisionObject* bulletObject,
-                              RTBEngine::ECS::GameObject* owner,
+                              RTBEngine::Scene::GameObject* owner,
                               const RTBEngine::Math::Vector3& centerOffset)
     {
         if (!bulletObject || !owner) {
             return;
         }
 
-        RTBEngine::ECS::Transform& transform = owner->GetTransform();
+        RTBEngine::Scene::Transform& transform = owner->GetTransform();
         const RTBEngine::Math::Quaternion rotation = transform.GetRotation();
         const RTBEngine::Math::Vector3 centerPosition = transform.GetPosition() + (rotation * centerOffset);
 
@@ -100,7 +100,7 @@ namespace {
 }
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         using ThisClass = CapsuleColliderComponent;
         RTB_REGISTER_COMPONENT(CapsuleColliderComponent)

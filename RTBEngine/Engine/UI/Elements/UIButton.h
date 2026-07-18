@@ -24,7 +24,7 @@ namespace RTBEngine {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
-		class RTB_API UIButton : public ECS::Component,
+		class RTB_API UIButton : public Scene::Component,
 						 public IPointerEnterHandler,
 						 public IPointerExitHandler,
 						 public IPointerDownHandler,

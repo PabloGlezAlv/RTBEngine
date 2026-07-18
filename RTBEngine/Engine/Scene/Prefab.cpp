@@ -23,7 +23,7 @@
 #include <functional>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         Prefab::Prefab(const std::string& name)
             : name(name)

@@ -194,7 +194,7 @@ namespace RTBEngine {
             return result;
         }
 
-        static void ApplyNodeTransform(ECS::GameObject* go, const NodeData* node)
+        static void ApplyNodeTransform(Scene::GameObject* go, const NodeData* node)
         {
             if (!go || !node) {
                 return;
@@ -211,7 +211,7 @@ namespace RTBEngine {
         }
 
         static void AddMeshRendererToGO(
-            ECS::GameObject* go,
+            Scene::GameObject* go,
             int meshIdx,
             const ModelData& modelData,
             const FbxBindingResult& binding,
@@ -221,7 +221,7 @@ namespace RTBEngine {
             if (meshIdx < 0 || meshIdx >= static_cast<int>(modelData.meshes.size()))
                 return;
 
-            auto* renderer = new ECS::MeshRenderer();
+            auto* renderer = new Scene::MeshRenderer();
             renderer->meshIndex = meshIdx;
             renderer->SetMesh(modelData.meshes[meshIdx]);
 
@@ -237,8 +237,8 @@ namespace RTBEngine {
 
         static void BuildNodeHierarchy(
             const NodeData* node,
-            ECS::GameObject* parentGO,
-            ECS::Scene* scene,
+            Scene::GameObject* parentGO,
+            Scene::Scene* scene,
             const ModelData& modelData,
             const FbxBindingResult& binding,
             Rendering::Shader* basicShader,
@@ -246,7 +246,7 @@ namespace RTBEngine {
         {
             for (const auto& child : node->children) {
                 std::string childName = child->name.empty() ? "Node" : child->name;
-                auto* childGO = new ECS::GameObject(childName);
+                auto* childGO = new Scene::GameObject(childName);
                 scene->AddGameObject(childGO);
                 childGO->SetParent(parentGO);
                 ApplyNodeTransform(childGO, child.get());
@@ -260,7 +260,7 @@ namespace RTBEngine {
                     for (size_t m = 1; m < child->meshIndices.size(); m++) {
                         int idx = child->meshIndices[m];
                         std::string extraName = childName + "_Mesh" + std::to_string(m);
-                        auto* extraGO = new ECS::GameObject(extraName);
+                        auto* extraGO = new Scene::GameObject(extraName);
                         scene->AddGameObject(extraGO);
                         extraGO->SetParent(childGO);
                         AddMeshRendererToGO(extraGO, idx, modelData, binding, basicShader, fbxPath);
@@ -272,8 +272,8 @@ namespace RTBEngine {
         }
 
         void AttachFbxMeshesToHierarchy(
-            ECS::Scene* scene,
-            ECS::GameObject* rootGO,
+            Scene::Scene* scene,
+            Scene::GameObject* rootGO,
             const ModelData& modelData,
             const FbxBindingResult& binding,
             Rendering::Shader* basicShader)
@@ -304,8 +304,8 @@ namespace RTBEngine {
             BuildNodeHierarchy(modelData.rootNode.get(), rootGO, scene, modelData, binding, basicShader, "");
         }
 
-        ECS::GameObject* BuildFbxHierarchy(
-            ECS::Scene* scene,
+        Scene::GameObject* BuildFbxHierarchy(
+            Scene::Scene* scene,
             const ModelData& modelData,
             const std::string& fbxPath,
             Core::ResourceManager& resources)
@@ -322,7 +322,7 @@ namespace RTBEngine {
 
             Rendering::Shader* basicShader = resources.GetShader("basic");
 
-            ECS::GameObject* root = new ECS::GameObject(stem);
+            Scene::GameObject* root = new Scene::GameObject(stem);
             scene->AddGameObject(root);
             if (modelData.rootNode) {
                 ApplyNodeTransform(root, modelData.rootNode.get());

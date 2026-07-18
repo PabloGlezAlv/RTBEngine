@@ -9,7 +9,7 @@
 #include <algorithm>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         namespace {
             constexpr float kMinTrailWidth = 0.001f;

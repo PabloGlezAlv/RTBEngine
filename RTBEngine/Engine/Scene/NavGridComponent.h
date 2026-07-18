@@ -30,7 +30,7 @@ namespace RTBEngine {
 
 
 
-    namespace ECS {
+    namespace Scene {
 
 
 

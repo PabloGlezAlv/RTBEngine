@@ -8,7 +8,7 @@
 #include "../RTBEngine.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         using ThisClass = FreeLookCamera;
         RTB_REGISTER_COMPONENT(FreeLookCamera)

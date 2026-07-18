@@ -6,7 +6,7 @@
 #include "../Reflection/PropertyMacros.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)

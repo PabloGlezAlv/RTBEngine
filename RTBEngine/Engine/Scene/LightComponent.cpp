@@ -5,7 +5,7 @@
 #include "../Reflection/TypeInfo.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         // Property registration for reflection system
         using ThisClass = LightComponent;

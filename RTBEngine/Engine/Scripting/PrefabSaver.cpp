@@ -18,7 +18,7 @@ namespace RTBEngine {
             return std::string(static_cast<size_t>(depth) * 4, ' ');
         }
 
-        static void WriteTransform(std::ofstream& file, const ECS::Prefab& prefab, int depth)
+        static void WriteTransform(std::ofstream& file, const Scene::Prefab& prefab, int depth)
         {
             std::string ind = Indent(depth);
             Math::Vector3 pos = prefab.GetPosition();
@@ -35,7 +35,7 @@ namespace RTBEngine {
                 file << ind << "scale = " << ScenePropertySerializer::FormatVector3(scale) << ",\n";
         }
 
-        static void WriteNode(std::ofstream& file, const ECS::Prefab& prefab, int depth)
+        static void WriteNode(std::ofstream& file, const Scene::Prefab& prefab, int depth)
         {
             std::string ind = Indent(depth);
 
@@ -53,13 +53,13 @@ namespace RTBEngine {
             WriteTransform(file, prefab, depth + 1);
             file << ind << "    components = {\n";
 
-            for (const ECS::ComponentSnapshot& snap : prefab.GetSnapshots())
+            for (const Scene::ComponentSnapshot& snap : prefab.GetSnapshots())
             {
-                ECS::Component* temp = Scripting::ComponentRegistry::GetInstance()
+                Scene::Component* temp = Scripting::ComponentRegistry::GetInstance()
                     .CreateComponent(snap.typeName);
                 if (!temp) continue;
 
-                ECS::Prefab::ApplySnapshot(temp, snap);
+                Scene::Prefab::ApplySnapshot(temp, snap);
                 // depth + 2: one extra level for the components array, one for the component table
                 Scripting::ScenePropertySerializer::WriteComponent(file, temp, depth + 2);
                 Scripting::ComponentRegistry::GetInstance().DestroyComponent(snap.typeName, temp);
@@ -83,7 +83,7 @@ namespace RTBEngine {
             file << ind << "}";
         }
 
-        bool PrefabSaver::Save(const ECS::Prefab& prefab, const std::string& filePath)
+        bool PrefabSaver::Save(const Scene::Prefab& prefab, const std::string& filePath)
         {
             std::filesystem::create_directories(
                 std::filesystem::path(filePath).parent_path());
@@ -109,13 +109,13 @@ namespace RTBEngine {
                 WriteTransform(file, prefab, 1);
                 file << "    components = {\n";
 
-                for (const ECS::ComponentSnapshot& snap : prefab.GetSnapshots())
+                for (const Scene::ComponentSnapshot& snap : prefab.GetSnapshots())
                 {
-                    ECS::Component* temp = Scripting::ComponentRegistry::GetInstance()
+                    Scene::Component* temp = Scripting::ComponentRegistry::GetInstance()
                         .CreateComponent(snap.typeName);
                     if (!temp) continue;
 
-                    ECS::Prefab::ApplySnapshot(temp, snap);
+                    Scene::Prefab::ApplySnapshot(temp, snap);
                     Scripting::ScenePropertySerializer::WriteComponent(file, temp, 2);
                     Scripting::ComponentRegistry::GetInstance().DestroyComponent(snap.typeName, temp);
                 }

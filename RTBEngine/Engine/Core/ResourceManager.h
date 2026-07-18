@@ -17,7 +17,7 @@
 #include <vector>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class Scene;
     }
 
@@ -113,8 +113,8 @@ namespace RTBEngine {
             Rendering::Skybox* GetDefaultSkybox();
 
             // Scene management
-            ECS::Scene* LoadScene(const std::string& path);
-            ECS::Scene* GetScene(const std::string& path);
+            Scene::Scene* LoadScene(const std::string& path);
+            Scene::Scene* GetScene(const std::string& path);
 
             // Register an externally-created texture under a path for serialization.
             // ResourceManager takes ownership.
@@ -154,7 +154,7 @@ namespace RTBEngine {
             static std::vector<Rendering::Mesh*> emptyMeshVector;
             static Rendering::ModelData emptyModelData;
 			std::unordered_map<std::string, std::unique_ptr<Rendering::Font>> fonts;
-            std::unordered_map<std::string, std::unique_ptr<ECS::Scene>> scenes;
+            std::unordered_map<std::string, std::unique_ptr<Scene::Scene>> scenes;
 			Rendering::Font* defaultFont = nullptr;
 
             // Reverse lookup maps: pointer -> path (for serialization)

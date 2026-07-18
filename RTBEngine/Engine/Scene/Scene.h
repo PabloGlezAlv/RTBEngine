@@ -21,7 +21,7 @@ namespace RTBEngine {
         class Canvas;
     }
 
-    namespace ECS {
+    namespace Scene {
 
         class CameraComponent;
         class MeshRenderer;

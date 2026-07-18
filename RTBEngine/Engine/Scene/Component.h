@@ -14,7 +14,7 @@ namespace RTBEngine {
         struct CollisionInfo;
     }
 
-    namespace ECS {
+    namespace Scene {
 
         class GameObject;
 

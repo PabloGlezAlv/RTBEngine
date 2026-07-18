@@ -2,7 +2,7 @@
 #include "../../Math/Vectors/Vector2.h"
 
 namespace RTBEngine {
-	namespace ECS {
+	namespace Scene {
 		class GameObject;
 	}
 
@@ -11,8 +11,8 @@ namespace RTBEngine {
 		struct PointerEventData {
 			Math::Vector2 position;
 			Math::Vector2 delta;
-			ECS::GameObject* pointerEnter = nullptr;
-			ECS::GameObject* pointerPress = nullptr;
+			Scene::GameObject* pointerEnter = nullptr;
+			Scene::GameObject* pointerPress = nullptr;
 			int button = 0;
 		};
 

@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class Scene;
     }
 
@@ -26,8 +26,8 @@ namespace RTBEngine {
         class RTB_API NavMeshFile {
         public:
             static std::string GetNavMeshPathForScene(const std::string& sceneAssetPath);
-            static bool SaveSceneNavMesh(const std::string& sceneAssetPath, ECS::Scene* scene);
-            static bool LoadSceneNavMesh(const std::string& sceneAssetPath, ECS::Scene* scene);
+            static bool SaveSceneNavMesh(const std::string& sceneAssetPath, Scene::Scene* scene);
+            static bool LoadSceneNavMesh(const std::string& sceneAssetPath, Scene::Scene* scene);
             static bool DeleteNavMeshFile(const std::string& sceneAssetPath);
         };
 

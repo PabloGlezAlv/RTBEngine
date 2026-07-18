@@ -3,7 +3,7 @@
 #include "MeshRenderer.h"
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
 
         using ThisClass = Occludable;
         RTB_REGISTER_COMPONENT(Occludable)

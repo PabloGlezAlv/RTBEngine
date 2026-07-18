@@ -9,7 +9,7 @@
 #include <string>
 
 namespace RTBEngine {
-    namespace ECS {
+    namespace Scene {
         class GameObject;
         class Prefab;
         class Scene;

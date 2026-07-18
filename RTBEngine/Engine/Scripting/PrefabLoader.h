@@ -3,7 +3,7 @@
 #include <memory>
 
 namespace RTBEngine {
-    namespace ECS { class Prefab; }
+    namespace Scene { class Prefab; }
 
     namespace Scripting {
 
@@ -12,7 +12,7 @@ namespace RTBEngine {
         public:
             PrefabLoader() = delete;
 
-            static std::unique_ptr<ECS::Prefab> Load(const std::string& filePath);
+            static std::unique_ptr<Scene::Prefab> Load(const std::string& filePath);
         };
 
     }

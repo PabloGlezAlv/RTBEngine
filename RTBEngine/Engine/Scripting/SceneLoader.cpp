@@ -56,7 +56,7 @@ namespace RTBEngine {
     namespace Scripting {
 
         namespace {
-            void ReadCollisionLayer(lua_State* L, int tableIndex, ECS::GameObject* gameObject)
+            void ReadCollisionLayer(lua_State* L, int tableIndex, Scene::GameObject* gameObject)
             {
                 if (!gameObject) {
                     return;
@@ -76,7 +76,7 @@ namespace RTBEngine {
             SceneLuaBindings::SetupLuaBindings(L);
         }
 
-        ECS::Scene* SceneLoader::LoadScene(const std::string& filePath) {
+        Scene::Scene* SceneLoader::LoadScene(const std::string& filePath) {
             lua_State* L = luaL_newstate();
             luaL_openlibs(L);
             SetupLuaBindings(L);
@@ -107,7 +107,7 @@ namespace RTBEngine {
             }
 
             const std::string sceneName = SceneParsingUtils::ReadOptionalString(L, -1, "name", "Unnamed Scene");
-            ECS::Scene* scene = new ECS::Scene(sceneName);
+            Scene::Scene* scene = new Scene::Scene(sceneName);
 
             std::string skyboxPath = SceneParsingUtils::ReadOptionalString(L, -1, "skybox", "");
             bool skyboxEnabled = SceneParsingUtils::ReadOptionalBool(L, -1, "skyboxEnabled", true);
@@ -118,7 +118,7 @@ namespace RTBEngine {
                     scene->SetSkyboxCubemap(cubemap);
             }
 
-            std::vector<std::pair<ECS::GameObject*, std::string>> parentingRequests;
+            std::vector<std::pair<Scene::GameObject*, std::string>> parentingRequests;
             std::vector<UUIDRefRequest> uuidRefRequests;
 
             lua_getfield(L, -1, "gameObjects");
@@ -127,7 +127,7 @@ namespace RTBEngine {
                 for (int i = 1; i <= count; i++) {
                     lua_geti(L, -1, i);
                     if (lua_istable(L, -1)) {
-                        ECS::GameObject* go = ProcessGameObject(L, lua_gettop(L), scene, parentingRequests, uuidRefRequests);
+                        Scene::GameObject* go = ProcessGameObject(L, lua_gettop(L), scene, parentingRequests, uuidRefRequests);
                         if (go)
                             scene->AddGameObject(go);
                     }
@@ -137,15 +137,15 @@ namespace RTBEngine {
             lua_pop(L, 1);
 
             ResolveParenting(scene, parentingRequests);
-            ECS::NavGridComponent::FinalizeImportsForScene(scene);
+            Scene::NavGridComponent::FinalizeImportsForScene(scene);
             ResolveUUIDRefs(scene, uuidRefRequests);
 
             lua_close(L);
             return scene;
         }
 
-        ECS::GameObject* SceneLoader::ProcessGameObject(lua_State* L, int tableIndex, ECS::Scene* scene,
-            std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests,
+        Scene::GameObject* SceneLoader::ProcessGameObject(lua_State* L, int tableIndex, Scene::Scene* scene,
+            std::vector<std::pair<Scene::GameObject*, std::string>>& parentingRequests,
             std::vector<UUIDRefRequest>& uuidRefRequests)
         {
             lua_getfield(L, tableIndex, "name");
@@ -155,7 +155,7 @@ namespace RTBEngine {
             std::string savedUUID = SceneParsingUtils::ReadOptionalString(L, tableIndex, "uuid", "");
             std::string prefabName = SceneParsingUtils::ReadOptionalString(L, tableIndex, "prefab", "");
 
-            if (!prefabName.empty() && ECS::PrefabRegistry::GetInstance().Has(prefabName)) {
+            if (!prefabName.empty() && Scene::PrefabRegistry::GetInstance().Has(prefabName)) {
                 return ProcessPrefabInstance(L, tableIndex, scene, name, savedUUID, parentingRequests, uuidRefRequests);
             }
 
@@ -163,7 +163,7 @@ namespace RTBEngine {
                 RTB_WARN("SceneLoader: Prefab '" + prefabName + "' not found for '" + name + "' — loading as plain GameObject");
             }
 
-            ECS::GameObject* go = new ECS::GameObject(name);
+            Scene::GameObject* go = new Scene::GameObject(name);
             if (!savedUUID.empty())
                 go->SetUUID(savedUUID);
 
@@ -186,7 +186,7 @@ namespace RTBEngine {
             return go;
         }
 
-        ECS::GameObject* SceneLoader::FindDirectChild(ECS::GameObject* parent,
+        Scene::GameObject* SceneLoader::FindDirectChild(Scene::GameObject* parent,
             const std::string& uuid, const std::string& name)
         {
             if (!parent) {
@@ -194,7 +194,7 @@ namespace RTBEngine {
             }
 
             if (!uuid.empty()) {
-                for (ECS::GameObject* child : parent->GetChildren()) {
+                for (Scene::GameObject* child : parent->GetChildren()) {
                     if (child && child->GetUUID() == uuid) {
                         return child;
                     }
@@ -202,7 +202,7 @@ namespace RTBEngine {
             }
 
             if (!name.empty()) {
-                for (ECS::GameObject* child : parent->GetChildren()) {
+                for (Scene::GameObject* child : parent->GetChildren()) {
                     if (child && child->GetName() == name) {
                         return child;
                     }
@@ -212,9 +212,9 @@ namespace RTBEngine {
             return nullptr;
         }
 
-        void SceneLoader::ApplySceneGameObjectFromTable(lua_State* L, int tableIndex, ECS::Scene* scene,
-            ECS::GameObject* go,
-            std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests,
+        void SceneLoader::ApplySceneGameObjectFromTable(lua_State* L, int tableIndex, Scene::Scene* scene,
+            Scene::GameObject* go,
+            std::vector<std::pair<Scene::GameObject*, std::string>>& parentingRequests,
             std::vector<UUIDRefRequest>& uuidRefRequests)
         {
             if (!go) {
@@ -245,9 +245,9 @@ namespace RTBEngine {
             MergeSceneChildren(L, tableIndex, scene, go, parentingRequests, uuidRefRequests);
         }
 
-        void SceneLoader::MergeSceneChildren(lua_State* L, int tableIndex, ECS::Scene* scene,
-            ECS::GameObject* parent,
-            std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests,
+        void SceneLoader::MergeSceneChildren(lua_State* L, int tableIndex, Scene::Scene* scene,
+            Scene::GameObject* parent,
+            std::vector<std::pair<Scene::GameObject*, std::string>>& parentingRequests,
             std::vector<UUIDRefRequest>& uuidRefRequests)
         {
             if (!parent) {
@@ -273,9 +273,9 @@ namespace RTBEngine {
                 const std::string childUuid = SceneParsingUtils::ReadOptionalString(L, childTableIndex, "uuid", "");
                 const std::string childName = SceneParsingUtils::ReadOptionalString(L, childTableIndex, "name", "");
 
-                ECS::GameObject* existing = nullptr;
+                Scene::GameObject* existing = nullptr;
                 if (!childUuid.empty()) {
-                    for (ECS::GameObject* child : parent->GetChildren()) {
+                    for (Scene::GameObject* child : parent->GetChildren()) {
                         if (child && child->GetUUID() == childUuid) {
                             existing = child;
                             break;
@@ -290,7 +290,7 @@ namespace RTBEngine {
                 if (existing) {
                     ApplySceneGameObjectFromTable(L, childTableIndex, scene, existing, parentingRequests, uuidRefRequests);
                 } else {
-                    ECS::GameObject* child = ProcessGameObject(L, childTableIndex, scene, parentingRequests, uuidRefRequests);
+                    Scene::GameObject* child = ProcessGameObject(L, childTableIndex, scene, parentingRequests, uuidRefRequests);
                     if (child) {
                         scene->AddGameObject(child);
                         child->SetParent(parent);
@@ -303,16 +303,16 @@ namespace RTBEngine {
             lua_pop(L, 1);
         }
 
-        ECS::GameObject* SceneLoader::ProcessPrefabInstance(lua_State* L, int tableIndex, ECS::Scene* scene,
+        Scene::GameObject* SceneLoader::ProcessPrefabInstance(lua_State* L, int tableIndex, Scene::Scene* scene,
             const std::string& name, const std::string& uuid,
-            std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests,
+            std::vector<std::pair<Scene::GameObject*, std::string>>& parentingRequests,
             std::vector<UUIDRefRequest>& uuidRefRequests)
         {
             std::string prefabName = SceneParsingUtils::ReadOptionalString(L, tableIndex, "prefab", "");
-            const ECS::Prefab* prefab = ECS::PrefabRegistry::GetInstance().Get(prefabName);
+            const Scene::Prefab* prefab = Scene::PrefabRegistry::GetInstance().Get(prefabName);
             if (!prefab) {
                 RTB_WARN("SceneLoader: Prefab '" + prefabName + "' not found — creating empty GO");
-                ECS::GameObject* go = new ECS::GameObject(name);
+                Scene::GameObject* go = new Scene::GameObject(name);
                 if (!uuid.empty()) {
                     go->SetUUID(uuid);
                 }
@@ -320,8 +320,8 @@ namespace RTBEngine {
                 return go;
             }
 
-            std::vector<ECS::GameObject*> childGOs;
-            ECS::GameObject* go = prefab->Instantiate(nullptr, childGOs);
+            std::vector<Scene::GameObject*> childGOs;
+            Scene::GameObject* go = prefab->Instantiate(nullptr, childGOs);
             go->SetName(name);
             go->SetPrefabName(prefabName);
             if (!uuid.empty())
@@ -329,7 +329,7 @@ namespace RTBEngine {
 
             go->SetActive(SceneParsingUtils::ReadOptionalBool(L, tableIndex, "active", true));
 
-            for (ECS::GameObject* child : childGOs) {
+            for (Scene::GameObject* child : childGOs) {
                 if (child) {
                     scene->AddGameObject(child);
                 }
@@ -352,7 +352,7 @@ namespace RTBEngine {
             return go;
         }
 
-        void SceneLoader::ReadTransform(lua_State* L, int tableIndex, ECS::GameObject* go) {
+        void SceneLoader::ReadTransform(lua_State* L, int tableIndex, Scene::GameObject* go) {
             lua_getfield(L, tableIndex, "position");
             if (lua_isuserdata(L, -1)) {
                 auto result = luabridge::Stack<Math::Vector3>::get(L, -1);
@@ -375,9 +375,9 @@ namespace RTBEngine {
             lua_pop(L, 1);
         }
 
-        void SceneLoader::ProcessChildren(lua_State* L, int tableIndex, ECS::Scene* scene,
-            ECS::GameObject* parent,
-            std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests,
+        void SceneLoader::ProcessChildren(lua_State* L, int tableIndex, Scene::Scene* scene,
+            Scene::GameObject* parent,
+            std::vector<std::pair<Scene::GameObject*, std::string>>& parentingRequests,
             std::vector<UUIDRefRequest>& uuidRefRequests)
         {
             lua_getfield(L, tableIndex, "children");
@@ -386,7 +386,7 @@ namespace RTBEngine {
                 for (int c = 1; c <= count; c++) {
                     lua_geti(L, -1, c);
                     if (lua_istable(L, -1)) {
-                        ECS::GameObject* child = ProcessGameObject(L, lua_gettop(L), scene, parentingRequests, uuidRefRequests);
+                        Scene::GameObject* child = ProcessGameObject(L, lua_gettop(L), scene, parentingRequests, uuidRefRequests);
                         if (child) {
                             scene->AddGameObject(child);
                             child->SetParent(parent);
@@ -398,11 +398,11 @@ namespace RTBEngine {
             lua_pop(L, 1);
         }
 
-        void SceneLoader::ResolveParenting(ECS::Scene* scene,
-            const std::vector<std::pair<ECS::GameObject*, std::string>>& parentingRequests)
+        void SceneLoader::ResolveParenting(Scene::Scene* scene,
+            const std::vector<std::pair<Scene::GameObject*, std::string>>& parentingRequests)
         {
             for (const auto& req : parentingRequests) {
-                ECS::GameObject* parent = scene->FindGameObject(req.second);
+                Scene::GameObject* parent = scene->FindGameObject(req.second);
                 if (parent)
                     req.first->SetParent(parent);
                 else
@@ -410,7 +410,7 @@ namespace RTBEngine {
             }
         }
 
-        void SceneLoader::ResolveUUIDRefs(ECS::Scene* scene,
+        void SceneLoader::ResolveUUIDRefs(Scene::Scene* scene,
             const std::vector<RTBEngine::Scripting::SceneLoader::UUIDRefRequest>& uuidRefRequests)
         {
             for (const auto& req : uuidRefRequests) {
@@ -429,7 +429,7 @@ namespace RTBEngine {
                         continue;
                     }
 
-                    ECS::GameObject* target = scene->FindGameObjectByUUID(uuidStr);
+                    Scene::GameObject* target = scene->FindGameObjectByUUID(uuidStr);
                     if (target) {
                         (*values)[static_cast<size_t>(req.listIndex)] = target;
                     } else {
@@ -454,7 +454,7 @@ namespace RTBEngine {
 
                     const std::string uuid = uuidStr.substr(0, slash);
                     const std::string type = uuidStr.substr(slash + 1);
-                    ECS::GameObject* targetGO = scene->FindGameObjectByUUID(uuid);
+                    Scene::GameObject* targetGO = scene->FindGameObjectByUUID(uuid);
                     if (!targetGO) {
                         RTB_WARN("SceneLoader: ComponentRef list UUID not found: " + uuidStr);
                         continue;
@@ -470,9 +470,9 @@ namespace RTBEngine {
                 }
 
                 if (req.prop->type == Reflection::PropertyType::GameObjectRef) {
-                    ECS::GameObject* target = scene->FindGameObjectByUUID(uuidStr);
+                    Scene::GameObject* target = scene->FindGameObjectByUUID(uuidStr);
                     if (target) {
-                        *(ECS::GameObject**)data = target;
+                        *(Scene::GameObject**)data = target;
                     } else {
                         RTB_WARN("SceneLoader: GameObjectRef UUID not found: " + uuidStr);
                     }
@@ -482,11 +482,11 @@ namespace RTBEngine {
                     if (slash != std::string::npos) {
                         std::string uuid = uuidStr.substr(0, slash);
                         std::string type = uuidStr.substr(slash + 1);
-                        ECS::GameObject* targetGO = scene->FindGameObjectByUUID(uuid);
+                        Scene::GameObject* targetGO = scene->FindGameObjectByUUID(uuid);
                         if (targetGO) {
                             for (const auto& comp : targetGO->GetComponents()) {
                                 if (std::string(comp->GetTypeName()) == type) {
-                                    *(ECS::Component**)data = comp.get();
+                                    *(Scene::Component**)data = comp.get();
                                     break;
                                 }
                             }
@@ -498,7 +498,7 @@ namespace RTBEngine {
             }
         }
 
-        void SceneLoader::ProcessComponents(lua_State* L, int arrayIndex, ECS::GameObject* gameObject,
+        void SceneLoader::ProcessComponents(lua_State* L, int arrayIndex, Scene::GameObject* gameObject,
             std::vector<UUIDRefRequest>& uuidRefRequests)
         {
             int componentCount = luaL_len(L, arrayIndex);
@@ -537,18 +537,18 @@ namespace RTBEngine {
                 const Reflection::TypeInfo* registeredTypeInfo =
                     ComponentRegistry::GetInstance().GetComponentTypeInfo(componentType);
 
-                ECS::Component* comp = ComponentRegistry::GetInstance().CreateComponent(componentType);
+                Scene::Component* comp = ComponentRegistry::GetInstance().CreateComponent(componentType);
                 if (!comp) {
                     const std::string placeholderType =
                         !missingTypeName.empty() ? missingTypeName : componentType;
                     RTB_ERROR("SceneLoader: Component type '" + placeholderType
                               + "' not found — inserting MissingComponent placeholder");
-                    gameObject->AddComponent(new ECS::MissingComponent(placeholderType));
+                    gameObject->AddComponent(new Scene::MissingComponent(placeholderType));
                     lua_pop(L, 1);
                     continue;
                 }
 
-                ECS::Component* existing = nullptr;
+                Scene::Component* existing = nullptr;
                 for (const auto& c : gameObject->GetComponents()) {
                     if (std::string(c->GetTypeName()) == componentType) {
                         existing = c.get();
@@ -567,19 +567,19 @@ namespace RTBEngine {
                 SceneReflectionUtils::ClearReferenceProperties(comp, registeredTypeInfo);
 
                 if (componentType == "MeshRenderer")
-                    SceneComponentConfigurator::ConfigureMeshRenderer(L, componentTableIndex, static_cast<ECS::MeshRenderer*>(comp));
+                    SceneComponentConfigurator::ConfigureMeshRenderer(L, componentTableIndex, static_cast<Scene::MeshRenderer*>(comp));
                 else if (componentType == "LightComponent")
-                    SceneComponentConfigurator::ConfigureLightComponent(L, componentTableIndex, static_cast<ECS::LightComponent*>(comp));
+                    SceneComponentConfigurator::ConfigureLightComponent(L, componentTableIndex, static_cast<Scene::LightComponent*>(comp));
                 else if (componentType == "AudioSourceComponent")
-                    SceneComponentConfigurator::ConfigureAudioSource(L, componentTableIndex, static_cast<ECS::AudioSourceComponent*>(comp));
+                    SceneComponentConfigurator::ConfigureAudioSource(L, componentTableIndex, static_cast<Scene::AudioSourceComponent*>(comp));
                 else if (componentType == "RigidBodyComponent")
-                    SceneComponentConfigurator::ConfigureRigidBody(L, componentTableIndex, static_cast<ECS::RigidBodyComponent*>(comp), gameObject);
+                    SceneComponentConfigurator::ConfigureRigidBody(L, componentTableIndex, static_cast<Scene::RigidBodyComponent*>(comp), gameObject);
                 else if (componentType == "BoxColliderComponent")
-                    SceneComponentConfigurator::ConfigureBoxCollider(L, componentTableIndex, static_cast<ECS::BoxColliderComponent*>(comp), gameObject);
+                    SceneComponentConfigurator::ConfigureBoxCollider(L, componentTableIndex, static_cast<Scene::BoxColliderComponent*>(comp), gameObject);
                 else if (componentType == "SphereColliderComponent")
-                    SceneComponentConfigurator::ConfigureSphereCollider(L, componentTableIndex, static_cast<ECS::SphereColliderComponent*>(comp), gameObject);
+                    SceneComponentConfigurator::ConfigureSphereCollider(L, componentTableIndex, static_cast<Scene::SphereColliderComponent*>(comp), gameObject);
                 else if (componentType == "CapsuleColliderComponent")
-                    SceneComponentConfigurator::ConfigureCapsuleCollider(L, componentTableIndex, static_cast<ECS::CapsuleColliderComponent*>(comp), gameObject);
+                    SceneComponentConfigurator::ConfigureCapsuleCollider(L, componentTableIndex, static_cast<Scene::CapsuleColliderComponent*>(comp), gameObject);
                 else if (componentType == "Canvas")
                     SceneComponentConfigurator::ConfigureCanvas(L, componentTableIndex, static_cast<UI::Canvas*>(comp));
                 else if (componentType == "UIText")
@@ -597,13 +597,13 @@ namespace RTBEngine {
                 else if (componentType == "UIVerticalLayout")
                     SceneComponentConfigurator::ConfigureUILayout(L, componentTableIndex, static_cast<UI::UIVerticalLayout*>(comp));
                 else if (componentType == "CameraComponent")
-                    SceneComponentConfigurator::ConfigureCameraComponent(L, componentTableIndex, static_cast<ECS::CameraComponent*>(comp));
+                    SceneComponentConfigurator::ConfigureCameraComponent(L, componentTableIndex, static_cast<Scene::CameraComponent*>(comp));
                 else if (componentType == "FreeLookCamera")
-                    SceneComponentConfigurator::ConfigureFreeLookCamera(L, componentTableIndex, static_cast<ECS::FreeLookCamera*>(comp));
+                    SceneComponentConfigurator::ConfigureFreeLookCamera(L, componentTableIndex, static_cast<Scene::FreeLookCamera*>(comp));
                 else if (componentType == "Animator")
                     SceneComponentConfigurator::ConfigureAnimator(L, componentTableIndex, static_cast<Animation::Animator*>(comp));
                 else if (componentType == "NavGridComponent")
-                    SceneComponentConfigurator::ConfigureNavGrid(L, componentTableIndex, static_cast<ECS::NavGridComponent*>(comp));
+                    SceneComponentConfigurator::ConfigureNavGrid(L, componentTableIndex, static_cast<Scene::NavGridComponent*>(comp));
 
                 const Reflection::TypeInfo* typeInfo = registeredTypeInfo ? registeredTypeInfo : comp->GetTypeInfo();
                 if (typeInfo) {
@@ -651,13 +651,13 @@ namespace RTBEngine {
         }
 
         namespace {
-            bool ChildUsesAnimatorModel(ECS::GameObject* child, const std::string& animatorModelPath)
+            bool ChildUsesAnimatorModel(Scene::GameObject* child, const std::string& animatorModelPath)
             {
                 if (!child) {
                     return false;
                 }
 
-                auto* renderer = child->GetComponent<ECS::MeshRenderer>();
+                auto* renderer = child->GetComponent<Scene::MeshRenderer>();
                 if (!renderer || !renderer->meshRef) {
                     return false;
                 }
@@ -673,7 +673,7 @@ namespace RTBEngine {
             }
         }
 
-        void SceneLoader::RebuildFbxHierarchies(ECS::Scene* scene)
+        void SceneLoader::RebuildFbxHierarchies(Scene::Scene* scene)
         {
             if (!scene) return;
 
@@ -684,7 +684,7 @@ namespace RTBEngine {
             // 2) All Animators with skeletons: create bone GOs (OnValidate couldn't because scene wasn't active yet)
 
             struct RebuildEntry {
-                ECS::GameObject* go;
+                Scene::GameObject* go;
                 Animation::Animator* animator;
                 Rendering::ModelData modelData;
             };
@@ -700,7 +700,7 @@ namespace RTBEngine {
                     if (!child) {
                         continue;
                     }
-                    if (ChildUsesAnimatorModel(const_cast<ECS::GameObject*>(child), animator->modelRef)) {
+                    if (ChildUsesAnimatorModel(const_cast<Scene::GameObject*>(child), animator->modelRef)) {
                         hasMeshChildren = true;
                         break;
                     }
@@ -715,7 +715,7 @@ namespace RTBEngine {
 
             // Pass 1: Multi-mesh FBX hierarchy rebuild
             for (auto& entry : multiMeshRebuild) {
-                ECS::GameObject* go = entry.go;
+                Scene::GameObject* go = entry.go;
                 Animation::Animator* animator = entry.animator;
                 Rendering::ModelData& modelData = entry.modelData;
 
@@ -725,7 +725,7 @@ namespace RTBEngine {
                 Rendering::FbxBindingResult binding = Rendering::BuildMeshesAndMaterials(ctx);
                 Rendering::Shader* basicShader = resources.GetShader("basic");
 
-                auto* rootRenderer = go->GetComponent<ECS::MeshRenderer>();
+                auto* rootRenderer = go->GetComponent<Scene::MeshRenderer>();
                 if (rootRenderer) go->RemoveComponent(rootRenderer);
 
                 Rendering::AttachFbxMeshesToHierarchy(scene, go, modelData, binding, basicShader);
