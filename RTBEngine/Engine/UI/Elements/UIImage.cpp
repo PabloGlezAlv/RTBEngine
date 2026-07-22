@@ -1,6 +1,8 @@
 ﻿#include "UIImage.h"
 #include "../UIRenderContext.h"
+#include "../../Rendering/RHI/RenderDevice.h"
 #include <imgui.h>
+#include <cstdint>
 
 namespace RTBEngine {
 	namespace UI {
@@ -64,7 +66,13 @@ namespace RTBEngine {
 			);
 
 			unsigned int texID = texture->GetID();
-			drawList->AddImage((ImTextureID)(intptr_t)texID, min, max, uv0, uv1, tint);
+			const std::uintptr_t nativeTexID =
+				Rendering::RHI::RenderDevice::HasDevice()
+					? Rendering::RHI::RenderDevice::Get().GetNativeTextureIdForImGui(texID)
+					: 0;
+			if (nativeTexID != 0) {
+				drawList->AddImage((ImTextureID)nativeTexID, min, max, uv0, uv1, tint);
+			}
 		}
 
 	}

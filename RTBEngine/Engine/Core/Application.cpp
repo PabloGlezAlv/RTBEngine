@@ -5,6 +5,7 @@
 #include "../Input/Input.h"
 #include "../Rendering/RHI/RenderDevice.h"
 #include "../Rendering/RHI/RenderDeviceFactory.h"
+#include "../Rendering/RHI/GraphicsAPI.h"
 #include "../Rendering/Rendering.h"
 #include "../Scene/Scene.h"
 #include "../Scene/GameObject.h"
@@ -37,12 +38,12 @@
 #include "../Rendering/Lighting/LightingUBO.h"
 #include "../Rendering/CameraUBO.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
+
 #include "../Rendering/Frustum.h"
 #include "../Online/OnlineSystem.h"
 
 #include <imgui.h>
 #include <backends/imgui_impl_sdl2.h>
-#include <backends/imgui_impl_opengl3.h>
 #include <iostream>
 #include <filesystem>
 #include <atomic>
@@ -115,7 +116,6 @@ RTBEngine::Core::Application::Application(const ApplicationConfig& cfg)
 {
 }
 
-
 RTBEngine::Core::Application::~Application()
 {
 	Shutdown();
@@ -143,14 +143,6 @@ void RTBEngine::Core::Application::ClearQuitRequest()
 
 bool RTBEngine::Core::Application::InitializeImGui()
 {
-	// Vulkan MVP has no ImGui renderer backend yet; skip ImGui rather than
-	// crashing the OpenGL-only ImGui init path.
-	if (Rendering::RHI::RenderDevice::Get().GetAPI() == Rendering::RHI::GraphicsAPI::Vulkan) {
-		RTB_WARN("Application::InitializeImGui - ImGui is not supported on the Vulkan backend yet; continuing without ImGui");
-		imguiInitialized = false;
-		return true;
-	}
-
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	if (!ImGui::GetCurrentContext()) {
@@ -163,16 +155,9 @@ bool RTBEngine::Core::Application::InitializeImGui()
 
 	ImGui::StyleColorsDark();
 
-	void* glContext = Rendering::RHI::RenderDevice::Get().GetNativeContext();
-	if (!ImGui_ImplSDL2_InitForOpenGL(window->GetSDLWindow(), glContext)) {
-		RTB_ERROR("Application::InitializeImGui - Failed to initialize ImGui SDL2 backend");
-		ImGui::DestroyContext();
-		return false;
-	}
-
-	if (!ImGui_ImplOpenGL3_Init("#version 330")) {
-		RTB_ERROR("Application::InitializeImGui - Failed to initialize ImGui OpenGL3 backend");
-		ImGui_ImplSDL2_Shutdown();
+	auto& device = Rendering::RHI::RenderDevice::Get();
+	if (!device.InitializeImGuiBackend(window->GetSDLWindow())) {
+		RTB_ERROR("Application::InitializeImGui - Failed to initialize ImGui render backend");
 		ImGui::DestroyContext();
 		return false;
 	}
@@ -180,7 +165,7 @@ bool RTBEngine::Core::Application::InitializeImGui()
 	imguiInitialized = true;
 	return true;
 }
- 
+
  void* RTBEngine::Core::Application::GetImGuiContext()
  {
  	return ImGui::GetCurrentContext();
@@ -188,17 +173,21 @@ bool RTBEngine::Core::Application::InitializeImGui()
 
 void RTBEngine::Core::Application::ShutdownImGui()
 {
-	if (!imguiInitialized) {
+	if (ImGui::GetCurrentContext() == nullptr) {
+		imguiInitialized = false;
 		return;
 	}
 
-	// Ensure the main GL context is current before releasing ImGui GL resources.
-	// ViewportsEnable can leave a different context active after rendering.
-	if (Rendering::RHI::RenderDevice::HasDevice()) {
-		Rendering::RHI::RenderDevice::Get().MakeCurrent();
+	if (imguiInitialized) {
+		// Ensure the main GL context is current before releasing ImGui GL resources.
+		// ViewportsEnable can leave a different context active after rendering.
+		if (Rendering::RHI::RenderDevice::HasDevice()) {
+			auto& device = Rendering::RHI::RenderDevice::Get();
+			device.MakeCurrent();
+			device.ShutdownImGuiBackend();
+		}
 	}
-	ImGui_ImplOpenGL3_Shutdown();
-	ImGui_ImplSDL2_Shutdown();
+
 	ImGui::DestroyContext();
 	imguiInitialized = false;
 }
@@ -317,7 +306,6 @@ bool RTBEngine::Core::Application::Initialize()
 	// Initialize default skybox
 	skybox = resources.GetDefaultSkybox();
 
-
 	// Collision layers (project physics_layers.ini in working directory)
 	{
 		auto& layerSettings = Physics::PhysicsLayerSettings::Get();
@@ -427,7 +415,6 @@ void RTBEngine::Core::Application::Run()
 		}
 
 		Audio::AudioSystem::GetInstance().Update();
-
 
 		Render();
 
@@ -580,17 +567,6 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 
 void RTBEngine::Core::Application::Render()
 {
-	// Vulkan MVP: no mesh/shadow/ImGui pipeline yet. Just clear and present so the
-	// window shows a colored framebuffer instead of crashing on OpenGL-only render paths.
-	if (Rendering::RHI::RenderDevice::Get().GetAPI() == Rendering::RHI::GraphicsAPI::Vulkan) {
-		auto& device = Rendering::RHI::RenderDevice::Get();
-		device.SetClearColor(config.rendering.clearColorR, config.rendering.clearColorG,
-			config.rendering.clearColorB, 1.0f);
-		device.Clear(Rendering::RHI::ClearMask::ColorDepth);
-		window->SwapBuffers();
-		return;
-	}
-
 	Scene::Scene* scene = Scene::SceneManager::GetInstance().GetActiveScene();
 	if (!scene) return;
 
@@ -606,37 +582,39 @@ void RTBEngine::Core::Application::Render()
 	}
 
 	auto& canvasSystem = UI::CanvasSystem::GetInstance();
-	canvasSystem.Update(scene);
+	if (imguiInitialized) {
+		canvasSystem.Update(scene);
+	}
 
 	RenderShadowPass(scene);
 	RenderGeometryPass(scene, activeCamera);
 
-	// Begin ImGui frame
-	ImGui_ImplOpenGL3_NewFrame();
-	ImGui_ImplSDL2_NewFrame();
-	ImGui::NewFrame();
+	if (imguiInitialized) {
+		auto& device = Rendering::RHI::RenderDevice::Get();
+		device.BeginImGuiFrame();
+		ImGui::NewFrame();
 
-	// Render engine UI through the same path as the editor
-	Math::Vector2 screenSize(
-		static_cast<float>(window->GetWidth()),
-		static_cast<float>(window->GetHeight())
-	);
+		// Render engine UI through the same path as the editor
+		Math::Vector2 screenSize(
+			static_cast<float>(window->GetWidth()),
+			static_cast<float>(window->GetHeight())
+		);
 
-	canvasSystem.UpdateAllRectTransforms(screenSize);
+		canvasSystem.UpdateAllRectTransforms(screenSize);
 
-	// Mouse position in window space (no offset for standalone)
-	if (!IsMouseOwnedByGameplay(window.get())) {
-		int mx, my;
-		SDL_GetMouseState(&mx, &my);
-		canvasSystem.ProcessInput(Math::Vector2(static_cast<float>(mx), static_cast<float>(my)));
+		// Mouse position in window space (no offset for standalone)
+		if (!IsMouseOwnedByGameplay(window.get())) {
+			int mx, my;
+			SDL_GetMouseState(&mx, &my);
+			canvasSystem.ProcessInput(Math::Vector2(static_cast<float>(mx), static_cast<float>(my)));
+		}
+
+		// Render to the background draw list (full screen, no offset)
+		canvasSystem.RenderToDrawList(ImGui::GetBackgroundDrawList(), screenSize, Math::Vector2(0.0f, 0.0f));
+
+		ImGui::Render();
+		device.QueueImGuiDrawData(ImGui::GetDrawData());
 	}
-
-	// Render to the background draw list (full screen, no offset)
-	canvasSystem.RenderToDrawList(ImGui::GetBackgroundDrawList(), screenSize, Math::Vector2(0.0f, 0.0f));
-
-	// End ImGui frame
-	ImGui::Render();
-	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 	window->SwapBuffers();
 }
@@ -662,6 +640,13 @@ void RTBEngine::Core::Application::RenderShadowPass(Scene::Scene* scene)
 		float sceneRadius = 50.0f;
 		Math::Matrix4 lightSpaceMatrix = dirLight->GetLightSpaceMatrix(sceneCenter, sceneRadius);
 
+		// Frustum cull in engine/OpenGL light space; Vulkan needs a clip fix for the GPU.
+		Rendering::Frustum shadowFrustum;
+		shadowFrustum.ExtractPlanes(lightSpaceMatrix);
+		if (Rendering::RHI::RenderDevice::Get().GetAPI() == Rendering::RHI::GraphicsAPI::Vulkan) {
+			lightSpaceMatrix = Math::Matrix4::VulkanClipCorrection() * lightSpaceMatrix;
+		}
+
 		shadowShader->SetMatrix4("uLightSpaceMatrix", lightSpaceMatrix);
 
 		Rendering::ShadowMap* shadowMap = dirLight->GetShadowMap();
@@ -673,9 +658,6 @@ void RTBEngine::Core::Application::RenderShadowPass(Scene::Scene* scene)
 
 		// Disable culling to render all faces (fixes shadow issues with single-sided geometry)
 		device.SetCullFace(false);
-		// Frustum for lighning
-		Rendering::Frustum shadowFrustum;
-		shadowFrustum.ExtractPlanes(lightSpaceMatrix);
 		RenderSceneDepthOnly(scene, shadowShader, shadowFrustum);
 
 		device.SetCullFace(true);
@@ -796,7 +778,6 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(Scene::Scene* scene, Ren
 	}
 }
 
-
 void RTBEngine::Core::Application::RenderGeometryPass(Scene::Scene* scene, Rendering::Camera* camera)
 {
 	auto& device = Rendering::RHI::RenderDevice::Get();
@@ -845,6 +826,9 @@ void RTBEngine::Core::Application::RenderGeometryPass(Scene::Scene* scene, Rende
 		Math::Vector3 sceneCenter(0.0f, 2.0f, 0.0f);
 		float sceneRadius = 50.0f;
 		Math::Matrix4 lightSpaceMatrix = shadowCastingLight->GetLightSpaceMatrix(sceneCenter, sceneRadius);
+		if (Rendering::RHI::RenderDevice::Get().GetAPI() == Rendering::RHI::GraphicsAPI::Vulkan) {
+			lightSpaceMatrix = Math::Matrix4::VulkanClipCorrection() * lightSpaceMatrix;
+		}
 		shader->SetMatrix4("uLightSpaceMatrix", lightSpaceMatrix);
 	}
 	else {
@@ -869,7 +853,10 @@ void RTBEngine::Core::Application::RenderGeometryPass(Scene::Scene* scene, Rende
 	// Transparent effects must render after the skybox because they skip depth writes.
 	scene->RenderTransparentEffects(camera);
 
-	UI::CanvasSystem::GetInstance().RenderWorldSpace(camera);
+	// World-space UI uses ImGui font atlases; skip when ImGui is not available (e.g. Vulkan MVP).
+	if (imguiInitialized) {
+		UI::CanvasSystem::GetInstance().RenderWorldSpace(camera);
+	}
 }
 
 void RTBEngine::Core::Application::ResetPhysics()

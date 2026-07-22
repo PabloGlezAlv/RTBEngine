@@ -198,7 +198,14 @@ namespace RTBEngine {
             forward.z = cos(yawRad) * cos(pitchRad);
             forward.Normalize();
 
-            right = worldUp.Cross(forward).Normalized();
+            right = worldUp.Cross(forward);
+            if (right.LengthSquared() < 1e-12f) {
+                const Math::Vector3 alt = (std::abs(forward.y) > 0.99f)
+                    ? Math::Vector3(1.0f, 0.0f, 0.0f)
+                    : Math::Vector3(0.0f, 1.0f, 0.0f);
+                right = alt.Cross(forward);
+            }
+            right.Normalize();
             up = forward.Cross(right).Normalized();
         }
 

@@ -735,6 +735,11 @@ namespace RTBEngine {
             device.EnableVertexAttribFloat(3, 4, stride, offsetof(ParticleInstanceData, color));
             device.EnableVertexAttribFloat(4, 1, stride, offsetof(ParticleInstanceData, size));
             device.EnableVertexAttribFloat(5, 1, stride, offsetof(ParticleInstanceData, frame));
+            // Re-assert instance rate after Enable* (OpenGL keeps divisor; Vulkan RHI must too).
+            device.SetVertexAttribDivisor(2, 1);
+            device.SetVertexAttribDivisor(3, 1);
+            device.SetVertexAttribDivisor(4, 1);
+            device.SetVertexAttribDivisor(5, 1);
 
             device.DrawArraysInstanced(
                 Rendering::RHI::PrimitiveTopology::Triangles,

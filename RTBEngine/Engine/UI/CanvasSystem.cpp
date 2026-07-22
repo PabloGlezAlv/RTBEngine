@@ -48,6 +48,10 @@ namespace RTBEngine {
 
 			class WorldUIQuadRenderer {
 			public:
+				void BeginFrame() {
+					vboCursor = 0;
+				}
+
 				void Draw(const std::array<WorldUIVertex, 6>& vertices) {
 					Draw(vertices.data(), vertices.size());
 				}
@@ -60,17 +64,22 @@ namespace RTBEngine {
 			private:
 				void Draw(const WorldUIVertex* vertices, size_t vertexCount) {
 					EnsureInitialized();
-					if (vao == Rendering::RHI::kInvalidGpuId
-						|| vbo == Rendering::RHI::kInvalidGpuId
-						|| !vertices
-						|| vertexCount == 0) {
+					if (vao == Rendering::RHI::kInvalidGpuId || !vertices || vertexCount == 0) {
 						return;
 					}
 
 					auto& device = Rendering::RHI::RenderDevice::Get();
+					const Rendering::RHI::GpuId drawVbo = AcquireVbo(device);
 					device.BindVertexArray(vao);
+					// Point the shared VAO at this draw's private VBO before upload+draw so
+					// Vulkan deferred replay can snapshot a unique VkBuffer per quad.
+					device.BindArrayBuffer(drawVbo);
+					device.EnableVertexAttribFloat(
+						0, 3, static_cast<int>(sizeof(WorldUIVertex)), offsetof(WorldUIVertex, x));
+					device.EnableVertexAttribFloat(
+						1, 2, static_cast<int>(sizeof(WorldUIVertex)), offsetof(WorldUIVertex, u));
 					device.SetArrayBufferData(
-						vbo,
+						drawVbo,
 						vertices,
 						vertexCount * sizeof(WorldUIVertex),
 						Rendering::RHI::BufferUsage::Dynamic);
@@ -81,30 +90,26 @@ namespace RTBEngine {
 					device.UnbindVertexArray();
 				}
 
+				Rendering::RHI::GpuId AcquireVbo(Rendering::RHI::IRenderDevice& device) {
+					if (vboCursor >= vboPool.size()) {
+						vboPool.push_back(device.CreateBuffer());
+					}
+					return vboPool[vboCursor++];
+				}
+
 				void EnsureInitialized() {
-					if (vao != Rendering::RHI::kInvalidGpuId && vbo != Rendering::RHI::kInvalidGpuId) return;
+					if (vao != Rendering::RHI::kInvalidGpuId) return;
 
 					auto& device = Rendering::RHI::RenderDevice::Get();
 					vao = device.CreateVertexArray();
-					vbo = device.CreateBuffer();
-
 					device.BindVertexArray(vao);
-					device.SetArrayBufferData(
-						vbo,
-						nullptr,
-						sizeof(WorldUIVertex) * 6,
-						Rendering::RHI::BufferUsage::Dynamic);
-
-					device.EnableVertexAttribFloat(
-						0, 3, static_cast<int>(sizeof(WorldUIVertex)), offsetof(WorldUIVertex, x));
-					device.EnableVertexAttribFloat(
-						1, 2, static_cast<int>(sizeof(WorldUIVertex)), offsetof(WorldUIVertex, u));
-
+					// Attribute layout is rebound per Draw() to the ring VBO in use.
 					device.UnbindVertexArray();
 				}
 
 				Rendering::RHI::GpuId vao = Rendering::RHI::kInvalidGpuId;
-				Rendering::RHI::GpuId vbo = Rendering::RHI::kInvalidGpuId;
+				std::vector<Rendering::RHI::GpuId> vboPool;
+				std::size_t vboCursor = 0;
 			};
 
 			WorldUIQuadRenderer& GetWorldUIQuadRenderer() {
@@ -303,7 +308,9 @@ namespace RTBEngine {
 
 				if (auto* image = dynamic_cast<UIImage*>(element)) {
 					Rendering::Texture* texture = image->GetTexture();
-					if (!texture || texture->GetID() == 0) return;
+					if (!texture || texture->GetID() == 0) {
+						return;
+					}
 
 					shader->SetBool("uHasTexture", true);
 					shader->SetVector4("uColor", image->GetTint());
@@ -387,7 +394,9 @@ namespace RTBEngine {
 
 			auto& device = Rendering::RHI::RenderDevice::Get();
 
-			device.SetDepthTest(true);
+			// World-space nameplates sit on the character; depth testing against the mesh
+			// culls quads inconsistently under Vulkan's clip/viewport path. Draw as overlay.
+			device.SetDepthTest(false);
 			device.SetDepthWrite(false);
 			device.SetBlend(true);
 			device.SetBlendFuncSeparate(
@@ -396,6 +405,8 @@ namespace RTBEngine {
 				Rendering::RHI::BlendFactor::SrcAlpha,
 				Rendering::RHI::BlendFactor::OneMinusSrcAlpha);
 			device.SetCullFace(false);
+
+			GetWorldUIQuadRenderer().BeginFrame();
 
 			shader->Bind();
 			Rendering::CameraUBO::GetInstance().Bind();

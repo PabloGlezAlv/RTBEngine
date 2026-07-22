@@ -29,7 +29,14 @@ out vec4 vColor;
 
 void main()
 {
-    vec3 offset = (cameraRight * aCorner.x + cameraUp * aCorner.y) * aInstanceSize;
+    vec3 camRight = vec3(view[0][0], view[1][0], view[2][0]);
+    vec3 camUp = vec3(view[0][1], view[1][1], view[2][1]);
+    float rLen = length(camRight);
+    float uLen = length(camUp);
+    if (rLen > 1e-6) camRight /= rLen; else camRight = vec3(1.0, 0.0, 0.0);
+    if (uLen > 1e-6) camUp /= uLen; else camUp = vec3(0.0, 1.0, 0.0);
+
+    vec3 offset = (camRight * aCorner.x + camUp * aCorner.y) * aInstanceSize;
     vec3 worldPos = aInstancePos + offset;
     gl_Position = projection * view * vec4(worldPos, 1.0);
     gl_Position.z -= 0.002 * gl_Position.w;

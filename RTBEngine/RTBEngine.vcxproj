@@ -129,7 +129,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>lua54.lib;LinearMath_Debug.lib;BulletCollision_Debug.lib;BulletDynamics_Debug.lib;assimp-vc145-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;vulkan-1.lib;fmod_vc.lib;Ws2_32.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lua54.lib;LinearMath_Debug.lib;BulletCollision_Debug.lib;BulletDynamics_Debug.lib;assimp-vc145-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;vulkan-1.lib;shaderc_combinedd.lib;fmod_vc.lib;Ws2_32.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>if exist "$(ProjectDir)ThirdParty\lua\lua54.dll" xcopy /y /d "$(ProjectDir)ThirdParty\lua\lua54.dll" "$(OutDir)"
@@ -163,7 +163,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)ThirdParty\assimp\lib\Release\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>lua54.lib;LinearMath.lib;BulletCollision.lib;BulletDynamics.lib;assimp-vc145-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;vulkan-1.lib;fmod_vc.lib;Ws2_32.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lua54.lib;LinearMath.lib;BulletCollision.lib;BulletDynamics.lib;assimp-vc145-mt.lib;SDL2.lib;SDL2main.lib;glew32.lib;opengl32.lib;vulkan-1.lib;shaderc_combined.lib;fmod_vc.lib;Ws2_32.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>if exist "$(ProjectDir)ThirdParty\lua\lua54.dll" xcopy /y /d "$(ProjectDir)ThirdParty\lua\lua54.dll" "$(OutDir)"
@@ -306,6 +306,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui_widgets.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_sdl2.cpp" />
     <ClCompile Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="Engine\Scene\Transform.cpp" />
     <ClCompile Include="Engine\Core\Logger.cpp" />
     <ClCompile Include="Engine\Online\CompositeOnlineBackend.cpp" />
@@ -523,6 +524,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="ThirdParty\imgui-1.92.5\imgui_internal.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_sdl2.h" />
     <ClInclude Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_opengl3.h" />
+    <ClInclude Include="ThirdParty\imgui-1.92.5\backends\imgui_impl_vulkan.h" />
     <ClInclude Include="Engine\Scene\Transform.h" />
     <ClInclude Include="Engine\Core\Logger.h" />
     <ClInclude Include="Engine\Scene\BoxColliderComponent.h" />

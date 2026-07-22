@@ -1,6 +1,9 @@
 #include "OpenGLRenderDevice.h"
 #include "../../../Core/Logger.h"
 #include <GL/glew.h>
+#include <backends/imgui_impl_opengl3.h>
+#include <backends/imgui_impl_sdl2.h>
+#include <imgui.h>
 #include <vector>
 
 namespace RTBEngine {
@@ -614,7 +617,42 @@ namespace RTBEngine {
                 glDrawArraysInstanced(ToGLTopology(topology), first, count, instanceCount);
             }
 
-            unsigned int OpenGLRenderDevice::GetNativeTextureIdForImGui(GpuId texture) const
+            bool OpenGLRenderDevice::InitializeImGuiBackend(SDL_Window* sdlWindow)
+            {
+                if (imguiBackendInitialized) return true;
+                if (!ImGui_ImplSDL2_InitForOpenGL(sdlWindow, glContext)) return false;
+                if (!ImGui_ImplOpenGL3_Init("#version 330")) {
+                    ImGui_ImplSDL2_Shutdown();
+                    return false;
+                }
+                imguiBackendInitialized = true;
+                return true;
+            }
+
+            void OpenGLRenderDevice::ShutdownImGuiBackend()
+            {
+                if (!imguiBackendInitialized) return;
+                ImGui_ImplOpenGL3_Shutdown();
+                ImGui_ImplSDL2_Shutdown();
+                imguiBackendInitialized = false;
+            }
+
+            void OpenGLRenderDevice::BeginImGuiFrame()
+            {
+                if (!imguiBackendInitialized) return;
+                ImGui_ImplOpenGL3_NewFrame();
+                ImGui_ImplSDL2_NewFrame();
+            }
+
+            void OpenGLRenderDevice::QueueImGuiDrawData(ImDrawData* drawData)
+            {
+                // OpenGL has no deferred pass system: render immediately.
+                if (imguiBackendInitialized && drawData) {
+                    ImGui_ImplOpenGL3_RenderDrawData(drawData);
+                }
+            }
+
+            std::uintptr_t OpenGLRenderDevice::GetNativeTextureIdForImGui(GpuId texture) const
             {
                 return texture;
             }

@@ -36,6 +36,8 @@ namespace RTBEngine {
             static Matrix4 LookAt(const Vector3& eye, const Vector3& center, const Vector3& up);
             static Matrix4 Perspective(float fov, float aspect, float near, float far);
             static Matrix4 Orthographic(float left, float right, float bottom, float top, float near, float far);
+            // Maps OpenGL clip (Y-up, Z[-1,1]) into Vulkan NDC (Y-down, Z[0,1]).
+            static Matrix4 VulkanClipCorrection();
 
             Matrix4 Transpose() const;
             Matrix4 Inverse() const;

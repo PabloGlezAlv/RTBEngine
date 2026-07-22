@@ -4,9 +4,11 @@
 #include "GraphicsAPI.h"
 #include "RenderTypes.h"
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
 struct SDL_Window;
+struct ImDrawData;
 
 namespace RTBEngine {
     namespace Rendering {
@@ -106,8 +108,15 @@ namespace RTBEngine {
                 virtual void DrawArrays(PrimitiveTopology topology, int first, int count) = 0;
                 virtual void DrawArraysInstanced(PrimitiveTopology topology, int first, int count, int instanceCount) = 0;
 
-                // ImGui / editor bridge (OpenGL: returns the same id; Vulkan: will map differently later)
-                virtual unsigned int GetNativeTextureIdForImGui(GpuId texture) const = 0;
+                // ImGui lifecycle (platform + renderer backends). Call after ImGui::CreateContext().
+                virtual bool InitializeImGuiBackend(SDL_Window* window) = 0;
+                virtual void ShutdownImGuiBackend() = 0;
+                virtual void BeginImGuiFrame() = 0;
+                // OpenGL: renders immediately. Vulkan: queues for Present() inside the swapchain pass.
+                virtual void QueueImGuiDrawData(ImDrawData* drawData) = 0;
+
+                // ImGui texture bridge. OpenGL: GL texture name. Vulkan: VkDescriptorSet as uintptr_t.
+                virtual std::uintptr_t GetNativeTextureIdForImGui(GpuId texture) const = 0;
             };
 
         }

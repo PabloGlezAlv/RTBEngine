@@ -1,5 +1,6 @@
 #include "Matrix4.h"
 #include "../Quaternions/Quaternion.h"
+#include <cmath>
 #include <cstring>
 
 namespace RTBEngine {
@@ -139,7 +140,13 @@ namespace RTBEngine {
 
         Matrix4 Matrix4::LookAt(const Vector3& eye, const Vector3& center, const Vector3& up) {
             Vector3 f = (center - eye).Normalized();
-            Vector3 s = f.Cross(up).Normalized();
+            Vector3 s = f.Cross(up);
+            if (s.LengthSquared() < 1e-12f) {
+                // Looking nearly parallel to `up` — pick an alternate axis.
+                const Vector3 alt = (std::abs(f.y) > 0.99f) ? Vector3(1.0f, 0.0f, 0.0f) : Vector3(0.0f, 1.0f, 0.0f);
+                s = f.Cross(alt);
+            }
+            s = s.Normalized();
             Vector3 u = s.Cross(f);
 
             Matrix4 result = Identity();
@@ -182,6 +189,16 @@ namespace RTBEngine {
             result.m[13] = -(top + bottom) / (top - bottom);
             result.m[14] = -(far + near) / (far - near);
 
+            return result;
+        }
+
+        Matrix4 Matrix4::VulkanClipCorrection() {
+            // Z-only: remap OpenGL NDC z[-1,1] → Vulkan z[0,1].
+            // Do NOT flip Y here — the RHI already uses positive viewport + CLOCKWISE,
+            // and a Y flip in the light matrix caused shadow UV/depth mismatch (floor rays).
+            Matrix4 result = Identity();
+            result.m[10] = 0.5f;
+            result.m[14] = 0.5f;
             return result;
         }
 

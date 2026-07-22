@@ -30,8 +30,17 @@ out vec4 vColor;
 
 void main()
 {
-    vec3 offset = (cameraRight * aCorner.x * uSize.x) + (cameraUp * aCorner.y * uSize.y);
-    vec3 worldPos = uWorldPosition + cameraUp * uVerticalOffset + offset;
+    // Derive billboard axes from the view matrix (stable). UBO cameraRight/Up can be
+    // zero/stale on some paths and collapse the quad into a bright additive line.
+    vec3 camRight = vec3(view[0][0], view[1][0], view[2][0]);
+    vec3 camUp = vec3(view[0][1], view[1][1], view[2][1]);
+    float rLen = length(camRight);
+    float uLen = length(camUp);
+    if (rLen > 1e-6) camRight /= rLen; else camRight = vec3(1.0, 0.0, 0.0);
+    if (uLen > 1e-6) camUp /= uLen; else camUp = vec3(0.0, 1.0, 0.0);
+
+    vec3 offset = (camRight * aCorner.x * uSize.x) + (camUp * aCorner.y * uSize.y);
+    vec3 worldPos = uWorldPosition + camUp * uVerticalOffset + offset;
     gl_Position = projection * view * vec4(worldPos, 1.0);
     gl_Position.z -= 0.0015 * gl_Position.w;
 

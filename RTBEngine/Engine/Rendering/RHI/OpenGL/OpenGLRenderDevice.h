@@ -2,6 +2,9 @@
 
 #include "../IRenderDevice.h"
 #include <SDL.h>
+#include <cstdint>
+
+struct ImDrawData;
 
 namespace RTBEngine {
     namespace Rendering {
@@ -95,7 +98,11 @@ namespace RTBEngine {
                 void DrawArrays(PrimitiveTopology topology, int first, int count) override;
                 void DrawArraysInstanced(PrimitiveTopology topology, int first, int count, int instanceCount) override;
 
-                unsigned int GetNativeTextureIdForImGui(GpuId texture) const override;
+                bool InitializeImGuiBackend(SDL_Window* window) override;
+                void ShutdownImGuiBackend() override;
+                void BeginImGuiFrame() override;
+                void QueueImGuiDrawData(ImDrawData* drawData) override;
+                std::uintptr_t GetNativeTextureIdForImGui(GpuId texture) const override;
 
             private:
                 static unsigned int ToGLDepthFunc(DepthFunc func);
@@ -110,6 +117,7 @@ namespace RTBEngine {
                 SDL_Window* window = nullptr;
                 SDL_GLContext glContext = nullptr;
                 bool initialized = false;
+                bool imguiBackendInitialized = false;
             };
 
         }

@@ -83,7 +83,12 @@ namespace RTBEngine {
 			}
 
 			if (!imFont) {
-				imFont = ImGui::GetFont();
+				if (ImGui::GetCurrentContext()) {
+					imFont = ImGui::GetFont();
+				}
+			}
+			if (!imFont) {
+				return;
 			}
 
 			ImVec2 textSize = imFont->CalcTextSizeA(effectiveFontSize, FLT_MAX, 0.0f, text.c_str());

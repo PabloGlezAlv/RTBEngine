@@ -1,8 +1,10 @@
 # RTBEngine
 
-A 3D game engine written in **C++17**, compiled as `RTBEngine.dll` with an import library (`RTBEngine.lib`). RTBEngine provides a complete set of subsystems for building games and interactive real-time applications on Windows: a **hybrid GameObject–Component + ECS** architecture, OpenGL rendering with shadow mapping, Bullet-based rigid-body physics, FMOD spatial audio, SDL2 input, skeletal animation, Lua-based scene serialization, a macro-driven reflection system, and an ImGui-compatible UI framework.
+A 3D game engine written in **C++17**, compiled as `RTBEngine.dll` with an import library (`RTBEngine.lib`). RTBEngine provides a complete set of subsystems for building games and interactive real-time applications on Windows: a **hybrid GameObject–Component + ECS** architecture, a dual **OpenGL / Vulkan** RHI with shadow mapping, Bullet-based rigid-body physics, FMOD spatial audio, SDL2 input, skeletal animation, Lua-based scene serialization, a macro-driven reflection system, and an ImGui-compatible UI framework.
 
 > **Note:** Authoring uses `RTBEngine::Scene` (`Engine/Scene/`). Dense simulation uses **`RTBEngine::ECS`** (`Engine/ECS/`): hybrid ECS with sparse-set storage. The engine provides `World`, `LocalTransform`, `VisualLink`, and instanced `MeshRenderer`; game systems (projectiles, benchmarks) register from GameScripts via `RTBScripts_InitializeEcs`.
+
+> **Gráficos (OpenGL vs Vulkan):** guía completa del RHI, frame loop, sombras, partículas, UBOs y catálogo de métodos → [`docs/GRAPHICS_VULKAN_OPENGL.md`](docs/GRAPHICS_VULKAN_OPENGL.md).
 
 **Version:** `0.9.0` — see [`CHANGELOG.md`](CHANGELOG.md).
 

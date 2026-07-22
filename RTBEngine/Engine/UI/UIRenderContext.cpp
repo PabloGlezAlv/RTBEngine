@@ -15,6 +15,9 @@ namespace RTBEngine {
 			if (IsValid && CurrentDrawList) {
 				return CurrentDrawList;
 			}
+			if (!ImGui::GetCurrentContext()) {
+				return nullptr;
+			}
 			return ImGui::GetBackgroundDrawList();
 		}
 

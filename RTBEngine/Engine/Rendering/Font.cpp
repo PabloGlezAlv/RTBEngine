@@ -3,12 +3,124 @@
 #include <imgui_internal.h>
 #include <iostream>
 #include "../RTBEngine.h"
+#include "RHI/RenderDevice.h"
+#include "RHI/GraphicsAPI.h"
 #include <cfloat>
 #include <cstdint>
 #include <cmath>
+#include <algorithm>
+#include <cstring>
+#include <unordered_map>
+#include <vector>
 
 namespace RTBEngine {
 	namespace Rendering {
+
+		namespace {
+			struct AtlasGpuCacheEntry {
+				RHI::GpuId texture = RHI::kInvalidGpuId;
+				int width = 0;
+				int height = 0;
+				int uniqueId = -1;
+				int usedX = -1;
+				int usedY = -1;
+				int usedW = -1;
+				int usedH = -1;
+			};
+
+			// ImGui Vulkan TexID is a VkDescriptorSet pointer — not an RHI GpuId.
+			// World UI binds through BindTexture2D(GpuId), so we keep an RHI copy of each atlas.
+			std::unordered_map<ImFontAtlas*, AtlasGpuCacheEntry>& AtlasGpuCache()
+			{
+				static std::unordered_map<ImFontAtlas*, AtlasGpuCacheEntry> cache;
+				return cache;
+			}
+
+			std::vector<unsigned char> ExpandAtlasToRGBA32(const ImTextureData& tex)
+			{
+				std::vector<unsigned char> rgba(
+					static_cast<std::size_t>(tex.Width) * static_cast<std::size_t>(tex.Height) * 4u);
+				const unsigned char* src = tex.Pixels;
+				if (!src) {
+					return rgba;
+				}
+				if (tex.Format == ImTextureFormat_RGBA32 && tex.BytesPerPixel == 4) {
+					std::memcpy(rgba.data(), src, rgba.size());
+					return rgba;
+				}
+				// Alpha8 (and any 1-bpp atlas): white RGB, glyph coverage in A — matches ui_world.frag.
+				for (int i = 0, n = tex.Width * tex.Height; i < n; ++i) {
+					const unsigned char a = src[i];
+					rgba[static_cast<std::size_t>(i) * 4u + 0] = 255;
+					rgba[static_cast<std::size_t>(i) * 4u + 1] = 255;
+					rgba[static_cast<std::size_t>(i) * 4u + 2] = 255;
+					rgba[static_cast<std::size_t>(i) * 4u + 3] = a;
+				}
+				return rgba;
+			}
+
+			unsigned char SampleMaxAlpha(const std::vector<unsigned char>& rgba, int width, int height,
+			                             const ImTextureRect& used)
+			{
+				unsigned char maxA = 0;
+				const int x0 = (std::max)(0, static_cast<int>(used.x));
+				const int y0 = (std::max)(0, static_cast<int>(used.y));
+				const int x1 = (std::min)(width, static_cast<int>(used.x) + static_cast<int>(used.w));
+				const int y1 = (std::min)(height, static_cast<int>(used.y) + static_cast<int>(used.h));
+				for (int y = y0; y < y1; ++y) {
+					for (int x = x0; x < x1; ++x) {
+						const unsigned char a = rgba[static_cast<std::size_t>((y * width + x) * 4 + 3)];
+						if (a > maxA) maxA = a;
+					}
+				}
+				return maxA;
+			}
+
+			RHI::GpuId EnsureAtlasGpuTexture(ImFontAtlas* atlas)
+			{
+				if (!atlas || !RHI::RenderDevice::HasDevice()) {
+					return RHI::kInvalidGpuId;
+				}
+
+				// Prefer live TexData (ImGui 1.92 dynamic atlas). Avoid GetTexDataAsRGBA32 —
+				// it forces a rebuild/format change and desyncs from the backend atlas UVs.
+				ImTextureData* tex = atlas->TexData;
+				if (!tex || !tex->Pixels || tex->Width <= 0 || tex->Height <= 0) {
+					return RHI::kInvalidGpuId;
+				}
+
+				auto& device = RHI::RenderDevice::Get();
+				AtlasGpuCacheEntry& entry = AtlasGpuCache()[atlas];
+				const bool needsUpload = (entry.texture == RHI::kInvalidGpuId)
+					|| entry.uniqueId != tex->UniqueID
+					|| entry.width != tex->Width
+					|| entry.height != tex->Height
+					|| entry.usedX != tex->UsedRect.x
+					|| entry.usedY != tex->UsedRect.y
+					|| entry.usedW != tex->UsedRect.w
+					|| entry.usedH != tex->UsedRect.h;
+				if (needsUpload) {
+					std::vector<unsigned char> rgba = ExpandAtlasToRGBA32(*tex);
+					if (entry.texture == RHI::kInvalidGpuId) {
+						entry.texture = device.CreateTexture2D();
+					}
+					device.SetTexture2DData(entry.texture, RHI::TextureFormat::RGBA8,
+						tex->Width, tex->Height, rgba.data(), false);
+					device.SetTexture2DFilter(entry.texture,
+						RHI::TextureFilter::Linear, RHI::TextureFilter::Linear);
+					device.SetTexture2DWrap(entry.texture,
+						RHI::TextureWrap::ClampToEdge, RHI::TextureWrap::ClampToEdge);
+					entry.width = tex->Width;
+					entry.height = tex->Height;
+					entry.uniqueId = tex->UniqueID;
+					entry.usedX = tex->UsedRect.x;
+					entry.usedY = tex->UsedRect.y;
+					entry.usedW = tex->UsedRect.w;
+					entry.usedH = tex->UsedRect.h;
+				}
+				return entry.texture;
+			}
+		}
 
 		Font::Font()
 			: isLoaded(false)
@@ -21,6 +133,11 @@ namespace RTBEngine {
 		bool Font::LoadFromFile(const std::string& path, const float* sizes, int numSizes) {
 			if (isLoaded) {
 				RTB_WARN("Font already loaded: " + filePath);
+				return false;
+			}
+
+			if (!ImGui::GetCurrentContext()) {
+				RTB_WARN("Font::LoadFromFile skipped (no ImGui context): " + path);
 				return false;
 			}
 
@@ -105,7 +222,7 @@ namespace RTBEngine {
 					int bytes = ImTextCharFromUtf8(&codepoint, current, end);
 					current += bytes > 0 ? bytes : 1;
 				}
-				
+
 				//Check line jump
 				if (codepoint < 32) {
 					if (codepoint == '\n') {
@@ -114,7 +231,7 @@ namespace RTBEngine {
 					}
 					continue;
 				}
-				
+
 				// Info
 				const ImFontGlyph* glyph = bakedFont->FindGlyph(static_cast<ImWchar>(codepoint));
 				if (!glyph) continue;
@@ -143,11 +260,20 @@ namespace RTBEngine {
 			ImFont* imFont = GetImFont(size);
 			if (!imFont || !imFont->OwnerAtlas) return 0;
 
-			// Expose the uploaded atlas texture without leaking ImGui-specific types to UI systems.
-			ImTextureID textureID = imFont->OwnerAtlas->TexRef.GetTexID();
-			if (textureID == ImTextureID_Invalid) return 0;
+			if (!RHI::RenderDevice::HasDevice()) {
+				return 0;
+			}
 
-			return static_cast<unsigned int>(static_cast<std::uintptr_t>(textureID));
+			auto& device = RHI::RenderDevice::Get();
+			// OpenGL ImGui TexID is a GLuint and BindTexture2D binds that name directly.
+			if (device.GetAPI() == RHI::GraphicsAPI::OpenGL) {
+				ImTextureID textureID = imFont->OwnerAtlas->TexRef.GetTexID();
+				if (textureID == ImTextureID_Invalid) return 0;
+				return static_cast<unsigned int>(static_cast<std::uintptr_t>(textureID));
+			}
+
+			const RHI::GpuId atlasGpuId = EnsureAtlasGpuTexture(imFont->OwnerAtlas);
+			return atlasGpuId;
 		}
 
 	}
