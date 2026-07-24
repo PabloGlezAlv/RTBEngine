@@ -1,10 +1,10 @@
 # Changelog — RTBEngine
 
-**Current version:** `0.9.0`
+**Current version:** `0.10.0`
 
 API documentation: [`README.md`](README.md)
 
-**Compatibility:** use with **RTBEngineEditor 0.9.x**. After SDK or Script Bridge ABI changes: rebuild the engine → `BuildSDK.bat` → `GameScripts`.
+**Compatibility:** use with **RTBEngineEditor 0.10.x**. After SDK or Script Bridge ABI changes: rebuild the engine → `BuildSDK.bat` → `GameScripts`.
 
 ---
 
@@ -17,6 +17,23 @@ API documentation: [`README.md`](README.md)
 | NavMesh sidecar (`.navmesh`) | **1** | `RTBEngine/Engine/Navigation/NavMeshFile.cpp` |
 
 ---
+
+## [0.10.0] — 2026
+
+### Added
+- **Vulkan RHI backend** (`VulkanRenderDevice`): SDL window, deferred draw recording, swapchain present, ImGui overlay support.
+- **Graphics abstraction layer** (`IRenderDevice`, `RenderDevice`, `RenderDeviceFactory`) shared by OpenGL and Vulkan backends.
+- **DDGI** (Dynamic Diffuse Global Illumination): `DDGISystem`, `DDGIVolume`, probe irradiance atlas, `OpenGLDDGIUpdater` and `VulkanDDGIUpdater` with software ray-traced probe updates.
+- **`LightingProjectSettings`**: per-project shadow map resolution and DDGI volume settings (persisted to project lighting file).
+- **GitHub Actions** release workflow and CI scripts; ThirdParty link/runtime binaries tracked via Git LFS.
+
+### Changed
+- Lighting UBO and light types route GPU uploads through `IRenderDevice`.
+- `LightComponent` syncs transform and reflected properties with the active light instance.
+- Assimp library name selected via `Directory.Build.props` (`RTBAssimpToolset` for vc143/vc145).
+
+### Fixed
+- Guard against invalid GPU resource IDs in RHI code paths.
 
 ## [0.9.0] — 2026
 

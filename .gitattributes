@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# ThirdParty prebuilt binaries are stored directly in git (no LFS) to avoid LFS quota limits.
+# CI also falls back to vcpkg for Assimp when the runner toolset differs from vc145.

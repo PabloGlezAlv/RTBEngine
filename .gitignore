@@ -116,3 +116,59 @@ RTBEngine_SDK/
 
 # Engine asset temp/backup files (never commit)
 RTBEngine/Assets/**/*.tmp
+
+# -----------------------------------------------------------------------------
+# ThirdParty prebuilt binaries (CI + local link). Track with Git LFS.
+# Do NOT commit assimp/build/ or Bullet CMake intermediates.
+# -----------------------------------------------------------------------------
+RTBEngine/ThirdParty/assimp/build/
+RTBEngine/ThirdParty/bullet3-3.25/build_msvc/**/CMakeFiles/
+RTBEngine/ThirdParty/bullet3-3.25/build_msvc/**/*.dir/
+
+# Un-ignore parent folders so specific dll/lib exceptions below can apply.
+!RTBEngine/
+!RTBEngine/ThirdParty/
+!RTBEngine/ThirdParty/SDL2-2.32.10/
+!RTBEngine/ThirdParty/SDL2-2.32.10/lib/
+!RTBEngine/ThirdParty/SDL2-2.32.10/lib/x64/
+!RTBEngine/ThirdParty/glew-2.1.0/
+!RTBEngine/ThirdParty/glew-2.1.0/bin/
+!RTBEngine/ThirdParty/glew-2.1.0/bin/Release/
+!RTBEngine/ThirdParty/glew-2.1.0/bin/Release/x64/
+!RTBEngine/ThirdParty/glew-2.1.0/lib/
+!RTBEngine/ThirdParty/glew-2.1.0/lib/Release/
+!RTBEngine/ThirdParty/glew-2.1.0/lib/Release/x64/
+!RTBEngine/ThirdParty/lua/
+!RTBEngine/ThirdParty/fmod/
+!RTBEngine/ThirdParty/fmod/api/
+!RTBEngine/ThirdParty/fmod/api/core/
+!RTBEngine/ThirdParty/fmod/api/core/lib/
+!RTBEngine/ThirdParty/fmod/api/core/lib/x64/
+!RTBEngine/ThirdParty/assimp/
+!RTBEngine/ThirdParty/assimp/bin/
+!RTBEngine/ThirdParty/assimp/bin/x64/
+!RTBEngine/ThirdParty/assimp/lib/
+!RTBEngine/ThirdParty/assimp/lib/Release/
+!RTBEngine/ThirdParty/assimp/lib/Release/x64/
+!RTBEngine/ThirdParty/assimp/lib/Debug/
+!RTBEngine/ThirdParty/assimp/lib/Debug/x64/
+!RTBEngine/ThirdParty/bullet3-3.25/
+!RTBEngine/ThirdParty/bullet3-3.25/build_msvc/
+!RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/
+!RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/
+!RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Debug/
+
+# Allow specific ThirdParty link/runtime artifacts
+!RTBEngine/ThirdParty/SDL2-2.32.10/lib/x64/*.dll
+!RTBEngine/ThirdParty/SDL2-2.32.10/lib/x64/*.lib
+!RTBEngine/ThirdParty/glew-2.1.0/bin/Release/x64/*.dll
+!RTBEngine/ThirdParty/glew-2.1.0/lib/Release/x64/*.lib
+!RTBEngine/ThirdParty/lua/lua54.dll
+!RTBEngine/ThirdParty/lua/lua54.lib
+!RTBEngine/ThirdParty/fmod/api/core/lib/x64/*.dll
+!RTBEngine/ThirdParty/fmod/api/core/lib/x64/*.lib
+!RTBEngine/ThirdParty/assimp/bin/x64/*.dll
+!RTBEngine/ThirdParty/assimp/lib/Release/x64/*.lib
+!RTBEngine/ThirdParty/assimp/lib/Debug/x64/*.lib
+!RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/*.lib
+!RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Debug/*.lib

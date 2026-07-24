@@ -1,0 +1,51 @@
+# Builds RTBEngine_SDK and publishes a GitHub Release when a semver tag is pushed.
+# Trigger: git tag 0.9.1 && git push origin 0.9.1
+# Output:  RTBEngine_SDK-0.9.1-win-x64.zip
+name: Release
+
+on:
+  push:
+    tags:
+      # Semver tags only (e.g. 0.9.1, 1.0.0). No "v" prefix.
+      - '*.*.*'
+
+# Required to create the Release and upload the zip asset.
+permissions:
+  contents: write
+
+jobs:
+  release-sdk:
+    # C++ engine requires MSVC / MSBuild (Windows runner).
+    runs-on: windows-latest
+    steps:
+      # Clone the tagged commit (ThirdParty binaries are in git, not LFS).
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Speed up Assimp fallback installs (ci-ensure-assimp.ps1 uses vcpkg when needed).
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}\vcpkg
+          key: vcpkg-assimp-${{ runner.os }}-${{ hashFiles('scripts/ci-ensure-assimp.ps1') }}
+
+      # Compile Release x64 and package dist/RTBEngine_SDK/ (see scripts/ci-build-sdk.ps1).
+      - name: Build SDK
+        shell: pwsh
+        run: ./scripts/ci-build-sdk.ps1
+
+      # github.ref_name is the tag name (e.g. 0.9.1).
+      - name: Create archive
+        shell: pwsh
+        run: |
+          $zip = "RTBEngine_SDK-${{ github.ref_name }}-win-x64.zip"
+          Compress-Archive -Path dist/RTBEngine_SDK/* -DestinationPath $zip -Force
+          "ZIP_PATH=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # Create or update the GitHub Release and attach the zip.
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: RTBEngine SDK ${{ github.ref_name }}
+          generate_release_notes: true
+          files: ${{ env.ZIP_PATH }}

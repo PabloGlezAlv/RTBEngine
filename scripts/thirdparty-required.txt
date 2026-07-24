@@ -1,0 +1,16 @@
+# Required ThirdParty binaries for CI (Release x64).
+# Tracked with Git LFS — see RELEASE.md
+RTBEngine/ThirdParty/SDL2-2.32.10/lib/x64/SDL2.dll
+RTBEngine/ThirdParty/SDL2-2.32.10/lib/x64/SDL2.lib
+RTBEngine/ThirdParty/SDL2-2.32.10/lib/x64/SDL2main.lib
+RTBEngine/ThirdParty/glew-2.1.0/bin/Release/x64/glew32.dll
+RTBEngine/ThirdParty/glew-2.1.0/lib/Release/x64/glew32.lib
+RTBEngine/ThirdParty/lua/lua54.dll
+RTBEngine/ThirdParty/lua/lua54.lib
+RTBEngine/ThirdParty/fmod/api/core/lib/x64/fmod.dll
+RTBEngine/ThirdParty/fmod/api/core/lib/x64/fmod_vc.lib
+RTBEngine/ThirdParty/assimp/bin/x64/assimp-vc145-mt.dll
+RTBEngine/ThirdParty/assimp/lib/Release/x64/assimp-vc145-mt.lib
+RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/LinearMath.lib
+RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/BulletCollision.lib
+RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/BulletDynamics.lib

@@ -6,11 +6,11 @@ A 3D game engine written in **C++17**, compiled as `RTBEngine.dll` with an impor
 
 > **Gráficos (OpenGL vs Vulkan):** guía completa del RHI, frame loop, sombras, partículas, UBOs y catálogo de métodos → [`docs/GRAPHICS_VULKAN_OPENGL.md`](docs/GRAPHICS_VULKAN_OPENGL.md).
 
-**Version:** `0.9.0` — see [`CHANGELOG.md`](CHANGELOG.md).
+**Version:** `0.10.0` — see [`CHANGELOG.md`](CHANGELOG.md).
 
 | Constant | Value | Header |
 |----------|-------|--------|
-| Engine semver | `0.9.0` | `Engine/Core/Version.h` → `RTBEngine::Core::VersionInfo` |
+| Engine semver | `0.10.0` | `Engine/Core/Version.h` → `RTBEngine::Core::VersionInfo` |
 | RTBN protocol | `4` | `Engine/Online/OnlineMessageCodec.h` |
 | Script Bridge ABI | `4` | `Engine/Scripting/ScriptBridgeABI.h` |
 | NavMesh file format | `1` | `Engine/Navigation/NavMeshFile.cpp` |

@@ -1,0 +1,14 @@
+<Project>
+  <!--
+    MSVC / Assimp toolset selection.
+    Override from CI or local builds:
+      /p:PlatformToolset=v143 /p:RTBAssimpToolset=vc143
+      /p:PlatformToolset=v145 /p:RTBAssimpToolset=vc145
+  -->
+  <PropertyGroup>
+    <RTBAssimpToolset Condition="'$(RTBAssimpToolset)' == ''">vc145</RTBAssimpToolset>
+    <RTBAssimpLib>assimp-$(RTBAssimpToolset)-mt.lib</RTBAssimpLib>
+    <RTBAssimpLibDebug>assimp-$(RTBAssimpToolset)-mtd.lib</RTBAssimpLibDebug>
+    <RTBAssimpDll>assimp-$(RTBAssimpToolset)-mt.dll</RTBAssimpDll>
+  </PropertyGroup>
+</Project>
