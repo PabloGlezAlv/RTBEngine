@@ -35,6 +35,13 @@ namespace RTBEngine {
             unsigned int GetVertexCount() const { return vertexCount; }
             unsigned int GetIndexCount() const { return indexCount; }
 
+            RHI::GpuId GetVertexBuffer() const { return VBO; }
+            RHI::GpuId GetIndexBuffer() const { return EBO; }
+            RHI::GpuId GetVertexArray() const { return VAO; }
+
+            const std::vector<Vertex>& GetCpuVertices() const { return cpuVertices; }
+            const std::vector<unsigned int>& GetCpuIndices() const { return cpuIndices; }
+
             // AABB (Axis-Aligned Bounding Box)
             Math::Vector3 GetAABBMin() const { return aabbMin; }
             Math::Vector3 GetAABBMax() const { return aabbMax; }
@@ -62,6 +69,9 @@ namespace RTBEngine {
             Math::Vector3 aabbMax;
 
             int materialIndex = -1;
+
+            std::vector<Vertex> cpuVertices;
+            std::vector<unsigned int> cpuIndices;
         };
 
     }

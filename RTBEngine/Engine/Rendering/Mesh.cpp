@@ -138,6 +138,9 @@ void RTBEngine::Rendering::Mesh::DrawInstanced(int instanceCount) const
 
 void RTBEngine::Rendering::Mesh::SetupMesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices)
 {
+	cpuVertices = vertices;
+	cpuIndices = indices;
+
 	auto& device = Device();
 	VAO = device.CreateVertexArray();
 	VBO = device.CreateBuffer();

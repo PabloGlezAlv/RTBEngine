@@ -1,6 +1,7 @@
 #include "SceneManager.h"
 
 #include "../Core/Logger.h"
+#include "../Rendering/RHI/RenderDevice.h"
 #include "../Scripting/SceneLoader.h"
 #include "GameObject.h"
 #include "ObjectPool.h"
@@ -10,6 +11,9 @@
 #include "NavGridComponent.h"
 
 #include <vector>
+
+namespace {
+}
 
 namespace {
     RTBEngine::Scene::GameObject* FinalizeInstantiation(
@@ -223,6 +227,7 @@ namespace RTBEngine {
                 return;
             }
 
+
             isSceneTransitioning = true;
             if (onSceneUnloading) {
                 onSceneUnloading(activeScene.get());
@@ -236,6 +241,7 @@ namespace RTBEngine {
             activeScenePath.clear();
             sceneDirty = false;
             isSceneTransitioning = false;
+
         }
 
         GameObject* SceneManager::Instantiate(const std::string& name, GameObject* parent)

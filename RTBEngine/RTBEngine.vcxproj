@@ -190,6 +190,12 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Rendering\RHI\RenderDeviceFactory.cpp" />
     <ClCompile Include="Engine\Rendering\RHI\OpenGL\OpenGLRenderDevice.cpp" />
     <ClCompile Include="Engine\Rendering\RHI\Vulkan\VulkanRenderDevice.cpp" />
+    <ClCompile Include="Engine\Rendering\RHI\Vulkan\VulkanGiContext.cpp" />
+    <ClCompile Include="Engine\Rendering\GI\DDGIVolume.cpp" />
+    <ClCompile Include="Engine\Rendering\GI\DDGISystem.cpp" />
+    <ClCompile Include="Engine\Rendering\GI\RayTracingScene.cpp" />
+    <ClCompile Include="Engine\Rendering\GI\VulkanDDGIUpdater.cpp" />
+    <ClCompile Include="Engine\Rendering\GI\OpenGLDDGIUpdater.cpp" />
     <ClCompile Include="Engine\Scripting\ComponentRegistry.cpp" />
     <ClCompile Include="Engine\Scripting\ScriptManager.cpp" />
     <ClCompile Include="Engine\Scene\AudioSourceComponent.cpp" />
@@ -239,6 +245,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Scene\SceneLifecycle.cpp" />
     <ClCompile Include="Engine\Rendering\CameraUBO.cpp" />
     <ClCompile Include="Engine\Rendering\Lighting\LightingUBO.cpp" />
+    <ClCompile Include="Engine\Rendering\Lighting\LightingProjectSettings.cpp" />
     <ClCompile Include="Engine\Rendering\Lighting\Light.cpp" />
     <ClCompile Include="Engine\Scene\LightComponent.cpp" />
     <ClCompile Include="Engine\Core\ResourceManager.cpp" />
@@ -353,6 +360,14 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Rendering\RHI\IRenderDevice.h" />
     <ClInclude Include="Engine\Rendering\RHI\OpenGL\OpenGLRenderDevice.h" />
     <ClInclude Include="Engine\Rendering\RHI\Vulkan\VulkanRenderDevice.h" />
+    <ClInclude Include="Engine\Rendering\RHI\Vulkan\VulkanGiContext.h" />
+    <ClInclude Include="Engine\Rendering\GI\GiTypes.h" />
+    <ClInclude Include="Engine\Rendering\GI\DDGIVolume.h" />
+    <ClInclude Include="Engine\Rendering\GI\DDGISystem.h" />
+    <ClInclude Include="Engine\Rendering\GI\DDGIUpdater.h" />
+    <ClInclude Include="Engine\Rendering\GI\RayTracingScene.h" />
+    <ClInclude Include="Engine\Rendering\GI\VulkanDDGIUpdater.h" />
+    <ClInclude Include="Engine\Rendering\GI\OpenGLDDGIUpdater.h" />
     <ClInclude Include="Engine\Rendering\RHI\RenderDevice.h" />
     <ClInclude Include="Engine\Rendering\RHI\RenderDeviceFactory.h" />
     <ClInclude Include="Engine\Rendering\RHI\RenderTypes.h" />
@@ -440,6 +455,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Scene\SceneLifecycle.h" />
     <ClInclude Include="Engine\Rendering\CameraUBO.h" />
     <ClInclude Include="Engine\Rendering\Lighting\LightingUBO.h" />
+    <ClInclude Include="Engine\Rendering\Lighting\LightingProjectSettings.h" />
     <ClInclude Include="Engine\Rendering\Lighting\Light.h" />
     <ClInclude Include="Engine\Scene\LightComponent.h" />
     <ClInclude Include="Engine\Core\ResourceManager.h" />

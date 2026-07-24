@@ -5,6 +5,8 @@
 #include <backends/imgui_impl_sdl2.h>
 #include <imgui.h>
 #include <vector>
+#include <unordered_map>
+#include <sstream>
 
 namespace RTBEngine {
     namespace Rendering {
@@ -713,6 +715,211 @@ namespace RTBEngine {
                 case TextureWrap::ClampToBorder: return GL_CLAMP_TO_BORDER;
                 default: return GL_REPEAT;
                 }
+            }
+
+            namespace {
+                unsigned int CompileGLShader(unsigned int type, const std::string& source)
+                {
+                    const unsigned int shader = glCreateShader(type);
+                    const char* src = source.c_str();
+                    glShaderSource(shader, 1, &src, nullptr);
+                    glCompileShader(shader);
+                    int success = 0;
+                    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+                    if (!success) {
+                        char log[2048];
+                        glGetShaderInfoLog(shader, sizeof(log), nullptr, log);
+                        RTB_ERROR(std::string("OpenGL shader compile failed: ") + log);
+                        glDeleteShader(shader);
+                        return 0;
+                    }
+                    return shader;
+                }
+            }
+
+            GiCapabilities OpenGLRenderDevice::GetGiCapabilities() const
+            {
+                GiCapabilities caps{};
+                caps.computeShaders = GLEW_VERSION_4_3;
+                caps.storageBuffers = GLEW_VERSION_4_3;
+                caps.storageImages = GLEW_VERSION_4_3;
+                caps.texture3D = true;
+                caps.rayQuery = false;
+                return caps;
+            }
+
+            GpuId OpenGLRenderDevice::CreateComputeProgram(const std::string& computeSource)
+            {
+                if (!GLEW_VERSION_4_3) return kInvalidGpuId;
+                const unsigned int cs = CompileGLShader(GL_COMPUTE_SHADER, computeSource);
+                if (!cs) return kInvalidGpuId;
+                const unsigned int program = glCreateProgram();
+                glAttachShader(program, cs);
+                glLinkProgram(program);
+                glDeleteShader(cs);
+                int linked = 0;
+                glGetProgramiv(program, GL_LINK_STATUS, &linked);
+                if (!linked) {
+                    char log[2048];
+                    glGetProgramInfoLog(program, sizeof(log), nullptr, log);
+                    RTB_ERROR(std::string("OpenGL compute link failed: ") + log);
+                    glDeleteProgram(program);
+                    return kInvalidGpuId;
+                }
+                const GpuId id = nextGiId++;
+                computePrograms[id] = program;
+                return id;
+            }
+
+            void OpenGLRenderDevice::DestroyComputeProgram(GpuId program)
+            {
+                auto it = computePrograms.find(program);
+                if (it != computePrograms.end()) {
+                    glDeleteProgram(it->second);
+                    computePrograms.erase(it);
+                }
+            }
+
+            void OpenGLRenderDevice::BindComputeProgram(GpuId program)
+            {
+                boundComputeProgram = program;
+                auto it = computePrograms.find(program);
+                if (it != computePrograms.end()) {
+                    glUseProgram(it->second);
+                }
+            }
+
+            void OpenGLRenderDevice::DispatchCompute(unsigned int groupCountX, unsigned int groupCountY, unsigned int groupCountZ)
+            {
+                glDispatchCompute(groupCountX, groupCountY, groupCountZ);
+            }
+
+            GpuId OpenGLRenderDevice::CreateStorageBuffer(std::size_t size)
+            {
+                const GpuId id = nextGiId++;
+                unsigned int buffer = 0;
+                glGenBuffers(1, &buffer);
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer);
+                glBufferData(GL_SHADER_STORAGE_BUFFER, static_cast<GLsizeiptr>(size), nullptr, GL_DYNAMIC_DRAW);
+                storageBuffers[id] = buffer;
+                return id;
+            }
+
+            void OpenGLRenderDevice::DestroyStorageBuffer(GpuId buffer)
+            {
+                auto it = storageBuffers.find(buffer);
+                if (it != storageBuffers.end()) {
+                    glDeleteBuffers(1, &it->second);
+                    storageBuffers.erase(it);
+                }
+            }
+
+            void OpenGLRenderDevice::UpdateStorageBuffer(GpuId buffer, const void* data, std::size_t size, std::size_t offset)
+            {
+                auto it = storageBuffers.find(buffer);
+                if (it == storageBuffers.end() || !data) return;
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, it->second);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(size), data);
+            }
+
+            void OpenGLRenderDevice::BindStorageBuffer(GpuId buffer, unsigned int bindingPoint)
+            {
+                auto it = storageBuffers.find(buffer);
+                if (it != storageBuffers.end()) {
+                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingPoint, it->second);
+                }
+            }
+
+            GpuId OpenGLRenderDevice::CreateTexture3D()
+            {
+                const GpuId id = nextGiId++;
+                unsigned int tex = 0;
+                glGenTextures(1, &tex);
+                texture3Ds[id] = tex;
+                return id;
+            }
+
+            void OpenGLRenderDevice::DestroyTexture3D(GpuId texture)
+            {
+                auto it = texture3Ds.find(texture);
+                if (it != texture3Ds.end()) {
+                    glDeleteTextures(1, &it->second);
+                    texture3Ds.erase(it);
+                }
+            }
+
+            void OpenGLRenderDevice::SetTexture3DData(GpuId texture, TextureFormat format, int width, int height, int depth,
+                                                      const void* pixels)
+            {
+                auto it = texture3Ds.find(texture);
+                if (it == texture3Ds.end()) return;
+                unsigned int internal = GL_RGBA8;
+                unsigned int pixelFormat = GL_RGBA;
+                unsigned int pixelType = GL_UNSIGNED_BYTE;
+                ResolveTextureFormat(format, internal, pixelFormat, pixelType);
+                glBindTexture(GL_TEXTURE_3D, it->second);
+                glTexImage3D(GL_TEXTURE_3D, 0, internal, width, height, depth, 0, pixelFormat, pixelType, pixels);
+                glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            }
+
+            void OpenGLRenderDevice::BindTexture3D(GpuId texture, unsigned int slot)
+            {
+                auto it = texture3Ds.find(texture);
+                if (it != texture3Ds.end()) {
+                    glActiveTexture(GL_TEXTURE0 + slot);
+                    glBindTexture(GL_TEXTURE_3D, it->second);
+                }
+            }
+
+            GpuId OpenGLRenderDevice::CreateStorageImage2D(int width, int height, TextureFormat format)
+            {
+                const GpuId id = CreateTexture2D();
+                unsigned int internal = (format == TextureFormat::RGBA16F) ? GL_RGBA16F : GL_RGBA8;
+                glBindTexture(GL_TEXTURE_2D, id);
+                glTexImage2D(GL_TEXTURE_2D, 0, internal, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                return id;
+            }
+
+            void OpenGLRenderDevice::ClearStorageImage2D(GpuId texture, float r, float g, float b, float a)
+            {
+                if (texture == kInvalidGpuId) return;
+                const float clear[4] = { r, g, b, a };
+                glClearTexImage(texture, 0, GL_RGBA, GL_FLOAT, clear);
+            }
+
+            void OpenGLRenderDevice::BindStorageImage2D(GpuId texture, unsigned int bindingPoint, StorageAccess access)
+            {
+                GLenum glAccess = GL_READ_WRITE;
+                if (access == StorageAccess::ReadOnly) glAccess = GL_READ_ONLY;
+                else if (access == StorageAccess::WriteOnly) glAccess = GL_WRITE_ONLY;
+                glBindImageTexture(bindingPoint, texture, 0, GL_FALSE, 0, glAccess, GL_RGBA16F);
+            }
+
+            void OpenGLRenderDevice::MemoryBarrierComputeToGraphics()
+            {
+                glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+            }
+
+            GpuId OpenGLRenderDevice::CreateDeviceLocalBuffer(const void* data, std::size_t size, bool indexBuffer)
+            {
+                const GpuId id = CreateBuffer();
+                if (indexBuffer) {
+                    SetElementBufferData(id, data, size, BufferUsage::Static);
+                } else {
+                    SetArrayBufferData(id, data, size, BufferUsage::Static);
+                }
+                return id;
+            }
+
+            std::uint64_t OpenGLRenderDevice::GetBufferDeviceAddress(GpuId buffer) const
+            {
+                (void)buffer;
+                return 0;
             }
 
         }

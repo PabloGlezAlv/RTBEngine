@@ -22,6 +22,7 @@ namespace RTBEngine {
 
             void Upload(const std::vector<Light*>& lights);
             void Bind() const;
+            RHI::GpuId GetGpuBufferId() const { return buffer; }
 
         private:
             LightingUBO();

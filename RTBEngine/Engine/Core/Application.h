@@ -63,6 +63,7 @@ namespace RTBEngine {
             void Render();
 
             void RenderShadowPass(Scene::Scene* scene);
+            void UploadSceneLighting(Scene::Scene* scene);
             void RenderGeometryPass(Scene::Scene* scene, Rendering::Camera* camera);
             void SetIsRunning(bool value) { isRunning = value; }
 

@@ -202,13 +202,20 @@ namespace RTBEngine {
             // which cause animation/skeleton mismatch issues
             importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
 
-            const aiScene* scene = importer.ReadFile(resolvedPath,
+            unsigned int importFlags =
                 aiProcess_Triangulate |
                 aiProcess_FlipUVs |
                 aiProcess_CalcTangentSpace |
                 aiProcess_GenNormals |
-                aiProcess_LimitBoneWeights
-            );
+                aiProcess_LimitBoneWeights;
+
+            // Bake glTF node transforms (e.g. Sponza root scale) into mesh vertices.
+            const std::string extension = std::filesystem::path(resolvedPath).extension().string();
+            if (extension == ".gltf" || extension == ".glb" || extension == ".GLTF" || extension == ".GLB") {
+                importFlags |= aiProcess_PreTransformVertices;
+            }
+
+            const aiScene* scene = importer.ReadFile(resolvedPath, importFlags);
 
             if (!scene || !scene->mRootNode) {
                 RTB_ERROR("[ModelLoader] Assimp Error: " + std::string(importer.GetErrorString()));

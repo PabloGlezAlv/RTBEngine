@@ -1,10 +1,13 @@
 #pragma once
 
 #include "../IRenderDevice.h"
+#include "VulkanGiContext.h"
 #include <vulkan/vulkan.h>
 #include <SDL.h>
 #include <array>
 #include <cstdint>
+#include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -121,6 +124,44 @@ namespace RTBEngine {
                 void QueueImGuiDrawData(ImDrawData* drawData) override;
                 std::uintptr_t GetNativeTextureIdForImGui(GpuId texture) const override;
 
+                GiCapabilities GetGiCapabilities() const override;
+
+                GpuId CreateComputeProgram(const std::string& computeSource) override;
+                void DestroyComputeProgram(GpuId program) override;
+                void BindComputeProgram(GpuId program) override;
+                void DispatchCompute(unsigned int groupCountX, unsigned int groupCountY, unsigned int groupCountZ) override;
+
+                GpuId CreateStorageBuffer(std::size_t size) override;
+                void DestroyStorageBuffer(GpuId buffer) override;
+                void UpdateStorageBuffer(GpuId buffer, const void* data, std::size_t size, std::size_t offset) override;
+                void BindStorageBuffer(GpuId buffer, unsigned int bindingPoint) override;
+
+                GpuId CreateTexture3D() override;
+                void DestroyTexture3D(GpuId texture) override;
+                void SetTexture3DData(GpuId texture, TextureFormat format, int width, int height, int depth,
+                                      const void* pixels) override;
+                void BindTexture3D(GpuId texture, unsigned int slot) override;
+
+                GpuId CreateStorageImage2D(int width, int height, TextureFormat format) override;
+                void BindStorageImage2D(GpuId texture, unsigned int bindingPoint, StorageAccess access) override;
+                void ClearStorageImage2D(GpuId texture, float r, float g, float b, float a) override;
+
+                void MemoryBarrierComputeToGraphics() override;
+
+                GpuId CreateDeviceLocalBuffer(const void* data, std::size_t size, bool indexBuffer) override;
+                std::uint64_t GetBufferDeviceAddress(GpuId buffer) const override;
+
+                // Internal helpers for VulkanGiContext
+                void ExecuteOneShotCommand(const std::function<void(VkCommandBuffer)>& recordFn);
+                void CreateDeviceLocalBufferRaw(VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer& outBuffer, VkDeviceMemory& outMemory);
+                void UploadToDeviceLocalBuffer(VkBuffer buffer, const void* data, std::size_t size);
+                VkBuffer GetBufferHandle(GpuId id) const;
+                VkImageView GetTextureImageView(GpuId id) const;
+                GpuId CreateStorageImage2DInternal(int width, int height, TextureFormat format);
+                void UpdateStorageImageLayout(GpuId texture, VkImageLayout layout);
+                void MemoryBarrierComputeToGraphicsInternal();
+                VulkanGiContext* GetGiContext() { return giContext.get(); }
+
                 // Accessors for ImGui init / swapchain recreation notifications
                 VkInstance GetVkInstance() const { return instance; }
                 VkPhysicalDevice GetVkPhysicalDevice() const { return physicalDevice; }
@@ -215,6 +256,7 @@ namespace RTBEngine {
                     bool isCubemap = false;
                     std::uint32_t layerCount = 1;
                     bool isDepth = false;
+                    VkImageLayout currentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
                     TextureFilter minFilter = TextureFilter::Linear;
                     TextureFilter magFilter = TextureFilter::Linear;
                     TextureWrap wrapS = TextureWrap::Repeat;
@@ -301,6 +343,9 @@ namespace RTBEngine {
                     GpuId texSlot0 = kInvalidGpuId;
                     GpuId texSlot1 = kInvalidGpuId;
                     GpuId cubemapSlot0 = kInvalidGpuId;
+                    GpuId ddgiUBO = kInvalidGpuId;
+                    GpuId ddgiIrradiance = kInvalidGpuId;
+                    GpuId ddgiDistance = kInvalidGpuId;
 
                     GpuId targetFramebuffer = 0; // 0 = swapchain
                     bool depthOnly = false;
@@ -377,6 +422,9 @@ namespace RTBEngine {
                 bool CreateImageRaw(std::uint32_t width, std::uint32_t height, VkFormat format, VkImageTiling tiling,
                                    VkImageUsageFlags usage, VkMemoryPropertyFlags props, std::uint32_t arrayLayers,
                                    VkImageCreateFlags flags, VkImage& outImage, VkDeviceMemory& outMemory) const;
+                bool CreateImage3DRaw(std::uint32_t width, std::uint32_t height, std::uint32_t depth, VkFormat format,
+                                      VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags props,
+                                      VkImage& outImage, VkDeviceMemory& outMemory) const;
                 VkImageView CreateImageViewRaw(VkImage image, VkFormat format, VkImageAspectFlags aspect,
                                                VkImageViewType viewType, std::uint32_t layerCount) const;
                 void TransitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout,
@@ -424,7 +472,10 @@ namespace RTBEngine {
                 static constexpr std::uint32_t kDescTexture0 = 4;
                 static constexpr std::uint32_t kDescTexture1 = 5;
                 static constexpr std::uint32_t kDescCubemap = 6;
-                static constexpr std::uint32_t kDescriptorBindingCount = 7;
+                static constexpr std::uint32_t kDescDDGIUBO = 7;
+                static constexpr std::uint32_t kDescDDGIIrradiance = 8;
+                static constexpr std::uint32_t kDescDDGIDistance = 9;
+                static constexpr std::uint32_t kDescriptorBindingCount = 10;
 
                 SDL_Window* window = nullptr;
                 bool vSyncEnabled = true;
@@ -507,6 +558,9 @@ namespace RTBEngine {
                 GpuId boundUBO[3] = { kInvalidGpuId, kInvalidGpuId, kInvalidGpuId };
                 std::unordered_map<unsigned int, GpuId> boundTextureSlots;
                 GpuId boundCubemapSlot0 = kInvalidGpuId;
+                GpuId boundDDGIUBO = kInvalidGpuId;
+                GpuId boundDDGIIrradiance = kInvalidGpuId;
+                GpuId boundDDGIDistance = kInvalidGpuId;
 
                 PerDrawCPU currentPerDraw;
 
@@ -535,6 +589,10 @@ namespace RTBEngine {
                 std::unordered_map<GpuId, ShaderProgramResource> programs;
                 std::unordered_map<GpuId, FramebufferResource> framebuffers;
                 GpuId nextId = 1;
+
+                std::unique_ptr<VulkanGiContext> giContext;
+                bool rayQuerySupported = false;
+                std::vector<const char*> enabledDeviceExtensions;
             };
 
         }

@@ -3,6 +3,8 @@
 #include "../IRenderDevice.h"
 #include <SDL.h>
 #include <cstdint>
+#include <string>
+#include <unordered_map>
 
 struct ImDrawData;
 
@@ -104,6 +106,33 @@ namespace RTBEngine {
                 void QueueImGuiDrawData(ImDrawData* drawData) override;
                 std::uintptr_t GetNativeTextureIdForImGui(GpuId texture) const override;
 
+                GiCapabilities GetGiCapabilities() const override;
+
+                GpuId CreateComputeProgram(const std::string& computeSource) override;
+                void DestroyComputeProgram(GpuId program) override;
+                void BindComputeProgram(GpuId program) override;
+                void DispatchCompute(unsigned int groupCountX, unsigned int groupCountY, unsigned int groupCountZ) override;
+
+                GpuId CreateStorageBuffer(std::size_t size) override;
+                void DestroyStorageBuffer(GpuId buffer) override;
+                void UpdateStorageBuffer(GpuId buffer, const void* data, std::size_t size, std::size_t offset) override;
+                void BindStorageBuffer(GpuId buffer, unsigned int bindingPoint) override;
+
+                GpuId CreateTexture3D() override;
+                void DestroyTexture3D(GpuId texture) override;
+                void SetTexture3DData(GpuId texture, TextureFormat format, int width, int height, int depth,
+                                      const void* pixels) override;
+                void BindTexture3D(GpuId texture, unsigned int slot) override;
+
+                GpuId CreateStorageImage2D(int width, int height, TextureFormat format) override;
+                void BindStorageImage2D(GpuId texture, unsigned int bindingPoint, StorageAccess access) override;
+                void ClearStorageImage2D(GpuId texture, float r, float g, float b, float a) override;
+
+                void MemoryBarrierComputeToGraphics() override;
+
+                GpuId CreateDeviceLocalBuffer(const void* data, std::size_t size, bool indexBuffer) override;
+                std::uint64_t GetBufferDeviceAddress(GpuId buffer) const override;
+
             private:
                 static unsigned int ToGLDepthFunc(DepthFunc func);
                 static unsigned int ToGLBufferUsage(BufferUsage usage);
@@ -118,6 +147,12 @@ namespace RTBEngine {
                 SDL_GLContext glContext = nullptr;
                 bool initialized = false;
                 bool imguiBackendInitialized = false;
+
+                GpuId boundComputeProgram = kInvalidGpuId;
+                std::unordered_map<GpuId, unsigned int> computePrograms;
+                std::unordered_map<GpuId, unsigned int> storageBuffers;
+                std::unordered_map<GpuId, unsigned int> texture3Ds;
+                GpuId nextGiId = 50000;
             };
 
         }

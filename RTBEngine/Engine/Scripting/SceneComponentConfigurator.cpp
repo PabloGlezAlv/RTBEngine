@@ -165,6 +165,9 @@ namespace RTBEngine {
 
                 // "model" is the explicit field; when absent, derive from meshRef path
                 std::string modelPath = ReadOptionalString(L, tableIndex, "model", "");
+                if (modelPath.empty()) {
+                    modelPath = ReadOptionalString(L, tableIndex, "meshRef", "");
+                }
                 if (modelPath.empty() && comp->meshRef) {
                     modelPath = resources.GetMeshPath(comp->meshRef);
                 }
@@ -177,18 +180,34 @@ namespace RTBEngine {
                         Rendering::FbxBindingContext ctx{ resources, modelPath, modelData };
                         Rendering::FbxBindingResult bind = Rendering::BuildMeshesAndMaterials(ctx);
 
-                        // Pick mesh by index
-                        const int idx = comp->meshIndex;
-                        const int clampedIdx = (idx >= 0 && idx < static_cast<int>(modelData.meshes.size())) ? idx : 0;
-                        comp->SetMesh(modelData.meshes[clampedIdx]);
+                        const bool useMultiMesh = ReadOptionalBool(L, tableIndex, "multiMesh", comp->multiMesh)
+                            && modelData.meshes.size() > 1;
 
-                        Rendering::Material* mat = nullptr;
-                        if (clampedIdx < static_cast<int>(bind.meshMaterials.size()))
-                            mat = bind.meshMaterials[clampedIdx];
+                        if (useMultiMesh) {
+                            comp->SetMeshes(modelData.meshes);
+                            for (size_t i = 0; i < modelData.meshes.size(); ++i) {
+                                Rendering::Material* mat = (i < bind.meshMaterials.size())
+                                    ? bind.meshMaterials[i]
+                                    : nullptr;
+                                if (mat) {
+                                    if (shader) mat->SetShader(shader);
+                                    comp->SetMaterialForMesh(static_cast<int>(i), mat);
+                                }
+                            }
+                        } else {
+                            // Pick mesh by index
+                            const int idx = comp->meshIndex;
+                            const int clampedIdx = (idx >= 0 && idx < static_cast<int>(modelData.meshes.size())) ? idx : 0;
+                            comp->SetMesh(modelData.meshes[clampedIdx]);
 
-                        if (mat) {
-                            if (shader) mat->SetShader(shader);
-                            comp->SetMaterial(mat);
+                            Rendering::Material* mat = nullptr;
+                            if (clampedIdx < static_cast<int>(bind.meshMaterials.size()))
+                                mat = bind.meshMaterials[clampedIdx];
+
+                            if (mat) {
+                                if (shader) mat->SetShader(shader);
+                                comp->SetMaterial(mat);
+                            }
                         }
                     }
                 }

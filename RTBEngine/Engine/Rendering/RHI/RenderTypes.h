@@ -73,7 +73,23 @@ namespace RTBEngine {
                 SRGB8,
                 SRGBA8,
                 Depth24,
-                Depth32F
+                Depth32F,
+                RGBA16F,
+                R32F
+            };
+
+            enum class StorageAccess {
+                ReadOnly,
+                WriteOnly,
+                ReadWrite
+            };
+
+            struct GiCapabilities {
+                bool computeShaders = false;
+                bool storageBuffers = false;
+                bool storageImages = false;
+                bool texture3D = false;
+                bool rayQuery = false;
             };
 
             // Blend factors match OpenGL numeric values so backends can pass them through.
@@ -98,6 +114,9 @@ namespace RTBEngine {
             static constexpr unsigned int kLightingUBOBinding = 0;
             static constexpr unsigned int kCameraUBOBinding = 1;
             static constexpr unsigned int kBoneUBOBinding = 2;
+            static constexpr unsigned int kDDGIUBOBinding = 7;
+            static constexpr unsigned int kDDGIIrradianceBinding = 8;
+            static constexpr unsigned int kDDGIDistanceBinding = 9;
 
         }
     }

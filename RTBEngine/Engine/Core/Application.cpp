@@ -38,6 +38,7 @@
 #include "../Rendering/Lighting/LightingUBO.h"
 #include "../Rendering/CameraUBO.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
+#include "../Rendering/GI/DDGISystem.h"
 
 #include "../Rendering/Frustum.h"
 #include "../Online/OnlineSystem.h"
@@ -49,6 +50,8 @@
 #include <atomic>
 #include <algorithm>
 #include <vector>
+#include <chrono>
+#include <fstream>
 #include "Logger.h"
 
 namespace {
@@ -211,6 +214,7 @@ bool RTBEngine::Core::Application::Initialize()
 		Rendering::RHI::RenderDevice::Set(std::move(device));
 		RTB_INFO(std::string("RenderDevice ready: ")
 			+ Rendering::RHI::GraphicsAPIToString(Rendering::RHI::RenderDevice::Get().GetAPI()));
+		Rendering::GI::DDGISystem::GetInstance().Initialize();
 	}
 
 	window->SetResizeCallback([this](int width, int height) {
@@ -465,6 +469,7 @@ void RTBEngine::Core::Application::Shutdown()
 
 	Audio::AudioSystem::GetInstance().Shutdown();
 
+	Rendering::GI::DDGISystem::GetInstance().Shutdown();
 	Rendering::RHI::RenderDevice::Shutdown();
 	window.reset();
 }
@@ -587,6 +592,11 @@ void RTBEngine::Core::Application::Render()
 	}
 
 	RenderShadowPass(scene);
+
+	UploadSceneLighting(scene);
+	Rendering::LightingUBO::GetInstance().Bind();
+	Rendering::GI::DDGISystem::GetInstance().Update(scene);
+
 	RenderGeometryPass(scene, activeCamera);
 
 	if (imguiInitialized) {
@@ -666,6 +676,25 @@ void RTBEngine::Core::Application::RenderShadowPass(Scene::Scene* scene)
 	}
 
 	Rendering::RHI::RenderDevice::Get().SetViewport(0, 0, window->GetWidth(), window->GetHeight());
+}
+
+void RTBEngine::Core::Application::UploadSceneLighting(Scene::Scene* scene)
+{
+	if (!scene) return;
+
+	std::vector<Rendering::Light*> activeLights;
+	activeLights.reserve(scene->GetCachedLightComponents().size());
+
+	for (Scene::LightComponent* lightComp : scene->GetCachedLightComponents()) {
+		if (!lightComp || !lightComp->IsEnabled() || !lightComp->GetLight()) continue;
+
+		Scene::GameObject* go = lightComp->GetOwner();
+		if (!go || !go->IsActiveInHierarchy()) continue;
+
+		activeLights.push_back(lightComp->GetLight());
+	}
+
+	Rendering::LightingUBO::GetInstance().Upload(activeLights);
 }
 
 void RTBEngine::Core::Application::RenderSceneDepthOnly(Scene::Scene* scene, Rendering::Shader* shader, const Rendering::Frustum& frustum)
@@ -790,6 +819,11 @@ void RTBEngine::Core::Application::RenderGeometryPass(Scene::Scene* scene, Rende
 
 	shader->Bind();
 
+	UploadSceneLighting(scene);
+	Rendering::LightingUBO::GetInstance().Bind();
+	Rendering::CameraUBO::GetInstance().Upload(camera);
+	Rendering::CameraUBO::GetInstance().Bind();
+
 	std::vector<Rendering::Light*> activeLights;
 	activeLights.reserve(scene->GetCachedLightComponents().size());
 	Rendering::DirectionalLight* shadowCastingLight = nullptr;
@@ -811,10 +845,17 @@ void RTBEngine::Core::Application::RenderGeometryPass(Scene::Scene* scene, Rende
 		}
 	}
 
-	Rendering::LightingUBO::GetInstance().Upload(activeLights);
-	Rendering::LightingUBO::GetInstance().Bind();
-	Rendering::CameraUBO::GetInstance().Upload(camera);
-	Rendering::CameraUBO::GetInstance().Bind();
+	(void)activeLights;
+
+	auto* activeVolume = Rendering::GI::DDGISystem::GetInstance().GetActiveVolume();
+	const bool ddgiAvailable = Rendering::GI::DDGISystem::GetInstance().IsAvailable() && activeVolume;
+	if (ddgiAvailable) {
+		Rendering::GI::DDGISystem::GetInstance().BindForShading();
+		const bool ddgiOn = activeVolume->GetSettings().enabled && activeVolume->IsGpuReady();
+		shader->SetBool("uDDGIEnabled", ddgiOn);
+	} else {
+		shader->SetBool("uDDGIEnabled", false);
+	}
 
 	if (shadowCastingLight) {
 		shader->SetBool("uHasShadows", true);

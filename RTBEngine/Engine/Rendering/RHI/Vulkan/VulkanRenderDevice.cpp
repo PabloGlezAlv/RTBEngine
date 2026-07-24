@@ -1,4 +1,6 @@
 #include "VulkanRenderDevice.h"
+#include "VulkanGiContext.h"
+#include "../RenderDevice.h"
 #include "../../../Core/Logger.h"
 #include <SDL_vulkan.h>
 #include <backends/imgui_impl_sdl2.h>
@@ -22,6 +24,7 @@ namespace RTBEngine {
         namespace RHI {
 
             namespace {
+
 
                 constexpr std::array<const char*, 1> kValidationLayers = { "VK_LAYER_KHRONOS_validation" };
                 constexpr std::array<const char*, 1> kDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
@@ -64,6 +67,8 @@ namespace RTBEngine {
                     "layout(set = 0, binding = 4) uniform sampler2D uTexture;\n"
                     "layout(set = 0, binding = 5) uniform sampler2D uShadowMap;\n"
                     "layout(set = 0, binding = 6) uniform samplerCube uSkybox;\n"
+                    "layout(set = 0, binding = 8) uniform sampler2D uDDGIIrradiance;\n"
+                    "layout(set = 0, binding = 9) uniform sampler2D uDDGIDistance;\n"
                     "#define uDiffuse uTexture\n";
 
                 const char* kLooseUniformNames[] = {
@@ -72,7 +77,8 @@ namespace RTBEngine {
                     "uHasTexture", "uUseInstancing", "uHasAnimation", "uUseInstanceColor",
                     "uHasShadows", "uSheetEnabled", "uSheetColumns", "uSheetRows", "uSheetFrameCount",
                     "uTime", "uPulseSpeed", "uGlowIntensity",
-                    "uTexture", "uShadowMap", "uSkybox", "uDiffuse"
+                    "uTexture", "uShadowMap", "uSkybox", "uDiffuse",
+                    "uDDGIIrradiance", "uDDGIDistance", "uDDGIEnabled"
                 };
 
                 VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
@@ -237,14 +243,22 @@ namespace RTBEngine {
                 pendingViewport[3] = static_cast<int>(swapchainExtent.height);
 
                 initialized = true;
+                giContext = std::make_unique<VulkanGiContext>(*this);
+                giContext->Initialize(physicalDevice, device, graphicsQueueFamily, graphicsQueue);
                 RTB_INFO("VulkanRenderDevice initialized (depth + deferred draws + SPIR-V)");
                 return true;
             }
 
             void VulkanRenderDevice::Shutdown()
             {
+
                 if (device != VK_NULL_HANDLE) {
                     vkDeviceWaitIdle(device);
+                }
+
+                if (giContext) {
+                    giContext->Shutdown();
+                    giContext.reset();
                 }
 
                 pendingDraws.clear();
@@ -723,7 +737,7 @@ namespace RTBEngine {
                     std::memcpy(static_cast<char*>(perDrawBase) + slotOffset, &draw.perDraw, sizeof(PerDrawCPU));
                 }
 
-                // Vertex / index buffers — prefer record-time VkBuffer snapshots so later
+                // Vertex / index buffers â€” prefer record-time VkBuffer snapshots so later
                 // SetArrayBufferData orphans cannot rewrite geometry for earlier draws.
                 const VaoResource& vao = vaoIt->second;
                 std::vector<VkBuffer> vbuffers;
@@ -821,8 +835,10 @@ namespace RTBEngine {
                 const TextureResource& t0 = resolveTex(draw.texSlot0, false);
                 const TextureResource& t1 = resolveTex(draw.texSlot1, false);
                 const TextureResource& tc = resolveTex(draw.cubemapSlot0, true);
+                const TextureResource& ddgiIrr = resolveTex(draw.ddgiIrradiance, false);
+                const TextureResource& ddgiDist = resolveTex(draw.ddgiDistance, false);
 
-                VkDescriptorImageInfo imgInfos[3]{};
+                VkDescriptorImageInfo imgInfos[5]{};
                 imgInfos[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 imgInfos[0].imageView = t0.view;
                 imgInfos[0].sampler = t0.sampler;
@@ -834,8 +850,18 @@ namespace RTBEngine {
                 imgInfos[2].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 imgInfos[2].imageView = tc.view;
                 imgInfos[2].sampler = tc.sampler;
+                imgInfos[3].imageLayout = (ddgiIrr.currentLayout != VK_IMAGE_LAYOUT_UNDEFINED)
+                    ? ddgiIrr.currentLayout
+                    : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                imgInfos[3].imageView = ddgiIrr.view;
+                imgInfos[3].sampler = ddgiIrr.sampler;
+                imgInfos[4].imageLayout = (ddgiDist.currentLayout != VK_IMAGE_LAYOUT_UNDEFINED)
+                    ? ddgiDist.currentLayout
+                    : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                imgInfos[4].imageView = ddgiDist.view;
+                imgInfos[4].sampler = ddgiDist.sampler;
 
-                VkWriteDescriptorSet writes[7]{};
+                VkWriteDescriptorSet writes[10]{};
                 for (int i = 0; i < 4; ++i) {
                     writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                     writes[i].dstSet = dset;
@@ -854,7 +880,26 @@ namespace RTBEngine {
                     writes[4 + i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                     writes[4 + i].pImageInfo = &imgInfos[i];
                 }
-                vkUpdateDescriptorSets(device, 7, writes, 0, nullptr);
+                VkDescriptorBufferInfo ddgiUboInfo{};
+                ddgiUboInfo.buffer = ResolveBufferHandle(draw.ddgiUBO);
+                if (!ddgiUboInfo.buffer) ddgiUboInfo.buffer = fallbackUBOBuffer;
+                ddgiUboInfo.offset = 0;
+                ddgiUboInfo.range = VK_WHOLE_SIZE;
+                writes[7].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                writes[7].dstSet = dset;
+                writes[7].dstBinding = 7;
+                writes[7].descriptorCount = 1;
+                writes[7].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                writes[7].pBufferInfo = &ddgiUboInfo;
+                for (int i = 0; i < 2; ++i) {
+                    writes[8 + i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                    writes[8 + i].dstSet = dset;
+                    writes[8 + i].dstBinding = 8 + static_cast<std::uint32_t>(i);
+                    writes[8 + i].descriptorCount = 1;
+                    writes[8 + i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                    writes[8 + i].pImageInfo = &imgInfos[3 + i];
+                }
+                vkUpdateDescriptorSets(device, 10, writes, 0, nullptr);
                 vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
                     0, 1, &dset, 0, nullptr);
 
@@ -991,7 +1036,7 @@ namespace RTBEngine {
                     std::regex(R"(layout\s*\(\s*std140\s*,\s*binding\s*=\s*(\d+)\s*\))"),
                     "layout(std140, set = 0, binding = $1)");
 
-                // Blocks that only had layout(std140) (no binding) — CameraData-style → binding 1.
+                // Blocks that only had layout(std140) (no binding) â€” CameraData-style â†’ binding 1.
                 src = std::regex_replace(src,
                     std::regex(R"(layout\s*\(\s*std140\s*\)\s*uniform)"),
                     "layout(std140, set = 0, binding = 1) uniform");
@@ -1093,7 +1138,7 @@ namespace RTBEngine {
                 if (isFragment && src.find("CalcDirectionalLight") != std::string::npos) {
                     const std::string from =
                         "FragColor = vec4(litColor * tint + flashAdd, texColor.a * effectiveColor.a);";
-                    // Reinhard + gamma: linear HDR-ish lighting → display-referred UNORM FBO.
+                    // Reinhard + gamma: linear HDR-ish lighting â†’ display-referred UNORM FBO.
                     const std::string to =
                         "vec3 _linOut = max(litColor * tint + flashAdd, vec3(0.0));\n"
                         "    _linOut = _linOut / (_linOut + vec3(1.0));\n"
@@ -1172,6 +1217,7 @@ namespace RTBEngine {
                     if (prog.fragModule) vkDestroyShaderModule(device, prog.fragModule, nullptr);
                     prog = {};
                     RTB_WARN("VulkanRenderDevice: CreateShaderProgram produced an invalid program (draws will skip it)");
+                } else {
                 }
                 programs[id] = prog;
                 return id;
@@ -1272,7 +1318,7 @@ namespace RTBEngine {
                     return;
                 }
                 if (res.buffer) {
-                    // Always defer destruction — pending draws may still hold this VkBuffer
+                    // Always defer destruction â€” pending draws may still hold this VkBuffer
                     // snapshot (Bone/Camera/Lighting UBOs) even when not yet marked in-flight.
                     pendingOrphans.push_back({ res.buffer, res.memory });
                 }
@@ -1537,6 +1583,8 @@ namespace RTBEngine {
             {
                 if (bindingPoint < 3) {
                     boundUBO[bindingPoint] = buffer;
+                } else if (bindingPoint == kDDGIUBOBinding) {
+                    boundDDGIUBO = buffer;
                 }
             }
 
@@ -1683,7 +1731,7 @@ namespace RTBEngine {
 
                 // Drop any ImGui descriptor that still references the old view/sampler.
                 RemoveImGuiTexture(texture);
-                // Never destroy GPU objects immediately — prior frames' descriptor sets may
+                // Never destroy GPU objects immediately â€” prior frames' descriptor sets may
                 // still reference them (font atlas re-uploads are the common trigger).
                 OrphanTextureGpuResources(res);
 
@@ -1807,7 +1855,13 @@ namespace RTBEngine {
 
             void VulkanRenderDevice::BindTexture2D(GpuId texture, unsigned int slot)
             {
-                boundTextureSlots[slot] = texture;
+                if (slot == kDDGIIrradianceBinding) {
+                    boundDDGIIrradiance = texture;
+                } else if (slot == kDDGIDistanceBinding) {
+                    boundDDGIDistance = texture;
+                } else {
+                    boundTextureSlots[slot] = texture;
+                }
             }
 
             void VulkanRenderDevice::UnbindTexture2D() {}
@@ -2020,7 +2074,7 @@ namespace RTBEngine {
                     return;
                 }
                 // Offscreen targets can be rebuilt (editor viewport resize) while a prior
-                // frame's command buffer still references them — drain the GPU first.
+                // frame's command buffer still references them â€” drain the GPU first.
                 if (device != VK_NULL_HANDLE) {
                     vkDeviceWaitIdle(device);
                 }
@@ -2353,6 +2407,9 @@ namespace RTBEngine {
                 cmd.texSlot0 = (t0 != boundTextureSlots.end()) ? t0->second : kInvalidGpuId;
                 cmd.texSlot1 = (t1 != boundTextureSlots.end()) ? t1->second : kInvalidGpuId;
                 cmd.cubemapSlot0 = boundCubemapSlot0;
+                cmd.ddgiUBO = boundDDGIUBO;
+                cmd.ddgiIrradiance = boundDDGIIrradiance;
+                cmd.ddgiDistance = boundDDGIDistance;
                 cmd.perDraw = currentPerDraw;
                 cmd.targetFramebuffer = currentBoundFramebuffer;
                 if (currentBoundFramebuffer != 0) {
@@ -2768,8 +2825,14 @@ namespace RTBEngine {
 
                 VkMemoryRequirements req{};
                 vkGetBufferMemoryRequirements(device, outBuffer, &req);
+                VkMemoryAllocateFlagsInfo flagsInfo{};
+                flagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+                if (usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
+                    flagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+                }
                 VkMemoryAllocateInfo ai{};
                 ai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                ai.pNext = (flagsInfo.flags != 0) ? &flagsInfo : nullptr;
                 ai.allocationSize = req.size;
                 ai.memoryTypeIndex = FindMemoryType(req.memoryTypeBits, props);
                 if (vkAllocateMemory(device, &ai, nullptr, &outMemory) != VK_SUCCESS) {
@@ -2822,6 +2885,40 @@ namespace RTBEngine {
                 ii.extent = { width, height, 1 };
                 ii.mipLevels = 1;
                 ii.arrayLayers = arrayLayers;
+                ii.format = format;
+                ii.tiling = tiling;
+                ii.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                ii.usage = usage;
+                ii.samples = VK_SAMPLE_COUNT_1_BIT;
+                ii.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                if (vkCreateImage(device, &ii, nullptr, &outImage) != VK_SUCCESS) return false;
+
+                VkMemoryRequirements req{};
+                vkGetImageMemoryRequirements(device, outImage, &req);
+                VkMemoryAllocateInfo ai{};
+                ai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                ai.allocationSize = req.size;
+                ai.memoryTypeIndex = FindMemoryType(req.memoryTypeBits, props);
+                if (vkAllocateMemory(device, &ai, nullptr, &outMemory) != VK_SUCCESS) {
+                    vkDestroyImage(device, outImage, nullptr);
+                    outImage = VK_NULL_HANDLE;
+                    return false;
+                }
+                vkBindImageMemory(device, outImage, outMemory, 0);
+                return true;
+            }
+
+            bool VulkanRenderDevice::CreateImage3DRaw(std::uint32_t width, std::uint32_t height, std::uint32_t depth,
+                                                      VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
+                                                      VkMemoryPropertyFlags props, VkImage& outImage,
+                                                      VkDeviceMemory& outMemory) const
+            {
+                VkImageCreateInfo ii{};
+                ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+                ii.imageType = VK_IMAGE_TYPE_3D;
+                ii.extent = { width, height, depth };
+                ii.mipLevels = 1;
+                ii.arrayLayers = 1;
                 ii.format = format;
                 ii.tiling = tiling;
                 ii.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -2962,11 +3059,21 @@ namespace RTBEngine {
                     bindings[i].descriptorCount = 1;
                     bindings[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
                 }
-                for (std::uint32_t i = 4; i < kDescriptorBindingCount; ++i) {
+                for (std::uint32_t i = 4; i < 7; ++i) {
                     bindings[i].binding = i;
                     bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                     bindings[i].descriptorCount = 1;
                     bindings[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
+                }
+                bindings[7].binding = 7;
+                bindings[7].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                bindings[7].descriptorCount = 1;
+                bindings[7].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+                for (std::uint32_t i = 8; i < kDescriptorBindingCount; ++i) {
+                    bindings[i].binding = i;
+                    bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                    bindings[i].descriptorCount = 1;
+                    bindings[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
                 }
 
                 VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -2990,9 +3097,9 @@ namespace RTBEngine {
                 for (int f = 0; f < kMaxFramesInFlight; ++f) {
                     std::array<VkDescriptorPoolSize, 2> poolSizes{};
                     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                    poolSizes[0].descriptorCount = kMaxDrawsPerFrame * 4;
+                    poolSizes[0].descriptorCount = kMaxDrawsPerFrame * 5;
                     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                    poolSizes[1].descriptorCount = kMaxDrawsPerFrame * 3;
+                    poolSizes[1].descriptorCount = kMaxDrawsPerFrame * 5;
 
                     VkDescriptorPoolCreateInfo poolInfo{};
                     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -3270,8 +3377,8 @@ namespace RTBEngine {
                 appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
                 appInfo.pEngineName = "RTBEngine";
                 appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-                appInfo.apiVersion = VK_API_VERSION_1_1;
-                vulkanApiVersion = VK_API_VERSION_1_1;
+                appInfo.apiVersion = VK_API_VERSION_1_2;
+                vulkanApiVersion = VK_API_VERSION_1_2;
 
                 const std::vector<const char*> extensions = GetRequiredInstanceExtensions();
                 VkInstanceCreateInfo createInfo{};
@@ -3414,20 +3521,74 @@ namespace RTBEngine {
                     qi.pQueuePriorities = &priority;
                     queueInfos.push_back(qi);
                 }
+
+                enabledDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+                std::uint32_t extCount = 0;
+                vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCount, nullptr);
+                std::vector<VkExtensionProperties> availableExts(extCount);
+                vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCount, availableExts.data());
+                auto hasExt = [&](const char* name) {
+                    for (const auto& e : availableExts) {
+                        if (std::strcmp(e.extensionName, name) == 0) return true;
+                    }
+                    return false;
+                };
+                const char* rtExts[] = {
+                    VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+                    VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+                    VK_KHR_RAY_QUERY_EXTENSION_NAME,
+                    VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME
+                };
+                rayQuerySupported = true;
+                for (const char* ext : rtExts) {
+                    if (!hasExt(ext)) {
+                        rayQuerySupported = false;
+                        break;
+                    }
+                }
+                if (rayQuerySupported) {
+                    for (const char* ext : rtExts) {
+                        enabledDeviceExtensions.push_back(ext);
+                    }
+                }
+
                 VkPhysicalDeviceFeatures features{};
+                VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures{};
+                bufferDeviceAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+                bufferDeviceAddressFeatures.bufferDeviceAddress = rayQuerySupported ? VK_TRUE : VK_FALSE;
+
+                VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{};
+                accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+                accelerationStructureFeatures.accelerationStructure = rayQuerySupported ? VK_TRUE : VK_FALSE;
+
+                VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{};
+                rayQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+                rayQueryFeatures.rayQuery = rayQuerySupported ? VK_TRUE : VK_FALSE;
+
+                void* pNext = nullptr;
+                if (rayQuerySupported) {
+                    bufferDeviceAddressFeatures.pNext = &accelerationStructureFeatures;
+                    accelerationStructureFeatures.pNext = &rayQueryFeatures;
+                    pNext = &bufferDeviceAddressFeatures;
+                }
+
                 VkDeviceCreateInfo ci{};
                 ci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+                ci.pNext = pNext;
                 ci.queueCreateInfoCount = static_cast<std::uint32_t>(queueInfos.size());
                 ci.pQueueCreateInfos = queueInfos.data();
                 ci.pEnabledFeatures = &features;
-                ci.enabledExtensionCount = static_cast<std::uint32_t>(kDeviceExtensions.size());
-                ci.ppEnabledExtensionNames = kDeviceExtensions.data();
+                ci.enabledExtensionCount = static_cast<std::uint32_t>(enabledDeviceExtensions.size());
+                ci.ppEnabledExtensionNames = enabledDeviceExtensions.data();
                 if (vkCreateDevice(physicalDevice, &ci, nullptr, &device) != VK_SUCCESS) {
                     RTB_ERROR("VulkanRenderDevice: vkCreateDevice failed");
                     return false;
                 }
                 vkGetDeviceQueue(device, graphicsQueueFamily, 0, &graphicsQueue);
                 vkGetDeviceQueue(device, presentQueueFamily, 0, &presentQueue);
+                if (rayQuerySupported) {
+                    RTB_INFO("VulkanRenderDevice: ray query extensions enabled");
+                }
                 return true;
             }
 
@@ -3713,6 +3874,258 @@ namespace RTBEngine {
                     ImGui_ImplVulkan_SetMinImageCount(2);
                 }
                 return true;
+            }
+
+        }
+    }
+}
+
+// GI / compute extensions for VulkanRenderDevice
+namespace RTBEngine {
+    namespace Rendering {
+        namespace RHI {
+
+            GiCapabilities VulkanRenderDevice::GetGiCapabilities() const
+            {
+                GiCapabilities caps{};
+                caps.computeShaders = true;
+                caps.storageBuffers = true;
+                caps.storageImages = true;
+                caps.texture3D = true;
+                caps.rayQuery = rayQuerySupported && giContext && giContext->IsRayQueryAvailable();
+                return caps;
+            }
+
+            void VulkanRenderDevice::ExecuteOneShotCommand(const std::function<void(VkCommandBuffer)>& recordFn)
+            {
+                if (!initialized || !recordFn) return;
+                VkCommandBuffer cmd = BeginSingleTimeCommands();
+                if (!cmd) return;
+                recordFn(cmd);
+                EndSingleTimeCommands(cmd);
+            }
+
+            void VulkanRenderDevice::CreateDeviceLocalBufferRaw(VkDeviceSize size, VkBufferUsageFlags usage,
+                                                                VkBuffer& outBuffer, VkDeviceMemory& outMemory)
+            {
+                outBuffer = VK_NULL_HANDLE;
+                outMemory = VK_NULL_HANDLE;
+                if (size == 0) return;
+                VkBufferUsageFlags fullUsage = usage | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+                CreateBufferRaw(size, fullUsage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, outBuffer, outMemory);
+            }
+
+            void VulkanRenderDevice::UploadToDeviceLocalBuffer(VkBuffer buffer, const void* data, std::size_t size)
+            {
+                if (!buffer || !data || size == 0) return;
+                VkBuffer staging = VK_NULL_HANDLE;
+                VkDeviceMemory stagingMem = VK_NULL_HANDLE;
+                CreateBufferRaw(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    staging, stagingMem);
+                UploadHostVisibleBuffer(stagingMem, data, size);
+                VkCommandBuffer cmd = BeginSingleTimeCommands();
+                VkBufferCopy region{};
+                region.size = size;
+                vkCmdCopyBuffer(cmd, staging, buffer, 1, &region);
+                EndSingleTimeCommands(cmd);
+                vkDestroyBuffer(device, staging, nullptr);
+                vkFreeMemory(device, stagingMem, nullptr);
+            }
+
+            VkBuffer VulkanRenderDevice::GetBufferHandle(GpuId id) const
+            {
+                return ResolveBufferHandle(id);
+            }
+
+            VkImageView VulkanRenderDevice::GetTextureImageView(GpuId id) const
+            {
+                auto it = textures.find(id);
+                return (it != textures.end()) ? it->second.view : VK_NULL_HANDLE;
+            }
+
+            GpuId VulkanRenderDevice::CreateStorageImage2DInternal(int width, int height, TextureFormat format)
+            {
+                const GpuId id = nextId++;
+                TextureResource res{};
+                VkFormat vkFmt = VK_FORMAT_R16G16B16A16_SFLOAT;
+                if (format == TextureFormat::R32F) vkFmt = VK_FORMAT_R32_SFLOAT;
+                if (!CreateImageRaw(static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height), vkFmt,
+                        VK_IMAGE_TILING_OPTIMAL,
+                        VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1, 0, res.image, res.memory)) {
+                    return kInvalidGpuId;
+                }
+                res.view = CreateImageViewRaw(res.image, vkFmt, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D, 1);
+                // LINEAR within tile; SampleDDGI insets UVs so neighboring probe tiles do not bleed.
+                res.sampler = CreateSamplerRaw(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
+                res.width = width;
+                res.height = height;
+                res.format = vkFmt;
+                textures[id] = res;
+                TransitionImageLayout(res.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+                    VK_IMAGE_ASPECT_COLOR_BIT, 1);
+                textures[id].currentLayout = VK_IMAGE_LAYOUT_GENERAL;
+                return id;
+            }
+
+            void VulkanRenderDevice::ClearStorageImage2D(GpuId texture, float r, float g, float b, float a)
+            {
+                auto it = textures.find(texture);
+                if (it == textures.end() || !it->second.image) return;
+                TextureResource& res = it->second;
+                TransitionImageLayout(res.image, res.currentLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    VK_IMAGE_ASPECT_COLOR_BIT, 1);
+                ExecuteOneShotCommand([&](VkCommandBuffer cmd) {
+                    VkClearColorValue clear{};
+                    clear.float32[0] = r;
+                    clear.float32[1] = g;
+                    clear.float32[2] = b;
+                    clear.float32[3] = a;
+                    VkImageSubresourceRange range{};
+                    range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                    range.levelCount = 1;
+                    range.layerCount = 1;
+                    vkCmdClearColorImage(cmd, res.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear, 1, &range);
+                });
+                TransitionImageLayout(res.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
+                    VK_IMAGE_ASPECT_COLOR_BIT, 1);
+                res.currentLayout = VK_IMAGE_LAYOUT_GENERAL;
+            }
+
+            void VulkanRenderDevice::UpdateStorageImageLayout(GpuId texture, VkImageLayout layout)
+            {
+                auto it = textures.find(texture);
+                if (it == textures.end() || !it->second.image) return;
+                if (it->second.currentLayout == layout) {
+                    return;
+                }
+                TransitionImageLayout(it->second.image, it->second.currentLayout, layout,
+                    VK_IMAGE_ASPECT_COLOR_BIT, 1);
+                it->second.currentLayout = layout;
+            }
+
+            void VulkanRenderDevice::MemoryBarrierComputeToGraphicsInternal()
+            {
+                ExecuteOneShotCommand([](VkCommandBuffer cmd) {
+                    VkMemoryBarrier barrier{};
+                    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+                    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+                    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, &barrier, 0, nullptr, 0, nullptr);
+                });
+            }
+
+            GpuId VulkanRenderDevice::CreateStorageImage2D(int width, int height, TextureFormat format)
+            {
+                return CreateStorageImage2DInternal(width, height, format);
+            }
+
+            void VulkanRenderDevice::BindStorageImage2D(GpuId texture, unsigned int bindingPoint, StorageAccess access)
+            {
+                (void)access;
+                if (bindingPoint == kDDGIIrradianceBinding) boundDDGIIrradiance = texture;
+                else if (bindingPoint == kDDGIDistanceBinding) boundDDGIDistance = texture;
+            }
+
+            void VulkanRenderDevice::MemoryBarrierComputeToGraphics()
+            {
+                MemoryBarrierComputeToGraphicsInternal();
+            }
+
+            GpuId VulkanRenderDevice::CreateDeviceLocalBuffer(const void* data, std::size_t size, bool indexBuffer)
+            {
+                if (!giContext || size == 0) return kInvalidGpuId;
+                VkBufferUsageFlags usage = indexBuffer ? VK_BUFFER_USAGE_INDEX_BUFFER_BIT : VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+                return giContext->CreateDeviceLocalBuffer(data, size, usage);
+            }
+
+            std::uint64_t VulkanRenderDevice::GetBufferDeviceAddress(GpuId buffer) const
+            {
+                return giContext ? giContext->GetBufferDeviceAddress(buffer) : 0;
+            }
+
+            GpuId VulkanRenderDevice::CreateComputeProgram(const std::string& computeSource)
+            {
+                return giContext ? giContext->CreateComputeProgram(computeSource) : kInvalidGpuId;
+            }
+
+            void VulkanRenderDevice::DestroyComputeProgram(GpuId program)
+            {
+                if (giContext) giContext->DestroyComputeProgram(program);
+            }
+
+            void VulkanRenderDevice::BindComputeProgram(GpuId program)
+            {
+                if (giContext) giContext->BindComputeProgram(program);
+            }
+
+            void VulkanRenderDevice::DispatchCompute(unsigned int groupCountX, unsigned int groupCountY, unsigned int groupCountZ)
+            {
+                if (giContext) giContext->DispatchCompute(kInvalidGpuId, groupCountX, groupCountY, groupCountZ);
+            }
+
+            GpuId VulkanRenderDevice::CreateStorageBuffer(std::size_t size)
+            {
+                return giContext ? giContext->CreateStorageBuffer(size) : kInvalidGpuId;
+            }
+
+            void VulkanRenderDevice::DestroyStorageBuffer(GpuId buffer)
+            {
+                (void)buffer;
+            }
+
+            void VulkanRenderDevice::UpdateStorageBuffer(GpuId buffer, const void* data, std::size_t size, std::size_t offset)
+            {
+                if (giContext) giContext->UpdateStorageBuffer(buffer, data, size, offset);
+            }
+
+            void VulkanRenderDevice::BindStorageBuffer(GpuId buffer, unsigned int bindingPoint)
+            {
+                if (giContext) giContext->BindStorageBuffer(buffer, bindingPoint);
+            }
+
+            GpuId VulkanRenderDevice::CreateTexture3D()
+            {
+                const GpuId id = nextId++;
+                textures[id] = {};
+                return id;
+            }
+
+            void VulkanRenderDevice::DestroyTexture3D(GpuId texture)
+            {
+                DestroyTexture(texture);
+            }
+
+            void VulkanRenderDevice::SetTexture3DData(GpuId texture, TextureFormat format, int width, int height, int depth,
+                                                      const void* pixels)
+            {
+                auto it = textures.find(texture);
+                if (it == textures.end()) return;
+                bool isDepth = false;
+                VkFormat vkFmt = ToVkFormat(format, isDepth);
+                (void)isDepth;
+                if (!CreateImage3DRaw(static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height),
+                        static_cast<std::uint32_t>(depth), vkFmt, VK_IMAGE_TILING_OPTIMAL,
+                        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, it->second.image, it->second.memory)) {
+                    return;
+                }
+                it->second.view = CreateImageViewRaw(it->second.image, vkFmt, VK_IMAGE_ASPECT_COLOR_BIT,
+                    VK_IMAGE_VIEW_TYPE_3D, static_cast<std::uint32_t>(depth));
+                it->second.sampler = CreateSamplerRaw(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
+                it->second.width = width;
+                it->second.height = height;
+                it->second.layerCount = static_cast<std::uint32_t>(depth);
+                if (pixels) {
+                    (void)pixels;
+                }
+            }
+
+            void VulkanRenderDevice::BindTexture3D(GpuId texture, unsigned int slot)
+            {
+                boundTextureSlots[slot] = texture;
             }
 
         }

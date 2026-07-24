@@ -1,0 +1,312 @@
+// =============================================================================
+// ddgi_trace.comp — Compute shader de BAKE DDGI (Dynamic Diffuse GI)
+// =============================================================================
+//
+// ¿Qué es este archivo?
+//   Un programa GLSL que NO pinta triángulos. Corre en la GPU como COMPUTE:
+//   cada hilo (invocation) actualiza UN probe de la rejilla.
+//
+// ¿Quién lo lanza?
+//   VulkanGiContext::UpdateDDGI → vkCmdDispatch
+//   (solo si DDGI está enabled en Project Settings).
+//
+// ¿Qué escribe?
+//   Dos texturas 2D (storage images) en VRAM:
+//     - uIrradianceAtlas : color de rebote por dirección (octahedral)
+//     - uDistanceAtlas   : mean / mean² de distancia (para Chebyshev al samplear)
+//
+// Los probes NO se "suben" como una lista de posiciones desde CPU.
+// La posición se CALCULA aquí: ProbeWorldPos(coord, origin, spacing).
+// La "memoria" del probe es un tile 18x18 dentro del atlas.
+// =============================================================================
+
+#version 460
+#extension GL_EXT_ray_query : require   // ray query Vulkan (trazar rays contra TLAS)
+
+#include "ddgi_common.glsl"            // OctEncode/Decode, ProbeWorldPos, etc.
+
+// 64 hilos por workgroup. Dispatch: ceil(probesThisFrame / 64) grupos.
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+// -----------------------------------------------------------------------------
+// Binding 0 — Parámetros del bake (CPU → GPU en UpdateDDGI / SetUniformBufferData)
+// -----------------------------------------------------------------------------
+layout(std140, set = 0, binding = 0) uniform DDGIParams {
+    vec3 uOrigin;          // esquina del volumen DDGI (mundo)
+    float uHysteresis;     // 0..~0.85: cuánto conservar del frame anterior (EMA)
+    vec3 uSpacing;         // distancia entre probes = extent / grid
+    float uNormalBias;     // offset del origen del ray (evita self-hit)
+    ivec3 uGridDims;       // (X,Y,Z) número de probes
+    int uProbeCount;       // X*Y*Z
+    int uFrameIndex;       // frame actual (rota qué probes se actualizan)
+    int uRaysPerProbe;     // normalmente 128
+    int uProbesThisFrame;  // normalmente min(256, probeCount)
+    float uProbeRadius;    // escala el alcance máximo del ray
+    float _pad0;
+};
+
+// Binding 1 — TLAS: geometría de la escena para ray query
+layout(set = 0, binding = 1) uniform accelerationStructureEXT uTLAS;
+
+// Binding 2/3 — Atlas donde ESTE shader ESCRIBE (storage, no sampler)
+layout(set = 0, binding = 2, rgba16f) uniform image2D uIrradianceAtlas;
+layout(set = 0, binding = 3, rgba16f) uniform image2D uDistanceAtlas;
+
+// -----------------------------------------------------------------------------
+// Binding 4 — Mismas luces del frame (LightingUBO), para EvaluateHitRadiance
+// -----------------------------------------------------------------------------
+struct DirectionalLight {
+    vec3 direction;
+    vec3 color;
+    float intensity;
+};
+
+struct PointLight {
+    vec3 position;
+    vec3 color;
+    float intensity;
+    float constant;
+    float linear;
+    float quadratic;
+    float range;
+};
+
+struct SpotLight {
+    vec3 position;
+    vec3 direction;
+    vec3 color;
+    float intensity;
+    float innerCutOff;
+    float outerCutOff;
+    float constant;
+    float linear;
+    float quadratic;
+    float range;
+};
+
+layout(std140, set = 0, binding = 4) uniform LightingData {
+    DirectionalLight dirLight;
+    PointLight pointLights[8];
+    SpotLight spotLights[8];
+    int numPointLights;
+    int numSpotLights;
+};
+
+// Interior del mapa octahedral por probe. Tile en atlas = 16+2 (borde anti-bleed).
+const int OCT_SIZE = 16;
+const int PROBE_TEXELS = 18;
+const int MAX_RAYS = 128;
+
+// -----------------------------------------------------------------------------
+// Evalúa luz DIRECTA en el punto de impacto del ray.
+// Esto es el "un bounce": el hit solo ve sol/puntos, no otro rebote DDGI.
+// -----------------------------------------------------------------------------
+vec3 EvaluateHitRadiance(vec3 pos, vec3 normal) {
+    vec3 irradiance = vec3(0.01); // suelo mínimo
+
+    // Sol (direccional)
+    vec3 lightDir = normalize(-dirLight.direction);
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    irradiance += dirLight.color * dirLight.intensity * NdotL;
+
+    // Point lights (hasta 8, mismas que el forward shader)
+    for (int i = 0; i < numPointLights && i < 8; i++) {
+        vec3 toLight = pointLights[i].position - pos;
+        float dist = length(toLight);
+        if (dist > pointLights[i].range) continue;
+        vec3 L = toLight / dist;
+        float att = 1.0 / (pointLights[i].constant + pointLights[i].linear * dist
+            + pointLights[i].quadratic * dist * dist);
+        irradiance += pointLights[i].color * pointLights[i].intensity
+            * max(dot(normal, L), 0.0) * att;
+    }
+
+    // Lambert aproximado (albedo constante; no leemos textura del mesh)
+    const float albedo = 0.55;
+    return irradiance * (albedo / DDGI_PI);
+}
+
+// Direcciones estables casi uniformes en la esfera (Fibonacci / golden ratio).
+vec3 FibonacciRay(int rayIndex, int rayCount) {
+    float phi = 1.61803398875;
+    float y = 1.0 - (2.0 * float(rayIndex) + 1.0) / float(rayCount);
+    float radius = sqrt(max(0.0, 1.0 - y * y));
+    float theta = 2.0 * DDGI_PI * fract(float(rayIndex) * phi);
+    return vec3(cos(theta) * radius, y, sin(theta) * radius);
+}
+
+// =============================================================================
+// main — un hilo = un probe de ESTE frame
+// =============================================================================
+void main() {
+    // --- Identificar qué probe toca este hilo ---
+    int localProbe = int(gl_GlobalInvocationID.x);
+    if (localProbe >= uProbesThisFrame) return; // sobra del workgroup
+
+    int rayCount = min(uRaysPerProbe, MAX_RAYS);
+    int probesPerFrame = max(uProbesThisFrame, 1);
+
+    // Rota el subconjunto de probes: frame 0 → 0..255, frame 1 → 256..511, etc.
+    int probeIndex = (uFrameIndex * probesPerFrame + localProbe) % max(uProbeCount, 1);
+
+    // Posición en mundo (calculada, no leída de un buffer de probes)
+    ivec3 coord = ProbeCoordFromIndex(probeIndex, uGridDims);
+    vec3 probePos = ProbeWorldPos(coord, uOrigin, uSpacing);
+
+    // Dónde escribe este probe en el atlas 2D (tile 18x18)
+    ivec2 tileOrigin = ProbeAtlasOrigin(coord, PROBE_TEXELS, uGridDims);
+    ivec2 interiorOrigin = tileOrigin + ivec2(1); // interior 16x16
+
+    float maxT = max(uProbeRadius * 8.0, length(uSpacing) * 4.0);
+
+    // Direcciones estables; giro lento cada ~60 frames (adapta luces sin grano)
+    int rot = (uFrameIndex / 60) % max(rayCount, 1);
+
+    // Resultados temporales de los rays (en registros / local memory del hilo)
+    vec3 rayDir[MAX_RAYS];
+    vec3 rayRad[MAX_RAYS];
+    float rayDist[MAX_RAYS];
+
+    // -------------------------------------------------------------------------
+    // FASE 1 — TRACE: lanzar rays desde el probe
+    // -------------------------------------------------------------------------
+    for (int ray = 0; ray < rayCount; ray++) {
+        vec3 dir = FibonacciRay((ray + rot) % rayCount, rayCount);
+        // Empieza un poco fuera del centro (bias) para no auto-intersectar
+        vec3 rayOrigin = probePos + dir * max(uNormalBias, 0.05);
+
+        vec3 radiance = vec3(0.0);
+        float hitDist = maxT;
+
+        // Ray query contra la TLAS (geometría de la escena)
+        rayQueryEXT rq;
+        rayQueryInitializeEXT(rq, uTLAS, gl_RayFlagsOpaqueEXT, 0xFF,
+            rayOrigin, 0.001, dir, maxT);
+        while (rayQueryProceedEXT(rq)) {}
+
+        if (rayQueryGetIntersectionTypeEXT(rq, true)
+            == gl_RayQueryCommittedIntersectionTriangleEXT) {
+            // HIT
+            float t = rayQueryGetIntersectionTEXT(rq, true);
+            hitDist = t;
+            if (rayQueryGetIntersectionFrontFaceEXT(rq, true)) {
+                vec3 hitPos = rayOrigin + dir * t;
+                // Normal aproximada = -dir (no leemos normal del mesh)
+                vec3 hitNormal = normalize(-dir);
+                radiance = EvaluateHitRadiance(hitPos, hitNormal);
+            }
+            // back-face → radiance queda 0
+        } else {
+            // MISS — cielo/ambiente débil
+            radiance = vec3(0.015);
+            hitDist = maxT;
+        }
+
+        rayDir[ray] = dir;
+        rayRad[ray] = radiance;
+        rayDist[ray] = hitDist;
+    }
+
+    // -------------------------------------------------------------------------
+    // FASE 2 — INTEGRATE: rays → mapa octahedral 16x16 + blend temporal
+    // -------------------------------------------------------------------------
+    // alpha alto = confiar más en lo nuevo; hysteresis alto = más suave/lento
+    float alpha = 1.0 - uHysteresis;
+
+    for (int ty = 0; ty < OCT_SIZE; ty++) {
+        for (int tx = 0; tx < OCT_SIZE; tx++) {
+            // Dirección que representa este texel en la esfera
+            vec2 octUv = (vec2(float(tx), float(ty)) + 0.5) / float(OCT_SIZE);
+            vec3 texelDir = OctDecode(octUv);
+
+            vec3 irrSum = vec3(0.0);
+            float wSum = 0.0;
+            float distSum = 0.0;
+            float dist2Sum = 0.0;
+            float distW = 0.0;
+
+            // Media ponderada por coseno: rays alineados con texelDir pesan más
+            for (int ray = 0; ray < rayCount; ray++) {
+                float cw = max(dot(texelDir, rayDir[ray]), 0.0);
+                if (cw > 0.0) {
+                    irrSum += rayRad[ray] * cw;
+                    wSum += cw;
+                }
+                float dw = cw * cw; // kernel más afilado para distancia
+                if (dw > 1e-5) {
+                    distSum += rayDist[ray] * dw;
+                    dist2Sum += rayDist[ray] * rayDist[ray] * dw;
+                    distW += dw;
+                }
+            }
+
+            ivec2 texel = interiorOrigin + ivec2(tx, ty);
+            vec4 prevIrr = imageLoad(uIrradianceAtlas, texel);
+            vec4 prevDist = imageLoad(uDistanceAtlas, texel);
+
+            // Irradiancia nueva (sqrt-encode para rango HDR en half float)
+            vec3 newIrrEnc = prevIrr.rgb;
+            if (wSum > 1e-4) {
+                vec3 linearIrr = irrSum / wSum;
+                newIrrEnc = sqrt(max(linearIrr, vec3(0.0)));
+            }
+
+            // Momentos de distancia (mean, mean²) para Chebyshev en el frag
+            float newMean = prevDist.r;
+            float newMean2 = prevDist.g;
+            if (distW > 1e-4) {
+                newMean = distSum / distW;
+                newMean2 = dist2Sum / distW;
+            }
+
+            // EMA temporal
+            vec3 blended = mix(prevIrr.rgb, newIrrEnc, alpha);
+            float blendedMean = mix(prevDist.r, newMean, alpha);
+            float blendedMean2 = mix(prevDist.g, newMean2, alpha);
+
+            // ESCRITURA GPU→GPU: aquí se "guarda" el probe
+            imageStore(uIrradianceAtlas, texel, vec4(blended, 1.0));
+            imageStore(uDistanceAtlas, texel, vec4(blendedMean, blendedMean2, 0.0, 1.0));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // FASE 3 — BORDES: copiar bordes 1px del tile (anti-bleed entre probes)
+    // -------------------------------------------------------------------------
+    for (int i = 0; i < OCT_SIZE; i++) {
+        imageStore(uIrradianceAtlas, tileOrigin + ivec2(0, 1 + i),
+            imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(0, i)));
+        imageStore(uIrradianceAtlas, tileOrigin + ivec2(PROBE_TEXELS - 1, 1 + i),
+            imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(OCT_SIZE - 1, i)));
+        imageStore(uDistanceAtlas, tileOrigin + ivec2(0, 1 + i),
+            imageLoad(uDistanceAtlas, interiorOrigin + ivec2(0, i)));
+        imageStore(uDistanceAtlas, tileOrigin + ivec2(PROBE_TEXELS - 1, 1 + i),
+            imageLoad(uDistanceAtlas, interiorOrigin + ivec2(OCT_SIZE - 1, i)));
+
+        imageStore(uIrradianceAtlas, tileOrigin + ivec2(1 + i, 0),
+            imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(i, 0)));
+        imageStore(uIrradianceAtlas, tileOrigin + ivec2(1 + i, PROBE_TEXELS - 1),
+            imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(i, OCT_SIZE - 1)));
+        imageStore(uDistanceAtlas, tileOrigin + ivec2(1 + i, 0),
+            imageLoad(uDistanceAtlas, interiorOrigin + ivec2(i, 0)));
+        imageStore(uDistanceAtlas, tileOrigin + ivec2(1 + i, PROBE_TEXELS - 1),
+            imageLoad(uDistanceAtlas, interiorOrigin + ivec2(i, OCT_SIZE - 1)));
+    }
+    // Esquinas
+    imageStore(uIrradianceAtlas, tileOrigin + ivec2(0, 0),
+        imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(0, 0)));
+    imageStore(uIrradianceAtlas, tileOrigin + ivec2(PROBE_TEXELS - 1, 0),
+        imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(OCT_SIZE - 1, 0)));
+    imageStore(uIrradianceAtlas, tileOrigin + ivec2(0, PROBE_TEXELS - 1),
+        imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(0, OCT_SIZE - 1)));
+    imageStore(uIrradianceAtlas, tileOrigin + ivec2(PROBE_TEXELS - 1, PROBE_TEXELS - 1),
+        imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(OCT_SIZE - 1, OCT_SIZE - 1)));
+    imageStore(uDistanceAtlas, tileOrigin + ivec2(0, 0),
+        imageLoad(uDistanceAtlas, interiorOrigin + ivec2(0, 0)));
+    imageStore(uDistanceAtlas, tileOrigin + ivec2(PROBE_TEXELS - 1, 0),
+        imageLoad(uDistanceAtlas, interiorOrigin + ivec2(OCT_SIZE - 1, 0)));
+    imageStore(uDistanceAtlas, tileOrigin + ivec2(0, PROBE_TEXELS - 1),
+        imageLoad(uDistanceAtlas, interiorOrigin + ivec2(0, OCT_SIZE - 1)));
+    imageStore(uDistanceAtlas, tileOrigin + ivec2(PROBE_TEXELS - 1, PROBE_TEXELS - 1),
+        imageLoad(uDistanceAtlas, interiorOrigin + ivec2(OCT_SIZE - 1, OCT_SIZE - 1)));
+}

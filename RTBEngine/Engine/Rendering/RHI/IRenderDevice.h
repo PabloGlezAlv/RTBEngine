@@ -117,6 +117,40 @@ namespace RTBEngine {
 
                 // ImGui texture bridge. OpenGL: GL texture name. Vulkan: VkDescriptorSet as uintptr_t.
                 virtual std::uintptr_t GetNativeTextureIdForImGui(GpuId texture) const = 0;
+
+                // GI / compute capabilities
+                virtual GiCapabilities GetGiCapabilities() const = 0;
+
+                // Compute shaders
+                virtual GpuId CreateComputeProgram(const std::string& computeSource) = 0;
+                virtual void DestroyComputeProgram(GpuId program) = 0;
+                virtual void BindComputeProgram(GpuId program) = 0;
+                virtual void DispatchCompute(unsigned int groupCountX, unsigned int groupCountY, unsigned int groupCountZ) = 0;
+
+                // Storage buffers (SSBO)
+                virtual GpuId CreateStorageBuffer(std::size_t size) = 0;
+                virtual void DestroyStorageBuffer(GpuId buffer) = 0;
+                virtual void UpdateStorageBuffer(GpuId buffer, const void* data, std::size_t size, std::size_t offset = 0) = 0;
+                virtual void BindStorageBuffer(GpuId buffer, unsigned int bindingPoint) = 0;
+
+                // 3D textures
+                virtual GpuId CreateTexture3D() = 0;
+                virtual void DestroyTexture3D(GpuId texture) = 0;
+                virtual void SetTexture3DData(GpuId texture, TextureFormat format, int width, int height, int depth,
+                                            const void* pixels) = 0;
+                virtual void BindTexture3D(GpuId texture, unsigned int slot) = 0;
+
+                // Storage images (2D)
+                virtual GpuId CreateStorageImage2D(int width, int height, TextureFormat format) = 0;
+                virtual void BindStorageImage2D(GpuId texture, unsigned int bindingPoint, StorageAccess access) = 0;
+                virtual void ClearStorageImage2D(GpuId texture, float r, float g, float b, float a) = 0;
+
+                // GPU memory barrier between compute and graphics passes
+                virtual void MemoryBarrierComputeToGraphics() = 0;
+
+                // Device-local geometry buffer for ray tracing (Vulkan BLAS source)
+                virtual GpuId CreateDeviceLocalBuffer(const void* data, std::size_t size, bool indexBuffer) = 0;
+                virtual std::uint64_t GetBufferDeviceAddress(GpuId buffer) const = 0;
             };
 
         }
