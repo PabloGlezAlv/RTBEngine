@@ -30,6 +30,14 @@ namespace RTBEngine {
             // Scales SampleDDGI contribution (bounce only).
             float ddgiIntensity = 0.32f;
 
+            // Directional shadow maps (OpenGL + Vulkan via ShadowMap / RHI).
+            bool shadowsEnabled = true;
+            // Preferred size; use GetClampedShadowMapResolution() at runtime (512..16384).
+            int shadowMapResolution = 2048;
+
+            int GetClampedShadowMapResolution() const;
+            static int ClampShadowMapResolution(int resolution);
+
             Math::Vector3 ddgiOrigin = Math::Vector3(-15.0f, 0.0f, -9.0f);
             Math::Vector3 ddgiExtent = Math::Vector3(30.0f, 12.0f, 18.0f);
             int ddgiGridX = 16;

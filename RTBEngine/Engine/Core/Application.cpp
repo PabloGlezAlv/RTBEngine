@@ -39,6 +39,7 @@
 #include "../Rendering/CameraUBO.h"
 #include "../Rendering/Lighting/DirectionalLight.h"
 #include "../Rendering/GI/DDGISystem.h"
+#include "../Rendering/Lighting/LightingProjectSettings.h"
 
 #include "../Rendering/Frustum.h"
 #include "../Online/OnlineSystem.h"
@@ -631,10 +632,17 @@ void RTBEngine::Core::Application::Render()
 
 void RTBEngine::Core::Application::RenderShadowPass(Scene::Scene* scene)
 {
+	const auto& lightingSettings = Rendering::LightingProjectSettings::Get();
+	if (!lightingSettings.shadowsEnabled) {
+		return;
+	}
+
 	Rendering::Shader* shadowShader = ResourceManager::GetInstance().GetShader("shadow");
 	if (!shadowShader) return;
 
 	shadowShader->Bind();
+
+	const int shadowResolution = lightingSettings.GetClampedShadowMapResolution();
 
 	for (Scene::LightComponent* lightComp : scene->GetCachedLightComponents()) {
 		if (!lightComp || !lightComp->GetLight()) continue;
@@ -645,6 +653,10 @@ void RTBEngine::Core::Application::RenderShadowPass(Scene::Scene* scene)
 		if (lightComp->GetLight()->GetType() != Rendering::LightType::Directional) continue;
 		auto* dirLight = static_cast<Rendering::DirectionalLight*>(lightComp->GetLight());
 		if (!dirLight || !dirLight->GetCastShadows()) continue;
+
+		dirLight->SetShadowMapResolution(shadowResolution);
+		Rendering::ShadowMap* shadowMap = dirLight->GetShadowMap();
+		if (!shadowMap) continue;
 
 		Math::Vector3 sceneCenter(0.0f, 2.0f, 0.0f);
 		float sceneRadius = 50.0f;
@@ -659,7 +671,6 @@ void RTBEngine::Core::Application::RenderShadowPass(Scene::Scene* scene)
 
 		shadowShader->SetMatrix4("uLightSpaceMatrix", lightSpaceMatrix);
 
-		Rendering::ShadowMap* shadowMap = dirLight->GetShadowMap();
 		shadowMap->BindForWriting();
 
 		auto& device = Rendering::RHI::RenderDevice::Get();
@@ -839,7 +850,9 @@ void RTBEngine::Core::Application::RenderGeometryPass(Scene::Scene* scene, Rende
 
 		if (light->GetType() == Rendering::LightType::Directional) {
 			auto* dirLight = static_cast<Rendering::DirectionalLight*>(light);
-			if (dirLight->GetCastShadows()) {
+			if (dirLight->GetCastShadows()
+				&& Rendering::LightingProjectSettings::Get().shadowsEnabled
+				&& dirLight->GetShadowMap()) {
 				shadowCastingLight = dirLight;
 			}
 		}

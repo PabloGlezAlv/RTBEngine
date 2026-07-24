@@ -74,6 +74,8 @@ namespace RTBEngine {
             ambientColor = Math::Vector3(1.0f, 1.0f, 1.0f);
             ambientIntensity = 0.08f;
             ddgiIntensity = 0.32f;
+            shadowsEnabled = true;
+            shadowMapResolution = 2048;
             ddgiEnabled = true;
             ddgiOrigin = Math::Vector3(-15.0f, 0.0f, -9.0f);
             ddgiExtent = Math::Vector3(30.0f, 12.0f, 18.0f);
@@ -84,6 +86,26 @@ namespace RTBEngine {
             ddgiNormalBias = 0.2f;
             ddgiViewBias = 0.25f;
             ddgiProbeRadius = 2.0f;
+        }
+
+        int LightingProjectSettings::ClampShadowMapResolution(int resolution)
+        {
+            static constexpr int kOptions[] = { 512, 1024, 2048, 4096, 8192, 16384 };
+            int best = kOptions[0];
+            int bestDiff = std::abs(resolution - best);
+            for (int option : kOptions) {
+                const int diff = std::abs(resolution - option);
+                if (diff < bestDiff) {
+                    best = option;
+                    bestDiff = diff;
+                }
+            }
+            return best;
+        }
+
+        int LightingProjectSettings::GetClampedShadowMapResolution() const
+        {
+            return ClampShadowMapResolution(shadowMapResolution);
         }
 
         GI::DDGISettings LightingProjectSettings::GetDDGISettings() const
@@ -136,6 +158,8 @@ namespace RTBEngine {
                 else if (key == "AmbientColorB") ambientColor.z = ParseFloat(value, ambientColor.z);
                 else if (key == "AmbientIntensity") ambientIntensity = ParseFloat(value, ambientIntensity);
                 else if (key == "DDGIIntensity") ddgiIntensity = ParseFloat(value, ddgiIntensity);
+                else if (key == "ShadowsEnabled") shadowsEnabled = ParseBool(value, shadowsEnabled);
+                else if (key == "ShadowMapResolution") shadowMapResolution = ClampShadowMapResolution(ParseInt(value, shadowMapResolution));
                 else if (key == "DDGIEnabled") ddgiEnabled = ParseBool(value, ddgiEnabled);
                 else if (key == "DDGIOriginX") ddgiOrigin.x = ParseFloat(value, ddgiOrigin.x);
                 else if (key == "DDGIOriginY") ddgiOrigin.y = ParseFloat(value, ddgiOrigin.y);
@@ -168,6 +192,8 @@ namespace RTBEngine {
             file << "AmbientColorB=" << ambientColor.z << "\n";
             file << "AmbientIntensity=" << ambientIntensity << "\n";
             file << "DDGIIntensity=" << ddgiIntensity << "\n";
+            file << "ShadowsEnabled=" << (shadowsEnabled ? "1" : "0") << "\n";
+            file << "ShadowMapResolution=" << GetClampedShadowMapResolution() << "\n";
             file << "DDGIEnabled=" << (ddgiEnabled ? "1" : "0") << "\n";
             file << "DDGIOriginX=" << ddgiOrigin.x << "\n";
             file << "DDGIOriginY=" << ddgiOrigin.y << "\n";
