@@ -118,14 +118,14 @@ RTBEngine_SDK/
 RTBEngine/Assets/**/*.tmp
 
 # -----------------------------------------------------------------------------
-# ThirdParty prebuilt binaries (CI + local link). Track with Git LFS.
-# Do NOT commit assimp/build/ or Bullet CMake intermediates.
+# ThirdParty prebuilt binaries — only scripts/thirdparty-required.txt paths are tracked.
+# Extra Debug builds, unused Bullet modules, .pdb, and test libs stay local only.
 # -----------------------------------------------------------------------------
 RTBEngine/ThirdParty/assimp/build/
 RTBEngine/ThirdParty/bullet3-3.25/build_msvc/**/CMakeFiles/
 RTBEngine/ThirdParty/bullet3-3.25/build_msvc/**/*.dir/
 
-# Un-ignore parent folders so specific dll/lib exceptions below can apply.
+# Un-ignore parent folders so whitelisted file exceptions below can apply.
 !RTBEngine/
 !RTBEngine/ThirdParty/
 !RTBEngine/ThirdParty/SDL2-2.32.10/
@@ -150,25 +150,39 @@ RTBEngine/ThirdParty/bullet3-3.25/build_msvc/**/*.dir/
 !RTBEngine/ThirdParty/assimp/lib/
 !RTBEngine/ThirdParty/assimp/lib/Release/
 !RTBEngine/ThirdParty/assimp/lib/Release/x64/
-!RTBEngine/ThirdParty/assimp/lib/Debug/
-!RTBEngine/ThirdParty/assimp/lib/Debug/x64/
 !RTBEngine/ThirdParty/bullet3-3.25/
 !RTBEngine/ThirdParty/bullet3-3.25/build_msvc/
 !RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/
 !RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/
-!RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Debug/
 
-# Allow specific ThirdParty link/runtime artifacts
-!RTBEngine/ThirdParty/SDL2-2.32.10/lib/x64/*.dll
-!RTBEngine/ThirdParty/SDL2-2.32.10/lib/x64/*.lib
-!RTBEngine/ThirdParty/glew-2.1.0/bin/Release/x64/*.dll
-!RTBEngine/ThirdParty/glew-2.1.0/lib/Release/x64/*.lib
+# Whitelist: Release CI + local link (matches scripts/thirdparty-required.txt)
+!RTBEngine/ThirdParty/SDL2-2.32.10/lib/x64/SDL2.dll
+!RTBEngine/ThirdParty/SDL2-2.32.10/lib/x64/SDL2.lib
+!RTBEngine/ThirdParty/SDL2-2.32.10/lib/x64/SDL2main.lib
+!RTBEngine/ThirdParty/glew-2.1.0/bin/Release/x64/glew32.dll
+!RTBEngine/ThirdParty/glew-2.1.0/lib/Release/x64/glew32.lib
 !RTBEngine/ThirdParty/lua/lua54.dll
 !RTBEngine/ThirdParty/lua/lua54.lib
-!RTBEngine/ThirdParty/fmod/api/core/lib/x64/*.dll
-!RTBEngine/ThirdParty/fmod/api/core/lib/x64/*.lib
-!RTBEngine/ThirdParty/assimp/bin/x64/*.dll
-!RTBEngine/ThirdParty/assimp/lib/Release/x64/*.lib
-!RTBEngine/ThirdParty/assimp/lib/Debug/x64/*.lib
-!RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/*.lib
-!RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Debug/*.lib
+!RTBEngine/ThirdParty/fmod/api/core/lib/x64/fmod.dll
+!RTBEngine/ThirdParty/fmod/api/core/lib/x64/fmod_vc.lib
+!RTBEngine/ThirdParty/assimp/bin/x64/assimp-vc145-mt.dll
+!RTBEngine/ThirdParty/assimp/lib/Release/x64/assimp-vc145-mt.lib
+!RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/LinearMath.lib
+!RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/BulletCollision.lib
+!RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/BulletDynamics.lib
+
+# Re-ignore everything else under ThirdParty binaries (rules below win over wildcards above)
+RTBEngine/ThirdParty/**/*.pdb
+RTBEngine/ThirdParty/**/SDL2test.lib
+RTBEngine/ThirdParty/fmod/api/core/lib/x64/fmodL.dll
+RTBEngine/ThirdParty/assimp/bin/x64/assimp-vc145-mtd.dll
+RTBEngine/ThirdParty/assimp/lib/Debug/
+RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Debug/
+RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/Bullet2FileLoader.lib
+RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/Bullet3Collision.lib
+RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/Bullet3Common.lib
+RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/Bullet3Dynamics.lib
+RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/Bullet3Geometry.lib
+RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/Bullet3OpenCL_clew.lib
+RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/BulletInverseDynamics.lib
+RTBEngine/ThirdParty/bullet3-3.25/build_msvc/lib/Release/BulletSoftBody.lib
