@@ -1,16 +1,32 @@
 #include "OpenGLDDGIUpdater.h"
 #include "../RHI/RenderDevice.h"
 #include "../RHI/GraphicsAPI.h"
+#include "../Lighting/LightingUBO.h"
+#include "../Mesh.h"
 #include "../../Core/ResourceManager.h"
 #include "../../Core/Logger.h"
+#include "../../Scene/Scene.h"
+#include "../../Scene/MeshRenderer.h"
+#include "../../Scene/GameObject.h"
+#include "../../Animation/Animator.h"
+#include "../../Math/Vectors/Vector4.h"
+#include "GiTypes.h"
+#include <algorithm>
+#include <cmath>
+#include <cstring>
 #include <fstream>
 #include <sstream>
+#include <vector>
+#include <cstdint>
 
 namespace RTBEngine {
     namespace Rendering {
         namespace GI {
 
             namespace {
+                constexpr int kMaxSoftwareTriangles = 16384;
+                constexpr int kGlRaysPerProbe = 64;
+
                 std::string LoadShaderSource(const char* path)
                 {
                     const std::string resolved = Core::ResourceManager::GetInstance().ResolvePathForRead(path);
@@ -25,11 +41,30 @@ namespace RTBEngine {
                         const std::string commonPath = Core::ResourceManager::GetInstance()
                             .ResolvePathForRead("Default/Shaders/ddgi_common.glsl");
                         std::ifstream commonFile(commonPath);
-                        std::ostringstream commonSs;
-                        commonSs << commonFile.rdbuf();
-                        src.replace(pos, includeToken.size(), commonSs.str());
+                        if (commonFile) {
+                            std::ostringstream commonSs;
+                            commonSs << commonFile.rdbuf();
+                            std::string common = commonSs.str();
+                            // Strip a leading #version from the include if present.
+                            const auto versionPos = common.find("#version");
+                            if (versionPos != std::string::npos) {
+                                const auto lineEnd = common.find('\n', versionPos);
+                                common.erase(versionPos,
+                                    (lineEnd == std::string::npos) ? common.size() - versionPos : lineEnd - versionPos + 1);
+                            }
+                            src.replace(pos, includeToken.size(), common);
+                        }
                     }
                     return src;
+                }
+
+                Math::Vector3 TransformPoint(const Math::Matrix4& m, const Math::Vector3& p)
+                {
+                    const Math::Vector4 r = m * Math::Vector4(p.x, p.y, p.z, 1.0f);
+                    if (std::abs(r.w) > 1e-8f) {
+                        return Math::Vector3(r.x / r.w, r.y / r.w, r.z / r.w);
+                    }
+                    return Math::Vector3(r.x, r.y, r.z);
                 }
             }
 
@@ -37,7 +72,8 @@ namespace RTBEngine {
             {
                 auto& device = RHI::RenderDevice::Get();
                 const auto caps = device.GetGiCapabilities();
-                if (!caps.computeShaders || !caps.storageImages) {
+                if (!caps.computeShaders || !caps.storageImages || !caps.storageBuffers) {
+                    RTB_WARN("OpenGLDDGIUpdater: compute/storage not available");
                     return false;
                 }
 
@@ -48,9 +84,17 @@ namespace RTBEngine {
                 }
 
                 computeProgram = device.CreateComputeProgram(source);
+                if (computeProgram == RHI::kInvalidGpuId) {
+                    RTB_WARN("OpenGLDDGIUpdater: compute program failed");
+                    return false;
+                }
+
                 paramsUBO = device.CreateBuffer();
-                depthCube = device.CreateCubemap();
-                ready = computeProgram != RHI::kInvalidGpuId;
+                EnsureTriangleBuffer(4 + static_cast<std::size_t>(kMaxSoftwareTriangles) * 12);
+                ready = triangleSSBO != RHI::kInvalidGpuId;
+                if (ready) {
+                    RTB_INFO("OpenGLDDGIUpdater: software-RT DDGI ready");
+                }
                 return ready;
             }
 
@@ -69,24 +113,106 @@ namespace RTBEngine {
                     device.DestroyBuffer(paramsUBO);
                     paramsUBO = RHI::kInvalidGpuId;
                 }
-                if (depthCube != RHI::kInvalidGpuId) {
-                    device.DestroyTexture(depthCube);
-                    depthCube = RHI::kInvalidGpuId;
+                if (triangleSSBO != RHI::kInvalidGpuId) {
+                    device.DestroyStorageBuffer(triangleSSBO);
+                    triangleSSBO = RHI::kInvalidGpuId;
                 }
+                triangleBufferCapacityFloats = 0;
                 ready = false;
             }
 
-            void OpenGLDDGIUpdater::Update(DDGIVolume& volume, RayTracingScene& rtScene, Scene::Scene* scene, int frameIndex)
+            void OpenGLDDGIUpdater::EnsureTriangleBuffer(std::size_t floatCount)
             {
-                (void)rtScene;
-                (void)scene;
+                auto& device = RHI::RenderDevice::Get();
+                if (triangleSSBO != RHI::kInvalidGpuId && triangleBufferCapacityFloats >= floatCount) {
+                    return;
+                }
+                if (triangleSSBO != RHI::kInvalidGpuId) {
+                    device.DestroyStorageBuffer(triangleSSBO);
+                    triangleSSBO = RHI::kInvalidGpuId;
+                }
+                triangleSSBO = device.CreateStorageBuffer(floatCount * sizeof(float));
+                triangleBufferCapacityFloats = (triangleSSBO != RHI::kInvalidGpuId) ? floatCount : 0;
+            }
+
+            void OpenGLDDGIUpdater::UploadSceneTriangles(Scene::Scene* scene)
+            {
+                std::vector<float> payload;
+                payload.resize(4, 0.0f); // header: count + 3 pads (as floats / bitcast ints)
+
+                if (!scene) {
+                    int zero = 0;
+                    std::memcpy(payload.data(), &zero, sizeof(int));
+                    EnsureTriangleBuffer(payload.size());
+                    RHI::RenderDevice::Get().UpdateStorageBuffer(triangleSSBO, payload.data(),
+                        payload.size() * sizeof(float), 0);
+                    return;
+                }
+
+                int triCount = 0;
+                for (Scene::MeshRenderer* renderer : scene->GetCachedMeshRenderers()) {
+                    if (!renderer || !renderer->IsEnabled()) continue;
+                    Scene::GameObject* owner = renderer->GetOwner();
+                    if (!owner || !owner->IsActiveInHierarchy()) continue;
+
+                    Animation::Animator* animator = renderer->GetActiveAnimator();
+                    if (animator && animator->ShouldSkinMesh()) continue;
+
+                    const auto appendMesh = [&](Mesh* mesh) {
+                        if (!mesh || triCount >= kMaxSoftwareTriangles) return;
+                        const auto& verts = mesh->GetCpuVertices();
+                        const auto& indices = mesh->GetCpuIndices();
+                        if (verts.empty() || indices.size() < 3) return;
+
+                        const Math::Matrix4& world = owner->GetWorldMatrix();
+                        const std::size_t triTotal = indices.size() / 3;
+                        // Decimate large meshes so we stay under the soft-RT budget.
+                        const std::size_t stride = std::max<std::size_t>(1, triTotal / 4096);
+
+                        for (std::size_t t = 0; t + 2 < indices.size() && triCount < kMaxSoftwareTriangles; t += 3 * stride) {
+                            const unsigned int i0 = indices[t];
+                            const unsigned int i1 = indices[t + 1];
+                            const unsigned int i2 = indices[t + 2];
+                            if (i0 >= verts.size() || i1 >= verts.size() || i2 >= verts.size()) continue;
+
+                            const Math::Vector3 w0 = TransformPoint(world, verts[i0].position);
+                            const Math::Vector3 w1 = TransformPoint(world, verts[i1].position);
+                            const Math::Vector3 w2 = TransformPoint(world, verts[i2].position);
+
+                            payload.push_back(w0.x); payload.push_back(w0.y); payload.push_back(w0.z); payload.push_back(0.0f);
+                            payload.push_back(w1.x); payload.push_back(w1.y); payload.push_back(w1.z); payload.push_back(0.0f);
+                            payload.push_back(w2.x); payload.push_back(w2.y); payload.push_back(w2.z); payload.push_back(0.0f);
+                            ++triCount;
+                        }
+                    };
+
+                    if (renderer->IsMultiMesh()) {
+                        for (Mesh* mesh : renderer->GetMeshes()) {
+                            appendMesh(mesh);
+                        }
+                    } else {
+                        appendMesh(renderer->GetMesh());
+                    }
+                }
+
+                std::memcpy(payload.data(), &triCount, sizeof(int));
+                EnsureTriangleBuffer(payload.size());
+                if (triangleSSBO == RHI::kInvalidGpuId) return;
+                RHI::RenderDevice::Get().UpdateStorageBuffer(triangleSSBO, payload.data(),
+                    payload.size() * sizeof(float), 0);
+            }
+
+            void OpenGLDDGIUpdater::Update(DDGIVolume& volume, RayTracingScene& /*rtScene*/, Scene::Scene* scene, int frameIndex)
+            {
                 if (!ready) return;
 
                 const DDGISettings& settings = volume.GetSettings();
                 if (!settings.enabled) return;
 
-                volume.EnsureGpuResources(RHI::RenderDevice::Get());
-                volume.UploadUBO(RHI::RenderDevice::Get());
+                auto& device = RHI::RenderDevice::Get();
+                volume.EnsureGpuResources(device);
+                volume.UploadUBO(device);
+                UploadSceneTriangles(scene);
 
                 struct Params {
                     float origin[3];
@@ -115,18 +241,23 @@ namespace RTBEngine {
                 params.gridDims[2] = settings.gridZ;
                 params.probeCount = DDGIProbeCount(settings);
                 params.frameIndex = frameIndex;
-                params.raysPerProbe = kDDGIRaysPerProbe;
+                params.raysPerProbe = kGlRaysPerProbe;
                 params.probesThisFrame = std::min(kDDGIMaxProbesPerFrame, params.probeCount);
                 params.probeRadius = settings.probeRadius;
 
-                auto& device = RHI::RenderDevice::Get();
                 device.SetUniformBufferData(paramsUBO, &params, sizeof(params), RHI::BufferUsage::Dynamic);
                 device.BindComputeProgram(computeProgram);
                 device.BindUniformBufferBase(paramsUBO, 0);
                 device.BindStorageImage2D(volume.GetIrradianceAtlas(), 1, RHI::StorageAccess::ReadWrite);
                 device.BindStorageImage2D(volume.GetDistanceAtlas(), 2, RHI::StorageAccess::ReadWrite);
-                device.BindCubemap(depthCube, 3);
-                const unsigned int groups = (params.probesThisFrame + 63u) / 64u;
+                device.BindStorageBuffer(triangleSSBO, 3);
+
+                const RHI::GpuId lightingBuf = LightingUBO::GetInstance().GetGpuBufferId();
+                if (lightingBuf != RHI::kInvalidGpuId) {
+                    device.BindUniformBufferBase(lightingBuf, 4);
+                }
+
+                const unsigned int groups = (static_cast<unsigned int>(params.probesThisFrame) + 63u) / 64u;
                 device.DispatchCompute(groups, 1, 1);
                 device.MemoryBarrierComputeToGraphics();
             }

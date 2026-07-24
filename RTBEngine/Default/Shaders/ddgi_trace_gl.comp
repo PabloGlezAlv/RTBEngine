@@ -1,9 +1,13 @@
 #version 430
 #extension GL_ARB_compute_shader : enable
+#extension GL_ARB_shader_image_load_store : enable
 
 #include "ddgi_common.glsl"
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+// OpenGL fallback: same DDGI bake as Vulkan, but rays hit a CPU-built triangle SSBO
+// (no hardware ray query / TLAS).
 
 layout(std140, binding = 0) uniform DDGIParams {
     vec3 uOrigin;
@@ -21,69 +25,259 @@ layout(std140, binding = 0) uniform DDGIParams {
 
 layout(binding = 1, rgba16f) uniform image2D uIrradianceAtlas;
 layout(binding = 2, rgba16f) uniform image2D uDistanceAtlas;
-layout(binding = 3) uniform samplerCube uSceneDepthCube;
+
+layout(std430, binding = 3) readonly buffer SceneTriangles {
+    int uTriangleCount;
+    int _triPad0;
+    int _triPad1;
+    int _triPad2;
+    // Each triangle: v0.xyz, pad, v1.xyz, pad, v2.xyz, pad  (12 floats)
+    float uTriData[];
+};
+
+struct DirectionalLight {
+    vec3 direction;
+    vec3 color;
+    float intensity;
+};
+
+struct PointLight {
+    vec3 position;
+    vec3 color;
+    float intensity;
+    float constant;
+    float linear;
+    float quadratic;
+    float range;
+};
+
+struct SpotLight {
+    vec3 position;
+    vec3 direction;
+    vec3 color;
+    float intensity;
+    float innerCutOff;
+    float outerCutOff;
+    float constant;
+    float linear;
+    float quadratic;
+    float range;
+};
 
 layout(std140, binding = 4) uniform LightingData {
-    struct DirectionalLight { vec3 direction; vec3 color; float intensity; } dirLight;
-    struct PointLight {
-        vec3 position; vec3 color; float intensity;
-        float constant; float linear; float quadratic; float range;
-    } pointLights[8];
-    struct SpotLight {
-        vec3 position; vec3 direction; vec3 color; float intensity;
-        float innerCutOff; float outerCutOff;
-        float constant; float linear; float quadratic; float range;
-    } spotLights[8];
+    DirectionalLight dirLight;
+    PointLight pointLights[8];
+    SpotLight spotLights[8];
     int numPointLights;
     int numSpotLights;
 };
 
-vec3 EvaluateDirect(vec3 pos, vec3 normal) {
-    vec3 result = vec3(0.03);
+const int OCT_SIZE = 16;
+const int PROBE_TEXELS = 18;
+const int MAX_RAYS = 64; // fewer than Vulkan (128): software RT cost
+
+vec3 EvaluateHitRadiance(vec3 pos, vec3 normal) {
+    vec3 irradiance = vec3(0.01);
     vec3 lightDir = normalize(-dirLight.direction);
-    result += dirLight.color * dirLight.intensity * max(dot(normal, lightDir), 0.0);
-    return result;
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    irradiance += dirLight.color * dirLight.intensity * NdotL;
+
+    for (int i = 0; i < numPointLights && i < 8; i++) {
+        vec3 toLight = pointLights[i].position - pos;
+        float dist = length(toLight);
+        if (dist > pointLights[i].range) continue;
+        vec3 L = toLight / dist;
+        float att = 1.0 / (pointLights[i].constant + pointLights[i].linear * dist
+            + pointLights[i].quadratic * dist * dist);
+        irradiance += pointLights[i].color * pointLights[i].intensity
+            * max(dot(normal, L), 0.0) * att;
+    }
+
+    const float albedo = 0.55;
+    return irradiance * (albedo / DDGI_PI);
 }
 
 vec3 FibonacciRay(int rayIndex, int rayCount) {
     float phi = 1.61803398875;
     float y = 1.0 - (2.0 * float(rayIndex) + 1.0) / float(rayCount);
     float radius = sqrt(max(0.0, 1.0 - y * y));
-    float theta = 6.2831853 * fract(float(rayIndex) * phi);
+    float theta = 2.0 * DDGI_PI * fract(float(rayIndex) * phi);
     return vec3(cos(theta) * radius, y, sin(theta) * radius);
 }
 
-float TraceDepthCube(vec3 origin, vec3 dir, float maxDist) {
-    float t = 0.01;
-    for (int i = 0; i < 32; i++) {
-        vec3 samplePos = origin + dir * t;
-        float depth = texture(uSceneDepthCube, dir).r * maxDist;
-        if (t >= depth) return t;
-        t += max(0.15, t * 0.1);
-        if (t > maxDist) break;
+// Möller–Trumbore. Returns t > 0 on hit, else -1.
+float IntersectTriangle(vec3 origin, vec3 dir, vec3 v0, vec3 v1, vec3 v2) {
+    const float EPS = 1e-5;
+    vec3 e1 = v1 - v0;
+    vec3 e2 = v2 - v0;
+    vec3 pvec = cross(dir, e2);
+    float det = dot(e1, pvec);
+    if (abs(det) < EPS) return -1.0;
+    float invDet = 1.0 / det;
+    vec3 tvec = origin - v0;
+    float u = dot(tvec, pvec) * invDet;
+    if (u < 0.0 || u > 1.0) return -1.0;
+    vec3 qvec = cross(tvec, e1);
+    float v = dot(dir, qvec) * invDet;
+    if (v < 0.0 || u + v > 1.0) return -1.0;
+    float t = dot(e2, qvec) * invDet;
+    return t;
+}
+
+bool TraceScene(vec3 origin, vec3 dir, float maxT, out float hitT, out bool frontFace) {
+    hitT = maxT;
+    frontFace = false;
+    bool anyHit = false;
+    int count = min(uTriangleCount, 16384);
+    for (int i = 0; i < count; i++) {
+        int base = i * 12;
+        vec3 v0 = vec3(uTriData[base + 0], uTriData[base + 1], uTriData[base + 2]);
+        vec3 v1 = vec3(uTriData[base + 4], uTriData[base + 5], uTriData[base + 6]);
+        vec3 v2 = vec3(uTriData[base + 8], uTriData[base + 9], uTriData[base + 10]);
+
+        float t = IntersectTriangle(origin, dir, v0, v1, v2);
+        if (t > 0.001 && t < hitT) {
+            hitT = t;
+            anyHit = true;
+            // Front if triangle normal faces the ray opposite
+            vec3 n = cross(v1 - v0, v2 - v0);
+            frontFace = dot(n, dir) < 0.0;
+        }
     }
-    return maxDist;
+    return anyHit;
 }
 
 void main() {
     int localProbe = int(gl_GlobalInvocationID.x);
     if (localProbe >= uProbesThisFrame) return;
 
-    int probeIndex = (uFrameIndex * uProbesThisFrame + localProbe) % max(uProbeCount, 1);
+    int rayCount = min(uRaysPerProbe, MAX_RAYS);
+    int probesPerFrame = max(uProbesThisFrame, 1);
+    int probeIndex = (uFrameIndex * probesPerFrame + localProbe) % max(uProbeCount, 1);
+
     ivec3 coord = ProbeCoordFromIndex(probeIndex, uGridDims);
     vec3 probePos = ProbeWorldPos(coord, uOrigin, uSpacing);
-    ivec2 atlasOrigin = ProbeAtlasOrigin(coord, 16, uGridDims);
+    ivec2 tileOrigin = ProbeAtlasOrigin(coord, PROBE_TEXELS, uGridDims);
+    ivec2 interiorOrigin = tileOrigin + ivec2(1);
 
-    for (int ray = 0; ray < uRaysPerProbe; ray++) {
-        vec3 dir = FibonacciRay(ray + probeIndex, uRaysPerProbe);
-        float hitDist = TraceDepthCube(probePos, dir, uProbeRadius * 4.0);
-        vec3 radiance = (hitDist >= uProbeRadius * 3.5) ? vec3(0.05) : EvaluateDirect(probePos + dir * hitDist, dir);
+    float maxT = max(uProbeRadius * 8.0, length(uSpacing) * 4.0);
+    int rot = (uFrameIndex / 60) % max(rayCount, 1);
 
-        vec2 octUv = OctEncode(dir);
-        ivec2 texel = atlasOrigin + ivec2(octUv * 15.99);
-        vec4 prevIrr = imageLoad(uIrradianceAtlas, texel);
-        vec4 prevDist = imageLoad(uDistanceAtlas, texel);
-        imageStore(uIrradianceAtlas, texel, vec4(mix(radiance, prevIrr.rgb, uHysteresis), 1.0));
-        imageStore(uDistanceAtlas, texel, vec4(mix(hitDist, prevDist.r, uHysteresis), 0, 0, 1));
+    vec3 rayDir[MAX_RAYS];
+    vec3 rayRad[MAX_RAYS];
+    float rayDist[MAX_RAYS];
+
+    for (int ray = 0; ray < rayCount; ray++) {
+        vec3 dir = FibonacciRay((ray + rot) % rayCount, rayCount);
+        vec3 rayOrigin = probePos + dir * max(uNormalBias, 0.05);
+
+        vec3 radiance = vec3(0.0);
+        float hitDist = maxT;
+
+        float t;
+        bool front;
+        if (TraceScene(rayOrigin, dir, maxT, t, front)) {
+            hitDist = t;
+            if (front) {
+                vec3 hitPos = rayOrigin + dir * t;
+                vec3 hitNormal = normalize(-dir);
+                radiance = EvaluateHitRadiance(hitPos, hitNormal);
+            }
+        } else {
+            radiance = vec3(0.015);
+            hitDist = maxT;
+        }
+
+        rayDir[ray] = dir;
+        rayRad[ray] = radiance;
+        rayDist[ray] = hitDist;
     }
+
+    float alpha = 1.0 - uHysteresis;
+    for (int ty = 0; ty < OCT_SIZE; ty++) {
+        for (int tx = 0; tx < OCT_SIZE; tx++) {
+            vec2 octUv = (vec2(float(tx), float(ty)) + 0.5) / float(OCT_SIZE);
+            vec3 texelDir = OctDecode(octUv);
+
+            vec3 irrSum = vec3(0.0);
+            float wSum = 0.0;
+            float distSum = 0.0;
+            float dist2Sum = 0.0;
+            float distW = 0.0;
+
+            for (int ray = 0; ray < rayCount; ray++) {
+                float cw = max(dot(texelDir, rayDir[ray]), 0.0);
+                if (cw > 0.0) {
+                    irrSum += rayRad[ray] * cw;
+                    wSum += cw;
+                }
+                float dw = cw * cw;
+                if (dw > 1e-5) {
+                    distSum += rayDist[ray] * dw;
+                    dist2Sum += rayDist[ray] * rayDist[ray] * dw;
+                    distW += dw;
+                }
+            }
+
+            ivec2 texel = interiorOrigin + ivec2(tx, ty);
+            vec4 prevIrr = imageLoad(uIrradianceAtlas, texel);
+            vec4 prevDist = imageLoad(uDistanceAtlas, texel);
+
+            vec3 newIrrEnc = prevIrr.rgb;
+            if (wSum > 1e-4) {
+                vec3 linearIrr = irrSum / wSum;
+                newIrrEnc = sqrt(max(linearIrr, vec3(0.0)));
+            }
+
+            float newMean = prevDist.r;
+            float newMean2 = prevDist.g;
+            if (distW > 1e-4) {
+                newMean = distSum / distW;
+                newMean2 = dist2Sum / distW;
+            }
+
+            vec3 blended = mix(prevIrr.rgb, newIrrEnc, alpha);
+            float blendedMean = mix(prevDist.r, newMean, alpha);
+            float blendedMean2 = mix(prevDist.g, newMean2, alpha);
+
+            imageStore(uIrradianceAtlas, texel, vec4(blended, 1.0));
+            imageStore(uDistanceAtlas, texel, vec4(blendedMean, blendedMean2, 0.0, 1.0));
+        }
+    }
+
+    for (int i = 0; i < OCT_SIZE; i++) {
+        imageStore(uIrradianceAtlas, tileOrigin + ivec2(0, 1 + i),
+            imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(0, i)));
+        imageStore(uIrradianceAtlas, tileOrigin + ivec2(PROBE_TEXELS - 1, 1 + i),
+            imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(OCT_SIZE - 1, i)));
+        imageStore(uDistanceAtlas, tileOrigin + ivec2(0, 1 + i),
+            imageLoad(uDistanceAtlas, interiorOrigin + ivec2(0, i)));
+        imageStore(uDistanceAtlas, tileOrigin + ivec2(PROBE_TEXELS - 1, 1 + i),
+            imageLoad(uDistanceAtlas, interiorOrigin + ivec2(OCT_SIZE - 1, i)));
+
+        imageStore(uIrradianceAtlas, tileOrigin + ivec2(1 + i, 0),
+            imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(i, 0)));
+        imageStore(uIrradianceAtlas, tileOrigin + ivec2(1 + i, PROBE_TEXELS - 1),
+            imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(i, OCT_SIZE - 1)));
+        imageStore(uDistanceAtlas, tileOrigin + ivec2(1 + i, 0),
+            imageLoad(uDistanceAtlas, interiorOrigin + ivec2(i, 0)));
+        imageStore(uDistanceAtlas, tileOrigin + ivec2(1 + i, PROBE_TEXELS - 1),
+            imageLoad(uDistanceAtlas, interiorOrigin + ivec2(i, OCT_SIZE - 1)));
+    }
+    imageStore(uIrradianceAtlas, tileOrigin + ivec2(0, 0),
+        imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(0, 0)));
+    imageStore(uIrradianceAtlas, tileOrigin + ivec2(PROBE_TEXELS - 1, 0),
+        imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(OCT_SIZE - 1, 0)));
+    imageStore(uIrradianceAtlas, tileOrigin + ivec2(0, PROBE_TEXELS - 1),
+        imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(0, OCT_SIZE - 1)));
+    imageStore(uIrradianceAtlas, tileOrigin + ivec2(PROBE_TEXELS - 1, PROBE_TEXELS - 1),
+        imageLoad(uIrradianceAtlas, interiorOrigin + ivec2(OCT_SIZE - 1, OCT_SIZE - 1)));
+    imageStore(uDistanceAtlas, tileOrigin + ivec2(0, 0),
+        imageLoad(uDistanceAtlas, interiorOrigin + ivec2(0, 0)));
+    imageStore(uDistanceAtlas, tileOrigin + ivec2(PROBE_TEXELS - 1, 0),
+        imageLoad(uDistanceAtlas, interiorOrigin + ivec2(OCT_SIZE - 1, 0)));
+    imageStore(uDistanceAtlas, tileOrigin + ivec2(0, PROBE_TEXELS - 1),
+        imageLoad(uDistanceAtlas, interiorOrigin + ivec2(0, OCT_SIZE - 1)));
+    imageStore(uDistanceAtlas, tileOrigin + ivec2(PROBE_TEXELS - 1, PROBE_TEXELS - 1),
+        imageLoad(uDistanceAtlas, interiorOrigin + ivec2(OCT_SIZE - 1, OCT_SIZE - 1)));
 }
