@@ -41,6 +41,7 @@
 #include "../Rendering/GI/DDGISystem.h"
 #include "../Rendering/Lighting/LightingProjectSettings.h"
 #include "../Rendering/FogUniforms.h"
+#include "../Rendering/PostProcess/VolumeStack.h"
 #include "../Rendering/VolumetricFogPass.h"
 
 #include "../Rendering/Frustum.h"
@@ -833,6 +834,8 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(Scene::Scene* scene, Ren
 
 void RTBEngine::Core::Application::RenderGeometryPass(Scene::Scene* scene, Rendering::Camera* camera)
 {
+	Rendering::VolumeStack::Evaluate(camera, scene);
+
 	auto& device = Rendering::RHI::RenderDevice::Get();
 	device.SetClearColor(config.rendering.clearColorR, config.rendering.clearColorG,
 		config.rendering.clearColorB, 1.0f);
@@ -935,8 +938,8 @@ void RTBEngine::Core::Application::RenderVolumetricFogPass(Scene::Scene* scene,
 		return;
 	}
 
-	const auto& lightingSettings = Rendering::LightingProjectSettings::Get();
-	if (!lightingSettings.volumetricFogEnabled || !lightingSettings.fogEnabled) {
+	const Rendering::FogFrameState& fogState = Rendering::VolumeStack::GetCurrentFrameState();
+	if (!fogState.volumetricFogEnabled || !fogState.fogEnabled) {
 		return;
 	}
 
@@ -950,7 +953,7 @@ void RTBEngine::Core::Application::RenderVolumetricFogPass(Scene::Scene* scene,
 		if (light->GetType() == Rendering::LightType::Directional) {
 			auto* dirLight = static_cast<Rendering::DirectionalLight*>(light);
 			if (dirLight->GetCastShadows()
-				&& lightingSettings.shadowsEnabled
+				&& Rendering::LightingProjectSettings::Get().shadowsEnabled
 				&& dirLight->GetShadowMap()) {
 				shadowCastingLight = dirLight;
 				break;

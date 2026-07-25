@@ -3,6 +3,7 @@
 #include "Camera.h"
 #include "CameraUBO.h"
 #include "FogUniforms.h"
+#include "PostProcess/VolumeStack.h"
 #include "Shader.h"
 #include "Lighting/DirectionalLight.h"
 #include "Lighting/LightingProjectSettings.h"
@@ -99,8 +100,8 @@ namespace RTBEngine {
                                        DirectionalLight* shadowLight,
                                        const Math::Matrix4& lightSpaceMatrix)
         {
-            const auto& settings = LightingProjectSettings::Get();
-            if (!settings.volumetricFogEnabled || !settings.fogEnabled || !IsReady() || !camera) {
+            const FogFrameState& fog = VolumeStack::GetCurrentFrameState();
+            if (!fog.volumetricFogEnabled || !fog.fogEnabled || !IsReady() || !camera) {
                 return;
             }
             if (sceneDepthTexture == RHI::kInvalidGpuId) {
@@ -131,7 +132,7 @@ namespace RTBEngine {
 
             const bool hasShadows = shadowLight
                 && shadowLight->GetCastShadows()
-                && settings.shadowsEnabled
+                && LightingProjectSettings::Get().shadowsEnabled
                 && shadowLight->GetShadowMap();
             shader->SetBool("uHasShadows", hasShadows);
 

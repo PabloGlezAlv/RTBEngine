@@ -67,6 +67,7 @@
 #include "Scene/NetworkIdentity.h"
 #include "Scene/NetworkTransform.h"
 #include "Scene/LightComponent.h"
+#include "Scene/VolumeComponent.h"
 #include "Scene/AudioSourceComponent.h"
 #include "Scene/RigidBodyComponent.h"
 #include "Scene/BoxColliderComponent.h"

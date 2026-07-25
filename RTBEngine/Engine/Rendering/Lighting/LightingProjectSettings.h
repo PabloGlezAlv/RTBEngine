@@ -47,10 +47,10 @@ namespace RTBEngine {
             float ddgiNormalBias = 0.2f;
             float ddgiViewBias = 0.25f;
             float ddgiProbeRadius = 2.0f;
-            bool ddgiEnabled = true;
+            bool ddgiEnabled = false;
 
             // Distance / height fog (forward shading).
-            bool fogEnabled = true;
+            bool fogEnabled = false;
             Math::Vector3 fogColor = Math::Vector3(0.55f, 0.62f, 0.72f);
             float fogDensity = 0.018f;
             float fogHeight = 0.0f;
@@ -59,7 +59,7 @@ namespace RTBEngine {
             float fogEnd = 140.0f;
 
             // Fullscreen volumetric in-scattering (god rays) after geometry.
-            bool volumetricFogEnabled = true;
+            bool volumetricFogEnabled = false;
             float volumetricIntensity = 0.45f;
             float volumetricAnisotropy = 0.55f;
             int volumetricSamples = 16;

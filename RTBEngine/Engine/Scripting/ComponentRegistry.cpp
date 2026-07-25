@@ -9,6 +9,7 @@
 #include "../Online/OnlineGameplayNet.h"
 #include "../Scene/MeshRenderer.h"
 #include "../Scene/LightComponent.h"
+#include "../Scene/VolumeComponent.h"
 #include "../Scene/AudioSourceComponent.h"
 #include "../Scene/RigidBodyComponent.h"
 #include "../Scene/BoxColliderComponent.h"
@@ -102,6 +103,7 @@ namespace RTBEngine {
         void ComponentRegistry::RegisterBuiltInComponents() {
             RegisterComponent("MeshRenderer", []() { return new Scene::MeshRenderer(); });
             RegisterComponent("LightComponent", []() { return new Scene::LightComponent(); });
+            RegisterComponent("VolumeComponent", []() { return new Scene::VolumeComponent(); });
             RegisterComponent("AudioSourceComponent", []() { return new Scene::AudioSourceComponent(); });
             RegisterComponent("RigidBodyComponent", []() { return new Scene::RigidBodyComponent(); });
             RegisterComponent("BoxColliderComponent", []() { return new Scene::BoxColliderComponent(); });
