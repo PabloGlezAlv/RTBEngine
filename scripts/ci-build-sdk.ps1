@@ -19,6 +19,9 @@ Write-Host "Toolchain: PlatformToolset=$($toolchain.PlatformToolset) Assimp=$($t
 # Download or build Assimp if the matching vcXXX binaries are not in ThirdParty.
 & (Join-Path $PSScriptRoot 'ci-ensure-assimp.ps1') -EngineRoot $EngineRoot -AssimpToolset $toolchain.AssimpToolset
 
+# Vulkan headers/libs (vulkan-1.lib, shaderc_combined.lib) — uses VULKAN_SDK locally or installs on CI.
+& (Join-Path $PSScriptRoot 'ci-ensure-vulkan.ps1')
+
 # Fail early if SDL2, FMOD, Bullet, etc. are missing (must be committed in the repo).
 $missing = Test-RequiredThirdPartyBinaries -EngineRoot $EngineRoot -Toolchain $toolchain -Configuration Release
 if ($missing) {
