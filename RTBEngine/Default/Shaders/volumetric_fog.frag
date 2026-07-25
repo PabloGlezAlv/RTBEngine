@@ -86,7 +86,6 @@ float HenyeyGreenstein(float cosTheta, float g)
     return (1.0 - g2) / (4.0 * 3.14159265 * pow(denom, 1.5));
 }
 
-// Matches basic.frag + Vulkan inject (XY remap; Z already [0,1] when clip-corrected).
 float SampleShadow(vec3 worldPos)
 {
     if (!uHasShadows) {
@@ -104,6 +103,7 @@ float SampleShadow(vec3 worldPos)
         proj.z = proj.z * 0.5 + 0.5;
     }
 
+    // Outside map: lit (same as opaque shading).
     if (proj.x < 0.0 || proj.x > 1.0 || proj.y < 0.0 || proj.y > 1.0) {
         return 1.0;
     }
@@ -111,8 +111,10 @@ float SampleShadow(vec3 worldPos)
         return 1.0;
     }
 
-    float bias = max(uShadowBias, 0.003);
     float closest = texture(uShadowMap, proj.xy).r;
+    // Volume samples sit under floors/ceilings; opaque bias is too large and leaks light
+    // through thin geometry. Keep a tiny dedicated bias for shafts.
+    float bias = min(max(uShadowBias * 0.05, 1e-5), 0.0004);
     return (proj.z - bias) > closest ? 0.0 : 1.0;
 }
 
@@ -132,7 +134,7 @@ vec3 ReconstructWorldPos(vec2 uv, float depth)
 void main()
 {
     if (!uFogEnabled || !uVolumetricFogEnabled || uVolumetricIntensity <= 1e-5) {
-        FragColor = vec4(0.0);
+        FragColor = vec4(0.0, 0.0, 0.0, 1.0);
         return;
     }
 
@@ -143,15 +145,18 @@ void main()
     float rayLength = length(ray);
 
     if (rayLength < 1e-3) {
-        FragColor = vec4(0.0);
+        FragColor = vec4(0.0, 0.0, 0.0, 1.0);
         return;
     }
 
     vec3 rayDir = ray / rayLength;
-    float maxDist = min(rayLength, max(uFogEnd, uCameraNear + 1.0));
+
+    // Stop before the opaque hit so dither/float error does not sample past the surface.
+    float surfacePullback = max(0.4, rayLength * 0.02);
+    float maxDist = min(rayLength - surfacePullback, max(uFogEnd, uCameraNear + 1.0));
     float marchStart = max(uCameraNear, 0.05);
     if (maxDist <= marchStart) {
-        FragColor = vec4(0.0);
+        FragColor = vec4(0.0, 0.0, 0.0, 1.0);
         return;
     }
 
@@ -160,14 +165,14 @@ void main()
     float stepSize = marchLen / float(samples);
 
     vec3 lightDir = normalize(-dirLight.direction);
-    // Floor directional strength so indoor shafts remain readable with weak sun intensity.
     float lightStrength = max(dirLight.intensity, 0.75);
     vec3 lightColor = dirLight.color * lightStrength;
     vec3 inscatter = vec3(0.0);
     float transmittance = 1.0;
 
-    float dither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+    float dither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) * 0.6;
     const float kShaftGain = 36.0;
+    float fadeStart = mix(marchStart, maxDist, 0.45);
 
     for (int i = 0; i < 64; ++i) {
         if (i >= samples) {
@@ -175,7 +180,7 @@ void main()
         }
 
         float t = marchStart + (float(i) + dither) * stepSize;
-        if (t > maxDist) {
+        if (t >= maxDist || t >= rayLength - surfacePullback) {
             break;
         }
 
@@ -186,14 +191,18 @@ void main()
         }
 
         float shadow = SampleShadow(samplePos);
-        float cosTheta = dot(rayDir, lightDir);
-        float phase = max(HenyeyGreenstein(cosTheta, clamp(uVolumetricAnisotropy, -0.95, 0.95)), 0.35);
-
-        vec3 lighting = lightColor * phase * shadow * kShaftGain + uFogColor * 0.015;
+        float surfaceFade = 1.0 - smoothstep(fadeStart, maxDist, t);
+        surfaceFade *= surfaceFade;
         float stepOptical = density * stepSize;
-        inscatter += transmittance * lighting * density * stepSize;
-        transmittance *= exp(-stepOptical);
 
+        if (shadow > 0.5) {
+            float cosTheta = dot(rayDir, lightDir);
+            float phase = max(HenyeyGreenstein(cosTheta, clamp(uVolumetricAnisotropy, -0.95, 0.95)), 0.35);
+            vec3 lighting = lightColor * phase * kShaftGain * surfaceFade;
+            inscatter += transmittance * lighting * density * stepSize;
+        }
+
+        transmittance *= exp(-stepOptical);
         if (transmittance < 0.02) {
             break;
         }
@@ -201,7 +210,11 @@ void main()
 
     inscatter *= uVolumetricIntensity;
 
-    // Soft luminance ceiling (scaled Reinhard) for additive volumetric.
+    // Soften inscatter when the ray ends on opaque geometry (avoids plastering on floors).
+    if (depth < 0.9995) {
+        inscatter *= mix(0.25, 1.0, clamp(transmittance, 0.0, 1.0));
+    }
+
     float maxL = max(uVolumetricMaxLuminance, 0.05);
     float lum = dot(inscatter, vec3(0.2126, 0.7152, 0.0722));
     if (lum > 1e-5) {
@@ -209,5 +222,5 @@ void main()
         inscatter *= compressed / lum;
     }
 
-    FragColor = vec4(max(inscatter, vec3(0.0)), 1.0);
+    FragColor = vec4(max(inscatter, vec3(0.0)), clamp(transmittance, 0.0, 1.0));
 }

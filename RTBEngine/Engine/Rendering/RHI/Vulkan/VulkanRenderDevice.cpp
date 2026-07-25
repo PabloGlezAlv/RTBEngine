@@ -76,7 +76,6 @@ namespace RTBEngine {
                     "    float uCameraFar;\n"
                     "    bool uDepthZeroToOne;\n"
                     "    float uVolumetricMaxLuminance;\n"
-                    "    float _fogPadEnd;\n"
                     "};\n";
 
                 constexpr const char* kSamplerBindingsGlsl =

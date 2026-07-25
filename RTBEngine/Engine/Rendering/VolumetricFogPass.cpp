@@ -8,6 +8,7 @@
 #include "Lighting/LightingProjectSettings.h"
 #include "Lighting/LightingUBO.h"
 #include "RHI/RenderDevice.h"
+#include "RHI/GraphicsAPI.h"
 #include "ShadowMap.h"
 
 namespace RTBEngine {
@@ -114,9 +115,9 @@ namespace RTBEngine {
             device.SetBlend(true);
             device.SetBlendFuncSeparate(
                 RHI::BlendFactor::One,
+                RHI::BlendFactor::SrcAlpha,
                 RHI::BlendFactor::One,
-                RHI::BlendFactor::One,
-                RHI::BlendFactor::One);
+                RHI::BlendFactor::SrcAlpha);
 
             shader->Bind();
             CameraUBO::GetInstance().Bind();

@@ -226,7 +226,7 @@ namespace RTBEngine {
                     float uCameraFar = 500.0f;
                     std::int32_t uDepthZeroToOne = 0;
                     float uVolumetricMaxLuminance = 0.85f;
-                    float _fogPadEnd = 0.0f;
+                    float _perDrawPad0 = 0.0f;
                 };
                 static_assert(sizeof(PerDrawCPU) % 16 == 0, "PerDrawCPU must be a multiple of 16");
                 static_assert(alignof(PerDrawCPU) >= 16, "PerDrawCPU must be 16-byte aligned");
