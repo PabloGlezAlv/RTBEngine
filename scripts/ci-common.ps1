@@ -129,6 +129,6 @@ function Test-RequiredThirdPartyBinaries {
         (Join-Path $tp 'bullet3-3.25\build_msvc\lib\Release\BulletDynamics.lib')
     )
 
-    $missing = @($required | Where-Object { -not (Test-Path $_) })
-    return $missing
+    # Unary comma keeps an empty result as a 0-length array (not $null) for callers using StrictMode.
+    return ,@($required | Where-Object { -not (Test-Path $_) })
 }

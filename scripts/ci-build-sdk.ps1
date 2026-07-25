@@ -19,12 +19,12 @@ Write-Host "Toolchain: PlatformToolset=$($toolchain.PlatformToolset) Assimp=$($t
 # Download or build Assimp if the matching vcXXX binaries are not in ThirdParty.
 & (Join-Path $PSScriptRoot 'ci-ensure-assimp.ps1') -EngineRoot $EngineRoot -AssimpToolset $toolchain.AssimpToolset
 
-# Fail early if SDL2, FMOD, Bullet, etc. are missing (should be committed with Git LFS).
+# Fail early if SDL2, FMOD, Bullet, etc. are missing (must be committed in the repo).
 $missing = Test-RequiredThirdPartyBinaries -EngineRoot $EngineRoot -Toolchain $toolchain -Configuration Release
-if ($missing.Count -gt 0) {
+if ($missing) {
     Write-Host 'Missing ThirdParty binaries:'
-    $missing | ForEach-Object { Write-Host "  $_" }
-    throw 'Required ThirdParty binaries are missing. Commit them with Git LFS or run locally once.'
+    @($missing) | ForEach-Object { Write-Host "  $_" }
+    throw 'Required ThirdParty binaries are missing. Commit them (see scripts/thirdparty-required.txt).'
 }
 
 $msbuildProps = @{
