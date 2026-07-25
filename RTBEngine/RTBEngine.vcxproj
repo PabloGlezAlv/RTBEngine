@@ -292,6 +292,8 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Animation\Skeleton.cpp" />
     <ClCompile Include="Engine\Rendering\ShadowMap.cpp" />
     <ClCompile Include="Engine\Rendering\Skybox.cpp" />
+    <ClCompile Include="Engine\Rendering\FogUniforms.cpp" />
+    <ClCompile Include="Engine\Rendering\VolumetricFogPass.cpp" />
     <ClCompile Include="Engine\Scene\Prefab.cpp" />
     <ClCompile Include="Engine\Scripting\PrefabSaver.cpp" />
     <ClCompile Include="Engine\Scripting\ScenePropertySerializer.cpp" />
@@ -513,6 +515,8 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Animation\Skeleton.h" />
     <ClInclude Include="Engine\Rendering\ShadowMap.h" />
     <ClInclude Include="Engine\Rendering\Skybox.h" />
+    <ClInclude Include="Engine\Rendering\FogUniforms.h" />
+    <ClInclude Include="Engine\Rendering\VolumetricFogPass.h" />
     <ClInclude Include="Engine\Scene\Prefab.h" />
     <ClInclude Include="Engine\Scripting\PrefabSaver.h" />
     <ClInclude Include="Engine\Scripting\ScenePropertySerializer.h" />

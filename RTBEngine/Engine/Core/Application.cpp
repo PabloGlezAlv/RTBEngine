@@ -40,9 +40,12 @@
 #include "../Rendering/Lighting/DirectionalLight.h"
 #include "../Rendering/GI/DDGISystem.h"
 #include "../Rendering/Lighting/LightingProjectSettings.h"
+#include "../Rendering/FogUniforms.h"
+#include "../Rendering/VolumetricFogPass.h"
 
 #include "../Rendering/Frustum.h"
 #include "../Online/OnlineSystem.h"
+#include "../Math/Matrix/Matrix4.h"
 
 #include <imgui.h>
 #include <backends/imgui_impl_sdl2.h>
@@ -51,8 +54,6 @@
 #include <atomic>
 #include <algorithm>
 #include <vector>
-#include <chrono>
-#include <fstream>
 #include "Logger.h"
 
 namespace {
@@ -300,6 +301,17 @@ bool RTBEngine::Core::Application::Initialize()
 		return false;
 	}
 
+	Rendering::Shader* volumetricFogShader = resources.LoadShader(
+		"volumetric_fog",
+		"Default/Shaders/volumetric_fog.vert",
+		"Default/Shaders/volumetric_fog.frag"
+	);
+	if (!volumetricFogShader) {
+		RTB_WARN("Failed to load volumetric fog shader (volumetric pass disabled)");
+	} else if (!Rendering::VolumetricFogPass::GetInstance().Initialize(volumetricFogShader)) {
+		RTB_WARN("Failed to initialize volumetric fog pass");
+	}
+
 	if (!config.initialScenePath.empty()) {
 		namespace fs = std::filesystem;
 		const fs::path assetsPath = fs::current_path() / "Assets";
@@ -471,6 +483,7 @@ void RTBEngine::Core::Application::Shutdown()
 	Audio::AudioSystem::GetInstance().Shutdown();
 
 	Rendering::GI::DDGISystem::GetInstance().Shutdown();
+	Rendering::VolumetricFogPass::GetInstance().Shutdown();
 	Rendering::RHI::RenderDevice::Shutdown();
 	window.reset();
 }
@@ -834,6 +847,7 @@ void RTBEngine::Core::Application::RenderGeometryPass(Scene::Scene* scene, Rende
 	Rendering::LightingUBO::GetInstance().Bind();
 	Rendering::CameraUBO::GetInstance().Upload(camera);
 	Rendering::CameraUBO::GetInstance().Bind();
+	Rendering::FogUniforms::Apply(shader);
 
 	std::vector<Rendering::Light*> activeLights;
 	activeLights.reserve(scene->GetCachedLightComponents().size());
@@ -911,6 +925,54 @@ void RTBEngine::Core::Application::RenderGeometryPass(Scene::Scene* scene, Rende
 	if (imguiInitialized) {
 		UI::CanvasSystem::GetInstance().RenderWorldSpace(camera);
 	}
+}
+
+void RTBEngine::Core::Application::RenderVolumetricFogPass(Scene::Scene* scene,
+	Rendering::Camera* camera,
+	Rendering::RHI::GpuId sceneDepthTexture)
+{
+	if (!scene || !camera || sceneDepthTexture == Rendering::RHI::kInvalidGpuId) {
+		return;
+	}
+
+	const auto& lightingSettings = Rendering::LightingProjectSettings::Get();
+	if (!lightingSettings.volumetricFogEnabled || !lightingSettings.fogEnabled) {
+		return;
+	}
+
+	Rendering::DirectionalLight* shadowCastingLight = nullptr;
+	for (Scene::LightComponent* lightComp : scene->GetCachedLightComponents()) {
+		if (!lightComp || !lightComp->IsEnabled() || !lightComp->GetLight()) continue;
+		Scene::GameObject* go = lightComp->GetOwner();
+		if (!go || !go->IsActiveInHierarchy()) continue;
+
+		Rendering::Light* light = lightComp->GetLight();
+		if (light->GetType() == Rendering::LightType::Directional) {
+			auto* dirLight = static_cast<Rendering::DirectionalLight*>(light);
+			if (dirLight->GetCastShadows()
+				&& lightingSettings.shadowsEnabled
+				&& dirLight->GetShadowMap()) {
+				shadowCastingLight = dirLight;
+				break;
+			}
+		}
+	}
+
+	Math::Matrix4 lightSpaceMatrix = Math::Matrix4::Identity();
+	if (shadowCastingLight) {
+		Math::Vector3 sceneCenter(0.0f, 2.0f, 0.0f);
+		float sceneRadius = 50.0f;
+		lightSpaceMatrix = shadowCastingLight->GetLightSpaceMatrix(sceneCenter, sceneRadius);
+		if (Rendering::RHI::RenderDevice::Get().GetAPI() == Rendering::RHI::GraphicsAPI::Vulkan) {
+			lightSpaceMatrix = Math::Matrix4::VulkanClipCorrection() * lightSpaceMatrix;
+		}
+	}
+
+	Rendering::VolumetricFogPass::GetInstance().Render(
+		camera,
+		sceneDepthTexture,
+		shadowCastingLight,
+		lightSpaceMatrix);
 }
 
 void RTBEngine::Core::Application::ResetPhysics()

@@ -86,6 +86,18 @@ namespace RTBEngine {
             ddgiNormalBias = 0.2f;
             ddgiViewBias = 0.25f;
             ddgiProbeRadius = 2.0f;
+            fogEnabled = true;
+            fogColor = Math::Vector3(0.55f, 0.62f, 0.72f);
+            fogDensity = 0.018f;
+            fogHeight = 0.0f;
+            fogHeightFalloff = 0.08f;
+            fogStart = 8.0f;
+            fogEnd = 140.0f;
+            volumetricFogEnabled = true;
+            volumetricIntensity = 0.45f;
+            volumetricAnisotropy = 0.55f;
+            volumetricSamples = 16;
+            volumetricMaxLuminance = 0.85f;
         }
 
         int LightingProjectSettings::ClampShadowMapResolution(int resolution)
@@ -174,6 +186,20 @@ namespace RTBEngine {
                 else if (key == "DDGINormalBias") ddgiNormalBias = ParseFloat(value, ddgiNormalBias);
                 else if (key == "DDGIViewBias") ddgiViewBias = ParseFloat(value, ddgiViewBias);
                 else if (key == "DDGIProbeRadius") ddgiProbeRadius = ParseFloat(value, ddgiProbeRadius);
+                else if (key == "FogEnabled") fogEnabled = ParseBool(value, fogEnabled);
+                else if (key == "FogColorR") fogColor.x = ParseFloat(value, fogColor.x);
+                else if (key == "FogColorG") fogColor.y = ParseFloat(value, fogColor.y);
+                else if (key == "FogColorB") fogColor.z = ParseFloat(value, fogColor.z);
+                else if (key == "FogDensity") fogDensity = ParseFloat(value, fogDensity);
+                else if (key == "FogHeight") fogHeight = ParseFloat(value, fogHeight);
+                else if (key == "FogHeightFalloff") fogHeightFalloff = ParseFloat(value, fogHeightFalloff);
+                else if (key == "FogStart") fogStart = ParseFloat(value, fogStart);
+                else if (key == "FogEnd") fogEnd = ParseFloat(value, fogEnd);
+                else if (key == "VolumetricFogEnabled") volumetricFogEnabled = ParseBool(value, volumetricFogEnabled);
+                else if (key == "VolumetricIntensity") volumetricIntensity = ParseFloat(value, volumetricIntensity);
+                else if (key == "VolumetricAnisotropy") volumetricAnisotropy = ParseFloat(value, volumetricAnisotropy);
+                else if (key == "VolumetricSamples") volumetricSamples = ParseInt(value, volumetricSamples);
+                else if (key == "VolumetricMaxLuminance") volumetricMaxLuminance = ParseFloat(value, volumetricMaxLuminance);
             }
 
             return true;
@@ -208,6 +234,20 @@ namespace RTBEngine {
             file << "DDGINormalBias=" << ddgiNormalBias << "\n";
             file << "DDGIViewBias=" << ddgiViewBias << "\n";
             file << "DDGIProbeRadius=" << ddgiProbeRadius << "\n";
+            file << "FogEnabled=" << (fogEnabled ? "1" : "0") << "\n";
+            file << "FogColorR=" << fogColor.x << "\n";
+            file << "FogColorG=" << fogColor.y << "\n";
+            file << "FogColorB=" << fogColor.z << "\n";
+            file << "FogDensity=" << fogDensity << "\n";
+            file << "FogHeight=" << fogHeight << "\n";
+            file << "FogHeightFalloff=" << fogHeightFalloff << "\n";
+            file << "FogStart=" << fogStart << "\n";
+            file << "FogEnd=" << fogEnd << "\n";
+            file << "VolumetricFogEnabled=" << (volumetricFogEnabled ? "1" : "0") << "\n";
+            file << "VolumetricIntensity=" << volumetricIntensity << "\n";
+            file << "VolumetricAnisotropy=" << volumetricAnisotropy << "\n";
+            file << "VolumetricSamples=" << volumetricSamples << "\n";
+            file << "VolumetricMaxLuminance=" << volumetricMaxLuminance << "\n";
             return true;
         }
 

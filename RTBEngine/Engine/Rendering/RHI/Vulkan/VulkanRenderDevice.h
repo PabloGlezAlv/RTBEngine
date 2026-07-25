@@ -211,7 +211,22 @@ namespace RTBEngine {
                     float uTime = 0.0f;
                     float uPulseSpeed = 1.0f;
                     float uGlowIntensity = 1.0f;
-                    float _padEnd = 0.0f;
+                    std::int32_t uFogEnabled = 0;
+                    float uFogDensity = 0.018f;
+                    float uFogHeight = 0.0f;
+                    float uFogHeightFalloff = 0.08f;
+                    alignas(16) float uFogColor[3] = { 0.55f, 0.62f, 0.72f };
+                    float uFogStart = 8.0f;
+                    float uFogEnd = 140.0f;
+                    std::int32_t uVolumetricFogEnabled = 0;
+                    float uVolumetricIntensity = 0.45f;
+                    float uVolumetricAnisotropy = 0.55f;
+                    std::int32_t uVolumetricSamples = 16;
+                    float uCameraNear = 0.1f;
+                    float uCameraFar = 500.0f;
+                    std::int32_t uDepthZeroToOne = 0;
+                    float uVolumetricMaxLuminance = 0.85f;
+                    float _fogPadEnd = 0.0f;
                 };
                 static_assert(sizeof(PerDrawCPU) % 16 == 0, "PerDrawCPU must be a multiple of 16");
                 static_assert(alignof(PerDrawCPU) >= 16, "PerDrawCPU must be 16-byte aligned");
@@ -281,6 +296,7 @@ namespace RTBEngine {
                     int width = 0;
                     int height = 0;
                     bool depthOnly = false;
+                    bool colorOnlyLoad = false;
                     bool complete = false;
                     ClearMask pendingClearMask = ClearMask::None;
                     float clearColor[4] = { 0.f, 0.f, 0.f, 1.f };
@@ -394,6 +410,7 @@ namespace RTBEngine {
                 bool RebuildFramebufferGpu(GpuId framebufferId, FramebufferResource& fb);
                 bool CreateOffscreenColorDepthRenderPass(VkFormat colorFmt, VkFormat depthFmt, VkRenderPass& outPass) const;
                 bool CreateOffscreenDepthOnlyRenderPass(VkFormat depthFmt, VkRenderPass& outPass) const;
+                bool CreateOffscreenColorOnlyLoadRenderPass(VkFormat colorFmt, VkRenderPass& outPass) const;
                 void InvalidatePipelinesForFramebuffer(GpuId framebufferId);
                 static std::vector<unsigned int> ParseVertexInputLocations(const std::string& vertexSource);
 

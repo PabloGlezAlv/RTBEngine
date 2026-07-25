@@ -61,6 +61,22 @@ namespace RTBEngine {
                     "    float uTime;\n"
                     "    float uPulseSpeed;\n"
                     "    float uGlowIntensity;\n"
+                    "    bool uFogEnabled;\n"
+                    "    float uFogDensity;\n"
+                    "    float uFogHeight;\n"
+                    "    float uFogHeightFalloff;\n"
+                    "    vec3 uFogColor;\n"
+                    "    float uFogStart;\n"
+                    "    float uFogEnd;\n"
+                    "    bool uVolumetricFogEnabled;\n"
+                    "    float uVolumetricIntensity;\n"
+                    "    float uVolumetricAnisotropy;\n"
+                    "    int uVolumetricSamples;\n"
+                    "    float uCameraNear;\n"
+                    "    float uCameraFar;\n"
+                    "    bool uDepthZeroToOne;\n"
+                    "    float uVolumetricMaxLuminance;\n"
+                    "    float _fogPadEnd;\n"
                     "};\n";
 
                 constexpr const char* kSamplerBindingsGlsl =
@@ -69,7 +85,8 @@ namespace RTBEngine {
                     "layout(set = 0, binding = 6) uniform samplerCube uSkybox;\n"
                     "layout(set = 0, binding = 8) uniform sampler2D uDDGIIrradiance;\n"
                     "layout(set = 0, binding = 9) uniform sampler2D uDDGIDistance;\n"
-                    "#define uDiffuse uTexture\n";
+                    "#define uDiffuse uTexture\n"
+                    "#define uSceneDepth uTexture\n";
 
                 const char* kLooseUniformNames[] = {
                     "uModel", "uLightSpaceMatrix", "uViewProjection", "uColor", "uDiffuseColor", "uShininess",
@@ -77,7 +94,11 @@ namespace RTBEngine {
                     "uHasTexture", "uUseInstancing", "uHasAnimation", "uUseInstanceColor",
                     "uHasShadows", "uSheetEnabled", "uSheetColumns", "uSheetRows", "uSheetFrameCount",
                     "uTime", "uPulseSpeed", "uGlowIntensity",
-                    "uTexture", "uShadowMap", "uSkybox", "uDiffuse",
+                    "uFogEnabled", "uFogDensity", "uFogHeight", "uFogHeightFalloff", "uFogColor",
+                    "uFogStart", "uFogEnd", "uVolumetricFogEnabled", "uVolumetricIntensity",
+                    "uVolumetricAnisotropy", "uVolumetricSamples", "uCameraNear", "uCameraFar",
+                    "uDepthZeroToOne", "uVolumetricMaxLuminance",
+                    "uTexture", "uShadowMap", "uSkybox", "uDiffuse", "uSceneDepth",
                     "uDDGIIrradiance", "uDDGIDistance", "uDDGIEnabled"
                 };
 
@@ -622,6 +643,14 @@ namespace RTBEngine {
                     rpInfo.pClearValues = clearValues.data();
                     vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
                 }
+                else if (fb.colorOnlyLoad) {
+                    // LOAD_OP_LOAD — clear values unused but Vulkan still wants a count match.
+                    std::array<VkClearValue, 1> clearValues{};
+                    clearValues[0].color = { { 0.f, 0.f, 0.f, 1.f } };
+                    rpInfo.clearValueCount = 1;
+                    rpInfo.pClearValues = clearValues.data();
+                    vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+                }
                 else {
                     std::array<VkClearValue, 2> clearValues{};
                     clearValues[0].color = { { fb.clearColor[0], fb.clearColor[1], fb.clearColor[2], fb.clearColor[3] } };
@@ -839,7 +868,9 @@ namespace RTBEngine {
                 const TextureResource& ddgiDist = resolveTex(draw.ddgiDistance, false);
 
                 VkDescriptorImageInfo imgInfos[5]{};
-                imgInfos[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                imgInfos[0].imageLayout = t0.isDepth
+                    ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+                    : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 imgInfos[0].imageView = t0.view;
                 imgInfos[0].sampler = t0.sampler;
                 imgInfos[1].imageLayout = t1.isDepth
@@ -1005,11 +1036,27 @@ namespace RTBEngine {
                     { "uTime", "float", static_cast<int>(offsetof(PerDrawCPU, uTime)), false },
                     { "uPulseSpeed", "float", static_cast<int>(offsetof(PerDrawCPU, uPulseSpeed)), false },
                     { "uGlowIntensity", "float", static_cast<int>(offsetof(PerDrawCPU, uGlowIntensity)), false },
+                    { "uFogEnabled", "bool", static_cast<int>(offsetof(PerDrawCPU, uFogEnabled)), true },
+                    { "uFogDensity", "float", static_cast<int>(offsetof(PerDrawCPU, uFogDensity)), false },
+                    { "uFogHeight", "float", static_cast<int>(offsetof(PerDrawCPU, uFogHeight)), false },
+                    { "uFogHeightFalloff", "float", static_cast<int>(offsetof(PerDrawCPU, uFogHeightFalloff)), false },
+                    { "uFogColor", "vec3", static_cast<int>(offsetof(PerDrawCPU, uFogColor)), false },
+                    { "uFogStart", "float", static_cast<int>(offsetof(PerDrawCPU, uFogStart)), false },
+                    { "uFogEnd", "float", static_cast<int>(offsetof(PerDrawCPU, uFogEnd)), false },
+                    { "uVolumetricFogEnabled", "bool", static_cast<int>(offsetof(PerDrawCPU, uVolumetricFogEnabled)), true },
+                    { "uVolumetricIntensity", "float", static_cast<int>(offsetof(PerDrawCPU, uVolumetricIntensity)), false },
+                    { "uVolumetricAnisotropy", "float", static_cast<int>(offsetof(PerDrawCPU, uVolumetricAnisotropy)), false },
+                    { "uVolumetricSamples", "int", static_cast<int>(offsetof(PerDrawCPU, uVolumetricSamples)), false },
+                    { "uCameraNear", "float", static_cast<int>(offsetof(PerDrawCPU, uCameraNear)), false },
+                    { "uCameraFar", "float", static_cast<int>(offsetof(PerDrawCPU, uCameraFar)), false },
+                    { "uDepthZeroToOne", "bool", static_cast<int>(offsetof(PerDrawCPU, uDepthZeroToOne)), true },
+                    { "uVolumetricMaxLuminance", "float", static_cast<int>(offsetof(PerDrawCPU, uVolumetricMaxLuminance)), false },
                     // Sampler uniforms map to no PerDraw field; return sentinel offsets for GetUniformLocation
                     { "uTexture", "sampler", -100, false },
                     { "uShadowMap", "sampler", -101, false },
                     { "uSkybox", "sampler", -102, false },
                     { "uDiffuse", "sampler", -100, false },
+                    { "uSceneDepth", "sampler", -100, false },
                 };
                 if (!name) return nullptr;
                 for (const auto& f : kFields) {
@@ -2007,6 +2054,11 @@ namespace RTBEngine {
                 auto it = framebuffers.find(framebuffer);
                 if (it == framebuffers.end()) return;
                 it->second.colorTexture = texture;
+                // Color without depth → continue/load pass used by volumetric fog.
+                if (it->second.depthTexture == kInvalidGpuId) {
+                    it->second.depthOnly = false;
+                    it->second.colorOnlyLoad = true;
+                }
                 RebuildFramebufferGpu(framebuffer, it->second);
             }
 
@@ -2015,6 +2067,7 @@ namespace RTBEngine {
                 auto it = framebuffers.find(framebuffer);
                 if (it == framebuffers.end()) return;
                 it->second.depthTexture = texture;
+                it->second.colorOnlyLoad = false;
                 RebuildFramebufferGpu(framebuffer, it->second);
             }
 
@@ -2123,6 +2176,38 @@ namespace RTBEngine {
                     }
                     fb.complete = true;
                                         ClampPendingDrawViewportsToFramebuffer(framebufferId, fb);
+                    return true;
+                }
+
+                // Color-only LOAD pass (volumetric fog): share color, sample previous depth.
+                if (fb.colorOnlyLoad || (fb.colorTexture != kInvalidGpuId && fb.depthTexture == kInvalidGpuId)) {
+                    fb.colorOnlyLoad = true;
+                    auto cIt = textures.find(fb.colorTexture);
+                    if (cIt == textures.end() || !cIt->second.image || !cIt->second.view) {
+                        return false;
+                    }
+                    const TextureResource& colorTex = cIt->second;
+                    fb.width = colorTex.width;
+                    fb.height = colorTex.height;
+
+                    if (!CreateOffscreenColorOnlyLoadRenderPass(colorTex.format, fb.renderPass)) {
+                        return false;
+                    }
+
+                    VkFramebufferCreateInfo fi{};
+                    fi.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+                    fi.renderPass = fb.renderPass;
+                    fi.attachmentCount = 1;
+                    fi.pAttachments = &colorTex.view;
+                    fi.width = static_cast<std::uint32_t>(fb.width);
+                    fi.height = static_cast<std::uint32_t>(fb.height);
+                    fi.layers = 1;
+                    if (vkCreateFramebuffer(device, &fi, nullptr, &fb.framebuffer) != VK_SUCCESS) {
+                        DestroyFramebufferGpu(framebufferId, fb);
+                        return false;
+                    }
+                    fb.complete = true;
+                    ClampPendingDrawViewportsToFramebuffer(framebufferId, fb);
                     return true;
                 }
 
@@ -2264,6 +2349,57 @@ namespace RTBEngine {
                 rp.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
                 rp.attachmentCount = 1;
                 rp.pAttachments = &depth;
+                rp.subpassCount = 1;
+                rp.pSubpasses = &subpass;
+                rp.dependencyCount = 2;
+                rp.pDependencies = deps;
+                return vkCreateRenderPass(device, &rp, nullptr, &outPass) == VK_SUCCESS;
+            }
+
+            bool VulkanRenderDevice::CreateOffscreenColorOnlyLoadRenderPass(VkFormat colorFmt, VkRenderPass& outPass) const
+            {
+                // Continues an existing offscreen color target after the depth+color pass ended
+                // (color finalLayout = SHADER_READ_ONLY). Used by volumetric fog so scene depth
+                // can be sampled while writing color.
+                VkAttachmentDescription color{};
+                color.format = colorFmt;
+                color.samples = VK_SAMPLE_COUNT_1_BIT;
+                color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+                color.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                color.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                color.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                color.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+                VkAttachmentReference colorRef{ 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
+
+                VkSubpassDescription subpass{};
+                subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+                subpass.colorAttachmentCount = 1;
+                subpass.pColorAttachments = &colorRef;
+                subpass.pDepthStencilAttachment = nullptr;
+
+                VkSubpassDependency depIn{};
+                depIn.srcSubpass = VK_SUBPASS_EXTERNAL;
+                depIn.dstSubpass = 0;
+                depIn.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                depIn.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                depIn.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                depIn.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+                VkSubpassDependency depOut{};
+                depOut.srcSubpass = 0;
+                depOut.dstSubpass = VK_SUBPASS_EXTERNAL;
+                depOut.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                depOut.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                depOut.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                depOut.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+                const VkSubpassDependency deps[] = { depIn, depOut };
+                VkRenderPassCreateInfo rp{};
+                rp.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+                rp.attachmentCount = 1;
+                rp.pAttachments = &color;
                 rp.subpassCount = 1;
                 rp.pSubpasses = &subpass;
                 rp.dependencyCount = 2;

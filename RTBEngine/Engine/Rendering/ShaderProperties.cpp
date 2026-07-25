@@ -1,6 +1,7 @@
 #include "ShaderProperties.h"
 #include "ShaderAsset.h"
 #include "Shader.h"
+#include "FogUniforms.h"
 #include "../Core/ResourceManager.h"
 #include "../Core/Time.h"
 #include <sstream>
@@ -455,6 +456,7 @@ namespace RTBEngine {
             }
 
             shader->SetFloat("uTime", Core::Time::GetTime());
+            FogUniforms::Apply(shader);
         }
 
     }

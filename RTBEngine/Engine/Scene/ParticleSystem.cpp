@@ -7,6 +7,7 @@
 #include "../Core/ResourceManager.h"
 #include "../Rendering/Camera.h"
 #include "../Rendering/CameraUBO.h"
+#include "../Rendering/FogUniforms.h"
 #include "../Rendering/Shader.h"
 #include "../Rendering/Texture.h"
 #include "../Rendering/RHI/RenderDevice.h"
@@ -771,6 +772,7 @@ namespace RTBEngine {
 
             shader->Bind();
             Rendering::CameraUBO::GetInstance().Bind();
+            Rendering::FogUniforms::Apply(shader);
             shader->SetBool("uHasTexture", textureRef != nullptr);
             const bool sheetEnabled = UsesTextureSheet();
             shader->SetBool("uSheetEnabled", sheetEnabled);

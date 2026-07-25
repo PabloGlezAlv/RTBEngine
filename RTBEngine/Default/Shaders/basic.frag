@@ -66,6 +66,14 @@ uniform sampler2D uShadowMap;
 uniform bool uHasShadows;
 uniform float uShadowBias;
 
+uniform bool uFogEnabled;
+uniform vec3 uFogColor;
+uniform float uFogDensity;
+uniform float uFogHeight;
+uniform float uFogHeightFalloff;
+uniform float uFogStart;
+uniform float uFogEnd;
+
 // DDGI sampling inputs (CPU: DDGIVolume::UploadUBO + BindForSampling).
 // Binding 7 = UBO params; 8/9 = mismos atlas que escribió ddgi_trace.comp.
 layout(std140, binding = 7) uniform DDGIData {
@@ -192,6 +200,19 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 float ShadowCalculation(vec4 fragPosLightSpace, float bias);
 
+float ComputeFogFactor(vec3 worldPos)
+{
+    if (!uFogEnabled || uFogDensity <= 0.0) {
+        return 0.0;
+    }
+
+    float dist = length(worldPos - viewPos);
+    float heightFactor = exp(-uFogHeightFalloff * max(worldPos.y - uFogHeight, 0.0));
+    float exponential = 1.0 - exp(-uFogDensity * heightFactor * dist);
+    float linear = clamp((dist - uFogStart) / max(uFogEnd - uFogStart, 0.001), 0.0, 1.0);
+    return clamp(max(exponential, linear * exponential), 0.0, 1.0);
+}
+
 void main() {
     vec3 norm = normalize(vNormal);
     vec3 viewDir = normalize(viewPos - vFragPos);
@@ -235,7 +256,12 @@ void main() {
     vec4 effectiveColor = uUseInstanceColor ? vInstanceColor : uColor;
     vec3 tint = min(effectiveColor.rgb, vec3(1.0));
     vec3 flashAdd = max(effectiveColor.rgb - vec3(1.0), vec3(0.0));
-    FragColor = vec4(litColor * tint + flashAdd, texColor.a * effectiveColor.a);
+    vec3 finalColor = litColor * tint + flashAdd;
+
+    float fogFactor = ComputeFogFactor(vFragPos);
+    finalColor = mix(finalColor, uFogColor, fogFactor);
+
+    FragColor = vec4(finalColor, texColor.a * effectiveColor.a);
 }
 
 

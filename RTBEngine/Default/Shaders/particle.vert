@@ -26,6 +26,7 @@ uniform int uSheetFrameCount;
 
 out vec2 vUV;
 out vec4 vColor;
+out vec3 vWorldPos;
 
 void main()
 {
@@ -54,4 +55,5 @@ void main()
 
     vUV = uv;
     vColor = aInstanceColor;
+    vWorldPos = worldPos;
 }

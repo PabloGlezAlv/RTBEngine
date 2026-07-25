@@ -49,6 +49,23 @@ namespace RTBEngine {
             float ddgiProbeRadius = 2.0f;
             bool ddgiEnabled = true;
 
+            // Distance / height fog (forward shading).
+            bool fogEnabled = true;
+            Math::Vector3 fogColor = Math::Vector3(0.55f, 0.62f, 0.72f);
+            float fogDensity = 0.018f;
+            float fogHeight = 0.0f;
+            float fogHeightFalloff = 0.08f;
+            float fogStart = 8.0f;
+            float fogEnd = 140.0f;
+
+            // Fullscreen volumetric in-scattering (god rays) after geometry.
+            bool volumetricFogEnabled = true;
+            float volumetricIntensity = 0.45f;
+            float volumetricAnisotropy = 0.55f;
+            int volumetricSamples = 16;
+            // Soft luminance ceiling for additive volumetric (prevents outdoor white-out).
+            float volumetricMaxLuminance = 0.85f;
+
         private:
             LightingProjectSettings();
         };

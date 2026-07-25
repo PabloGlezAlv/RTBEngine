@@ -3,6 +3,7 @@
 #include "Shader.h"
 #include "Camera.h"
 #include "CameraUBO.h"
+#include "FogUniforms.h"
 #include "RHI/RenderDevice.h"
 #include "../Math/Matrix/Matrix4.h"
 
@@ -123,6 +124,7 @@ namespace RTBEngine {
 
             shader->Bind();
             CameraUBO::GetInstance().Bind();
+            FogUniforms::Apply(shader);
             shader->SetInt("uSkybox", 0);
 
             cubemap->Bind(0);

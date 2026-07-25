@@ -2,6 +2,7 @@
 
 #include "../RTBEngineAPI.h"
 #include "ApplicationConfig.h"
+#include "../Rendering/RHI/RenderTypes.h"
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -65,6 +66,9 @@ namespace RTBEngine {
             void RenderShadowPass(Scene::Scene* scene);
             void UploadSceneLighting(Scene::Scene* scene);
             void RenderGeometryPass(Scene::Scene* scene, Rendering::Camera* camera);
+            void RenderVolumetricFogPass(Scene::Scene* scene,
+                                        Rendering::Camera* camera,
+                                        Rendering::RHI::GpuId sceneDepthTexture);
             void SetIsRunning(bool value) { isRunning = value; }
 
             void ResetPhysics();
