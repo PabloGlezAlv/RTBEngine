@@ -101,7 +101,7 @@ namespace RTBEngine {
                                        const Math::Matrix4& lightSpaceMatrix)
         {
             const FogFrameState& fog = VolumeStack::GetCurrentFrameState();
-            if (!fog.volumetricFogEnabled || !fog.fogEnabled || !IsReady() || !camera) {
+            if (!fog.volumetricFogEnabled || !IsReady() || !camera) {
                 return;
             }
             if (sceneDepthTexture == RHI::kInvalidGpuId) {
@@ -149,7 +149,10 @@ namespace RTBEngine {
             device.DrawArrays(RHI::PrimitiveTopology::Triangles, 0, 3);
             device.UnbindVertexArray();
 
-            device.UnbindTexture2D();
+            // OpenGL: unbind depth/shadow from ALL used units. Leaving scene depth bound
+            // while the next pass attaches it to an FBO causes undefined framebuffer feedback.
+            device.BindTexture2D(RHI::kInvalidGpuId, 0);
+            device.BindTexture2D(RHI::kInvalidGpuId, 1);
             shader->Unbind();
 
             device.SetBlend(false);

@@ -74,7 +74,8 @@ layout(std140, binding = 4) uniform LightingData {
 
 const int OCT_SIZE = 16;
 const int PROBE_TEXELS = 18;
-const int MAX_RAYS = 64; // fewer than Vulkan (128): software RT cost
+const int MAX_RAYS = 24; // software RT budget (Vulkan uses 128 + TLAS)
+const int MAX_SOFTWARE_TRIANGLES = 4096;
 
 vec3 EvaluateHitRadiance(vec3 pos, vec3 normal) {
     vec3 irradiance = vec3(0.01);
@@ -128,7 +129,7 @@ bool TraceScene(vec3 origin, vec3 dir, float maxT, out float hitT, out bool fron
     hitT = maxT;
     frontFace = false;
     bool anyHit = false;
-    int count = min(uTriangleCount, 16384);
+    int count = min(uTriangleCount, MAX_SOFTWARE_TRIANGLES);
     for (int i = 0; i < count; i++) {
         int base = i * 12;
         vec3 v0 = vec3(uTriData[base + 0], uTriData[base + 1], uTriData[base + 2]);

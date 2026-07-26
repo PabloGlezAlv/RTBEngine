@@ -365,7 +365,7 @@ namespace RTBEngine {
                 case TextureFormat::Depth24:
                     internalFormat = GL_DEPTH_COMPONENT24;
                     pixelFormat = GL_DEPTH_COMPONENT;
-                    pixelType = GL_FLOAT;
+                    pixelType = GL_UNSIGNED_INT;
                     break;
                 case TextureFormat::Depth32F:
                     internalFormat = GL_DEPTH_COMPONENT32F;
@@ -527,9 +527,11 @@ namespace RTBEngine {
 
             GpuId OpenGLRenderDevice::CreateDepthTextureForFramebuffer(int width, int height)
             {
+                // Match Vulkan (Depth32F) so volumetric fog can sample scene depth reliably.
                 const GpuId texture = CreateTexture2D();
-                SetTexture2DData(texture, TextureFormat::Depth24, width, height, nullptr, false);
+                SetTexture2DData(texture, TextureFormat::Depth32F, width, height, nullptr, false);
                 SetTexture2DFilter(texture, TextureFilter::Nearest, TextureFilter::Nearest);
+                SetTexture2DWrap(texture, TextureWrap::ClampToEdge, TextureWrap::ClampToEdge);
                 return texture;
             }
 

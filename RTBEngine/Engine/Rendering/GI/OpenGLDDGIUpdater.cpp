@@ -24,8 +24,10 @@ namespace RTBEngine {
         namespace GI {
 
             namespace {
-                constexpr int kMaxSoftwareTriangles = 16384;
-                constexpr int kGlRaysPerProbe = 64;
+                // Soft-RT budget: OpenGL has no TLAS/rayQuery, so keep this tiny vs Vulkan.
+                constexpr int kMaxSoftwareTriangles = 4096;
+                constexpr int kGlRaysPerProbe = 24;
+                constexpr int kGlMaxProbesPerFrame = 32;
 
                 std::string LoadShaderSource(const char* path)
                 {
@@ -66,6 +68,18 @@ namespace RTBEngine {
                     }
                     return Math::Vector3(r.x, r.y, r.z);
                 }
+
+                void HashMix(std::uint64_t& h, std::uint64_t v)
+                {
+                    h ^= v + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+                }
+
+                std::uint64_t HashFloatBits(float f)
+                {
+                    std::uint32_t bits = 0;
+                    std::memcpy(&bits, &f, sizeof(bits));
+                    return bits;
+                }
             }
 
             bool OpenGLDDGIUpdater::Initialize()
@@ -93,7 +107,10 @@ namespace RTBEngine {
                 EnsureTriangleBuffer(4 + static_cast<std::size_t>(kMaxSoftwareTriangles) * 12);
                 ready = triangleSSBO != RHI::kInvalidGpuId;
                 if (ready) {
-                    RTB_INFO("OpenGLDDGIUpdater: software-RT DDGI ready");
+                    RTB_INFO("OpenGLDDGIUpdater: software-RT DDGI ready (budget "
+                        + std::to_string(kGlMaxProbesPerFrame) + " probes × "
+                        + std::to_string(kGlRaysPerProbe) + " rays, max "
+                        + std::to_string(kMaxSoftwareTriangles) + " tris)");
                 }
                 return ready;
             }
@@ -118,6 +135,8 @@ namespace RTBEngine {
                     triangleSSBO = RHI::kInvalidGpuId;
                 }
                 triangleBufferCapacityFloats = 0;
+                cachedSceneSignature = 0;
+                hasCachedScene = false;
                 ready = false;
             }
 
@@ -133,12 +152,43 @@ namespace RTBEngine {
                 }
                 triangleSSBO = device.CreateStorageBuffer(floatCount * sizeof(float));
                 triangleBufferCapacityFloats = (triangleSSBO != RHI::kInvalidGpuId) ? floatCount : 0;
+                hasCachedScene = false;
             }
 
-            void OpenGLDDGIUpdater::UploadSceneTriangles(Scene::Scene* scene)
+            bool OpenGLDDGIUpdater::UploadSceneTriangles(Scene::Scene* scene)
             {
+                // Signature mirrors Vulkan AS cache: skip rebuild when meshes/transforms stable.
+                std::uint64_t signature = 0;
+                if (scene) {
+                    for (Scene::MeshRenderer* renderer : scene->GetCachedMeshRenderers()) {
+                        if (!renderer || !renderer->IsEnabled()) continue;
+                        Scene::GameObject* owner = renderer->GetOwner();
+                        if (!owner || !owner->IsActiveInHierarchy()) continue;
+
+                        Animation::Animator* animator = renderer->GetActiveAnimator();
+                        if (animator && animator->ShouldSkinMesh()) continue;
+
+                        HashMix(signature, reinterpret_cast<std::uintptr_t>(renderer));
+                        const Math::Matrix4& world = owner->GetWorldMatrix();
+                        for (int i = 0; i < 16; ++i) {
+                            HashMix(signature, HashFloatBits(world.m[i]));
+                        }
+                        if (renderer->IsMultiMesh()) {
+                            for (Mesh* mesh : renderer->GetMeshes()) {
+                                HashMix(signature, reinterpret_cast<std::uintptr_t>(mesh));
+                            }
+                        } else {
+                            HashMix(signature, reinterpret_cast<std::uintptr_t>(renderer->GetMesh()));
+                        }
+                    }
+                }
+
+                if (hasCachedScene && signature == cachedSceneSignature && triangleSSBO != RHI::kInvalidGpuId) {
+                    return false;
+                }
+
                 std::vector<float> payload;
-                payload.resize(4, 0.0f); // header: count + 3 pads (as floats / bitcast ints)
+                payload.resize(4, 0.0f); // header: count + 3 pads
 
                 if (!scene) {
                     int zero = 0;
@@ -146,7 +196,9 @@ namespace RTBEngine {
                     EnsureTriangleBuffer(payload.size());
                     RHI::RenderDevice::Get().UpdateStorageBuffer(triangleSSBO, payload.data(),
                         payload.size() * sizeof(float), 0);
-                    return;
+                    cachedSceneSignature = signature;
+                    hasCachedScene = true;
+                    return true;
                 }
 
                 int triCount = 0;
@@ -167,7 +219,7 @@ namespace RTBEngine {
                         const Math::Matrix4& world = owner->GetWorldMatrix();
                         const std::size_t triTotal = indices.size() / 3;
                         // Decimate large meshes so we stay under the soft-RT budget.
-                        const std::size_t stride = std::max<std::size_t>(1, triTotal / 4096);
+                        const std::size_t stride = std::max<std::size_t>(1, triTotal / 1024);
 
                         for (std::size_t t = 0; t + 2 < indices.size() && triCount < kMaxSoftwareTriangles; t += 3 * stride) {
                             const unsigned int i0 = indices[t];
@@ -197,9 +249,13 @@ namespace RTBEngine {
 
                 std::memcpy(payload.data(), &triCount, sizeof(int));
                 EnsureTriangleBuffer(payload.size());
-                if (triangleSSBO == RHI::kInvalidGpuId) return;
+                if (triangleSSBO == RHI::kInvalidGpuId) return false;
                 RHI::RenderDevice::Get().UpdateStorageBuffer(triangleSSBO, payload.data(),
                     payload.size() * sizeof(float), 0);
+
+                cachedSceneSignature = signature;
+                hasCachedScene = true;
+                return true;
             }
 
             void OpenGLDDGIUpdater::Update(DDGIVolume& volume, RayTracingScene& /*rtScene*/, Scene::Scene* scene, int frameIndex)
@@ -242,7 +298,7 @@ namespace RTBEngine {
                 params.probeCount = DDGIProbeCount(settings);
                 params.frameIndex = frameIndex;
                 params.raysPerProbe = kGlRaysPerProbe;
-                params.probesThisFrame = std::min(kDDGIMaxProbesPerFrame, params.probeCount);
+                params.probesThisFrame = std::min(kGlMaxProbesPerFrame, params.probeCount);
                 params.probeRadius = settings.probeRadius;
 
                 device.SetUniformBufferData(paramsUBO, &params, sizeof(params), RHI::BufferUsage::Dynamic);
@@ -258,7 +314,7 @@ namespace RTBEngine {
                 }
 
                 const unsigned int groups = (static_cast<unsigned int>(params.probesThisFrame) + 63u) / 64u;
-                device.DispatchCompute(groups, 1, 1);
+                device.DispatchCompute(std::max(groups, 1u), 1, 1);
                 device.MemoryBarrierComputeToGraphics();
             }
 

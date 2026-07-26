@@ -939,7 +939,7 @@ void RTBEngine::Core::Application::RenderVolumetricFogPass(Scene::Scene* scene,
 	}
 
 	const Rendering::FogFrameState& fogState = Rendering::VolumeStack::GetCurrentFrameState();
-	if (!fogState.volumetricFogEnabled || !fogState.fogEnabled) {
+	if (!fogState.volumetricFogEnabled) {
 		return;
 	}
 

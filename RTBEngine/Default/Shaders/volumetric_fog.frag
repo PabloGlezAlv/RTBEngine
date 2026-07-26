@@ -133,7 +133,8 @@ vec3 ReconstructWorldPos(vec2 uv, float depth)
 
 void main()
 {
-    if (!uFogEnabled || !uVolumetricFogEnabled || uVolumetricIntensity <= 1e-5) {
+    // Volumetric shafts are independent of distance fog; only this effect flag matters.
+    if (!uVolumetricFogEnabled || uVolumetricIntensity <= 1e-5) {
         FragColor = vec4(0.0, 0.0, 0.0, 1.0);
         return;
     }
