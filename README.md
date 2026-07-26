@@ -1,16 +1,16 @@
 # RTBEngine
 
-A 3D game engine written in **C++17**, compiled as `RTBEngine.dll` with an import library (`RTBEngine.lib`). RTBEngine provides a complete set of subsystems for building games and interactive real-time applications on Windows: a **hybrid GameObject–Component + ECS** architecture, a dual **OpenGL / Vulkan** RHI with shadow mapping, Bullet-based rigid-body physics, FMOD spatial audio, SDL2 input, skeletal animation, Lua-based scene serialization, a macro-driven reflection system, and an ImGui-compatible UI framework.
+A 3D game engine written in **C++17**, compiled as `RTBEngine.dll` with an import library (`RTBEngine.lib`). RTBEngine provides a complete set of subsystems for building games and interactive real-time applications on Windows: a **hybrid GameObject–Component + ECS** architecture, a dual **OpenGL / Vulkan** RHI with shadow mapping, **DDGI**, localized **volume fog** (distance + volumetric), Bullet-based rigid-body physics, FMOD spatial audio, SDL2 input, skeletal animation, Lua-based scene serialization, a macro-driven reflection system, and an ImGui-compatible UI framework.
 
 > **Note:** Authoring uses `RTBEngine::Scene` (`Engine/Scene/`). Dense simulation uses **`RTBEngine::ECS`** (`Engine/ECS/`): hybrid ECS with sparse-set storage. The engine provides `World`, `LocalTransform`, `VisualLink`, and instanced `MeshRenderer`; game systems (projectiles, benchmarks) register from GameScripts via `RTBScripts_InitializeEcs`.
 
 > **Gráficos (OpenGL vs Vulkan):** guía completa del RHI, frame loop, sombras, partículas, UBOs y catálogo de métodos → [`docs/GRAPHICS_VULKAN_OPENGL.md`](docs/GRAPHICS_VULKAN_OPENGL.md).
 
-**Version:** `0.10.0` — see [`CHANGELOG.md`](CHANGELOG.md).
+**Version:** `0.11.0` — see [`CHANGELOG.md`](CHANGELOG.md).
 
 | Constant | Value | Header |
 |----------|-------|--------|
-| Engine semver | `0.10.0` | `Engine/Core/Version.h` → `RTBEngine::Core::VersionInfo` |
+| Engine semver | `0.11.0` | `Engine/Core/Version.h` → `RTBEngine::Core::VersionInfo` |
 | RTBN protocol | `4` | `Engine/Online/OnlineMessageCodec.h` |
 | Script Bridge ABI | `4` | `Engine/Scripting/ScriptBridgeABI.h` |
 | NavMesh file format | `1` | `Engine/Navigation/NavMeshFile.cpp` |
@@ -53,6 +53,7 @@ This document covers every subsystem in depth — public API, internal design, d
    - 7.9 [NetworkIdentity](#79-networkidentity)
    - 7.10 [NetworkTransform](#710-networktransform)
    - 7.11 [ParticleSystem](#711-particlesystem)
+   - 7.12 [VolumeComponent](#712-volumecomponent)
 8. [Rendering Subsystem](#8-rendering-subsystem)
    - 8.1 [Camera](#81-camera)
    - 8.2 [Shader](#82-shader)
@@ -67,6 +68,7 @@ This document covers every subsystem in depth — public API, internal design, d
    - 8.11 [Lighting — PointLight](#811-lighting--pointlight)
    - 8.12 [Lighting — SpotLight](#812-lighting--spotlight)
    - 8.13 [Rendering Pipeline](#813-rendering-pipeline)
+   - 8.16 [Post-Process Volumes & Fog](#816-post-process-volumes--fog)
    - 8.14 [Frustum](#814-frustum)
    - 8.15 [FbxBinding](#815-fbxbinding)
 9. [Physics Subsystem](#9-physics-subsystem)
@@ -1772,6 +1774,37 @@ particles->endColor   = Math::Color(1.0f, 0.4f, 0.0f, 0.0f);
 particles->Play();
 ```
 
+### 7.12 VolumeComponent
+
+`Engine/Scene/VolumeComponent.h` — Localized post-process volume (Unity HDRP / URP Volume-style). Blends distance fog and volumetric fog settings into the frame via `VolumeStack` before the geometry and volumetric passes run.
+
+**Zone:**
+
+| Property | Default | Purpose |
+|----------|---------|---------|
+| `isGlobal` | `true` | Affects the whole view; ignores box size when true |
+| `size` | `(20, 10, 20)` | Local box half-extents when not global |
+| `priority` | `0` | Higher priority volumes are evaluated later in the stack |
+| `blendDistance` | `2.0` | Soft falloff at box faces (local volumes only) |
+| `weight` | `1.0` | Blend weight `0–1` for this volume's contribution |
+
+**Per-effect overrides** (0.11+): each effect has a single override flag. When `overrideDistanceFog` or `overrideVolumetricFog` is true and the volume is enabled, that effect's parameter block is blended into `FogFrameState`. Project defaults come from `LightingProjectSettings` (editor: Project Settings → Lighting).
+
+| Effect | Override flag | Parameters |
+|--------|---------------|------------|
+| Distance fog | `overrideDistanceFog` | `fogColor`, `fogDensity`, `fogHeight`, `fogHeightFalloff`, `fogStart`, `fogEnd` |
+| Volumetric fog | `overrideVolumetricFog` | `volumetricIntensity`, `volumetricAnisotropy`, `volumetricSamples`, `volumetricMaxLuminance` |
+
+```cpp
+auto* volume = zone->AddComponent<VolumeComponent>();
+volume->isGlobal = false;
+volume->size = Math::Vector3(15.0f, 8.0f, 15.0f);
+volume->overrideVolumetricFog = true;
+volume->volumetricIntensity = 0.8f;
+```
+
+`ToProfile()` converts the component into a `Rendering::VolumeProfile` for the stack. Override flags are hidden from the generic Inspector; the editor uses a dedicated `VolumeComponentInspector`.
+
 ### 7.9 NavGridComponent
 
 `Engine/Scene/NavGridComponent.h` — Scene-level 2D navigation surface in world XZ. The editor bakes walkability from physics geometry; at runtime the baked grid is registered with `NavPathService` so `NavAgentComponent` instances can pathfind.
@@ -2284,6 +2317,10 @@ The full render pipeline executed each frame by `Application::Render()`:
 3. FrameBuffer::Bind() (if rendering to texture, e.g. editor)
    glClear(COLOR | DEPTH)
 
+3b. VolumeStack::Evaluate(camera, scene)
+    └── Blends global LightingProjectSettings + enabled VolumeComponents
+        into FogFrameState (distance + volumetric fog parameters)
+
 4. Upload all lights to lit shader:
    └── DirectionalLight::ApplyToShader
    └── PointLight::ApplyToShader(index)
@@ -2304,6 +2341,9 @@ The full render pipeline executed each frame by `Application::Render()`:
    └── ParticleSystem::Render for each enabled particle system
    └── alpha-blended billboards; two-pass depth + color for particles
 
+7b. VolumetricFogPass::Render (if volumetricFogEnabled in FogFrameState)
+    └── Ray-marched god rays using scene color + depth; OpenGL and Vulkan
+
 8. CanvasSystem::RenderWorldSpace(camera)
    - renders Canvas::WorldSpace UIImage/UIPanel/UIText quads with ui_world shader
    - depth test enabled, alpha blending enabled, depth writes disabled
@@ -2313,6 +2353,30 @@ The full render pipeline executed each frame by `Application::Render()`:
 
 10. Window::SwapBuffers()
 ```
+
+### 8.16 Post-Process Volumes & Fog
+
+Fog is evaluated in two layers: **project defaults** (`LightingProjectSettings`, file `lighting.ini` next to the `.rtbproj`) and **scene volumes** (`VolumeComponent`).
+
+**`VolumeStack`** (`Engine/Rendering/PostProcess/VolumeStack.h`):
+
+- Called once per frame before lighting uploads (`Application` render path).
+- Starts from project lighting fog fields, then blends enabled volumes sorted by `priority`.
+- Writes the result to `FogFrameState`, consumed by lit shaders and `VolumetricFogPass`.
+
+**`VolumetricFogPass`** (`Engine/Rendering/VolumetricFogPass.h`):
+
+- Fullscreen pass after opaque geometry and transparent effects.
+- Uses scene color and depth; respects `FogFrameState::volumetricFogEnabled` and intensity.
+- Shaders: `Default/Shaders/volumetric_fog.vert` / `volumetric_fog.frag`.
+
+**OpenGL notes (0.11):**
+
+- Scene depth for volumetric fog uses `Depth32F` with `ClampToEdge` sampling.
+- Scene textures are unbound after the pass to prevent feedback on some drivers.
+- **DDGI on OpenGL** uses a software ray trace compute path (`ddgi_trace_gl.comp`) with a fixed per-frame budget (32 probes × 24 rays, up to 4096 triangles) and cached triangle uploads — Vulkan uses TLAS + `rayQuery` instead.
+
+**Graphics API selection:** editor projects store `GraphicsAPI=OpenGL|Vulkan` in `.rtbproj`. The editor relaunches to apply API changes; exported `RTBPlayer` builds use the engine config from the build pipeline. Override for CI: environment variable `RTB_GRAPHICS_API`.
 
 ### 8.14 Frustum
 
@@ -3483,7 +3547,7 @@ void DestroyComponent(const std::string& typeName, Scene::Component* component) 
 void RegisterBuiltInComponents();   // Called by Application::Initialize()
 ```
 
-Built-in types registered: `MeshRenderer`, `CameraComponent`, `LightComponent`, `RigidBodyComponent`, `BoxColliderComponent`, `SphereColliderComponent`, `AudioSourceComponent`, `FreeLookCamera`, `Canvas`, `UIText`, `UIImage`, `UIPanel`, `UIButton`, `UIContainer`.
+Built-in types registered: `MeshRenderer`, `CameraComponent`, `LightComponent`, `RigidBodyComponent`, `BoxColliderComponent`, `SphereColliderComponent`, `AudioSourceComponent`, `FreeLookCamera`, `VolumeComponent`, `Canvas`, `UIText`, `UIImage`, `UIPanel`, `UIButton`, `UIContainer`.
 
 Script DLLs typically register through `RTB_REGISTER_COMPONENT` static initializers, which call both `ComponentRegistry::RegisterComponent` and `TypeRegistry::RegisterType`.
 

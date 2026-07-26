@@ -1,10 +1,10 @@
 # Changelog — RTBEngine
 
-**Current version:** `0.10.0`
+**Current version:** `0.11.0`
 
 API documentation: [`README.md`](README.md)
 
-**Compatibility:** use with **RTBEngineEditor 0.10.x**. After SDK or Script Bridge ABI changes: rebuild the engine → `BuildSDK.bat` → `GameScripts`.
+**Compatibility:** use with **RTBEngineEditor 0.11.x**. After SDK or Script Bridge ABI changes: rebuild the engine → `BuildSDK.bat` → `GameScripts`.
 
 ---
 
@@ -17,6 +17,21 @@ API documentation: [`README.md`](README.md)
 | NavMesh sidecar (`.navmesh`) | **1** | `RTBEngine/Engine/Navigation/NavMeshFile.cpp` |
 
 ---
+
+## [0.11.0] — 2026
+
+### Added
+- **`VolumeComponent`**: localized post-process volumes with per-effect overrides (`overrideDistanceFog`, `overrideVolumetricFog`) for distance fog and volumetric fog / god rays.
+- **`VolumeStack`** + **`VolumeProfile`**: priority-sorted volume blending into per-frame `FogFrameState` (global project defaults + box volumes with blend distance and weight).
+- **`VolumetricFogPass`**: fullscreen ray-marched volumetric fog pass driven by `VolumeStack` state (OpenGL and Vulkan).
+
+### Changed
+- Volume override model simplified to **one toggle per effect** (not per parameter); enabling an effect in a volume overrides the whole distance-fog or volumetric-fog block when blended.
+- **OpenGL DDGI** software ray trace budget tuned for editor playability: 32 probes/frame, 24 rays/probe, 4096 triangles max; triangle upload cached by scene signature (same idea as Vulkan AS cache).
+
+### Fixed
+- **OpenGL volumetric fog**: removed redundant dual enable gate in C++ and shader; scene depth uses `Depth32F` + `ClampToEdge`; scene color/depth textures unbound after the pass to avoid feedback loops.
+- **OpenGL DDGI**: software probe updates no longer stall typical scenes at ~6 FPS (was dominated by per-frame full-scene triangle uploads and excessive probe ray counts).
 
 ## [0.10.0] — 2026
 

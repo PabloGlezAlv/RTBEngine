@@ -4,20 +4,20 @@ Publishes the **engine SDK** (`RTBEngine_SDK`) as a zip on GitHub Releases.
 
 ## When it runs
 
-When you push a semver tag (for example `0.10.0`) to the remote. The workflow is triggered by the tag push, not by every push to `main`.
+When you push a semver tag (for example `0.11.0`) to the remote. The workflow is triggered by the tag push, not by every push to `main`.
 
 ## Create a release
 
 ```bash
 git checkout main
 git pull
-git tag 0.10.0
-git push origin 0.10.0
+git tag 0.11.0
+git push origin 0.11.0
 ```
 
 The workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) produces:
 
-- `RTBEngine_SDK-0.10.0-win-x64.zip` — headers, `RTBEngine.dll`, Release libs, runtime DLLs, and `Default/`
+- `RTBEngine_SDK-0.11.0-win-x64.zip` — headers, `RTBEngine.dll`, Release libs, runtime DLLs, and `Default/`
 
 ## Repository prerequisites
 
