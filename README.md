@@ -990,6 +990,30 @@ bool IsActive() const;
 
 An inactive `GameObject` does not receive `Update`, `FixedUpdate`, or `Render` calls. Its children are also effectively deactivated.
 
+**Static flags (render / GI / nav authoring):**
+
+```cpp
+StaticFlags GetStaticFlags() const;
+void        SetStaticFlags(StaticFlags flags);
+bool        HasStaticFlag(StaticFlags flag) const;
+void        SetStaticFlag(StaticFlags flag, bool enabled);
+bool        IsStatic() const;   // true when any flag is set
+void        SetStatic(bool enabled);  // enables/disables all flags
+```
+
+`StaticFlags` (`Engine/Scene/StaticFlags.h`) is a bitfield for optimization hints:
+
+| Flag | Purpose |
+|------|---------|
+| `Batching` | Reserved for future static mesh batching |
+| `ContributeGI` | Include in DDGI raytracing (TLAS) |
+| `Occluder` | Reserved for future occlusion culling |
+| `Navigation` | Valid geometry for nav grid bake |
+
+Serialized in scene/prefab Lua as `staticFlags = <uint>` (or legacy `isStatic = true` for all flags).
+
+> **Note:** This is separate from `RigidBodyType::Static` in physics. A wall can be `ContributeGI` without a `RigidBodyComponent`, and a physics-static crate does not automatically contribute to DDGI unless `ContributeGI` is set.
+
 **Prefab support:**
 
 ```cpp

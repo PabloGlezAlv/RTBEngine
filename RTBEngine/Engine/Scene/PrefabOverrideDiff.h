@@ -41,6 +41,10 @@ namespace RTBEngine {
                 const GameObject* gameObject,
                 const Prefab* baselineNode);
 
+            static bool IsStaticFlagsOverridden(
+                const GameObject* gameObject,
+                const Prefab* baselineNode);
+
             static bool IsSceneOnlyChild(
                 const GameObject* child,
                 const Prefab* parentBaseline);

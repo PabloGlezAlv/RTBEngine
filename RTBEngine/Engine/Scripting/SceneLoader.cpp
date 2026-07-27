@@ -70,6 +70,26 @@ namespace RTBEngine {
                 }
                 lua_pop(L, 1);
             }
+
+            void ReadStaticFlags(lua_State* L, int tableIndex, Scene::GameObject* gameObject)
+            {
+                if (!gameObject) {
+                    return;
+                }
+
+                lua_getfield(L, tableIndex, "staticFlags");
+                if (lua_isnumber(L, -1)) {
+                    gameObject->SetStaticFlags(static_cast<Scene::StaticFlags>(
+                        static_cast<std::uint32_t>(lua_tointeger(L, -1))));
+                    lua_pop(L, 1);
+                    return;
+                }
+                lua_pop(L, 1);
+
+                if (SceneParsingUtils::ReadOptionalBool(L, tableIndex, "isStatic", false)) {
+                    gameObject->SetStatic(true);
+                }
+            }
         }
 
         void SceneLoader::SetupLuaBindings(lua_State* L) {
@@ -171,6 +191,7 @@ namespace RTBEngine {
 
             ReadTransform(L, tableIndex, go);
             ReadCollisionLayer(L, tableIndex, go);
+            ReadStaticFlags(L, tableIndex, go);
 
             std::string parentName = SceneParsingUtils::ReadOptionalString(L, tableIndex, "parent", "");
             if (!parentName.empty())
@@ -224,6 +245,7 @@ namespace RTBEngine {
             go->SetActive(SceneParsingUtils::ReadOptionalBool(L, tableIndex, "active", go->IsActive()));
             ReadTransform(L, tableIndex, go);
             ReadCollisionLayer(L, tableIndex, go);
+            ReadStaticFlags(L, tableIndex, go);
 
             lua_getfield(L, tableIndex, "overrides");
             if (lua_istable(L, -1)) {

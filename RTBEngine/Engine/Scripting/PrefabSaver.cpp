@@ -50,6 +50,10 @@ namespace RTBEngine {
                         Physics::PhysicsLayerSettings::Get().GetLayerName(prefab.GetCollisionLayer()))
                     << ",\n";
             }
+            if (prefab.GetStaticFlags() != Scene::StaticFlags::None) {
+                file << ind << "    staticFlags = "
+                    << static_cast<std::uint32_t>(prefab.GetStaticFlags()) << ",\n";
+            }
             WriteTransform(file, prefab, depth + 1);
             file << ind << "    components = {\n";
 
@@ -105,6 +109,10 @@ namespace RTBEngine {
                         << ScenePropertySerializer::FormatString(
                             Physics::PhysicsLayerSettings::Get().GetLayerName(prefab.GetCollisionLayer()))
                         << ",\n";
+                }
+                if (prefab.GetStaticFlags() != Scene::StaticFlags::None) {
+                    file << "    staticFlags = "
+                        << static_cast<std::uint32_t>(prefab.GetStaticFlags()) << ",\n";
                 }
                 WriteTransform(file, prefab, 1);
                 file << "    components = {\n";

@@ -90,6 +90,7 @@ namespace RTBEngine {
 
                 gameObject->SetActive(true);
                 gameObject->SetCollisionLayer(baselineNode->GetCollisionLayer());
+                gameObject->SetStaticFlags(baselineNode->GetStaticFlags());
 
                 std::vector<Component*> componentsToRemove;
                 for (const auto& comp : gameObject->GetComponents()) {

@@ -5,6 +5,7 @@
 #include "Transform.h"
 
 #include "Component.h"
+#include "StaticFlags.h"
 
 #include "../Rendering/Camera.h"
 
@@ -167,6 +168,21 @@ namespace RTBEngine {
 
             void SetCollisionLayerByName(const std::string& layerName);
 
+            StaticFlags GetStaticFlags() const { return staticFlags; }
+
+            void SetStaticFlags(StaticFlags flags) { staticFlags = flags; }
+
+            bool HasStaticFlag(StaticFlags flag) const
+            {
+                return (staticFlags & flag) != StaticFlags::None;
+            }
+
+            void SetStaticFlag(StaticFlags flag, bool enabled);
+
+            bool IsStatic() const { return staticFlags != StaticFlags::None; }
+
+            void SetStatic(bool enabled);
+
 
 
             Math::Matrix4 GetWorldMatrix() const;
@@ -244,6 +260,8 @@ namespace RTBEngine {
             bool isAnimatorBone = false;
 
             int collisionLayer = 0;
+
+            StaticFlags staticFlags = StaticFlags::None;
 
 
 

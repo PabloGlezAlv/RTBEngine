@@ -1,6 +1,7 @@
 #pragma once
 #include "../RTBEngineAPI.h"
 #include "../Math/Math.h"
+#include "StaticFlags.h"
 #include <string>
 #include <vector>
 #include <memory>
@@ -70,6 +71,9 @@ namespace RTBEngine {
             int GetCollisionLayer() const { return collisionLayer; }
             void SetCollisionLayer(int layerIndex) { collisionLayer = layerIndex; }
 
+            StaticFlags GetStaticFlags() const { return staticFlags; }
+            void SetStaticFlags(StaticFlags flags) { staticFlags = flags; }
+
             void SetSourceUuid(const std::string& uuid) { sourceUuid = uuid; }
             const std::string& GetSourceUuid() const { return sourceUuid; }
 
@@ -101,6 +105,7 @@ namespace RTBEngine {
             Math::Quaternion rotation;
             Math::Vector3 scale = Math::Vector3(1.0f, 1.0f, 1.0f);
             int collisionLayer = 0;
+            StaticFlags staticFlags = StaticFlags::None;
             std::vector<ComponentSnapshot> componentSnapshots;
             std::vector<std::unique_ptr<Prefab>> childPrefabs;
         };

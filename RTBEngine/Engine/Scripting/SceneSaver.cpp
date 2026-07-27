@@ -178,6 +178,11 @@ namespace RTBEngine {
                             Physics::PhysicsLayerSettings::Get().GetLayerName(go->GetCollisionLayer()))
                         << ",\n";
                 }
+
+                if (go->GetStaticFlags() != Scene::StaticFlags::None) {
+                    file << ind << "    staticFlags = "
+                        << static_cast<std::uint32_t>(go->GetStaticFlags()) << ",\n";
+                }
             }
 
             const Scene::Prefab* instancePrefab = nullptr;
@@ -362,6 +367,11 @@ namespace RTBEngine {
                     << ScenePropertySerializer::FormatString(
                         Physics::PhysicsLayerSettings::Get().GetLayerName(go->GetCollisionLayer()))
                     << ",\n";
+            }
+
+            if (Scene::PrefabOverrideDiff::IsStaticFlagsOverridden(go, baselineNode)) {
+                file << ind << "    staticFlags = "
+                    << static_cast<std::uint32_t>(go->GetStaticFlags()) << ",\n";
             }
 
             file << ind << "    overrides = {\n";

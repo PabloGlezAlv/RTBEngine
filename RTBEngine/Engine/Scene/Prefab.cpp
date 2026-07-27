@@ -329,6 +329,7 @@ namespace RTBEngine {
             prefab->rotation = transform.GetRotation();
             prefab->scale = transform.GetScale();
             prefab->collisionLayer = source->GetCollisionLayer();
+            prefab->staticFlags = source->GetStaticFlags();
 
             for (const auto& comp : source->GetComponents())
             {
@@ -387,6 +388,7 @@ namespace RTBEngine {
                 go->GetTransform().SetRotation(nodePrefab.rotation);
                 go->GetTransform().SetScale(nodePrefab.scale);
                 go->SetCollisionLayer(nodePrefab.collisionLayer);
+                go->SetStaticFlags(nodePrefab.staticFlags);
 
                 std::string instanceUuid = nodePrefab.sourceUuid;
                 if (regenerateUuids || instanceUuid.empty()) {
@@ -541,6 +543,7 @@ namespace RTBEngine {
             clone->rotation = rotation;
             clone->scale = scale;
             clone->collisionLayer = collisionLayer;
+            clone->staticFlags = staticFlags;
             clone->componentSnapshots = componentSnapshots;
 
             for (const auto& child : childPrefabs) {

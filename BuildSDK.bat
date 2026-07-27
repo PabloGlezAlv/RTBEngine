@@ -1,9 +1,11 @@
 @echo off
 setlocal
 
-echo ===========================================
-echo Generating RTBEngine SDK...
-echo ===========================================
+if /I not "%~1"=="chained" (
+    echo ===========================================
+    echo Generating RTBEngine SDK...
+    echo ===========================================
+)
 
 set SOURCE_DIR=RTBEngine\Engine
 set THIRD_PARTY_DIR=RTBEngine\ThirdParty
@@ -195,4 +197,21 @@ echo.
 echo ===========================================
 echo SDK Generated at: %OUTPUT_DIR%
 echo ===========================================
-pause
+
+set PLAYER_BUILD_BAT=..\RTBEngineEditor\RTBPlayer\BuildRTBPlayer.bat
+if exist "%PLAYER_BUILD_BAT%" (
+    echo.
+    echo ===========================================
+    echo Building RTBPlayer...
+    echo ===========================================
+    call "%PLAYER_BUILD_BAT%" chained
+    if errorlevel 1 (
+        echo [ERROR] RTBPlayer build failed.
+        pause
+        exit /b 1
+    )
+) else (
+    echo [INFO] RTBPlayer build script not found, skipping player build.
+)
+
+if /I not "%~1"=="chained" pause

@@ -53,11 +53,12 @@ namespace RTBEngine {
                     return;
                 }
 
-                // Collect static mesh instances (skip skinned meshes in v1).
+                // Collect static mesh instances that contribute to GI (skip skinned meshes in v1).
                 for (Scene::MeshRenderer* renderer : scene->GetCachedMeshRenderers()) {
                     if (!renderer || !renderer->IsEnabled()) continue;
                     Scene::GameObject* owner = renderer->GetOwner();
                     if (!owner || !owner->IsActiveInHierarchy()) continue;
+                    if (!owner->HasStaticFlag(Scene::StaticFlags::ContributeGI)) continue;
 
                     Mesh* mesh = renderer->GetMesh();
                     if (!mesh || mesh->GetIndexCount() == 0) continue;

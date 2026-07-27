@@ -479,5 +479,19 @@ namespace RTBEngine {
             SetCollisionLayer(Physics::PhysicsLayerSettings::Get().GetLayerIndex(layerName));
         }
 
+        void GameObject::SetStaticFlag(StaticFlags flag, bool enabled)
+        {
+            if (enabled) {
+                staticFlags |= flag;
+            } else {
+                staticFlags &= ~flag;
+            }
+        }
+
+        void GameObject::SetStatic(bool enabled)
+        {
+            staticFlags = enabled ? StaticFlags::All : StaticFlags::None;
+        }
+
     }
 }

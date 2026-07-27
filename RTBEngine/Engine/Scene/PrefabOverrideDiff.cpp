@@ -255,6 +255,17 @@ namespace RTBEngine {
             return gameObject->GetCollisionLayer() != baselineNode->GetCollisionLayer();
         }
 
+        bool PrefabOverrideDiff::IsStaticFlagsOverridden(
+            const GameObject* gameObject,
+            const Prefab* baselineNode)
+        {
+            if (!gameObject || !baselineNode) {
+                return false;
+            }
+
+            return gameObject->GetStaticFlags() != baselineNode->GetStaticFlags();
+        }
+
         bool PrefabOverrideDiff::IsSceneOnlyChild(
             const GameObject* child,
             const Prefab* parentBaseline)
@@ -311,6 +322,7 @@ namespace RTBEngine {
             if (IsTransformOverridden(gameObject, baselineNode) ||
                 IsActiveOverridden(gameObject) ||
                 IsCollisionLayerOverridden(gameObject, baselineNode) ||
+                IsStaticFlagsOverridden(gameObject, baselineNode) ||
                 HasAnyComponentOverrides(gameObject, baselineNode)) {
                 return true;
             }
@@ -369,7 +381,9 @@ namespace RTBEngine {
                 return true;
             }
 
-            if (IsActiveOverridden(gameObject) || IsCollisionLayerOverridden(gameObject, baselineNode)) {
+            if (IsActiveOverridden(gameObject) ||
+                IsCollisionLayerOverridden(gameObject, baselineNode) ||
+                IsStaticFlagsOverridden(gameObject, baselineNode)) {
                 return true;
             }
 

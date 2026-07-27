@@ -22,6 +22,10 @@ namespace RTBEngine {
                     return true;
                 }
 
+                if (hit.gameObject->HasStaticFlag(Scene::StaticFlags::Navigation)) {
+                    return true;
+                }
+
                 if (auto* rigidBody = hit.gameObject->GetComponent<Scene::RigidBodyComponent>()) {
                     if (rigidBody->GetRigidBody()) {
                         return rigidBody->GetRigidBody()->GetType() == Physics::RigidBodyType::Static;

@@ -149,6 +149,24 @@ namespace RTBEngine {
             lua_pop(L, 1);
         }
 
+        static void LoadStaticFlags(lua_State* L, int nodeTableIndex, Scene::Prefab& prefab)
+        {
+            lua_getfield(L, nodeTableIndex, "staticFlags");
+            if (lua_isnumber(L, -1)) {
+                prefab.SetStaticFlags(static_cast<Scene::StaticFlags>(
+                    static_cast<std::uint32_t>(lua_tointeger(L, -1))));
+                lua_pop(L, 1);
+                return;
+            }
+            lua_pop(L, 1);
+
+            lua_getfield(L, nodeTableIndex, "isStatic");
+            if (lua_isboolean(L, -1) && lua_toboolean(L, -1)) {
+                prefab.SetStaticFlags(Scene::StaticFlags::All);
+            }
+            lua_pop(L, 1);
+        }
+
         static void LoadTransform(lua_State* L, int nodeTableIndex, Scene::Prefab& prefab)
         {
             lua_getfield(L, nodeTableIndex, "position");
@@ -189,6 +207,7 @@ namespace RTBEngine {
 
             LoadTransform(L, nodeTableIndex, *prefab);
             LoadCollisionLayer(L, nodeTableIndex, *prefab);
+            LoadStaticFlags(L, nodeTableIndex, *prefab);
             LoadComponents(L, nodeTableIndex, *prefab);
 
             // Recursively load children if present
