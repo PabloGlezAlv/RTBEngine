@@ -8,6 +8,8 @@
 #include "../../Lighting/LightingUBO.h"
 #include "../../../Scene/Scene.h"
 #include "../../../Scene/MeshRenderer.h"
+#include "../../../Scene/StaticFlagsUtil.h"
+#include "../../../Scene/GameObject.h"
 #include <shaderc/shaderc.h>
 #include <array>
 #include <fstream>
@@ -363,9 +365,10 @@ namespace RTBEngine {
 
                 std::vector<GI::RayTracingMeshInstance> instances;
                 for (Scene::MeshRenderer* renderer : scene->GetCachedMeshRenderers()) {
-                    if (!renderer || !renderer->IsEnabled()) continue;
+                    if (!Scene::RendererContributesGI(renderer)) continue;
+
                     Scene::GameObject* owner = renderer->GetOwner();
-                    if (!owner || !owner->IsActiveInHierarchy()) continue;
+                    if (!owner) continue;
 
                     const auto addMeshInstance = [&](Mesh* mesh) {
                         if (!mesh || mesh->GetCpuIndices().empty()) return;

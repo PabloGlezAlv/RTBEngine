@@ -229,6 +229,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Rendering\ModelLoader.cpp" />
     <ClCompile Include="Engine\Rendering\FbxBinding.cpp" />
     <ClCompile Include="Engine\Scene\GameObject.cpp" />
+    <ClCompile Include="Engine\Scene\StaticFlagsUtil.cpp" />
     <ClCompile Include="Engine\Scene\MeshRenderer.cpp" />
     <ClCompile Include="Engine\Scene\Occludable.cpp" />
     <ClCompile Include="Engine\Scene\OcclusionTarget.cpp" />
@@ -443,6 +444,8 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Rendering\ModelLoader.h" />
     <ClInclude Include="Engine\Rendering\FbxBinding.h" />
     <ClInclude Include="Engine\Scene\GameObject.h" />
+    <ClInclude Include="Engine\Scene\StaticFlags.h" />
+    <ClInclude Include="Engine\Scene\StaticFlagsUtil.h" />
     <ClInclude Include="Engine\Scene\MeshRenderer.h" />
     <ClInclude Include="Engine\Scene\Occludable.h" />
     <ClInclude Include="Engine\Scene\OcclusionTarget.h" />

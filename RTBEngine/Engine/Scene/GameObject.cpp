@@ -488,6 +488,24 @@ namespace RTBEngine {
             }
         }
 
+        bool GameObject::HasStaticFlag(StaticFlags flag) const
+        {
+            if ((staticFlags & flag) != StaticFlags::None) {
+                return true;
+            }
+
+            return parent && parent->HasStaticFlag(flag);
+        }
+
+        bool GameObject::IsStatic() const
+        {
+            if (staticFlags != StaticFlags::None) {
+                return true;
+            }
+
+            return parent && parent->IsStatic();
+        }
+
         void GameObject::SetStatic(bool enabled)
         {
             staticFlags = enabled ? StaticFlags::All : StaticFlags::None;

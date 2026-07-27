@@ -3,6 +3,7 @@
 #include "Scene.h"
 #include "Occludable.h"
 #include "OcclusionTarget.h"
+#include "StaticFlagsUtil.h"
 #include "MeshRenderer.h"
 #include "GameObject.h"
 #include "../Rendering/Camera.h"
@@ -61,6 +62,53 @@ namespace {
         }
 
         return tMax >= 0.0f && tMin <= maxDistance;
+    }
+
+    bool IsMeshRendererBlockingView(
+        RTBEngine::Scene::MeshRenderer* renderer,
+        float boundsPadding,
+        const RTBEngine::Math::Vector3& cameraPosition,
+        const RTBEngine::Math::Vector3& focusPosition)
+    {
+        if (!renderer || !renderer->IsEnabled()) {
+            return false;
+        }
+
+        RTBEngine::Scene::GameObject* owner = renderer->GetOwner();
+        if (!owner || !owner->IsActiveInHierarchy()) {
+            return false;
+        }
+
+        RTBEngine::Math::Vector3 localMin;
+        RTBEngine::Math::Vector3 localMax;
+        renderer->GetCombinedAABB(localMin, localMax);
+
+        RTBEngine::Math::Vector3 worldMin;
+        RTBEngine::Math::Vector3 worldMax;
+        RTBEngine::Rendering::Frustum::TransformAABB(
+            owner->GetWorldMatrix(),
+            localMin,
+            localMax,
+            worldMin,
+            worldMax);
+
+        if (boundsPadding > 0.0f) {
+            const RTBEngine::Math::Vector3 paddingVector(boundsPadding, boundsPadding, boundsPadding);
+            worldMin = worldMin - paddingVector;
+            worldMax = worldMax + paddingVector;
+        }
+
+        const float focusDistance = (focusPosition - cameraPosition).Length();
+        if (focusDistance <= kSegmentEpsilon) {
+            return false;
+        }
+
+        return SegmentIntersectsAabbBeforeDistance(
+            cameraPosition,
+            focusPosition,
+            worldMin,
+            worldMax,
+            focusDistance);
     }
 
     bool IsOccluderBlockingView(
@@ -162,6 +210,15 @@ namespace RTBEngine {
                     const float nextAlpha = Math::Lerp(occludable->GetCurrentFadeAlpha(), targetOpaqueAlpha, step);
                     ApplyFadeAlpha(occludable, nextAlpha);
                 }
+
+                for (MeshRenderer* renderer : scene->GetCachedMeshRenderers()) {
+                    if (!RendererIsStaticOccluder(renderer)) {
+                        continue;
+                    }
+
+                    const float nextAlpha = Math::Lerp(renderer->GetOcclusionFadeAlpha(), targetOpaqueAlpha, step);
+                    renderer->SetOcclusionFadeAlpha(nextAlpha);
+                }
                 return;
             }
 
@@ -190,6 +247,32 @@ namespace RTBEngine {
                 const float nextAlpha = Math::Lerp(occludable->GetCurrentFadeAlpha(), targetAlpha, step);
                 ApplyFadeAlpha(occludable, nextAlpha);
             }
+
+            for (MeshRenderer* renderer : scene->GetCachedMeshRenderers()) {
+                if (!RendererIsStaticOccluder(renderer)) {
+                    continue;
+                }
+
+                bool blocksAnyTarget = false;
+                for (OcclusionTarget* target : targets) {
+                    if (!target || !target->IsActiveTarget()) {
+                        continue;
+                    }
+
+                    if (IsMeshRendererBlockingView(
+                            renderer,
+                            settings.boundsPadding,
+                            cameraPosition,
+                            target->GetFocusPosition())) {
+                        blocksAnyTarget = true;
+                        break;
+                    }
+                }
+
+                const float targetAlpha = blocksAnyTarget ? targetOccludedAlpha : targetOpaqueAlpha;
+                const float nextAlpha = Math::Lerp(renderer->GetOcclusionFadeAlpha(), targetAlpha, step);
+                renderer->SetOcclusionFadeAlpha(nextAlpha);
+            }
         }
 
         void OcclusionFadeSystem::Reset(Scene* scene)
@@ -200,6 +283,14 @@ namespace RTBEngine {
 
             for (Occludable* occludable : scene->GetCachedOccludables()) {
                 ApplyFadeAlpha(occludable, 1.0f);
+            }
+
+            for (MeshRenderer* renderer : scene->GetCachedMeshRenderers()) {
+                if (!RendererIsStaticOccluder(renderer)) {
+                    continue;
+                }
+
+                renderer->SetOcclusionFadeAlpha(1.0f);
             }
         }
 

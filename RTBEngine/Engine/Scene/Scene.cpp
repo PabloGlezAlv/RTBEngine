@@ -7,6 +7,7 @@
 
 #include "GameObject.h"
 #include "MeshRenderer.h"
+#include "StaticFlagsUtil.h"
 #include "../Animation/Animator.h"
 #include "CameraComponent.h"
 #include "LightComponent.h"
@@ -237,6 +238,12 @@ namespace {
 
 	bool OpaqueMeshDrawLess(const OpaqueMeshDraw& a, const OpaqueMeshDraw& b)
 	{
+		const bool aStaticBatch = RendererUsesStaticBatching(a.renderer);
+		const bool bStaticBatch = RendererUsesStaticBatching(b.renderer);
+		if (aStaticBatch != bStaticBatch) {
+			return aStaticBatch > bStaticBatch;
+		}
+
 		const RTBEngine::Rendering::Material* aMaterial = a.material;
 		const RTBEngine::Rendering::Material* bMaterial = b.material;
 		const RTBEngine::Rendering::Shader* aShader = aMaterial ? aMaterial->GetShader() : nullptr;

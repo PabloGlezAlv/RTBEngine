@@ -149,6 +149,7 @@ function CreateScene()
             -- Floor
             {
                 name = "Floor",
+                staticFlags = 15,
                 position = Vector3(0.0, -0.05, 0.0),
                 scale = Vector3(10.0, 0.1, 10.0),
                 components = {
@@ -162,6 +163,7 @@ function CreateScene()
             -- Static Cube (shadow caster)
             {
                 name = "Cube",
+                staticFlags = 15,
                 position = Vector3(2.0, 1.0, 0.0),
                 scale = Vector3(1.0, 1.0, 1.0),
                 components = {

@@ -54,5 +54,8 @@ namespace RTBEngine {
             return flags != StaticFlags::None;
         }
 
+        inline constexpr std::uint32_t kStaticFlagsAll =
+            static_cast<std::uint32_t>(StaticFlags::All);
+
     }
 }

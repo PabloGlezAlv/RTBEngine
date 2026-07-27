@@ -1010,7 +1010,9 @@ void        SetStatic(bool enabled);  // enables/disables all flags
 | `Occluder` | Reserved for future occlusion culling |
 | `Navigation` | Valid geometry for nav grid bake |
 
-Serialized in scene/prefab Lua as `staticFlags = <uint>` (or legacy `isStatic = true` for all flags).
+Serialized in scene/prefab Lua as `staticFlags = <uint>` (or legacy `isStatic = true` for all flags). Child objects inherit effective flags from their parents when queried via `HasStaticFlag` / `IsStatic`.
+
+Objects with a `MeshRenderer` and `RigidBodyComponent.bodyType = Static` automatically receive all static flags at load time when no explicit flags are set.
 
 > **Note:** This is separate from `RigidBodyType::Static` in physics. A wall can be `ContributeGI` without a `RigidBodyComponent`, and a physics-static crate does not automatically contribute to DDGI unless `ContributeGI` is set.
 

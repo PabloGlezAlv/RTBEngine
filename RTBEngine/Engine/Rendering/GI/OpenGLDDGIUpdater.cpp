@@ -7,6 +7,7 @@
 #include "../../Core/Logger.h"
 #include "../../Scene/Scene.h"
 #include "../../Scene/MeshRenderer.h"
+#include "../../Scene/StaticFlagsUtil.h"
 #include "../../Scene/GameObject.h"
 #include "../../Animation/Animator.h"
 #include "../../Math/Vectors/Vector4.h"
@@ -161,14 +162,11 @@ namespace RTBEngine {
                 std::uint64_t signature = 0;
                 if (scene) {
                     for (Scene::MeshRenderer* renderer : scene->GetCachedMeshRenderers()) {
-                        if (!renderer || !renderer->IsEnabled()) continue;
-                        Scene::GameObject* owner = renderer->GetOwner();
-                        if (!owner || !owner->IsActiveInHierarchy()) continue;
-
-                        Animation::Animator* animator = renderer->GetActiveAnimator();
-                        if (animator && animator->ShouldSkinMesh()) continue;
+                        if (!Scene::RendererContributesGI(renderer)) continue;
 
                         HashMix(signature, reinterpret_cast<std::uintptr_t>(renderer));
+                        Scene::GameObject* owner = renderer->GetOwner();
+                        if (!owner) continue;
                         const Math::Matrix4& world = owner->GetWorldMatrix();
                         for (int i = 0; i < 16; ++i) {
                             HashMix(signature, HashFloatBits(world.m[i]));
@@ -203,12 +201,10 @@ namespace RTBEngine {
 
                 int triCount = 0;
                 for (Scene::MeshRenderer* renderer : scene->GetCachedMeshRenderers()) {
-                    if (!renderer || !renderer->IsEnabled()) continue;
-                    Scene::GameObject* owner = renderer->GetOwner();
-                    if (!owner || !owner->IsActiveInHierarchy()) continue;
+                    if (!Scene::RendererContributesGI(renderer)) continue;
 
-                    Animation::Animator* animator = renderer->GetActiveAnimator();
-                    if (animator && animator->ShouldSkinMesh()) continue;
+                    Scene::GameObject* owner = renderer->GetOwner();
+                    if (!owner) continue;
 
                     const auto appendMesh = [&](Mesh* mesh) {
                         if (!mesh || triCount >= kMaxSoftwareTriangles) return;

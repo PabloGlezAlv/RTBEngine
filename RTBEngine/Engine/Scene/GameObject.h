@@ -172,14 +172,11 @@ namespace RTBEngine {
 
             void SetStaticFlags(StaticFlags flags) { staticFlags = flags; }
 
-            bool HasStaticFlag(StaticFlags flag) const
-            {
-                return (staticFlags & flag) != StaticFlags::None;
-            }
+            bool HasStaticFlag(StaticFlags flag) const;
 
             void SetStaticFlag(StaticFlags flag, bool enabled);
 
-            bool IsStatic() const { return staticFlags != StaticFlags::None; }
+            bool IsStatic() const;
 
             void SetStatic(bool enabled);
 

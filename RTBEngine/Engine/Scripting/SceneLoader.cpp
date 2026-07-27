@@ -90,6 +90,46 @@ namespace RTBEngine {
                     gameObject->SetStatic(true);
                 }
             }
+
+            void ApplyInferredStaticFlags(Scene::GameObject* gameObject)
+            {
+                if (!gameObject || gameObject->GetStaticFlags() != Scene::StaticFlags::None) {
+                    return;
+                }
+
+                if (!gameObject->GetComponent<Scene::MeshRenderer>()) {
+                    return;
+                }
+
+                if (auto* rigidBody = gameObject->GetComponent<Scene::RigidBodyComponent>()) {
+                    if (rigidBody->bodyType == Physics::RigidBodyType::Static) {
+                        gameObject->SetStaticFlags(Scene::StaticFlags::All);
+                    }
+                }
+            }
+
+            void FinalizeStaticFlagsRecursive(Scene::GameObject* gameObject)
+            {
+                if (!gameObject) {
+                    return;
+                }
+
+                ApplyInferredStaticFlags(gameObject);
+                for (std::size_t i = 0, count = gameObject->GetChildCount(); i < count; ++i) {
+                    FinalizeStaticFlagsRecursive(gameObject->GetChildAt(i));
+                }
+            }
+
+            void FinalizeStaticFlagsForScene(Scene::Scene* scene)
+            {
+                if (!scene) {
+                    return;
+                }
+
+                for (const auto& gameObject : scene->GetGameObjects()) {
+                    FinalizeStaticFlagsRecursive(gameObject.get());
+                }
+            }
         }
 
         void SceneLoader::SetupLuaBindings(lua_State* L) {
@@ -157,6 +197,7 @@ namespace RTBEngine {
             lua_pop(L, 1);
 
             ResolveParenting(scene, parentingRequests);
+            FinalizeStaticFlagsForScene(scene);
             Scene::NavGridComponent::FinalizeImportsForScene(scene);
             ResolveUUIDRefs(scene, uuidRefRequests);
 
@@ -203,6 +244,8 @@ namespace RTBEngine {
             lua_pop(L, 1);
 
             ProcessChildren(L, tableIndex, scene, go, parentingRequests, uuidRefRequests);
+
+            ApplyInferredStaticFlags(go);
 
             return go;
         }
@@ -265,6 +308,7 @@ namespace RTBEngine {
             lua_pop(L, 1);
 
             MergeSceneChildren(L, tableIndex, scene, go, parentingRequests, uuidRefRequests);
+            ApplyInferredStaticFlags(go);
         }
 
         void SceneLoader::MergeSceneChildren(lua_State* L, int tableIndex, Scene::Scene* scene,
