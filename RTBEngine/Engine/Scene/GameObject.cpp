@@ -508,7 +508,11 @@ namespace RTBEngine {
 
         void GameObject::SetStatic(bool enabled)
         {
-            staticFlags = enabled ? StaticFlags::All : StaticFlags::None;
+            // Do not include Occluder by default: that flag used to drive camera-fade on every
+            // static mesh and made locomotion look broken. Use Occludable for fade instead.
+            constexpr StaticFlags kDefaultStaticFlags =
+                StaticFlags::Batching | StaticFlags::ContributeGI | StaticFlags::Navigation;
+            staticFlags = enabled ? kDefaultStaticFlags : StaticFlags::None;
         }
 
     }

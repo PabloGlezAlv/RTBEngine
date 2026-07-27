@@ -2126,19 +2126,24 @@ namespace RTBEngine {
                     return;
                 }
                 // Offscreen targets can be rebuilt (editor viewport resize) while a prior
-                // frame's command buffer still references them â€” drain the GPU first.
-                if (device != VK_NULL_HANDLE) {
+                // frame's command buffer still references them — drain the GPU first.
+                // Skip Vulkan calls if the device is already torn down (static/atexit path).
+                if (device != VK_NULL_HANDLE && initialized) {
                     vkDeviceWaitIdle(device);
+                    // Pipelines bind a specific VkRenderPass; drop any that targeted this FBO
+                    // before destroying the pass, otherwise Present() reuses a dead pipeline.
+                    InvalidatePipelinesForFramebuffer(framebufferId);
+                    if (fb.framebuffer) {
+                        vkDestroyFramebuffer(device, fb.framebuffer, nullptr);
+                        fb.framebuffer = VK_NULL_HANDLE;
+                    }
+                    if (fb.renderPass) {
+                        vkDestroyRenderPass(device, fb.renderPass, nullptr);
+                        fb.renderPass = VK_NULL_HANDLE;
+                    }
                 }
-                // Pipelines bind a specific VkRenderPass; drop any that targeted this FBO
-                // before destroying the pass, otherwise Present() reuses a dead pipeline.
-                InvalidatePipelinesForFramebuffer(framebufferId);
-                if (fb.framebuffer) {
-                    vkDestroyFramebuffer(device, fb.framebuffer, nullptr);
+                else {
                     fb.framebuffer = VK_NULL_HANDLE;
-                }
-                if (fb.renderPass) {
-                    vkDestroyRenderPass(device, fb.renderPass, nullptr);
                     fb.renderPass = VK_NULL_HANDLE;
                 }
                 fb.complete = false;

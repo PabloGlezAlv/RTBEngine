@@ -7,6 +7,7 @@
 #include "../Rendering/RHI/RenderDeviceFactory.h"
 #include "../Rendering/RHI/GraphicsAPI.h"
 #include "../Rendering/Rendering.h"
+#include "../Rendering/Texture.h"
 #include "../Scene/Scene.h"
 #include "../Scene/GameObject.h"
 #include "../Scene/LightComponent.h"
@@ -215,6 +216,7 @@ bool RTBEngine::Core::Application::Initialize()
 			return false;
 		}
 		Rendering::RHI::RenderDevice::Set(std::move(device));
+		Rendering::Texture::SetGpuDestroyEnabled(true);
 		RTB_INFO(std::string("RenderDevice ready: ")
 			+ Rendering::RHI::GraphicsAPIToString(Rendering::RHI::RenderDevice::Get().GetAPI()));
 		Rendering::GI::DDGISystem::GetInstance().Initialize();
@@ -485,6 +487,9 @@ void RTBEngine::Core::Application::Shutdown()
 
 	Rendering::GI::DDGISystem::GetInstance().Shutdown();
 	Rendering::VolumetricFogPass::GetInstance().Shutdown();
+	// Scene is already unloaded; prevent any late Texture dtors (static teardown) from
+	// touching Vulkan after the device/layers are destroyed.
+	Rendering::Texture::SetGpuDestroyEnabled(false);
 	Rendering::RHI::RenderDevice::Shutdown();
 	window.reset();
 }

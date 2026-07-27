@@ -64,53 +64,6 @@ namespace {
         return tMax >= 0.0f && tMin <= maxDistance;
     }
 
-    bool IsMeshRendererBlockingView(
-        RTBEngine::Scene::MeshRenderer* renderer,
-        float boundsPadding,
-        const RTBEngine::Math::Vector3& cameraPosition,
-        const RTBEngine::Math::Vector3& focusPosition)
-    {
-        if (!renderer || !renderer->IsEnabled()) {
-            return false;
-        }
-
-        RTBEngine::Scene::GameObject* owner = renderer->GetOwner();
-        if (!owner || !owner->IsActiveInHierarchy()) {
-            return false;
-        }
-
-        RTBEngine::Math::Vector3 localMin;
-        RTBEngine::Math::Vector3 localMax;
-        renderer->GetCombinedAABB(localMin, localMax);
-
-        RTBEngine::Math::Vector3 worldMin;
-        RTBEngine::Math::Vector3 worldMax;
-        RTBEngine::Rendering::Frustum::TransformAABB(
-            owner->GetWorldMatrix(),
-            localMin,
-            localMax,
-            worldMin,
-            worldMax);
-
-        if (boundsPadding > 0.0f) {
-            const RTBEngine::Math::Vector3 paddingVector(boundsPadding, boundsPadding, boundsPadding);
-            worldMin = worldMin - paddingVector;
-            worldMax = worldMax + paddingVector;
-        }
-
-        const float focusDistance = (focusPosition - cameraPosition).Length();
-        if (focusDistance <= kSegmentEpsilon) {
-            return false;
-        }
-
-        return SegmentIntersectsAabbBeforeDistance(
-            cameraPosition,
-            focusPosition,
-            worldMin,
-            worldMax,
-            focusDistance);
-    }
-
     bool IsOccluderBlockingView(
         RTBEngine::Scene::Occludable* occludable,
         const RTBEngine::Math::Vector3& cameraPosition,
@@ -211,13 +164,17 @@ namespace RTBEngine {
                     ApplyFadeAlpha(occludable, nextAlpha);
                 }
 
+                // StaticFlags::Occluder is for culling, not camera-fade. Heal leftover alphas.
                 for (MeshRenderer* renderer : scene->GetCachedMeshRenderers()) {
                     if (!RendererIsStaticOccluder(renderer)) {
                         continue;
                     }
-
-                    const float nextAlpha = Math::Lerp(renderer->GetOcclusionFadeAlpha(), targetOpaqueAlpha, step);
-                    renderer->SetOcclusionFadeAlpha(nextAlpha);
+                    if (renderer->GetOwner() && renderer->GetOwner()->GetComponent<Occludable>()) {
+                        continue;
+                    }
+                    if (renderer->GetOcclusionFadeAlpha() < kAlphaOpaqueThreshold) {
+                        renderer->SetOcclusionFadeAlpha(1.0f);
+                    }
                 }
                 return;
             }
@@ -248,30 +205,18 @@ namespace RTBEngine {
                 ApplyFadeAlpha(occludable, nextAlpha);
             }
 
+            // Do not fade every mesh with StaticFlags::Occluder — that made movement look "wrong"
+            // (walls/floors going transparent). Only Occludable components drive camera fade.
             for (MeshRenderer* renderer : scene->GetCachedMeshRenderers()) {
                 if (!RendererIsStaticOccluder(renderer)) {
                     continue;
                 }
-
-                bool blocksAnyTarget = false;
-                for (OcclusionTarget* target : targets) {
-                    if (!target || !target->IsActiveTarget()) {
-                        continue;
-                    }
-
-                    if (IsMeshRendererBlockingView(
-                            renderer,
-                            settings.boundsPadding,
-                            cameraPosition,
-                            target->GetFocusPosition())) {
-                        blocksAnyTarget = true;
-                        break;
-                    }
+                if (renderer->GetOwner() && renderer->GetOwner()->GetComponent<Occludable>()) {
+                    continue;
                 }
-
-                const float targetAlpha = blocksAnyTarget ? targetOccludedAlpha : targetOpaqueAlpha;
-                const float nextAlpha = Math::Lerp(renderer->GetOcclusionFadeAlpha(), targetAlpha, step);
-                renderer->SetOcclusionFadeAlpha(nextAlpha);
+                if (renderer->GetOcclusionFadeAlpha() < kAlphaOpaqueThreshold) {
+                    renderer->SetOcclusionFadeAlpha(1.0f);
+                }
             }
         }
 

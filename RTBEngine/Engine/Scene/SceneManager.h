@@ -69,6 +69,7 @@ namespace RTBEngine {
             bool sceneDirty = false;
             bool hasPendingSceneLoad = false;
             bool isSceneTransitioning = false;
+            bool hasCompletedShutdown = false;
             int sceneUnloadDepth = 0;
 
             std::function<void(Scene*)> onSceneLoaded;

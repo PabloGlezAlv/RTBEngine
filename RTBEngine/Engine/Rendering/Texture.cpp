@@ -3,6 +3,8 @@
 #include "../../ThirdParty/stb/stb_image.h"
 #include "../Core/Logger.h"
 
+#include <atomic>
+
 namespace RTBEngine {
     namespace Rendering {
 
@@ -11,14 +13,26 @@ namespace RTBEngine {
             {
                 return RHI::RenderDevice::Get();
             }
+
+            std::atomic<bool> g_textureGpuDestroyEnabled{ true };
         }
 
         Texture::Texture() = default;
 
+        void Texture::SetGpuDestroyEnabled(bool enabled)
+        {
+            g_textureGpuDestroyEnabled.store(enabled, std::memory_order_release);
+        }
+
+        bool Texture::IsGpuDestroyEnabled()
+        {
+            return g_textureGpuDestroyEnabled.load(std::memory_order_acquire);
+        }
+
         Texture::~Texture()
         {
             if (textureID != RHI::kInvalidGpuId) {
-                if (RHI::RenderDevice::HasDevice()) {
+                if (IsGpuDestroyEnabled() && RHI::RenderDevice::HasDevice()) {
                     Device().DestroyTexture(textureID);
                 }
                 textureID = RHI::kInvalidGpuId;

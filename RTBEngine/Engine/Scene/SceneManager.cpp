@@ -2,6 +2,7 @@
 
 #include "../Core/Logger.h"
 #include "../Rendering/RHI/RenderDevice.h"
+#include "../Rendering/Texture.h"
 #include "../Scripting/SceneLoader.h"
 #include "GameObject.h"
 #include "ObjectPool.h"
@@ -99,6 +100,12 @@ namespace RTBEngine {
         SceneManager::SceneManager() = default;
 
         SceneManager::~SceneManager() {
+            // If Application::Shutdown already ran, the scene is empty and this is a no-op.
+            // On hard abort / CRT teardown the Vulkan validation layers may already be gone
+            // while RenderDevice still exists — skip GPU destroys to avoid aborting again.
+            if (!hasCompletedShutdown && activeScene) {
+                Rendering::Texture::SetGpuDestroyEnabled(false);
+            }
             Shutdown();
         }
 
@@ -117,11 +124,16 @@ namespace RTBEngine {
         }
 
         void SceneManager::Shutdown() {
+            if (hasCompletedShutdown && !activeScene) {
+                return;
+            }
+
             UnloadCurrentScene();
             onSceneLoaded = nullptr;
             onSceneUnloading = nullptr;
             onHierarchyAdded = nullptr;
             onHierarchyDeactivated = nullptr;
+            hasCompletedShutdown = true;
         }
 
         bool SceneManager::LoadScene(const std::string& path) {
@@ -145,6 +157,7 @@ namespace RTBEngine {
 
             activeScenePath.clear();
             sceneDirty = false;
+            hasCompletedShutdown = false;
 
             Scene* newScene = Scripting::SceneLoader::LoadScene(path);
             if (!newScene) {

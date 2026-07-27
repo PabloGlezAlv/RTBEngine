@@ -162,7 +162,11 @@ namespace RTBEngine {
 
             lua_getfield(L, nodeTableIndex, "isStatic");
             if (lua_isboolean(L, -1) && lua_toboolean(L, -1)) {
-                prefab.SetStaticFlags(Scene::StaticFlags::All);
+                constexpr Scene::StaticFlags kDefaultStaticFlags =
+                    Scene::StaticFlags::Batching |
+                    Scene::StaticFlags::ContributeGI |
+                    Scene::StaticFlags::Navigation;
+                prefab.SetStaticFlags(kDefaultStaticFlags);
             }
             lua_pop(L, 1);
         }

@@ -103,7 +103,11 @@ namespace RTBEngine {
 
                 if (auto* rigidBody = gameObject->GetComponent<Scene::RigidBodyComponent>()) {
                     if (rigidBody->bodyType == Physics::RigidBodyType::Static) {
-                        gameObject->SetStaticFlags(Scene::StaticFlags::All);
+                        constexpr Scene::StaticFlags kInferredStaticFlags =
+                            Scene::StaticFlags::Batching |
+                            Scene::StaticFlags::ContributeGI |
+                            Scene::StaticFlags::Navigation;
+                        gameObject->SetStaticFlags(kInferredStaticFlags);
                     }
                 }
             }
@@ -354,6 +358,11 @@ namespace RTBEngine {
                 }
 
                 if (existing) {
+                    // Scene instances of prefabs often remap child UUIDs while matching by name.
+                    // Apply the scene UUID so overrides like cameraObject="875ACC83-..." resolve.
+                    if (!childUuid.empty() && existing->GetUUID() != childUuid) {
+                        existing->SetUUID(childUuid);
+                    }
                     ApplySceneGameObjectFromTable(L, childTableIndex, scene, existing, parentingRequests, uuidRefRequests);
                 } else {
                     Scene::GameObject* child = ProcessGameObject(L, childTableIndex, scene, parentingRequests, uuidRefRequests);

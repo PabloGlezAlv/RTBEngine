@@ -36,6 +36,11 @@ namespace RTBEngine {
             bool CreateDepthTexture(int width, int height);
             void SetDepthTextureParams();
 
+            // When false, ~Texture will not call into the GPU device (used during
+            // process/static teardown after Vulkan validation layers may already be gone).
+            static void SetGpuDestroyEnabled(bool enabled);
+            static bool IsGpuDestroyEnabled();
+
             void Bind(unsigned int slot = 0) const;
             void Unbind() const;
 
