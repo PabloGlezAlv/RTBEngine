@@ -152,6 +152,8 @@ namespace {
             : btCollisionWorld::ClosestConvexResultCallback(convexFromWorld, convexToWorld)
             , options(options)
         {
+            m_collisionFilterGroup = 1;
+            m_collisionFilterMask = static_cast<int>(options.layerMask);
         }
 
         btScalar addSingleResult(btCollisionWorld::LocalConvexResult& convexResult,

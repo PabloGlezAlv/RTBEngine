@@ -36,6 +36,7 @@ namespace RTBEngine {
             const Scene::GameObject* ignoredObject = nullptr;
             bool ignoreIgnoredObjectHierarchy = true;
             bool ignoreTriggers = false;
+            std::uint32_t layerMask = 0xFFFFFFFFu;
         };
 
         struct RTB_API PhysicsDebugQueryEntry {

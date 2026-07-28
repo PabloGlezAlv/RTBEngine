@@ -62,6 +62,7 @@ public:                                                                         
     virtual const RTBEngine::Reflection::TypeInfo* GetTypeInfo() const override {       \
         return RTBEngine::Reflection::TypeRegistry::GetInstance().GetTypeInfo(#ClassName); \
     }                                                                                   \
+    friend struct ClassName##_TypeRegistrar;                                            \
 private:
 #else
 #define RTB_COMPONENT(ClassName)                                                        \
@@ -86,6 +87,7 @@ public:                                                                         
         }                                                                               \
         return info;                                                                    \
     }                                                                                   \
+    friend struct ClassName##_TypeRegistrar;                                            \
 private:
 #endif
 
@@ -219,6 +221,13 @@ private:
                     RTBEngine::Reflection::PropertyFlags::None,                         \
                     static_cast<float>(Min), static_cast<float>(Max), 1, nullptr, nullptr, 0 \
                 );
+#define RTB_PROPERTY_SERIALIZED_RANGE(PropName, Min, Max)                               \
+                RTB__BRIDGE_PROP(                                                       \
+                    #PropName, RTB__AUTO_TYPE(PropName),                                \
+                    RTB_MEMBER_OFFSET(PropName), RTB__AUTO_SIZE(PropName),               \
+                    RTBEngine::Reflection::PropertyFlags::Serialize,                     \
+                    static_cast<float>(Min), static_cast<float>(Max), 1, nullptr, nullptr, 0 \
+                );
 #else
 #define RTB_PROPERTY_RANGE(PropName, Min, Max)                                          \
                 info.AddPropertyPODRange(                                               \
@@ -231,6 +240,19 @@ private:
                     #PropName, RTB__AUTO_TYPE(PropName),                                \
                     RTB_MEMBER_OFFSET(PropName), RTB__AUTO_SIZE(PropName),               \
                     RTBEngine::Reflection::PropertyFlags::None,                         \
+                    static_cast<float>(Min), static_cast<float>(Max), 1, nullptr, nullptr, 0 \
+                );
+#define RTB_PROPERTY_SERIALIZED_RANGE(PropName, Min, Max)                               \
+                info.AddPropertyPODRange(                                               \
+                    #PropName, RTB__AUTO_TYPE(PropName),                                \
+                    RTB_MEMBER_OFFSET(PropName), RTB__AUTO_SIZE(PropName),               \
+                    RTBEngine::Reflection::PropertyFlags::Serialize,                     \
+                    static_cast<float>(Min), static_cast<float>(Max)                     \
+                );                                                                      \
+                RTB__BRIDGE_PROP(                                                       \
+                    #PropName, RTB__AUTO_TYPE(PropName),                                \
+                    RTB_MEMBER_OFFSET(PropName), RTB__AUTO_SIZE(PropName),               \
+                    RTBEngine::Reflection::PropertyFlags::Serialize,                     \
                     static_cast<float>(Min), static_cast<float>(Max), 1, nullptr, nullptr, 0 \
                 );
 #endif
