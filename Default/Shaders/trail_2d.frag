@@ -5,7 +5,7 @@ in vec2 vUV;
 in float vSide;
 
 uniform float uSoftEdge;
-uniform bool uHasTexture;
+uniform int uHasTexture;
 uniform sampler2D uDiffuse;
 
 out vec4 FragColor;
@@ -19,7 +19,7 @@ void main()
     }
 
     vec4 texColor = vec4(1.0);
-    if (uHasTexture) {
+    if (uHasTexture != 0) {
         texColor = texture(uDiffuse, vUV);
     }
 

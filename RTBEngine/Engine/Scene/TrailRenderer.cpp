@@ -1,9 +1,9 @@
 #include "TrailRenderer.h"
 
 #include "GameObject.h"
+#include "../Core/Logger.h"
 #include "../Core/ResourceManager.h"
 #include "../Core/Time.h"
-#include "../Math/Vectors/Vector2.h"
 #include "../Rendering/Camera.h"
 #include "../Rendering/CameraUBO.h"
 #include "../Rendering/Shader.h"
@@ -21,11 +21,29 @@ namespace RTBEngine {
             constexpr float kSegmentEpsilon = 0.000001f;
 
             struct TrailVertex {
-                Math::Vector3 position;
-                Math::Vector4 color;
-                Math::Vector2 uv;
-                float side = 0.0f;
+                float position[3];
+                float color[4];
+                float uv[2];
+                float side;
             };
+
+            void WritePosition(TrailVertex& vertex, const Math::Vector3& position)
+            {
+                vertex.position[0] = position.x;
+                vertex.position[1] = position.y;
+                vertex.position[2] = position.z;
+            }
+
+            void WriteColor(TrailVertex& vertex, const Math::Vector4& color)
+            {
+                vertex.color[0] = color.x;
+                vertex.color[1] = color.y;
+                vertex.color[2] = color.z;
+                vertex.color[3] = color.w;
+            }
+
+            constexpr int kTrailVertexFormatVersion = 2;
+            int g_loadedTrailVertexFormatVersion = 0;
         }
 
         using ThisClass = TrailRenderer;
@@ -117,6 +135,18 @@ namespace RTBEngine {
 
         bool TrailRenderer::EnsureRenderResources()
         {
+            if (vao != Rendering::RHI::kInvalidGpuId &&
+                vbo != Rendering::RHI::kInvalidGpuId &&
+                shader &&
+                g_loadedTrailVertexFormatVersion == kTrailVertexFormatVersion) {
+                return true;
+            }
+
+            // Vertex layout / shader inputs changed: drop cached GPU objects for this instance.
+            if (vao != Rendering::RHI::kInvalidGpuId || vbo != Rendering::RHI::kInvalidGpuId) {
+                ReleaseRenderResources();
+            }
+
             if (!shader) {
                 shader = Core::ResourceManager::GetInstance().GetShader("trail_2d");
                 if (!shader) {
@@ -131,8 +161,17 @@ namespace RTBEngine {
                 return false;
             }
 
-            if (vao != Rendering::RHI::kInvalidGpuId && vbo != Rendering::RHI::kInvalidGpuId) {
-                return true;
+            if (g_loadedTrailVertexFormatVersion != kTrailVertexFormatVersion) {
+                const std::string vertexPath =
+                    Core::ResourceManager::GetInstance().ResolvePathForRead("Default/Shaders/trail_2d.vert");
+                const std::string fragmentPath =
+                    Core::ResourceManager::GetInstance().ResolvePathForRead("Default/Shaders/trail_2d.frag");
+                if (!shader->LoadFromFiles(vertexPath, fragmentPath)) {
+                    RTB_ERROR("TrailRenderer: failed to reload trail_2d shader for new vertex format.");
+                    shader = nullptr;
+                    return false;
+                }
+                g_loadedTrailVertexFormatVersion = kTrailVertexFormatVersion;
             }
 
             auto& device = Rendering::RHI::RenderDevice::Get();
@@ -193,9 +232,6 @@ namespace RTBEngine {
                 return;
             }
 
-            // Recreate GPU layout if an older session still has the previous vertex format.
-            // EnsureRenderResources only builds once; attribute count is fixed in this build.
-
             std::vector<TrailVertex> vertices;
             vertices.reserve((points.size() - 1) * 6);
 
@@ -228,9 +264,10 @@ namespace RTBEngine {
                                   float u,
                                   float side) {
                 TrailVertex vertex{};
-                vertex.position = position;
-                vertex.color = vertexColor;
-                vertex.uv = Math::Vector2(u + scrollOffset, side * 0.5f + 0.5f);
+                WritePosition(vertex, position);
+                WriteColor(vertex, vertexColor);
+                vertex.uv[0] = u + scrollOffset;
+                vertex.uv[1] = side * 0.5f + 0.5f;
                 vertex.side = side;
                 vertices.push_back(vertex);
             };
@@ -326,7 +363,7 @@ namespace RTBEngine {
             shader->Bind();
             Rendering::CameraUBO::GetInstance().Bind();
             shader->SetFloat("uSoftEdge", softEdge);
-            shader->SetBool("uHasTexture", texture != nullptr);
+            shader->SetInt("uHasTexture", texture != nullptr ? 1 : 0);
             if (texture) {
                 texture->Bind(0);
                 shader->SetInt("uDiffuse", 0);
