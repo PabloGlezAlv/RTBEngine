@@ -11,6 +11,8 @@
 #include <algorithm>
 
 namespace {
+    RTBEngine::Scene::ObjectPool* g_objectPoolInstance = nullptr;
+
     void SetHierarchyActive(RTBEngine::Scene::GameObject* root, bool active)
     {
         if (!root) {
@@ -71,6 +73,30 @@ namespace RTBEngine {
         {
             static ObjectPool instance;
             return instance;
+        }
+
+        bool ObjectPool::IsAlive()
+        {
+            return g_objectPoolInstance != nullptr;
+        }
+
+        void ObjectPool::ClearIfAlive()
+        {
+            if (g_objectPoolInstance) {
+                g_objectPoolInstance->Clear();
+            }
+        }
+
+        ObjectPool::ObjectPool()
+        {
+            g_objectPoolInstance = this;
+        }
+
+        ObjectPool::~ObjectPool()
+        {
+            if (g_objectPoolInstance == this) {
+                g_objectPoolInstance = nullptr;
+            }
         }
 
         std::string ObjectPool::ResolvePoolKey(const std::string& prefabRefOrPath)
@@ -156,6 +182,10 @@ namespace RTBEngine {
 
             instanceRecords.erase(instance);
 
+            if (SceneManager::GetInstance().IsSceneUnloading()) {
+                return;
+            }
+
             if (Scene* scene = SceneManager::GetInstance().GetActiveScene()) {
                 scene->RemoveGameObject(instance);
             }
@@ -227,6 +257,12 @@ namespace RTBEngine {
         void ObjectPool::Release(GameObject* instance)
         {
             if (!instance) {
+                return;
+            }
+
+            // Scene teardown owns GameObject destruction. Re-entering RemoveGameObject
+            // from component OnDestroy/Finish while the scene is dying corrupts containers.
+            if (SceneManager::GetInstance().IsSceneUnloading()) {
                 return;
             }
 

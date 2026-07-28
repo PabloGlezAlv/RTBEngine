@@ -228,6 +228,7 @@ namespace RTBEngine {
                 Rendering::RHI::BufferUsage::Dynamic);
 
             device.SetDepthTest(true);
+            device.SetDepthFunc(Rendering::RHI::DepthFunc::LEqual);
             device.SetDepthWrite(false);
             device.SetBlend(true);
             device.SetBlendFuncSeparate(
@@ -252,6 +253,7 @@ namespace RTBEngine {
             device.SetDepthWrite(true);
             device.SetBlend(false);
             device.SetCullFace(true);
+            device.SetDepthFunc(Rendering::RHI::DepthFunc::Less);
             device.SetDepthTest(true);
         }
 

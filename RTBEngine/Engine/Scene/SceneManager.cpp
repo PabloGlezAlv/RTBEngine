@@ -103,7 +103,11 @@ namespace RTBEngine {
             // If Application::Shutdown already ran, the scene is empty and this is a no-op.
             // On hard abort / CRT teardown the Vulkan validation layers may already be gone
             // while RenderDevice still exists — skip GPU destroys to avoid aborting again.
-            if (!hasCompletedShutdown && activeScene) {
+            if (hasCompletedShutdown) {
+                return;
+            }
+
+            if (activeScene) {
                 Rendering::Texture::SetGpuDestroyEnabled(false);
             }
             Shutdown();
@@ -173,13 +177,13 @@ namespace RTBEngine {
                 onSceneUnloading(previousScene.get());
             }
 
-            ObjectPool::GetInstance().Clear();
-
             if (previousScene) {
                 BeginSceneUnload();
                 previousScene.reset();
                 EndSceneUnload();
             }
+            ObjectPool::ClearIfAlive();
+
             activeScene.reset(newScene);
             activeScenePath = path;
             sceneDirty = false;
@@ -246,11 +250,13 @@ namespace RTBEngine {
                 onSceneUnloading(activeScene.get());
             }
 
-            ObjectPool::GetInstance().Clear();
-
+            // Destroy the scene first while unload depth is set so pooled components that
+            // call ObjectPool::Release from OnDestroy/Finish do not re-enter RemoveGameObject.
             BeginSceneUnload();
             activeScene.reset();
             EndSceneUnload();
+            ObjectPool::ClearIfAlive();
+
             activeScenePath.clear();
             sceneDirty = false;
             isSceneTransitioning = false;

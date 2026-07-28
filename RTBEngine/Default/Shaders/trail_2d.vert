@@ -20,5 +20,7 @@ out vec4 vColor;
 void main()
 {
     gl_Position = viewProjection * vec4(aPosition, 1.0);
+    // Push slightly toward camera so ground-level aim trails aren't depth-rejected.
+    gl_Position.z -= 0.002 * gl_Position.w;
     vColor = aColor;
 }

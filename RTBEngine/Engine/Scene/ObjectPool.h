@@ -40,13 +40,18 @@ namespace RTBEngine {
 
             bool OwnsInstance(GameObject* instance) const;
 
+            /// Safe during CRT teardown when the Meyers singleton may already be destroyed.
+            static bool IsAlive();
+            static void ClearIfAlive();
+
         private:
             struct PoolInstanceRecord {
                 std::string poolKey;
                 bool inFreeList = false;
             };
 
-            ObjectPool() = default;
+            ObjectPool();
+            ~ObjectPool();
 
             GameObject* CreateInstance(const std::string& prefabPath,
                                        const Math::Vector3& position,
