@@ -128,7 +128,7 @@ namespace RTBEngine {
         RTB_REGISTER_COMPONENT(ParticleSystem)
             RTB_PROPERTY_RANGE(maxParticles, 1, 8192)
             RTB_PROPERTY_RANGE(emissionRate, 0.0f, 1000.0f)
-            RTB_PROPERTY_ENUM(emitterShape, "Point", "Sphere", "Cone", "Box", "Line", "Orbit")
+            RTB_PROPERTY_ENUM(emitterShape, "Point", "Sphere", "Cone", "Box", "Line", "Orbit", "Circle")
             RTB_PROPERTY_RANGE(shapeRadius, 0.0f, 10.0f)
             RTB_PROPERTY_RANGE(coneAngle, 0.0f, 90.0f)
             RTB_PROPERTY_RANGE(lineLength, 0.0f, 100.0f)
@@ -444,6 +444,15 @@ namespace RTBEngine {
                     std::sin(lastOrbitSpawnAngle) * orbitRadius);
             }
 
+            case Rendering::ParticleEmitterShape::Circle: {
+                lastOrbitSpawnAngle = RandomRange(0.0f, 6.28318530718f);
+                const float radius = RandomRange(0.0f, shapeRadius);
+                return Math::Vector3(
+                    std::cos(lastOrbitSpawnAngle) * radius,
+                    0.0f,
+                    std::sin(lastOrbitSpawnAngle) * radius);
+            }
+
             default:
                 return Math::Vector3::Zero();
             }
@@ -473,6 +482,12 @@ namespace RTBEngine {
                 tangent.Normalize();
                 return tangent;
             }
+
+            case Rendering::ParticleEmitterShape::Circle:
+                return Math::Vector3(
+                    std::cos(lastOrbitSpawnAngle),
+                    0.0f,
+                    std::sin(lastOrbitSpawnAngle));
 
             default:
                 return RandomUnitVector().Normalized();

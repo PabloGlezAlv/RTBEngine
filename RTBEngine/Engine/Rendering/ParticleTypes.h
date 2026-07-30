@@ -25,7 +25,8 @@ namespace RTBEngine {
             Cone,
             Box,
             Line,
-            Orbit
+            Orbit,
+            Circle
         };
 
         enum class ParticleBlendMode {
