@@ -21,6 +21,9 @@ namespace RTBEngine {
             state.volumetricAnisotropy = s.volumetricAnisotropy;
             state.volumetricSamples = s.volumetricSamples;
             state.volumetricMaxLuminance = s.volumetricMaxLuminance;
+            state.bloomEnabled = s.bloomEnabled;
+            state.bloomThreshold = s.bloomThreshold;
+            state.bloomIntensity = s.bloomIntensity;
             return state;
         }
 

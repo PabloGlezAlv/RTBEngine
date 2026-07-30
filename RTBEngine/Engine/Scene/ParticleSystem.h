@@ -64,6 +64,9 @@ namespace RTBEngine {
             Rendering::ParticleEmitterShape emitterShape = Rendering::ParticleEmitterShape::Cone;
             float shapeRadius = 0.5f;
             float coneAngle = 25.0f;
+            float lineLength = 1.0f;
+            float orbitRadius = 1.0f;
+            float orbitSpeed = 2.0f;
             Math::Vector3 boxSize = Math::Vector3(1.0f, 1.0f, 1.0f);
 
             float startLifetime = 1.5f;
@@ -142,6 +145,7 @@ namespace RTBEngine {
             int activeParticleCount = 0;
             int totalEmitted = 0;
             bool destroyOwnerTriggered = false;
+            mutable float lastOrbitSpawnAngle = 0.0f;
         };
 #pragma warning(pop)
 

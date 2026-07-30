@@ -98,6 +98,9 @@ namespace RTBEngine {
             volumetricAnisotropy = 0.55f;
             volumetricSamples = 16;
             volumetricMaxLuminance = 0.85f;
+            bloomEnabled = true;
+            bloomThreshold = 1.0f;
+            bloomIntensity = 0.8f;
         }
 
         int LightingProjectSettings::ClampShadowMapResolution(int resolution)
@@ -200,6 +203,9 @@ namespace RTBEngine {
                 else if (key == "VolumetricAnisotropy") volumetricAnisotropy = ParseFloat(value, volumetricAnisotropy);
                 else if (key == "VolumetricSamples") volumetricSamples = ParseInt(value, volumetricSamples);
                 else if (key == "VolumetricMaxLuminance") volumetricMaxLuminance = ParseFloat(value, volumetricMaxLuminance);
+                else if (key == "BloomEnabled") bloomEnabled = ParseBool(value, bloomEnabled);
+                else if (key == "BloomThreshold") bloomThreshold = ParseFloat(value, bloomThreshold);
+                else if (key == "BloomIntensity") bloomIntensity = ParseFloat(value, bloomIntensity);
             }
 
             return true;
@@ -248,6 +254,9 @@ namespace RTBEngine {
             file << "VolumetricAnisotropy=" << volumetricAnisotropy << "\n";
             file << "VolumetricSamples=" << volumetricSamples << "\n";
             file << "VolumetricMaxLuminance=" << volumetricMaxLuminance << "\n";
+            file << "BloomEnabled=" << (bloomEnabled ? "1" : "0") << "\n";
+            file << "BloomThreshold=" << bloomThreshold << "\n";
+            file << "BloomIntensity=" << bloomIntensity << "\n";
             return true;
         }
 

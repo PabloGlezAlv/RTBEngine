@@ -7,7 +7,7 @@
 namespace RTBEngine {
     namespace Rendering {
 
-        // Effect-level overrides (Distance Fog / Volumetric Fog), not per-parameter.
+        // Effect-level overrides (Distance Fog / Volumetric Fog / Bloom), not per-parameter.
         struct RTB_API VolumeProfile {
             bool overrideDistanceFog = false;
             bool fogEnabled = true;
@@ -24,6 +24,11 @@ namespace RTBEngine {
             float volumetricAnisotropy = 0.55f;
             int volumetricSamples = 16;
             float volumetricMaxLuminance = 0.85f;
+
+            bool overrideBloom = false;
+            bool bloomEnabled = true;
+            float bloomThreshold = 1.0f;
+            float bloomIntensity = 0.8f;
 
             void BlendInto(FogFrameState& state, float weight) const;
         };

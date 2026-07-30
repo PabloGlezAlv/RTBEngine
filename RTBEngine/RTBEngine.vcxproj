@@ -299,6 +299,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClCompile Include="Engine\Rendering\PostProcess\VolumeStack.cpp" />
     <ClCompile Include="Engine\Scene\VolumeComponent.cpp" />
     <ClCompile Include="Engine\Rendering\VolumetricFogPass.cpp" />
+    <ClCompile Include="Engine\Rendering\BloomPass.cpp" />
     <ClCompile Include="Engine\Scene\Prefab.cpp" />
     <ClCompile Include="Engine\Scripting\PrefabSaver.cpp" />
     <ClCompile Include="Engine\Scripting\ScenePropertySerializer.cpp" />
@@ -528,6 +529,7 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Rendering\PostProcess\VolumeStack.h" />
     <ClInclude Include="Engine\Scene\VolumeComponent.h" />
     <ClInclude Include="Engine\Rendering\VolumetricFogPass.h" />
+    <ClInclude Include="Engine\Rendering\BloomPass.h" />
     <ClInclude Include="Engine\Scene\Prefab.h" />
     <ClInclude Include="Engine\Scripting\PrefabSaver.h" />
     <ClInclude Include="Engine\Scripting\ScenePropertySerializer.h" />

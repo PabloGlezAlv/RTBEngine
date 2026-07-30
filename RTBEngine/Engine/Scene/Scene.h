@@ -56,6 +56,7 @@ namespace RTBEngine {
             void LateUpdate(float deltaTime);
             void Render(Rendering::Camera* camera);
             void RenderTransparentEffects(Rendering::Camera* camera);
+            void TickEditModeSimulate(float deltaTime);
 
             // Skybox management (per-scene override)
             void SetSkyboxCubemap(Rendering::Cubemap* cubemap);
@@ -137,6 +138,8 @@ namespace RTBEngine {
             mutable std::vector<RigidBodyComponent*> cachedRigidBodies;
             mutable std::vector<Occludable*> cachedOccludables;
             mutable std::vector<OcclusionTarget*> cachedOcclusionTargets;
+            mutable std::vector<Component*> cachedTransparentRenderComponents;
+            mutable std::vector<Component*> cachedEditModeSimulateComponents;
             mutable std::unordered_map<std::string, std::vector<Component*>> cachedComponentsByTypeName;
             mutable std::unordered_map<std::uint32_t, std::vector<Component*>> cachedComponentsByTypeId;
         };

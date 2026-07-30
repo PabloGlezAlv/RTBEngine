@@ -128,9 +128,12 @@ namespace RTBEngine {
         RTB_REGISTER_COMPONENT(ParticleSystem)
             RTB_PROPERTY_RANGE(maxParticles, 1, 8192)
             RTB_PROPERTY_RANGE(emissionRate, 0.0f, 1000.0f)
-            RTB_PROPERTY_ENUM(emitterShape, "Point", "Sphere", "Cone", "Box")
+            RTB_PROPERTY_ENUM(emitterShape, "Point", "Sphere", "Cone", "Box", "Line", "Orbit")
             RTB_PROPERTY_RANGE(shapeRadius, 0.0f, 10.0f)
             RTB_PROPERTY_RANGE(coneAngle, 0.0f, 90.0f)
+            RTB_PROPERTY_RANGE(lineLength, 0.0f, 100.0f)
+            RTB_PROPERTY_RANGE(orbitRadius, 0.0f, 100.0f)
+            RTB_PROPERTY_RANGE(orbitSpeed, 0.0f, 50.0f)
             RTB_PROPERTY(boxSize)
             RTB_PROPERTY_RANGE(startLifetime, 0.05f, 30.0f)
             RTB_PROPERTY_RANGE(startSpeed, 0.0f, 100.0f)
@@ -428,6 +431,19 @@ namespace RTBEngine {
                     RandomRange(-boxSize.y * 0.5f, boxSize.y * 0.5f),
                     RandomRange(-boxSize.z * 0.5f, boxSize.z * 0.5f));
 
+            case Rendering::ParticleEmitterShape::Line: {
+                const float halfLength = std::max(lineLength, 0.0f) * 0.5f;
+                return Math::Vector3(RandomRange(-halfLength, halfLength), 0.0f, 0.0f);
+            }
+
+            case Rendering::ParticleEmitterShape::Orbit: {
+                lastOrbitSpawnAngle = RandomRange(0.0f, 6.28318530718f);
+                return Math::Vector3(
+                    std::cos(lastOrbitSpawnAngle) * orbitRadius,
+                    0.0f,
+                    std::sin(lastOrbitSpawnAngle) * orbitRadius);
+            }
+
             default:
                 return Math::Vector3::Zero();
             }
@@ -444,6 +460,18 @@ namespace RTBEngine {
                 Math::Vector3 direction = RandomUnitVector();
                 direction.Normalize();
                 return direction;
+            }
+
+            case Rendering::ParticleEmitterShape::Line:
+                return Math::Vector3(1.0f, 0.0f, 0.0f);
+
+            case Rendering::ParticleEmitterShape::Orbit: {
+                Math::Vector3 tangent(
+                    -std::sin(lastOrbitSpawnAngle),
+                    0.0f,
+                    std::cos(lastOrbitSpawnAngle));
+                tangent.Normalize();
+                return tangent;
             }
 
             default:
@@ -491,7 +519,10 @@ namespace RTBEngine {
 
             Rendering::Particle& particle = particles[static_cast<std::size_t>(slot)];
             const Math::Vector3 localPosition = SampleSpawnPosition();
-            const Math::Vector3 localVelocity = SampleSpawnDirection() * startSpeed;
+            const float spawnSpeed = (emitterShape == Rendering::ParticleEmitterShape::Orbit)
+                ? orbitSpeed
+                : startSpeed;
+            const Math::Vector3 localVelocity = SampleSpawnDirection() * spawnSpeed;
 
             if (worldSimulation) {
                 if (GetOwner()) {

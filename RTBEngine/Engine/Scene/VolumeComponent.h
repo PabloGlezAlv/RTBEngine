@@ -42,6 +42,12 @@ namespace RTBEngine {
             int volumetricSamples = 16;
             float volumetricMaxLuminance = 0.85f;
 
+            // Bloom (C) — one override for the whole effect.
+            bool overrideBloom = false;
+            bool bloomEnabled = true;
+            float bloomThreshold = 1.0f;
+            float bloomIntensity = 0.8f;
+
             Rendering::VolumeProfile ToProfile() const;
 
             RTB_COMPONENT(VolumeComponent)

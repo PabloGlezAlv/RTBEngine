@@ -462,6 +462,8 @@ void RTBEngine::Scene::Scene::RebuildComponentCaches() const
 	cachedRigidBodies.clear();
 	cachedOccludables.clear();
 	cachedOcclusionTargets.clear();
+	cachedTransparentRenderComponents.clear();
+	cachedEditModeSimulateComponents.clear();
 	cachedComponentsByTypeName.clear();
 	cachedComponentsByTypeId.clear();
 
@@ -480,6 +482,13 @@ void RTBEngine::Scene::Scene::RebuildComponentCaches() const
 				if (typeName && typeName[0] != '\0') {
 					cachedComponentsByTypeName[typeName].push_back(component.get());
 					cachedComponentsByTypeId[TypeId::Hash(typeName)].push_back(component.get());
+				}
+
+				if (component->WantsTransparentRender()) {
+					cachedTransparentRenderComponents.push_back(component.get());
+				}
+				if (component->WantsEditModeSimulate()) {
+					cachedEditModeSimulateComponents.push_back(component.get());
 				}
 			}
 
@@ -1128,6 +1137,20 @@ void RTBEngine::Scene::Scene::RenderTransparentEffects(Rendering::Camera* camera
 		trailRenderer->Render(camera);
 	}
 
+	EnsureComponentCaches();
+	for (Component* component : cachedTransparentRenderComponents) {
+		if (!component || !component->IsEnabled()) {
+			continue;
+		}
+
+		GameObject* gameObject = component->GetOwner();
+		if (!gameObject || !gameObject->IsActiveInHierarchy()) {
+			continue;
+		}
+
+		component->OnTransparentRender(camera);
+	}
+
 	for (ParticleSystem* particleSystem : GetCachedParticleSystems()) {
 		if (!particleSystem || !particleSystem->IsEnabled()) {
 			continue;
@@ -1155,6 +1178,27 @@ void RTBEngine::Scene::Scene::RenderTransparentEffects(Rendering::Camera* camera
 	}
 	--iterationDepth;
 	FlushPendingCommands();
+}
+
+void RTBEngine::Scene::Scene::TickEditModeSimulate(float deltaTime)
+{
+	if (deltaTime <= 0.0f) {
+		return;
+	}
+
+	EnsureComponentCaches();
+	for (Component* component : cachedEditModeSimulateComponents) {
+		if (!component || !component->IsEnabled()) {
+			continue;
+		}
+
+		GameObject* gameObject = component->GetOwner();
+		if (!gameObject || !gameObject->IsActiveInHierarchy()) {
+			continue;
+		}
+
+		component->OnEditModeSimulate(deltaTime);
+	}
 }
 
 void RTBEngine::Scene::Scene::SetSkyboxCubemap(Rendering::Cubemap* cubemap) {

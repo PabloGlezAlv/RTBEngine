@@ -519,7 +519,7 @@ namespace RTBEngine {
             GpuId OpenGLRenderDevice::CreateColorTextureForFramebuffer(int width, int height)
             {
                 const GpuId texture = CreateTexture2D();
-                SetTexture2DData(texture, TextureFormat::RGBA8, width, height, nullptr, false);
+                SetTexture2DData(texture, TextureFormat::RGBA16F, width, height, nullptr, false);
                 SetTexture2DFilter(texture, TextureFilter::Linear, TextureFilter::Linear);
                 SetTexture2DWrap(texture, TextureWrap::ClampToEdge, TextureWrap::ClampToEdge);
                 return texture;

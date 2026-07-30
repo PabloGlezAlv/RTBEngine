@@ -69,6 +69,21 @@ namespace RTBEngine {
             void RenderVolumetricFogPass(Scene::Scene* scene,
                                         Rendering::Camera* camera,
                                         Rendering::RHI::GpuId sceneDepthTexture);
+            void RenderBloomPass(Rendering::RHI::GpuId sceneColorTexture, int width, int height);
+
+            // Fog then bloom, gated by VolumeStack frame state.
+            // Caller must bind a color-only continue FBO when volumetric fog may run
+            // (depth sampled as texture, not as an active attachment).
+            struct PostProcessTargets {
+                Rendering::RHI::GpuId colorTexture = Rendering::RHI::kInvalidGpuId;
+                Rendering::RHI::GpuId depthTexture = Rendering::RHI::kInvalidGpuId;
+                int width = 0;
+                int height = 0;
+            };
+            void RenderPostProcessPasses(Scene::Scene* scene,
+                                         Rendering::Camera* camera,
+                                         const PostProcessTargets& targets);
+
             void SetIsRunning(bool value) { isRunning = value; }
 
             void ResetPhysics();

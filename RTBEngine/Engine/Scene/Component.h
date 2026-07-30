@@ -14,6 +14,10 @@ namespace RTBEngine {
         struct CollisionInfo;
     }
 
+    namespace Rendering {
+        class Camera;
+    }
+
     namespace Scene {
 
         class GameObject;
@@ -57,6 +61,15 @@ namespace RTBEngine {
             virtual void OnTriggerEnter(const Physics::CollisionInfo& collision) {}
             virtual void OnTriggerStay(const Physics::CollisionInfo& collision) {}
             virtual void OnTriggerExit(const Physics::CollisionInfo& collision) {}
+
+            // Optional transparent/custom draw path for gameplay components (GameScripts).
+            // Engine stays agnostic: Scene only calls these when WantsTransparentRender() is true.
+            virtual bool WantsTransparentRender() const { return false; }
+            virtual void OnTransparentRender(Rendering::Camera* camera) { (void)camera; }
+
+            // Optional edit-mode simulation (Scene View) without play mode.
+            virtual bool WantsEditModeSimulate() const { return false; }
+            virtual void OnEditModeSimulate(float deltaTime) { (void)deltaTime; }
 
             void SetOwner(GameObject* owner);
             GameObject* GetOwner() const { return owner; }

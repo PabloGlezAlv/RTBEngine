@@ -25,6 +25,10 @@ namespace RTBEngine {
             RTB_PROPERTY_HIDDEN(volumetricAnisotropy)
             RTB_PROPERTY_HIDDEN(volumetricSamples)
             RTB_PROPERTY_HIDDEN(volumetricMaxLuminance)
+            RTB_PROPERTY_HIDDEN(overrideBloom)
+            RTB_PROPERTY_HIDDEN(bloomEnabled)
+            RTB_PROPERTY_HIDDEN(bloomThreshold)
+            RTB_PROPERTY_HIDDEN(bloomIntensity)
         RTB_END_REGISTER(VolumeComponent)
 
         VolumeComponent::VolumeComponent()
@@ -49,6 +53,10 @@ namespace RTBEngine {
             profile.volumetricAnisotropy = volumetricAnisotropy;
             profile.volumetricSamples = volumetricSamples;
             profile.volumetricMaxLuminance = volumetricMaxLuminance;
+            profile.overrideBloom = overrideBloom;
+            profile.bloomEnabled = bloomEnabled;
+            profile.bloomThreshold = bloomThreshold;
+            profile.bloomIntensity = bloomIntensity;
             return profile;
         }
 

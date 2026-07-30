@@ -54,6 +54,12 @@ namespace RTBEngine {
                 state.volumetricSamples = LerpInt(state.volumetricSamples, volumetricSamples, t);
                 state.volumetricMaxLuminance = LerpFloat(state.volumetricMaxLuminance, volumetricMaxLuminance, t);
             }
+
+            if (overrideBloom) {
+                state.bloomEnabled = LerpBool(state.bloomEnabled, true, t);
+                state.bloomThreshold = LerpFloat(state.bloomThreshold, bloomThreshold, t);
+                state.bloomIntensity = LerpFloat(state.bloomIntensity, bloomIntensity, t);
+            }
         }
 
     }

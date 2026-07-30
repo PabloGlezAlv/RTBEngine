@@ -6,7 +6,7 @@
 namespace RTBEngine {
     namespace Rendering {
 
-        // Per-camera fog values after project defaults + volume stack blending.
+        // Per-camera post-process values after project defaults + volume stack blending.
         struct RTB_API FogFrameState {
             bool fogEnabled = false;
             Math::Vector3 fogColor = Math::Vector3(0.55f, 0.62f, 0.72f);
@@ -21,6 +21,10 @@ namespace RTBEngine {
             float volumetricAnisotropy = 0.55f;
             int volumetricSamples = 16;
             float volumetricMaxLuminance = 0.85f;
+
+            bool bloomEnabled = true;
+            float bloomThreshold = 1.0f;
+            float bloomIntensity = 0.8f;
 
             static FogFrameState FromProjectDefaults();
         };

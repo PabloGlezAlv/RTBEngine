@@ -66,6 +66,11 @@ namespace RTBEngine {
             // Soft luminance ceiling for additive volumetric (prevents outdoor white-out).
             float volumetricMaxLuminance = 0.85f;
 
+            // HDR bloom (bright extract + blur + tonemap composite).
+            bool bloomEnabled = true;
+            float bloomThreshold = 1.0f;
+            float bloomIntensity = 0.8f;
+
         private:
             LightingProjectSettings();
         };

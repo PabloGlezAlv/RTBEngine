@@ -44,6 +44,7 @@
 #include "../Rendering/FogUniforms.h"
 #include "../Rendering/PostProcess/VolumeStack.h"
 #include "../Rendering/VolumetricFogPass.h"
+#include "../Rendering/BloomPass.h"
 
 #include "../Rendering/Frustum.h"
 #include "../Online/OnlineSystem.h"
@@ -315,6 +316,10 @@ bool RTBEngine::Core::Application::Initialize()
 		RTB_WARN("Failed to initialize volumetric fog pass");
 	}
 
+	if (!Rendering::BloomPass::GetInstance().Initialize()) {
+		RTB_WARN("Failed to initialize bloom pass");
+	}
+
 	if (!config.initialScenePath.empty()) {
 		namespace fs = std::filesystem;
 		const fs::path assetsPath = fs::current_path() / "Assets";
@@ -487,6 +492,7 @@ void RTBEngine::Core::Application::Shutdown()
 
 	Rendering::GI::DDGISystem::GetInstance().Shutdown();
 	Rendering::VolumetricFogPass::GetInstance().Shutdown();
+	Rendering::BloomPass::GetInstance().Shutdown();
 	// Scene is already unloaded; prevent any late Texture dtors (static teardown) from
 	// touching Vulkan after the device/layers are destroyed.
 	Rendering::Texture::SetGpuDestroyEnabled(false);
@@ -981,6 +987,38 @@ void RTBEngine::Core::Application::RenderVolumetricFogPass(Scene::Scene* scene,
 		sceneDepthTexture,
 		shadowCastingLight,
 		lightSpaceMatrix);
+}
+
+void RTBEngine::Core::Application::RenderBloomPass(Rendering::RHI::GpuId sceneColorTexture,
+	int width,
+	int height)
+{
+	const Rendering::FogFrameState& state = Rendering::VolumeStack::GetCurrentFrameState();
+	if (!state.bloomEnabled) {
+		return;
+	}
+
+	auto& bloom = Rendering::BloomPass::GetInstance();
+	bloom.threshold = state.bloomThreshold;
+	bloom.intensity = state.bloomIntensity;
+	bloom.RenderIfReady(sceneColorTexture, width, height);
+}
+
+void RTBEngine::Core::Application::RenderPostProcessPasses(Scene::Scene* scene,
+	Rendering::Camera* camera,
+	const PostProcessTargets& targets)
+{
+	if (targets.width <= 0 || targets.height <= 0) {
+		return;
+	}
+
+	if (targets.depthTexture != Rendering::RHI::kInvalidGpuId) {
+		RenderVolumetricFogPass(scene, camera, targets.depthTexture);
+	}
+
+	if (targets.colorTexture != Rendering::RHI::kInvalidGpuId) {
+		RenderBloomPass(targets.colorTexture, targets.width, targets.height);
+	}
 }
 
 void RTBEngine::Core::Application::ResetPhysics()

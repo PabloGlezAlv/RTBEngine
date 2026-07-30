@@ -42,7 +42,7 @@ namespace RTBEngine {
                 vertex.color[3] = color.w;
             }
 
-            constexpr int kTrailVertexFormatVersion = 2;
+            constexpr int kTrailVertexFormatVersion = 4;
             int g_loadedTrailVertexFormatVersion = 0;
         }
 
@@ -293,7 +293,15 @@ namespace RTBEngine {
                     if (toCamera.LengthSquared() <= kSegmentEpsilon) {
                         toCamera = camera->GetForward() * -1.0f;
                     }
-                    sideDirection = toCamera.Cross(direction);
+                    toCamera.Normalize();
+
+                    // Prefer a stable camera-facing ribbon: project camera-right onto
+                    // the plane perpendicular to the beam, then fall back to view cross.
+                    sideDirection = camera->GetRight();
+                    sideDirection = sideDirection - direction * sideDirection.Dot(direction);
+                    if (sideDirection.LengthSquared() <= kSegmentEpsilon) {
+                        sideDirection = toCamera.Cross(direction);
+                    }
                     if (sideDirection.LengthSquared() <= kSegmentEpsilon) {
                         sideDirection = up.Cross(direction);
                     }

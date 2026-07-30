@@ -1658,6 +1658,7 @@ namespace RTBEngine {
                 case TextureFormat::R8: return VK_FORMAT_R8_UNORM;
                 case TextureFormat::RGB8: return VK_FORMAT_R8G8B8_UNORM;
                 case TextureFormat::RGBA8: return VK_FORMAT_R8G8B8A8_UNORM;
+                case TextureFormat::RGBA16F: return VK_FORMAT_R16G16B16A16_SFLOAT;
                 case TextureFormat::SRGB8: return VK_FORMAT_R8G8B8_SRGB;
                 case TextureFormat::SRGBA8: return VK_FORMAT_R8G8B8A8_SRGB;
                 case TextureFormat::Depth24: isDepth = true; return VK_FORMAT_D32_SFLOAT;
@@ -2090,7 +2091,7 @@ namespace RTBEngine {
             GpuId VulkanRenderDevice::CreateColorTextureForFramebuffer(int width, int height)
             {
                 const GpuId id = CreateTexture2D();
-                SetTexture2DData(id, TextureFormat::RGBA8, width, height, nullptr, false);
+                SetTexture2DData(id, TextureFormat::RGBA16F, width, height, nullptr, false);
                 SetTexture2DFilter(id, TextureFilter::Linear, TextureFilter::Linear);
                 SetTexture2DWrap(id, TextureWrap::ClampToEdge, TextureWrap::ClampToEdge);
                 return id;

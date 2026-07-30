@@ -228,6 +228,9 @@
     <ClCompile Include="Engine\Rendering\VolumetricFogPass.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Rendering\BloomPass.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
     <ClCompile Include="ThirdParty\imgui-1.92.5\imgui.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
@@ -705,6 +708,9 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Rendering\VolumetricFogPass.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Rendering\BloomPass.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="ThirdParty\imgui-1.92.5\imgui.h">
