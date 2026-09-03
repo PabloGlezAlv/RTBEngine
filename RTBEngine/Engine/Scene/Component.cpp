@@ -26,11 +26,12 @@ namespace RTBEngine {
 
         void Component::SetEnabled(bool enabled)
         {
-            const bool wasEnabled = this->isEnabled;
-            this->isEnabled = enabled;
-            if (!wasEnabled && enabled) {
-                TryInvokeStart();
+            if (this->isEnabled == enabled) {
+                return;
             }
+
+            this->isEnabled = enabled;
+            SyncEnabledState();
         }
 
         void Component::InvokeAwakeIfNeeded()
@@ -51,6 +52,31 @@ namespace RTBEngine {
 
             startInvoked = true;
             OnStart();
+        }
+
+        void Component::SyncEnabledState()
+        {
+            const bool shouldEnable = isEnabled && owner && owner->IsActiveInHierarchy();
+            if (shouldEnable == enabledInHierarchy) {
+                return;
+            }
+
+            if (shouldEnable) {
+                enabledInHierarchy = true;
+                OnEnable();
+            } else {
+                NotifyDisabled();
+            }
+        }
+
+        void Component::NotifyDisabled()
+        {
+            if (!enabledInHierarchy) {
+                return;
+            }
+
+            enabledInHierarchy = false;
+            OnDisable();
         }
 
         void Component::SetUpdateTickEnabled(bool enabled)

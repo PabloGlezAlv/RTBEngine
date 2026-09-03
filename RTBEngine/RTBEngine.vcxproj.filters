@@ -443,9 +443,6 @@
     <ClInclude Include="Engine\Scene\ObjectPool.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Scene\IPoolable.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Scene\NetworkTransform.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>

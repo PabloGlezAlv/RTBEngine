@@ -57,7 +57,7 @@ namespace RTBEngine {
             EnsureRenderResources();
         }
 
-        void AnimatedBillboard::OnStart()
+        void AnimatedBillboard::OnEnable()
         {
             if (randomStartFrame) {
                 animationOffset = static_cast<float>(std::rand() % 1000) * 0.01f;
@@ -65,6 +65,11 @@ namespace RTBEngine {
             if (playOnAwake) {
                 playing = true;
             }
+        }
+
+        void AnimatedBillboard::OnDisable()
+        {
+            playing = false;
         }
 
         void AnimatedBillboard::OnUpdate(float deltaTime)

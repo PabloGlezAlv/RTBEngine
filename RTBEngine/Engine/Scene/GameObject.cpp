@@ -103,6 +103,7 @@ namespace RTBEngine {
 
             for (auto& comp : components) {
                 Core::Scheduler::GetInstance().CancelAllForOwner(comp.get());
+                comp->NotifyDisabled();
                 comp->OnDestroy();
             }
             components.clear();
@@ -243,6 +244,7 @@ namespace RTBEngine {
 
             if (lifecycleInitialized) {
                 SceneLifecycle::InvokeAwakeAndValidate(component);
+                component->SyncEnabledState();
             }
         }
 
@@ -256,6 +258,7 @@ namespace RTBEngine {
             if (it != components.end()) {
                 UnregisterComponentType(component);
                 Core::Scheduler::GetInstance().CancelAllForOwner(component);
+                (*it)->NotifyDisabled();
                 (*it)->OnDestroy();
                 components.erase(it);
 
@@ -267,18 +270,33 @@ namespace RTBEngine {
 
         void GameObject::SetActive(bool active)
         {
-            const bool wasActive = isActive;
-            this->isActive = active;
-
-            if (wasActive != active) {
-                MarkActiveInHierarchyDirty();
+            if (isActive == active) {
+                return;
             }
 
-            if (!wasActive && active && lifecycleInitialized) {
-                for (auto& component : components) {
-                    if (component) {
-                        component->TryInvokeStart();
-                    }
+            isActive = active;
+            MarkActiveInHierarchyDirty();
+
+            if (lifecycleInitialized) {
+                SyncHierarchyEnabledState();
+            }
+        }
+
+        void GameObject::SyncEnabledState()
+        {
+            for (auto& component : components) {
+                if (component) {
+                    component->SyncEnabledState();
+                }
+            }
+        }
+
+        void GameObject::SyncHierarchyEnabledState()
+        {
+            SyncEnabledState();
+            for (GameObject* child : children) {
+                if (child) {
+                    child->SyncHierarchyEnabledState();
                 }
             }
         }
@@ -445,6 +463,10 @@ namespace RTBEngine {
 
             MarkWorldMatrixDirty();
             MarkActiveInHierarchyDirty();
+
+            if (lifecycleInitialized) {
+                SyncHierarchyEnabledState();
+            }
         }
 
         void GameObject::AddChild(GameObject* child)

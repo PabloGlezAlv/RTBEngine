@@ -34,7 +34,8 @@ namespace RTBEngine {
             AnimatedBillboard& operator=(const AnimatedBillboard&) = delete;
 
             void OnAwake() override;
-            void OnStart() override;
+            void OnEnable() override;
+            void OnDisable() override;
             void OnUpdate(float deltaTime) override;
             void OnValidate() override;
             void OnDestroy() override;

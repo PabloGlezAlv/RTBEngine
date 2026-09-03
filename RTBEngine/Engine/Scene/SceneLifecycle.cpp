@@ -155,6 +155,11 @@ namespace RTBEngine {
                 InvokeAwake(pending);
                 InvokeValidate(pending);
                 MarkHierarchyInitialized(pending);
+                for (GameObject* gameObject : pending) {
+                    if (gameObject) {
+                        gameObject->SyncEnabledState();
+                    }
+                }
             }
         }
 
@@ -215,9 +220,36 @@ namespace RTBEngine {
                 InvokeAwake(pending);
                 InvokeValidate(pending);
                 MarkHierarchyInitialized(pending);
+                for (GameObject* gameObject : pending) {
+                    if (gameObject) {
+                        gameObject->SyncEnabledState();
+                    }
+                }
             }
 
             scene->SetLifecycleComplete(true);
+        }
+
+        void SceneLifecycle::ResetStartForHierarchy(GameObject* root)
+        {
+            if (!root) {
+                return;
+            }
+
+            std::vector<GameObject*> hierarchy;
+            CollectHierarchyPreOrder(root, hierarchy);
+
+            for (GameObject* gameObject : hierarchy) {
+                if (!gameObject) {
+                    continue;
+                }
+
+                for (const auto& component : gameObject->GetComponents()) {
+                    if (component) {
+                        component->ResetStartInvocation();
+                    }
+                }
+            }
         }
 
         void SceneLifecycle::InvokeStartForHierarchy(GameObject* root)

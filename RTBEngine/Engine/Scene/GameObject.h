@@ -146,6 +146,10 @@ namespace RTBEngine {
 
             bool IsActiveInHierarchy() const;
 
+            void SyncEnabledState();
+
+            void SyncHierarchyEnabledState();
+
             bool IsBeingDestroyed() const { return isBeingDestroyed; }
 
 

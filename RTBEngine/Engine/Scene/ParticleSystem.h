@@ -2,7 +2,6 @@
 
 #include "../RTBEngineAPI.h"
 #include "Component.h"
-#include "IPoolable.h"
 #include "../Rendering/ParticleTypes.h"
 #include "../Rendering/RHI/RenderTypes.h"
 #include "../Reflection/PropertyMacros.h"
@@ -26,7 +25,7 @@ namespace RTBEngine {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
-        class RTB_API ParticleSystem : public Component, public IPoolable {
+        class RTB_API ParticleSystem : public Component {
         public:
             ParticleSystem();
             ~ParticleSystem() override;
@@ -35,13 +34,12 @@ namespace RTBEngine {
             ParticleSystem& operator=(const ParticleSystem&) = delete;
 
             void OnAwake() override;
+            void OnEnable() override;
             void OnStart() override;
             void OnUpdate(float deltaTime) override;
+            void OnDisable() override;
             void OnValidate() override;
             void OnDestroy() override;
-
-            void OnPoolAcquire() override;
-            void OnPoolRelease() override;
 
             void Tick(float deltaTime);
             void Render(Rendering::Camera* camera);

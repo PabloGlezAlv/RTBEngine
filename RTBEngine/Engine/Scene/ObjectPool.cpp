@@ -3,7 +3,6 @@
 #include "../Core/Logger.h"
 #include "../Core/ResourceManager.h"
 #include "GameObject.h"
-#include "IPoolable.h"
 #include "PrefabRegistry.h"
 #include "Scene.h"
 #include "SceneManager.h"
@@ -22,31 +21,6 @@ namespace {
         root->SetActive(active);
         for (RTBEngine::Scene::GameObject* child : root->GetChildren()) {
             SetHierarchyActive(child, active);
-        }
-    }
-
-    void InvokePoolableCallbacks(RTBEngine::Scene::GameObject* root, bool acquire)
-    {
-        if (!root) {
-            return;
-        }
-
-        for (const auto& component : root->GetComponents()) {
-            if (!component) {
-                continue;
-            }
-
-            if (auto* poolable = dynamic_cast<RTBEngine::Scene::IPoolable*>(component.get())) {
-                if (acquire) {
-                    poolable->OnPoolAcquire();
-                } else {
-                    poolable->OnPoolRelease();
-                }
-            }
-        }
-
-        for (RTBEngine::Scene::GameObject* child : root->GetChildren()) {
-            InvokePoolableCallbacks(child, acquire);
         }
     }
 
@@ -198,7 +172,6 @@ namespace RTBEngine {
             }
 
             SetHierarchyActive(instance, true);
-            InvokePoolableCallbacks(instance, true);
         }
 
         void ObjectPool::PrepareInstanceForRelease(GameObject* instance)
@@ -207,7 +180,6 @@ namespace RTBEngine {
                 return;
             }
 
-            InvokePoolableCallbacks(instance, false);
             SetHierarchyActive(instance, false);
         }
 

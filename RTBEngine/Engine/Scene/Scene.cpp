@@ -905,30 +905,37 @@ RTBEngine::Scene::GameObject* RTBEngine::Scene::Scene::FindGameObjectByUUID(cons
 
 void RTBEngine::Scene::Scene::PrepareForPlayMode()
 {
-	// Editor keeps the same scene between Play sessions; reset OnStart so RoundManager,
-	// UI handlers, etc. run again when entering Play mode.
-	std::function<void(GameObject*)> visitHierarchy = [&](GameObject* gameObject) {
+	auto resetLifecycle = [](GameObject* gameObject) {
 		if (!gameObject) {
 			return;
 		}
 
 		for (const auto& component : gameObject->GetComponents()) {
 			if (component) {
+				component->NotifyDisabled();
 				component->ResetStartInvocation();
 			}
-		}
-
-		for (GameObject* child : gameObject->GetChildren()) {
-			visitHierarchy(child);
 		}
 	};
 
 	for (const auto& gameObject : gameObjects) {
-		visitHierarchy(gameObject.get());
+		resetLifecycle(gameObject.get());
 	}
 
 	for (const auto& gameObject : pendingAdds) {
-		visitHierarchy(gameObject.get());
+		resetLifecycle(gameObject.get());
+	}
+
+	for (const auto& gameObject : gameObjects) {
+		if (gameObject) {
+			gameObject->SyncEnabledState();
+		}
+	}
+
+	for (const auto& gameObject : pendingAdds) {
+		if (gameObject) {
+			gameObject->SyncEnabledState();
+		}
 	}
 }
 

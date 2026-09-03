@@ -121,10 +121,20 @@ namespace RTBEngine {
             }
         }
 
+        void AudioSourceComponent::OnEnable() {
+            if (playOnStart && HasStartBeenInvoked() && audioClip) {
+                Play();
+            }
+        }
+
         void AudioSourceComponent::OnStart() {
             if (playOnStart && audioClip) {
                 Play();
             }
+        }
+
+        void AudioSourceComponent::OnDisable() {
+            Stop();
         }
 
     }

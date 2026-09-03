@@ -454,7 +454,6 @@ if exist "$(TargetDir)$(TargetName).lib" xcopy /y /d "$(TargetDir)$(TargetName).
     <ClInclude Include="Engine\Scene\OcclusionFadeController.h" />
     <ClInclude Include="Engine\Scene\NetworkIdentity.h" />
     <ClInclude Include="Engine\Scene\ObjectPool.h" />
-    <ClInclude Include="Engine\Scene\IPoolable.h" />
     <ClInclude Include="Engine\Scene\NetworkTransform.h" />
     <ClInclude Include="Engine\Scene\TrailRenderer.h" />
     <ClInclude Include="Engine\Scene\ParticleSystem.h" />

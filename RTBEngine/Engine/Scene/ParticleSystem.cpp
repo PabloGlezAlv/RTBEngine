@@ -173,20 +173,29 @@ namespace RTBEngine {
             ResizePool();
         }
 
-        // Starts playback when playOnAwake is set and the user has not called Stop().
-        void ParticleSystem::OnStart()
+        void ParticleSystem::OnEnable()
         {
             ApplyPlaybackSettings();
         }
 
-        void ParticleSystem::OnPoolAcquire()
+        void ParticleSystem::OnStart()
         {
-            Restart();
+            if (playing) {
+                return;
+            }
+
+            ApplyPlaybackSettings();
         }
 
-        void ParticleSystem::OnPoolRelease()
+        void ParticleSystem::OnDisable()
         {
-            Stop();
+            if (!playing && !paused) {
+                return;
+            }
+
+            playing = false;
+            paused = false;
+            ClearSimulation();
         }
 
         // Advances simulation, refreshes the GPU instance buffer, and destroys the owner when configured.

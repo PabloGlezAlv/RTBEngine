@@ -37,10 +37,12 @@ namespace RTBEngine {
 
             // Lifecycle hooks (orchestrated by SceneLifecycle — do not call manually).
             virtual void OnAwake() {}
+            virtual void OnEnable() {}
             virtual void OnStart() {}
             virtual void OnUpdate(float deltaTime) {}
             virtual void OnFixedUpdate(float fixedDeltaTime) {}
             virtual void OnLateUpdate(float deltaTime) {}
+            virtual void OnDisable() {}
             virtual void OnDestroy() {}
             
             // Editor methods
@@ -86,6 +88,8 @@ namespace RTBEngine {
             void ResetStartInvocation() { startInvoked = false; }
             void InvokeAwakeIfNeeded();
             void TryInvokeStart();
+            void SyncEnabledState();
+            void NotifyDisabled();
 
             virtual const char* GetTypeName() const = 0;
 
@@ -114,6 +118,7 @@ namespace RTBEngine {
             ComponentTimeMode timeMode;
             bool awakeInvoked = false;
             bool startInvoked = false;
+            bool enabledInHierarchy = false;
         };
 
     }

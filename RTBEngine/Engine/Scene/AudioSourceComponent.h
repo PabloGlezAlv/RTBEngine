@@ -43,7 +43,9 @@ namespace RTBEngine {
             void SetPlayOnStart(bool playOnStart) { this->playOnStart = playOnStart; }
             bool GetPlayOnStart() const { return playOnStart; }
 
+            virtual void OnEnable() override;
             virtual void OnStart() override;
+            virtual void OnDisable() override;
 
             // Reflected properties
             float volume = 1.0f;

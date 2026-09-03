@@ -28,6 +28,7 @@ namespace RTBEngine {
             static void BringHierarchyToLife(Scene* scene, GameObject* root);
             static void BringSceneToLife(Scene* scene);
 
+            static void ResetStartForHierarchy(GameObject* root);
             // Calls TryInvokeStart on an already-awoken hierarchy (runtime prefab spawns).
             static void InvokeStartForHierarchy(GameObject* root);
         };
