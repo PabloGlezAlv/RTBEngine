@@ -51,6 +51,7 @@ namespace RTBEngine {
 			Rendering::Font* font = nullptr;
 
 			RTB_COMPONENT(UIText)
+			RTB_INHERITS(UIElement)
 		};
 #pragma warning(pop)
 

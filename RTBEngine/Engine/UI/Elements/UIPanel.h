@@ -31,6 +31,7 @@ namespace RTBEngine {
 			float borderThickness = 1.0f;
 			bool hasBorder = false;
 			RTB_COMPONENT(UIPanel)
+			RTB_INHERITS(UIElement)
 
 		protected:
 			virtual void OnRenderDecorations(ImDrawList* drawList, float minX, float minY, float maxX, float maxY) {}

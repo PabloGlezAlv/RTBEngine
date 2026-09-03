@@ -332,7 +332,7 @@ namespace RTBEngine {
 
 
 
-            // Slow path: abstract bases (UIElement, CharacterBase) and types without RTB_COMPONENT.
+            // Fallback for types without TypeId() or unregistered aliases.
             for (std::size_t i = 0, count = GetComponentCount(); i < count; ++i) {
 
                 if (T* castedComp = dynamic_cast<T*>(GetComponentAt(i))) {

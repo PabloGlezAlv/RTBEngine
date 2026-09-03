@@ -3,6 +3,7 @@
 #include "../Core/TypeId.h"
 #include "../Math/Math.h"
 #include "../Scripting/ScriptBridgeABI.h"
+#include <cstddef>
 #include <utility>
 
 // Usage in header:
@@ -90,6 +91,50 @@ public:                                                                         
     friend struct ClassName##_TypeRegistrar;                                            \
 private:
 #endif
+
+#define RTB_COMPONENT_TYPE(ClassName)                                                   \
+public:                                                                                 \
+    static constexpr std::uint32_t TypeId() { return RTB_TYPE_ID(ClassName); }
+
+#define RTB_INHERITS1(Base1)                                                            \
+    std::size_t FillTypeIds(std::uint32_t* out, std::size_t capacity) const override {  \
+        constexpr std::uint32_t kIds[] = { TypeId(), Base1::TypeId() };                 \
+        const std::size_t count = sizeof(kIds) / sizeof(kIds[0]);                       \
+        const std::size_t n = count < capacity ? count : capacity;                      \
+        for (std::size_t i = 0; i < n; ++i) {                                           \
+            out[i] = kIds[i];                                                           \
+        }                                                                               \
+        return n;                                                                       \
+    }
+
+#define RTB_INHERITS2(Base1, Base2)                                                     \
+    std::size_t FillTypeIds(std::uint32_t* out, std::size_t capacity) const override {  \
+        constexpr std::uint32_t kIds[] = { TypeId(), Base1::TypeId(), Base2::TypeId() }; \
+        const std::size_t count = sizeof(kIds) / sizeof(kIds[0]);                       \
+        const std::size_t n = count < capacity ? count : capacity;                      \
+        for (std::size_t i = 0; i < n; ++i) {                                           \
+            out[i] = kIds[i];                                                           \
+        }                                                                               \
+        return n;                                                                       \
+    }
+
+#define RTB_INHERITS3(Base1, Base2, Base3)                                              \
+    std::size_t FillTypeIds(std::uint32_t* out, std::size_t capacity) const override {  \
+        constexpr std::uint32_t kIds[] = {                                              \
+            TypeId(), Base1::TypeId(), Base2::TypeId(), Base3::TypeId()                 \
+        };                                                                              \
+        const std::size_t count = sizeof(kIds) / sizeof(kIds[0]);                       \
+        const std::size_t n = count < capacity ? count : capacity;                      \
+        for (std::size_t i = 0; i < n; ++i) {                                           \
+            out[i] = kIds[i];                                                           \
+        }                                                                               \
+        return n;                                                                       \
+    }
+
+#define RTB_INHERITS_CHOOSE(_1, _2, _3, NAME, ...) NAME
+#define RTB_INHERITS_IMPL2(chooseArgs, callArgs) RTB_INHERITS_CHOOSE chooseArgs callArgs
+#define RTB_INHERITS_IMPL(chooseArgs, callArgs) RTB_INHERITS_IMPL2(chooseArgs, callArgs)
+#define RTB_INHERITS(...) RTB_INHERITS_IMPL((__VA_ARGS__, RTB_INHERITS3, RTB_INHERITS2, RTB_INHERITS1), (__VA_ARGS__))
 
 // Starts property registration in cpp file
 #ifdef GAMESCRIPTS_EXPORTS

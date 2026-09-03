@@ -1,5 +1,6 @@
 #pragma once
 #include "../RTBEngineAPI.h"
+#include "../Core/TypeId.h"
 #include "../Scene/Component.h"
 #include "RectTransform.h"
 #include "../Math/Vectors/Vector2.h"
@@ -45,6 +46,7 @@ namespace RTBEngine {
 			virtual void OnParentChanged(Scene::GameObject* oldParent, Scene::GameObject* newParent) override;
 
 			virtual const char* GetTypeName() const override = 0;
+			static constexpr std::uint32_t TypeId() { return RTB_TYPE_ID(UIElement); }
 
 			virtual void Render() = 0;
 

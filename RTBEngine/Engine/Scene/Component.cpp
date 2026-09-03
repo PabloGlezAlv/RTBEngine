@@ -1,6 +1,7 @@
 #include "Component.h"
 #include "GameObject.h"
 #include "../Core/Scheduler.h"
+#include "../Core/TypeId.h"
 #include "../Scripting/LatentActions.h"
 #include "../Physics/CollisionInfo.h"
 
@@ -77,6 +78,21 @@ namespace RTBEngine {
 
             enabledInHierarchy = false;
             OnDisable();
+        }
+
+        std::size_t Component::FillTypeIds(std::uint32_t* out, std::size_t capacity) const
+        {
+            if (!out || capacity == 0) {
+                return 0;
+            }
+
+            const char* typeName = GetTypeName();
+            if (!typeName || typeName[0] == '\0') {
+                return 0;
+            }
+
+            out[0] = TypeId::Hash(typeName);
+            return 1;
         }
 
         void Component::SetUpdateTickEnabled(bool enabled)

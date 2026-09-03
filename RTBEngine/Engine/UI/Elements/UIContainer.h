@@ -17,6 +17,7 @@ namespace RTBEngine {
 			virtual void Render() override {}
 
 			RTB_COMPONENT(UIContainer)
+			RTB_INHERITS(UIElement)
 		};
 
 	}

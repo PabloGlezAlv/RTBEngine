@@ -2,6 +2,7 @@
 #include "../RTBEngineAPI.h"
 #include "../Scripting/LatentActions.h"
 #include <cstdint>
+#include <cstddef>
 #include <functional>
 #include <string>
 
@@ -92,6 +93,7 @@ namespace RTBEngine {
             void NotifyDisabled();
 
             virtual const char* GetTypeName() const = 0;
+            virtual std::size_t FillTypeIds(std::uint32_t* out, std::size_t capacity) const;
 
             // Multiple inheritance reflection fix
             virtual void* GetActualObject() { return this; }

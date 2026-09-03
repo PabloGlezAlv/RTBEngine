@@ -29,6 +29,7 @@ namespace RTBEngine {
 			bool preserveAspect = true;
 
 			RTB_COMPONENT(UIImage)
+			RTB_INHERITS(UIElement)
 		};
 
 	}

@@ -3,7 +3,6 @@
 #include "SceneLifecycle.h"
 #include "../Core/Scheduler.h"
 #include "../Core/Time.h"
-#include "../Core/TypeId.h"
 #include "../Reflection/TypeInfo.h"
 #include "../Core/Logger.h"
 #include "../Physics/PhysicsLayerSettings.h"
@@ -173,18 +172,32 @@ namespace RTBEngine {
             return index < children.size() ? children[index] : nullptr;
         }
 
-        static std::uint32_t GetComponentTypeId(const Component* component)
+        constexpr std::size_t kMaxComponentTypeIds = 8;
+
+        static std::size_t CopyComponentTypeIds(const Component* component, std::uint32_t* out)
         {
-            if (!component) {
+            if (!component || !out) {
                 return 0;
             }
 
-            const char* typeName = component->GetTypeName();
-            if (!typeName || typeName[0] == '\0') {
-                return 0;
+            return component->FillTypeIds(out, kMaxComponentTypeIds);
+        }
+
+        static bool ComponentHasTypeId(const Component* component, const std::uint32_t typeId)
+        {
+            if (!component || typeId == 0) {
+                return false;
             }
 
-            return TypeId::Hash(typeName);
+            std::uint32_t ids[kMaxComponentTypeIds];
+            const std::size_t count = CopyComponentTypeIds(component, ids);
+            for (std::size_t i = 0; i < count; ++i) {
+                if (ids[i] == typeId) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         void GameObject::RegisterComponentType(Component* component)
@@ -193,12 +206,13 @@ namespace RTBEngine {
                 return;
             }
 
-            const std::uint32_t typeId = GetComponentTypeId(component);
-            if (typeId == 0) {
-                return;
+            std::uint32_t ids[kMaxComponentTypeIds];
+            const std::size_t count = CopyComponentTypeIds(component, ids);
+            for (std::size_t i = 0; i < count; ++i) {
+                if (ids[i] != 0) {
+                    componentsByTypeId.emplace(ids[i], component);
+                }
             }
-
-            componentsByTypeId.emplace(typeId, component);
         }
 
         void GameObject::UnregisterComponentType(Component* component)
@@ -207,22 +221,30 @@ namespace RTBEngine {
                 return;
             }
 
-            const std::uint32_t typeId = GetComponentTypeId(component);
-            if (typeId == 0) {
-                return;
-            }
+            std::uint32_t ids[kMaxComponentTypeIds];
+            const std::size_t count = CopyComponentTypeIds(component, ids);
+            for (std::size_t i = 0; i < count; ++i) {
+                const std::uint32_t typeId = ids[i];
+                if (typeId == 0) {
+                    continue;
+                }
 
-            const auto cached = componentsByTypeId.find(typeId);
-            if (cached == componentsByTypeId.end() || cached->second != component) {
-                return;
-            }
+                const auto cached = componentsByTypeId.find(typeId);
+                if (cached == componentsByTypeId.end() || cached->second != component) {
+                    continue;
+                }
 
-            componentsByTypeId.erase(cached);
+                componentsByTypeId.erase(cached);
 
-            for (const auto& comp : components) {
-                if (comp && GetComponentTypeId(comp.get()) == typeId) {
-                    componentsByTypeId.emplace(typeId, comp.get());
-                    break;
+                for (const auto& comp : components) {
+                    if (!comp || comp.get() == component) {
+                        continue;
+                    }
+
+                    if (ComponentHasTypeId(comp.get(), typeId)) {
+                        componentsByTypeId.emplace(typeId, comp.get());
+                        break;
+                    }
                 }
             }
         }
