@@ -97,8 +97,9 @@ namespace RTBEngine {
                     continue;
                 }
 
-                for (const auto& component : gameObject->GetComponents()) {
-                    if (component) {
+                GameObject::ComponentIteration iteration(gameObject);
+                for (std::size_t i = 0; i < iteration.Count(); ++i) {
+                    if (Component* component = iteration.At(i)) {
                         component->InvokeAwakeIfNeeded();
                     }
                 }
@@ -112,8 +113,9 @@ namespace RTBEngine {
                     continue;
                 }
 
-                for (const auto& component : gameObject->GetComponents()) {
-                    if (component) {
+                GameObject::ComponentIteration iteration(gameObject);
+                for (std::size_t i = 0; i < iteration.Count(); ++i) {
+                    if (Component* component = iteration.At(i)) {
                         component->OnValidate();
                     }
                 }
@@ -244,8 +246,9 @@ namespace RTBEngine {
                     continue;
                 }
 
-                for (const auto& component : gameObject->GetComponents()) {
-                    if (component) {
+                GameObject::ComponentIteration iteration(gameObject);
+                for (std::size_t i = 0; i < iteration.Count(); ++i) {
+                    if (Component* component = iteration.At(i)) {
                         component->ResetStartInvocation();
                     }
                 }
@@ -267,8 +270,9 @@ namespace RTBEngine {
                     continue;
                 }
 
-                for (const auto& component : gameObject->GetComponents()) {
-                    if (component) {
+                GameObject::ComponentIteration iteration(gameObject);
+                for (std::size_t i = 0; i < iteration.Count(); ++i) {
+                    if (Component* component = iteration.At(i)) {
                         component->TryInvokeStart();
                     }
                 }

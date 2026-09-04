@@ -382,9 +382,14 @@ namespace RTBEngine {
             if (!object)
                 return;
 
-            const auto& components = object->GetComponents();
-            for (const auto& component : components)
+            Scene::GameObject::ComponentIteration iteration(object);
+            for (std::size_t i = 0; i < iteration.Count(); ++i)
             {
+                Scene::Component* component = iteration.At(i);
+                if (!component) {
+                    continue;
+                }
+
                 if (isTrigger)
                 {
                     switch (state)

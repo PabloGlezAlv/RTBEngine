@@ -1,5 +1,6 @@
 #include "Component.h"
 #include "GameObject.h"
+#include "Scene.h"
 #include "../Core/Scheduler.h"
 #include "../Core/TypeId.h"
 #include "../Scripting/LatentActions.h"
@@ -25,6 +26,17 @@ namespace RTBEngine {
             this->owner = owner;
         }
 
+        void Component::InvalidateTickRegistration() const
+        {
+            if (!owner) {
+                return;
+            }
+
+            if (Scene* scene = owner->GetOwningScene()) {
+                scene->InvalidateTickCache();
+            }
+        }
+
         void Component::SetEnabled(bool enabled)
         {
             if (this->isEnabled == enabled) {
@@ -48,14 +60,18 @@ namespace RTBEngine {
         void Component::ResetStartInvocation()
         {
             startInvoked = false;
-            if (owner && enabledInHierarchy && isEnabled) {
+            if (enabledInHierarchy && isEnabled) {
                 owner->QueueComponentForStart(this);
             }
         }
 
         void Component::TryInvokeStart()
         {
-            if (startInvoked || !owner || !isEnabled || !owner->IsActiveInHierarchy()) {
+            if (startInvoked) {
+                return;
+            }
+
+            if (!isEnabled || !owner->IsActiveInHierarchy()) {
                 return;
             }
 
@@ -72,8 +88,9 @@ namespace RTBEngine {
 
             if (shouldEnable) {
                 enabledInHierarchy = true;
+                InvalidateTickRegistration();
                 OnEnable();
-                if (isEnabled && owner && owner->IsActiveInHierarchy()) {
+                if (isEnabled && owner->IsActiveInHierarchy()) {
                     owner->QueueComponentForStart(this);
                 }
             } else {
@@ -88,6 +105,7 @@ namespace RTBEngine {
             }
 
             enabledInHierarchy = false;
+            InvalidateTickRegistration();
             OnDisable();
         }
 
@@ -108,7 +126,12 @@ namespace RTBEngine {
 
         void Component::SetUpdateTickEnabled(bool enabled)
         {
+            if (this->updateTickEnabled == enabled) {
+                return;
+            }
+
             this->updateTickEnabled = enabled;
+            InvalidateTickRegistration();
         }
 
         void Component::SetTimeMode(ComponentTimeMode mode)

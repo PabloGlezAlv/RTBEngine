@@ -415,7 +415,9 @@ namespace RTBEngine {
                     ApplySnapshot(comp, snap);
 
                     Scripting::SceneReflectionUtils::ClearReferenceProperties(comp, registeredTypeInfo);
-                    go->AddComponent(comp, registeredTypeInfo);
+                    if (!go->AdoptComponent(comp, registeredTypeInfo)) {
+                        continue;
+                    }
                     context.createdComponents.push_back(comp);
 
                     if (!effectiveTypeInfo) {

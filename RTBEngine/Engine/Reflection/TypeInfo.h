@@ -154,9 +154,9 @@ namespace RTBEngine {
 
         class RTB_API TypeInfo {
         public:
-            // Raw function pointer — POD, no destructor, safe to copy across /MT module boundaries.
+            // Raw function pointer — POD, no destructor, safe to copy across module boundaries.
             using FactoryFunc  = Scene::Component*(*)(void* context);
-            // Raw function pointer — POD, no destructor, safe to copy across /MT module boundaries.
+            // Raw function pointer — POD, no destructor, safe to copy across module boundaries.
             using DestroyFunc  = void(*)(Scene::Component*, void* context);
 
             TypeInfo() = default;
@@ -183,10 +183,8 @@ namespace RTBEngine {
             Scene::Component* Create() const { return factoryFn ? factoryFn(factoryCtx) : nullptr; }
             void SetFactory(FactoryFunc fn, void* ctx) { factoryFn = fn; factoryCtx = ctx; }
 
-            // Destroys a component using the heap that allocated it.
-            // Script components are created with new inside GameScripts.dll (/MT heap).
-            // Calling delete from a different module crashes; the destroyer runs in the
-            // module that allocated, using a raw fn ptr + opaque context (both POD).
+            // Destroys a component in the module that allocated it, using a raw fn ptr
+            // plus an opaque context (both POD, so they survive the module boundary).
             void Destroy(Scene::Component* c) const { if (destroyFn) destroyFn(c, destroyCtx); else delete c; }
             void SetDestroyer(DestroyFunc fn, void* ctx) { destroyFn = fn; destroyCtx = ctx; }
 

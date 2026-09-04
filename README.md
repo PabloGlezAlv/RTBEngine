@@ -510,12 +510,14 @@ static void ClearQuitRequest();
 
 `Update` follows this internal order:
 1. `SceneManager::ProcessPendingSceneLoad()` — resolves queued scene transitions before gameplay work for the frame.
-2. `Scene::Update(deltaTime)` — calls `Component::OnUpdate` on every active component.
+2. `Scene::Update()` — calls `Component::OnUpdate` on every active component. Reads the frame delta from `Core::Time`.
 3. `SceneManager::ProcessPendingSceneLoad()` — runs again after component updates so a scene change requested from `OnStart` or `OnUpdate` takes effect before physics.
 4. `PhysicsSystem::Update(scene, deltaTime)` — syncs transforms to Bullet bodies, steps the simulation, dispatches collision callbacks.
 5. `AudioSystem::Update()` — advances the FMOD system (required each frame).
 
-`Scene::Update` actually has two passes at the component level: it calls `OnStart()` once for enabled components on the first frame, and then it calls `OnUpdate()` only on components that are both enabled and have `SetUpdateTickEnabled(true)`. This is the mechanism that lets event-driven scripts stay alive while opting out of idle per-frame work.
+`Scene::Update` has two passes at the component level. First it drains the scene-wide pending-start queue, so every component activated since the last frame gets its single `OnStart()` before any `OnUpdate()` runs. Then it walks a flat registry of tickable components and calls `OnUpdate()`.
+
+That registry is the `cachedTickComponents` list the scene rebuilds on demand, not a walk over the GameObject tree. It holds only components that are enabled, whose owner is enabled in the hierarchy, and that have `SetUpdateTickEnabled(true)` — the mechanism that lets event-driven scripts stay alive while opting out of idle per-frame work. It is built in hierarchy traversal order, so the execution order scripts implicitly rely on is preserved. Toggling `SetEnabled` or `SetUpdateTickEnabled` invalidates only this list, which is a cheap pointer copy, and never the type-lookup maps.
 
 `RequestQuit()` is the script-facing path for asking the host to stop play mode or close the runtime. The host consumes that request with `ConsumeQuitRequest()` and can clear it explicitly with `ClearQuitRequest()` when a play session ends or is cancelled.
 
@@ -798,11 +800,11 @@ The scene layer lives under `Engine/Scene/` (`RTBEngine::Scene`). The ECS simula
 
 `Engine/Scene/Component.h` — Abstract base class for all behaviors. Every feature that can be attached to a `GameObject` extends this class.
 
-**Lifecycle hooks** (called by `GameObject::Update` / `Scene::Update`):
+**Lifecycle hooks** (dispatched by `Scene::Update` and the scene lifecycle):
 
 ```cpp
-virtual void OnAwake();                          // Fired inside AddComponent() — props not yet set
-virtual void OnStart();                          // Fired on first Update() after scene load
+virtual void OnAwake();                          // Fired when the owner comes to life — props not yet set
+virtual void OnStart();                          // Fired on first Update() after activation
 virtual void OnUpdate(float deltaTime);          // Every frame while active and owner is active
 virtual void OnFixedUpdate(float fixedDelta);    // Fixed physics timestep
 virtual void OnDestroy();                        // Owner removed or scene unloaded
@@ -861,7 +863,7 @@ A component does not receive `OnUpdate` or `OnFixedUpdate` when disabled. `OnDes
 
 This split exists for event-driven scripts. A component such as a UI animation controller can stay "alive" for pointer events, but keep its per-frame cost at zero while idle. When work starts, it re-enables its update tick; when the work finishes, it disables the tick again.
 
-> **Critical**: `OnAwake` fires inside `AddComponent()`, **before** `SceneReflectionUtils` assigns reflected property values from the scene file. Never read reflected `GameObjectRef` or asset references in `OnAwake`. Use `OnStart` instead.
+> **Critical**: `OnAwake` fires **before** `SceneReflectionUtils` assigns reflected property values from the scene file. Never read reflected `GameObjectRef` or asset references in `OnAwake`. Use `OnStart` instead. The same applies to `AddComponent<T>()` on a live GameObject: the hook runs inside the call, so anything you configure on the returned pointer happens after it. Read that configuration in `OnStart`, which the scene defers to the next frame.
 
 ### 6.2 Transform
 
@@ -948,7 +950,9 @@ Math::Matrix4    GetWorldMatrix()   const;
 
 ```cpp
 template<typename T>
-T* AddComponent();          // Creates a T, calls T::OnAwake(), returns raw pointer
+T* AddComponent();          // Builds a T through its TypeInfo factory, returns a borrowed pointer
+
+Component* AddComponentOfType(const char* typeName);   // Same, by name (inspector, tooling)
 
 template<typename T>
 T* GetComponent();          // Returns first T found, or nullptr
@@ -962,7 +966,11 @@ void RemoveComponent();     // Calls T::OnDestroy(), removes from list
 const std::vector<std::unique_ptr<Component>>& GetComponents() const;
 ```
 
-`AddComponent<T>()` uses `std::make_unique<T>()`, sets the owner pointer, then immediately calls `OnAwake()`. Because this happens before the scene is fully loaded, reflected properties are not yet populated at this point.
+`AddComponent<T>()` builds the instance through `T`'s registered `TypeInfo` factory, so the module that allocates is the same one that will later destroy it. The GameObject owns the component; the returned pointer is borrowed and must never be deleted by the caller. Use `RemoveComponent` to destroy it.
+
+`OnAwake`, `OnValidate` and `OnEnable` only fire inside the call when the GameObject is already live. On an object that has not been brought to life yet, they run later, during `Scene::AddGameObject`. That window is how the loaders configure a component before any hook observes it.
+
+Taking ownership of an externally built component is private (`AdoptComponent`) and reserved for `SceneLoader`, `Prefab` and the FBX binder, which must finish deserializing before `OnAwake` reads the values.
 
 **Hierarchy:**
 
@@ -3623,7 +3631,7 @@ return {
    d. For each component entry:
       i.  registeredTypeInfo = ComponentRegistry::GetComponentTypeInfo(type)
       ii. ComponentRegistry::CreateComponent(type)
-      iii. gameObject.AddComponent(component, registeredTypeInfo)
+      iii. gameObject.AdoptComponent(component, registeredTypeInfo)  [private, SceneLoader is a friend]
       iv. SceneReflectionUtils::ApplyLuaTableToComponent(L, tableIndex, type, component)
       v.  component.OnValidate()
       vi. Duplicates destroyed via ComponentRegistry::DestroyComponent (never raw delete)

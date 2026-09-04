@@ -6,7 +6,6 @@
 #include "SceneManager.h"
 #include "PrefabRegistry.h"
 #include "../Scripting/PrefabSaver.h"
-#include "../Scripting/ComponentRegistry.h"
 #include "../Core/Logger.h"
 #include <filesystem>
 #include <vector>
@@ -59,8 +58,9 @@ namespace RTBEngine {
                     return;
                 }
 
-                for (const auto& comp : gameObject->GetComponents()) {
-                    if (comp) {
+                GameObject::ComponentIteration iteration(gameObject);
+                for (std::size_t i = 0; i < iteration.Count(); ++i) {
+                    if (Component* comp = iteration.At(i)) {
                         comp->OnValidate();
                     }
                 }
@@ -93,44 +93,45 @@ namespace RTBEngine {
                 gameObject->SetStaticFlags(baselineNode->GetStaticFlags());
 
                 std::vector<Component*> componentsToRemove;
-                for (const auto& comp : gameObject->GetComponents()) {
-                    if (!comp) {
-                        continue;
-                    }
+                {
+                    GameObject::ComponentIteration iteration(gameObject);
+                    for (std::size_t i = 0; i < iteration.Count(); ++i) {
+                        Component* comp = iteration.At(i);
+                        if (!comp) {
+                            continue;
+                        }
 
-                    const ComponentSnapshot* baselineSnap = PrefabOverrideDiff::FindBaselineSnapshot(
-                        baselineNode,
-                        comp->GetTypeName());
-                    if (!baselineSnap) {
-                        componentsToRemove.push_back(comp.get());
-                        continue;
-                    }
+                        const ComponentSnapshot* baselineSnap = PrefabOverrideDiff::FindBaselineSnapshot(
+                            baselineNode,
+                            comp->GetTypeName());
+                        if (!baselineSnap) {
+                            componentsToRemove.push_back(comp);
+                            continue;
+                        }
 
-                    Prefab::ApplySnapshot(comp.get(), *baselineSnap);
+                        Prefab::ApplySnapshot(comp, *baselineSnap);
 
-                    const Reflection::TypeInfo* typeInfo = comp->GetTypeInfo();
-                    if (typeInfo) {
-                        for (const Reflection::PropertyInfo* prop : typeInfo->GetSerializableProperties()) {
-                            if (prop->type == Reflection::PropertyType::GameObjectRef ||
-                                prop->type == Reflection::PropertyType::ComponentRef) {
-                                Prefab::ApplySnapshotProperty(
-                                    comp.get(),
-                                    *baselineSnap,
-                                    prop,
-                                    scene,
-                                    instanceRoot);
+                        const Reflection::TypeInfo* typeInfo = comp->GetTypeInfo();
+                        if (typeInfo) {
+                            for (const Reflection::PropertyInfo* prop : typeInfo->GetSerializableProperties()) {
+                                if (prop->type == Reflection::PropertyType::GameObjectRef ||
+                                    prop->type == Reflection::PropertyType::ComponentRef) {
+                                    Prefab::ApplySnapshotProperty(
+                                        comp,
+                                        *baselineSnap,
+                                        prop,
+                                        scene,
+                                        instanceRoot);
+                                }
                             }
                         }
-                    }
 
-                    comp->OnValidate();
+                        comp->OnValidate();
+                    }
                 }
 
                 for (Component* comp : componentsToRemove) {
                     gameObject->RemoveComponent(comp);
-                    Scripting::ComponentRegistry::GetInstance().DestroyComponent(
-                        comp->GetTypeName(),
-                        comp);
                 }
 
                 std::vector<GameObject*> childrenToRemove;
@@ -319,9 +320,7 @@ namespace RTBEngine {
                 return false;
             }
 
-            const char* typeName = component->GetTypeName();
             gameObject->RemoveComponent(component);
-            Scripting::ComponentRegistry::GetInstance().DestroyComponent(typeName, component);
             MarkSceneDirtyIfNeeded();
             return true;
         }

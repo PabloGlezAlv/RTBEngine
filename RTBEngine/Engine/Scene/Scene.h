@@ -43,6 +43,20 @@ namespace RTBEngine {
             Scene(const Scene&) = delete;
             Scene& operator=(const Scene&) = delete;
 
+            class RTB_API DispatchScope {
+            public:
+                explicit DispatchScope(Scene* scene);
+                ~DispatchScope();
+
+                DispatchScope(const DispatchScope&) = delete;
+                DispatchScope& operator=(const DispatchScope&) = delete;
+
+            private:
+                Scene* scene;
+            };
+
+            bool IsDispatching() const { return dispatchDepth > 0; }
+
             void AddGameObject(GameObject* gameObject, bool queueLifecycle = true);
             void RemoveGameObject(GameObject* gameObject);
             void BringGameObjectToLife(GameObject* root);
@@ -51,9 +65,9 @@ namespace RTBEngine {
             GameObject* FindGameObject(const std::string& name);
             GameObject* FindGameObjectByUUID(const std::string& uuid);
 
-            void Update(float deltaTime);
+            void Update();
             void FixedUpdate(float fixedDeltaTime);
-            void LateUpdate(float deltaTime);
+            void LateUpdate();
             void Render(Rendering::Camera* camera);
             void RenderTransparentEffects(Rendering::Camera* camera);
             void TickEditModeSimulate(float deltaTime);
@@ -73,6 +87,7 @@ namespace RTBEngine {
             const std::vector<std::unique_ptr<GameObject>>& GetGameObjects() const { return gameObjects; }
 
             void InvalidateComponentCaches();
+            void InvalidateTickCache();
 
             const std::vector<MeshRenderer*>& GetCachedMeshRenderers() const;
             const std::vector<LightComponent*>& GetCachedLightComponents() const;
@@ -102,12 +117,18 @@ namespace RTBEngine {
             bool OwnsGameObject(GameObject* target) const;
             void EnsureComponentCaches() const;
             void RebuildComponentCaches() const;
+            void EnsureTickCache() const;
+            void RebuildTickCache() const;
             void AssignGameObjectOwnership(GameObject* gameObject);
             void ClearGameObjectOwnership(GameObject* gameObject);
             void RegisterGameObjectUuid(GameObject* gameObject);
             void UnregisterGameObjectUuid(GameObject* gameObject);
             void RegisterGameObjectHierarchy(GameObject* root);
             void UnregisterGameObjectHierarchy(GameObject* root);
+            void TrackPendingComponentRemovals(GameObject* owner);
+            void FlushPendingComponentRemovals();
+            void TrackPendingStarts(GameObject* owner);
+            void DrainPendingStarts();
 
             friend class GameObject;
 
@@ -118,7 +139,10 @@ namespace RTBEngine {
             std::vector<std::unique_ptr<GameObject>> pendingAdds;
             std::vector<GameObject*> pendingRemoves;
             std::vector<GameObject*> pendingLifecycleRoots;
-            int iterationDepth = 0;
+            std::vector<GameObject*> gameObjectsWithPendingComponentRemovals;
+            std::vector<GameObject*> gameObjectsWithPendingStarts;
+            int dispatchDepth = 0;
+            bool flushingPendingCommands = false;
 
             bool lifecycleComplete = false;
 
@@ -129,6 +153,7 @@ namespace RTBEngine {
             bool pendingRenderLog = false;
 
             mutable bool componentCachesDirty = true;
+            mutable bool tickCacheDirty = true;
             mutable std::vector<MeshRenderer*> cachedMeshRenderers;
             mutable std::vector<LightComponent*> cachedLightComponents;
             mutable std::vector<TrailRenderer*> cachedTrailRenderers;
@@ -138,6 +163,7 @@ namespace RTBEngine {
             mutable std::vector<RigidBodyComponent*> cachedRigidBodies;
             mutable std::vector<Occludable*> cachedOccludables;
             mutable std::vector<OcclusionTarget*> cachedOcclusionTargets;
+            mutable std::vector<Component*> cachedTickComponents;
             mutable std::vector<Component*> cachedTransparentRenderComponents;
             mutable std::vector<Component*> cachedEditModeSimulateComponents;
             mutable std::unordered_map<std::string, std::vector<Component*>> cachedComponentsByTypeName;

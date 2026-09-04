@@ -618,7 +618,7 @@ namespace RTBEngine {
                         !missingTypeName.empty() ? missingTypeName : componentType;
                     RTB_ERROR("SceneLoader: Component type '" + placeholderType
                               + "' not found — inserting MissingComponent placeholder");
-                    gameObject->AddComponent(new Scene::MissingComponent(placeholderType));
+                    gameObject->AdoptComponent(new Scene::MissingComponent(placeholderType), nullptr);
                     lua_pop(L, 1);
                     continue;
                 }
@@ -634,8 +634,9 @@ namespace RTBEngine {
                 if (existing) {
                     ComponentRegistry::GetInstance().DestroyComponent(componentType, comp);
                     comp = existing;
-                } else {
-                    gameObject->AddComponent(comp, registeredTypeInfo);
+                } else if (!gameObject->AdoptComponent(comp, registeredTypeInfo)) {
+                    lua_pop(L, 1);
+                    continue;
                 }
 
                 SceneReflectionUtils::ApplyLuaTableToComponent(L, componentTableIndex, componentType.c_str(), comp);

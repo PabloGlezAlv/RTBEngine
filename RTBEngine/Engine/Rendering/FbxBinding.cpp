@@ -9,6 +9,18 @@
 namespace RTBEngine {
     namespace Rendering {
 
+        // The FBX hierarchy is built on GameObjects that are already live, so the
+        // components must arrive fully configured before OnAwake reads them.
+        struct FbxComponentAttacher {
+            static bool Attach(Scene::GameObject* go, Scene::Component* component)
+            {
+                if (!go || !component) {
+                    return false;
+                }
+                return go->AdoptComponent(component, component->GetTypeInfo());
+            }
+        };
+
         Texture* LoadExternalTexture(const FbxBindingContext& ctx, const std::string& path)
         {
             if (path.empty()) {
@@ -232,7 +244,7 @@ namespace RTBEngine {
                 renderer->SetShader(basicShader);
             }
 
-            go->AddComponent(renderer);
+            FbxComponentAttacher::Attach(go, renderer);
         }
 
         static void BuildNodeHierarchy(
@@ -341,7 +353,7 @@ namespace RTBEngine {
                         modelData.animations[0]->GetName());
                 }
                 animator->modelRef = fbxPath;
-                root->AddComponent(animator);
+                FbxComponentAttacher::Attach(root, animator);
                 animator->CreateBoneGameObjects(scene);
             }
 

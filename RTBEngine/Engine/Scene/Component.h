@@ -22,6 +22,8 @@ namespace RTBEngine {
     namespace Scene {
 
         class GameObject;
+        class Scene;
+        class SceneLifecycle;
 
         enum class ComponentTimeMode {
             Scaled,
@@ -74,7 +76,6 @@ namespace RTBEngine {
             virtual bool WantsEditModeSimulate() const { return false; }
             virtual void OnEditModeSimulate(float deltaTime) { (void)deltaTime; }
 
-            void SetOwner(GameObject* owner);
             GameObject* GetOwner() const { return owner; }
 
             void SetEnabled(bool enabled);
@@ -86,11 +87,6 @@ namespace RTBEngine {
 
             bool HasAwakeBeenInvoked() const { return awakeInvoked; }
             bool HasStartBeenInvoked() const { return startInvoked; }
-            void ResetStartInvocation();
-            void InvokeAwakeIfNeeded();
-            void TryInvokeStart();
-            void SyncEnabledState();
-            void NotifyDisabled();
 
             virtual const char* GetTypeName() const = 0;
             virtual std::size_t FillTypeIds(std::uint32_t* out, std::size_t capacity) const;
@@ -112,6 +108,19 @@ namespace RTBEngine {
                 std::function<void()> callback);
             void CancelInvoke(Scripting::LatentActionHandle handle);
             void CancelAllInvokes();
+
+        private:
+            friend class GameObject;
+            friend class Scene;
+            friend class SceneLifecycle;
+
+            void SetOwner(GameObject* owner);
+            void ResetStartInvocation();
+            void InvokeAwakeIfNeeded();
+            void TryInvokeStart();
+            void SyncEnabledState();
+            void NotifyDisabled();
+            void InvalidateTickRegistration() const;
 
         protected:
             GameObject* owner;

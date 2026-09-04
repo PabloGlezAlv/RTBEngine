@@ -502,8 +502,9 @@ namespace RTBEngine {
 		void CanvasSystem::ExecuteEvents(Scene::GameObject* target, const PointerEventData& eventData, TCallback callback) {
 			if (!target) return;
 
-			for (const auto& comp : target->GetComponents()) {
-				THandler* handler = dynamic_cast<THandler*>(comp.get());
+			Scene::GameObject::ComponentIteration iteration(target);
+			for (std::size_t i = 0; i < iteration.Count(); ++i) {
+				THandler* handler = dynamic_cast<THandler*>(iteration.At(i));
 				if (handler) {
 					callback(handler, eventData);
 				}

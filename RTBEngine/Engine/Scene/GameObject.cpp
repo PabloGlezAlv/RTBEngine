@@ -60,9 +60,7 @@ namespace RTBEngine {
             transform.SetOwningGameObject(this);
         }
 
-        // Returns a deleter that destroys the component through its TypeInfo if available.
-        // This ensures delete runs in the same module (heap) that called new,
-        // which is required when GameScripts.dll uses a separate /MT CRT heap.
+        // Destroys the component through its TypeInfo so the matching operator delete runs.
         static std::function<void(Component*)> MakeComponentDeleter(
             Component* component,
             const RTBEngine::Reflection::TypeInfo* typeInfoOverride)
@@ -88,6 +86,14 @@ namespace RTBEngine {
         {
             isBeingDestroyed = true;
 
+            if (owningScene) {
+                auto& removals = owningScene->gameObjectsWithPendingComponentRemovals;
+                removals.erase(std::remove(removals.begin(), removals.end(), this), removals.end());
+
+                auto& starts = owningScene->gameObjectsWithPendingStarts;
+                starts.erase(std::remove(starts.begin(), starts.end(), this), starts.end());
+            }
+
             for (GameObject* child : children) {
                 if (child) {
                     child->parent = nullptr;
@@ -101,9 +107,10 @@ namespace RTBEngine {
             parent = nullptr;
 
             for (auto& comp : components) {
-                Core::Scheduler::GetInstance().CancelAllForOwner(comp.get());
-                comp->NotifyDisabled();
-                comp->OnDestroy();
+                Component* component = comp.get();
+                Core::Scheduler::GetInstance().CancelAllForOwner(component);
+                component->NotifyDisabled();
+                component->OnDestroy();
             }
             components.clear();
             componentsByTypeId.clear();
@@ -111,9 +118,29 @@ namespace RTBEngine {
             pendingComponentRemoves.clear();
         }
 
-        void GameObject::AddComponent(Component* component)
+        Component* GameObject::AddComponentOfType(const char* typeName)
         {
-            AddComponent(component, nullptr);
+            if (!typeName || !*typeName) {
+                RTB_ERROR("AddComponentOfType: nombre de tipo vacio.");
+                return nullptr;
+            }
+
+            const RTBEngine::Reflection::TypeInfo* typeInfo =
+                RTBEngine::Reflection::TypeRegistry::GetInstance().GetTypeInfo(typeName);
+            if (!typeInfo) {
+                RTB_ERROR(std::string("AddComponentOfType: '") + typeName
+                    + "' no esta registrado. Falta su RTB_REGISTER_COMPONENT.");
+                return nullptr;
+            }
+
+            Component* component = typeInfo->Create();
+            if (!component) {
+                RTB_ERROR(std::string("AddComponentOfType: '") + typeName
+                    + "' no tiene fabrica registrada.");
+                return nullptr;
+            }
+
+            return AdoptComponent(component, typeInfo) ? component : nullptr;
         }
 
         Component* GameObject::LookupComponentByTypeId(const std::uint32_t typeId)
@@ -267,6 +294,10 @@ namespace RTBEngine {
             }
 
             pendingStart.push_back(component);
+
+            if (owningScene) {
+                owningScene->TrackPendingStarts(this);
+            }
         }
 
         void GameObject::DrainPendingStarts()
@@ -286,21 +317,53 @@ namespace RTBEngine {
             }
         }
 
+        GameObject::ComponentIteration::ComponentIteration(GameObject* gameObject)
+            : gameObject(gameObject)
+        {
+            if (gameObject) {
+                gameObject->BeginComponentIteration();
+            }
+        }
+
+        GameObject::ComponentIteration::~ComponentIteration()
+        {
+            if (gameObject) {
+                gameObject->EndComponentIteration();
+            }
+        }
+
+        std::size_t GameObject::ComponentIteration::Count() const
+        {
+            return gameObject ? gameObject->GetComponentCount() : 0;
+        }
+
+        Component* GameObject::ComponentIteration::At(const std::size_t index) const
+        {
+            return gameObject ? gameObject->GetLiveComponentAt(index) : nullptr;
+        }
+
         void GameObject::BeginComponentIteration()
         {
-            ++componentIterationDepth;
+            if (owningScene) {
+                ++owningScene->dispatchDepth;
+            }
         }
 
         void GameObject::EndComponentIteration()
         {
-            if (componentIterationDepth == 0) {
+            if (!owningScene || owningScene->dispatchDepth == 0) {
                 return;
             }
 
-            --componentIterationDepth;
-            if (componentIterationDepth == 0) {
-                FlushDeferredComponentMutations();
+            --owningScene->dispatchDepth;
+            if (owningScene->dispatchDepth == 0) {
+                owningScene->FlushPendingCommands();
             }
+        }
+
+        bool GameObject::IsComponentMutationDeferred() const
+        {
+            return owningScene && owningScene->IsDispatching();
         }
 
         bool GameObject::IsComponentPendingRemove(const Component* component) const
@@ -362,10 +425,23 @@ namespace RTBEngine {
             }
         }
 
-        void GameObject::AddComponent(Component* component, const RTBEngine::Reflection::TypeInfo* typeInfoOverride)
+        bool GameObject::AdoptComponent(Component* component, const RTBEngine::Reflection::TypeInfo* typeInfoOverride)
         {
             if (!component) {
-                return;
+                return false;
+            }
+
+            if (isBeingDestroyed) {
+                RTB_ERROR(std::string("AdoptComponent: '") + component->GetTypeName() + "' descartado, '"
+                    + name + "' se esta destruyendo.");
+                MakeComponentDeleter(component, typeInfoOverride)(component);
+                return false;
+            }
+
+            if (const GameObject* currentOwner = component->GetOwner()) {
+                RTB_ERROR(std::string("AdoptComponent: '") + component->GetTypeName() + "' ya pertenece a '"
+                    + currentOwner->GetName() + "'. Se ignora la llamada.");
+                return false;
             }
 
             component->SetOwner(this);
@@ -381,6 +457,8 @@ namespace RTBEngine {
                 SceneLifecycle::InvokeAwakeAndValidate(component);
                 component->SyncEnabledState();
             }
+
+            return true;
         }
 
         void GameObject::RemoveComponent(Component* component)
@@ -389,7 +467,7 @@ namespace RTBEngine {
                 return;
             }
 
-            if (componentIterationDepth > 0) {
+            if (IsComponentMutationDeferred()) {
                 if (IsComponentPendingRemove(component)) {
                     return;
                 }
@@ -404,6 +482,7 @@ namespace RTBEngine {
 
                 UnregisterComponentType(component);
                 pendingComponentRemoves.push_back(component);
+                owningScene->TrackPendingComponentRemovals(this);
                 return;
             }
 
@@ -426,14 +505,12 @@ namespace RTBEngine {
 
         void GameObject::SyncEnabledState()
         {
-            BeginComponentIteration();
-            const std::size_t count = components.size();
-            for (std::size_t i = 0; i < count; ++i) {
-                if (Component* component = GetLiveComponentAt(i)) {
+            ComponentIteration iteration(this);
+            for (std::size_t i = 0; i < iteration.Count(); ++i) {
+                if (Component* component = iteration.At(i)) {
                     component->SyncEnabledState();
                 }
             }
-            EndComponentIteration();
         }
 
         void GameObject::SyncHierarchyEnabledState()
@@ -529,80 +606,6 @@ namespace RTBEngine {
             return transform.GetScale();
         }
 
-        void GameObject::Update(float deltaTime)
-        {
-            if (!IsActiveInHierarchy()) return;
-            (void)deltaTime;
-
-            BeginComponentIteration();
-            DrainPendingStarts();
-
-            const std::size_t count = components.size();
-            for (std::size_t i = 0; i < count; ++i) {
-                Component* comp = GetLiveComponentAt(i);
-                if (!comp) {
-                    continue;
-                }
-
-                if (comp->IsEnabled() && comp->IsUpdateTickEnabled()) {
-                    if (comp->GetTimeMode() == ComponentTimeMode::Unscaled) {
-                        comp->OnUpdate(Core::Time::GetUnscaledDeltaTime());
-                    } else if (!Core::Time::IsPaused()) {
-                        comp->OnUpdate(Core::Time::GetDeltaTime());
-                    }
-                }
-            }
-            EndComponentIteration();
-        }
-
-        void GameObject::FixedUpdate(float fixedDeltaTime)
-        {
-            if (!IsActiveInHierarchy()) return;
-
-            BeginComponentIteration();
-            const std::size_t count = components.size();
-            for (std::size_t i = 0; i < count; ++i) {
-                Component* comp = GetLiveComponentAt(i);
-                if (!comp) {
-                    continue;
-                }
-
-                if (comp->IsEnabled() && comp->IsUpdateTickEnabled()) {
-                    comp->OnFixedUpdate(fixedDeltaTime);
-                }
-            }
-            EndComponentIteration();
-        }
-
-        void GameObject::LateUpdate(float deltaTime)
-        {
-            if (!IsActiveInHierarchy()) return;
-            (void)deltaTime;
-
-            BeginComponentIteration();
-            const std::size_t count = components.size();
-            for (std::size_t i = 0; i < count; ++i) {
-                Component* comp = GetLiveComponentAt(i);
-                if (!comp) {
-                    continue;
-                }
-
-                if (comp->IsEnabled() && comp->IsUpdateTickEnabled()) {
-                    if (comp->GetTimeMode() == ComponentTimeMode::Unscaled) {
-                        comp->OnLateUpdate(Core::Time::GetUnscaledDeltaTime());
-                    } else if (!Core::Time::IsPaused()) {
-                        comp->OnLateUpdate(Core::Time::GetDeltaTime());
-                    }
-                }
-            }
-            EndComponentIteration();
-        }
-
-        void GameObject::Render(Rendering::Camera* camera)
-        {
-            
-        }
-
         void GameObject::SetParent(GameObject* newParent)
         {
             if (newParent == parent) return;
@@ -619,14 +622,14 @@ namespace RTBEngine {
                 parent->AddChild(this);
             }
 
-            BeginComponentIteration();
-            const std::size_t count = components.size();
-            for (std::size_t i = 0; i < count; ++i) {
-                if (Component* component = GetLiveComponentAt(i)) {
-                    component->OnParentChanged(oldParent, parent);
+            {
+                ComponentIteration iteration(this);
+                for (std::size_t i = 0; i < iteration.Count(); ++i) {
+                    if (Component* component = iteration.At(i)) {
+                        component->OnParentChanged(oldParent, parent);
+                    }
                 }
             }
-            EndComponentIteration();
 
             MarkWorldMatrixDirty();
             MarkActiveInHierarchyDirty();

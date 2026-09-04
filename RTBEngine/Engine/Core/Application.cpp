@@ -556,7 +556,7 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 		physicsSystem->SyncRenderTransforms(scene, 1.0f);
 	}
 
-	scene->Update(deltaTime);
+	scene->Update();
 
 	if (ecsWorld) {
 		ecsWorld->Tick(ECS::SystemPhase::Simulation, deltaTime);
@@ -589,7 +589,7 @@ void RTBEngine::Core::Application::Update(float deltaTime)
 		physicsSystem->SyncRenderTransforms(scene, Time::GetFixedInterpolationAlpha());
 	}
 
-	scene->LateUpdate(deltaTime);
+	scene->LateUpdate();
 
 	if (ecsWorld) {
 		ecsWorld->Tick(ECS::SystemPhase::Presentation, deltaTime);

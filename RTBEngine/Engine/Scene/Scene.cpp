@@ -20,6 +20,7 @@
 #include "MeshDrawSubmit.h"
 #include "../UI/Canvas.h"
 #include "../Core/Logger.h"
+#include "../Core/Time.h"
 #include "../Core/TypeId.h"
 #include "../Rendering/CameraUBO.h"
 #include "../Rendering/Lighting/LightingUBO.h"
@@ -30,6 +31,16 @@
 #include "../Rendering/RHI/RenderDevice.h"
 
 namespace {
+	bool IsTickableNow(RTBEngine::Scene::Component* component)
+	{
+		if (!component || !component->IsEnabled() || !component->IsUpdateTickEnabled()) {
+			return false;
+		}
+
+		RTBEngine::Scene::GameObject* owner = component->GetOwner();
+		return owner && owner->IsActiveInHierarchy();
+	}
+
 	RTBEngine::Scene::CameraComponent* FindCameraComponent(
 		const std::vector<std::unique_ptr<RTBEngine::Scene::GameObject>>& objects,
 		bool requireActive,
@@ -439,11 +450,54 @@ RTBEngine::Scene::Scene::~Scene()
 void RTBEngine::Scene::Scene::InvalidateComponentCaches()
 {
 	componentCachesDirty = true;
+	tickCacheDirty = true;
+}
+
+void RTBEngine::Scene::Scene::InvalidateTickCache()
+{
+	tickCacheDirty = true;
+}
+
+void RTBEngine::Scene::Scene::EnsureTickCache() const
+{
+	if (!tickCacheDirty || dispatchDepth > 0) {
+		return;
+	}
+
+	RebuildTickCache();
+	tickCacheDirty = false;
+}
+
+void RTBEngine::Scene::Scene::RebuildTickCache() const
+{
+	cachedTickComponents.clear();
+
+	const auto collectFromGameObjects = [this](const std::vector<std::unique_ptr<GameObject>>& objects) {
+		for (const auto& gameObject : objects) {
+			if (!gameObject) {
+				continue;
+			}
+
+			for (const GameObject::ComponentPtr& component : gameObject->GetComponents()) {
+				Component* raw = component.get();
+				if (raw && raw->enabledInHierarchy && raw->IsEnabled() && raw->IsUpdateTickEnabled()) {
+					cachedTickComponents.push_back(raw);
+				}
+			}
+		}
+	};
+
+	collectFromGameObjects(gameObjects);
+	collectFromGameObjects(pendingAdds);
 }
 
 void RTBEngine::Scene::Scene::EnsureComponentCaches() const
 {
 	if (!componentCachesDirty) {
+		return;
+	}
+
+	if (dispatchDepth > 0) {
 		return;
 	}
 
@@ -708,7 +762,7 @@ void RTBEngine::Scene::Scene::ClearGameObjectOwnership(GameObject* gameObject)
 
 void RTBEngine::Scene::Scene::AddGameObject(GameObject* gameObject, bool queueLifecycle)
 {
-	if (iterationDepth > 0) {
+	if (dispatchDepth > 0) {
 		pendingAdds.push_back(std::unique_ptr<GameObject>(gameObject));
 	} else {
 		gameObjects.push_back(std::unique_ptr<GameObject>(gameObject));
@@ -781,7 +835,7 @@ void RTBEngine::Scene::Scene::RemoveGameObject(GameObject* gameObject)
 		return;
 	}
 
-	if (iterationDepth > 0) {
+	if (dispatchDepth > 0) {
 		pendingRemoves.push_back(gameObject);
 		return;
 	}
@@ -822,9 +876,92 @@ void RTBEngine::Scene::Scene::RemoveGameObject(GameObject* gameObject)
 	InvalidateComponentCaches();
 }
 
+RTBEngine::Scene::Scene::DispatchScope::DispatchScope(Scene* scene)
+	: scene(scene)
+{
+	if (scene) {
+		++scene->dispatchDepth;
+	}
+}
+
+RTBEngine::Scene::Scene::DispatchScope::~DispatchScope()
+{
+	if (!scene || scene->dispatchDepth == 0) {
+		return;
+	}
+
+	--scene->dispatchDepth;
+	if (scene->dispatchDepth == 0) {
+		scene->FlushPendingCommands();
+	}
+}
+
+void RTBEngine::Scene::Scene::TrackPendingComponentRemovals(GameObject* owner)
+{
+	if (!owner) {
+		return;
+	}
+
+	if (std::find(gameObjectsWithPendingComponentRemovals.begin(),
+		gameObjectsWithPendingComponentRemovals.end(), owner)
+		== gameObjectsWithPendingComponentRemovals.end()) {
+		gameObjectsWithPendingComponentRemovals.push_back(owner);
+	}
+}
+
+void RTBEngine::Scene::Scene::FlushPendingComponentRemovals()
+{
+	if (gameObjectsWithPendingComponentRemovals.empty()) {
+		return;
+	}
+
+	std::vector<GameObject*> owners;
+	owners.swap(gameObjectsWithPendingComponentRemovals);
+	for (GameObject* owner : owners) {
+		if (owner && OwnsGameObject(owner)) {
+			owner->FlushDeferredComponentMutations();
+		}
+	}
+}
+
+void RTBEngine::Scene::Scene::TrackPendingStarts(GameObject* owner)
+{
+	if (!owner) {
+		return;
+	}
+
+	if (std::find(gameObjectsWithPendingStarts.begin(), gameObjectsWithPendingStarts.end(), owner)
+		== gameObjectsWithPendingStarts.end()) {
+		gameObjectsWithPendingStarts.push_back(owner);
+	}
+}
+
+void RTBEngine::Scene::Scene::DrainPendingStarts()
+{
+	if (gameObjectsWithPendingStarts.empty()) {
+		return;
+	}
+
+	std::vector<GameObject*> owners;
+	owners.swap(gameObjectsWithPendingStarts);
+	for (GameObject* owner : owners) {
+		if (owner && OwnsGameObject(owner) && owner->IsActiveInHierarchy()) {
+			owner->DrainPendingStarts();
+		}
+	}
+}
+
 void RTBEngine::Scene::Scene::FlushPendingCommands()
 {
-	if (iterationDepth > 0) return;
+	if (dispatchDepth > 0 || flushingPendingCommands) return;
+
+	flushingPendingCommands = true;
+	struct ResetOnExit {
+		bool& flag;
+		~ResetOnExit() { flag = false; }
+	} resetOnExit{ flushingPendingCommands };
+
+	FlushPendingComponentRemovals();
 
 	const bool hadPendingChanges = !pendingRemoves.empty() || !pendingAdds.empty();
 
@@ -910,8 +1047,9 @@ void RTBEngine::Scene::Scene::PrepareForPlayMode()
 			return;
 		}
 
-		for (const auto& component : gameObject->GetComponents()) {
-			if (component) {
+		GameObject::ComponentIteration iteration(gameObject);
+		for (std::size_t i = 0; i < iteration.Count(); ++i) {
+			if (Component* component = iteration.At(i)) {
 				component->NotifyDisabled();
 				component->ResetStartInvocation();
 			}
@@ -939,38 +1077,60 @@ void RTBEngine::Scene::Scene::PrepareForPlayMode()
 	}
 }
 
-void RTBEngine::Scene::Scene::Update(float deltaTime)
+void RTBEngine::Scene::Scene::Update()
 {
 	FlushPendingLifecycle();
 
-	++iterationDepth;
-	for (auto& gameObject : gameObjects) {
-		if (gameObject) gameObject->Update(deltaTime);
+	EnsureTickCache();
+
+	DispatchScope dispatch(this);
+	DrainPendingStarts();
+
+	for (Component* component : cachedTickComponents) {
+		if (!IsTickableNow(component)) {
+			continue;
+		}
+
+		if (component->GetTimeMode() == ComponentTimeMode::Unscaled) {
+			component->OnUpdate(Core::Time::GetUnscaledDeltaTime());
+		} else if (!Core::Time::IsPaused()) {
+			component->OnUpdate(Core::Time::GetDeltaTime());
+		}
 	}
-	--iterationDepth;
-	FlushPendingCommands();
 }
 
 void RTBEngine::Scene::Scene::FixedUpdate(float fixedDeltaTime)
 {
-	++iterationDepth;
-	for (auto& gameObject : gameObjects) {
-		if (gameObject) gameObject->FixedUpdate(fixedDeltaTime);
+	EnsureTickCache();
+
+	{
+		DispatchScope dispatch(this);
+		for (Component* component : cachedTickComponents) {
+			if (IsTickableNow(component)) {
+				component->OnFixedUpdate(fixedDeltaTime);
+			}
+		}
 	}
-	--iterationDepth;
-	FlushPendingCommands();
 
 	Navigation::ProcessSceneNavigationFixedUpdate(this);
 }
 
-void RTBEngine::Scene::Scene::LateUpdate(float deltaTime)
+void RTBEngine::Scene::Scene::LateUpdate()
 {
-	++iterationDepth;
-	for (auto& gameObject : gameObjects) {
-		if (gameObject) gameObject->LateUpdate(deltaTime);
+	EnsureTickCache();
+
+	DispatchScope dispatch(this);
+	for (Component* component : cachedTickComponents) {
+		if (!IsTickableNow(component)) {
+			continue;
+		}
+
+		if (component->GetTimeMode() == ComponentTimeMode::Unscaled) {
+			component->OnLateUpdate(Core::Time::GetUnscaledDeltaTime());
+		} else if (!Core::Time::IsPaused()) {
+			component->OnLateUpdate(Core::Time::GetDeltaTime());
+		}
 	}
-	--iterationDepth;
-	FlushPendingCommands();
 }
 
 void RTBEngine::Scene::Scene::Render(Rendering::Camera* camera)
@@ -982,7 +1142,7 @@ void RTBEngine::Scene::Scene::Render(Rendering::Camera* camera)
 	opaqueDraws.clear();
 	opaqueDraws.reserve(GetCachedMeshRenderers().size());
 
-	++iterationDepth;
+	DispatchScope dispatch(this);
 	for (MeshRenderer* renderer : GetCachedMeshRenderers()) {
 		if (!renderer || !renderer->IsEnabled()) {
 			continue;
@@ -1087,16 +1247,15 @@ void RTBEngine::Scene::Scene::Render(Rendering::Camera* camera)
 
 		renderer->RenderInstanced();
 	}
-
-	--iterationDepth;
-	FlushPendingCommands();
 }
 
 void RTBEngine::Scene::Scene::RenderTransparentEffects(Rendering::Camera* camera)
 {
 	if (!camera) return;
 
-	++iterationDepth;
+	EnsureComponentCaches();
+
+	DispatchScope dispatch(this);
 
 	const Rendering::Frustum& frustum = camera->GetFrustum();
 	std::vector<OpaqueMeshDraw>& transparentDraws = g_transparentDrawScratch;
@@ -1144,7 +1303,6 @@ void RTBEngine::Scene::Scene::RenderTransparentEffects(Rendering::Camera* camera
 		trailRenderer->Render(camera);
 	}
 
-	EnsureComponentCaches();
 	for (Component* component : cachedTransparentRenderComponents) {
 		if (!component || !component->IsEnabled()) {
 			continue;
@@ -1183,8 +1341,6 @@ void RTBEngine::Scene::Scene::RenderTransparentEffects(Rendering::Camera* camera
 
 		animatedBillboard->Render(camera);
 	}
-	--iterationDepth;
-	FlushPendingCommands();
 }
 
 void RTBEngine::Scene::Scene::TickEditModeSimulate(float deltaTime)
@@ -1194,6 +1350,7 @@ void RTBEngine::Scene::Scene::TickEditModeSimulate(float deltaTime)
 	}
 
 	EnsureComponentCaches();
+	DispatchScope dispatch(this);
 	for (Component* component : cachedEditModeSimulateComponents) {
 		if (!component || !component->IsEnabled()) {
 			continue;

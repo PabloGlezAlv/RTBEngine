@@ -34,9 +34,18 @@ namespace RTBEngine {
         class TypeInfo;
     }
 
+    namespace Scripting {
+        class SceneLoader;
+    }
+
+    namespace Rendering {
+        struct FbxComponentAttacher;
+    }
+
     namespace Scene {
 
         class Scene;
+        class Prefab;
 
         #pragma warning(push)
 
@@ -58,9 +67,17 @@ namespace RTBEngine {
 
 
 
-            void AddComponent(Component* component);
+            // Builds the component through its registered TypeInfo, so the allocating
+            // module is the one that will later destroy it.
+            Component* AddComponentOfType(const char* typeName);
 
-            void AddComponent(Component* component, const Reflection::TypeInfo* typeInfoOverride);
+            template <typename T>
+            T* AddComponent()
+            {
+                static_assert(std::is_base_of<Component, T>::value,
+                    "AddComponent<T>: T must derive from Component");
+                return static_cast<T*>(AddComponentOfType(T::StaticTypeName()));
+            }
 
             void RemoveComponent(Component* component);
 
@@ -89,6 +106,21 @@ namespace RTBEngine {
             using ComponentPtr = std::unique_ptr<Component, std::function<void(Component*)>>;
 
             const std::vector<ComponentPtr>& GetComponents() const { return components; }
+
+            class RTB_API ComponentIteration {
+            public:
+                explicit ComponentIteration(GameObject* gameObject);
+                ~ComponentIteration();
+
+                ComponentIteration(const ComponentIteration&) = delete;
+                ComponentIteration& operator=(const ComponentIteration&) = delete;
+
+                std::size_t Count() const;
+                Component* At(std::size_t index) const;
+
+            private:
+                GameObject* gameObject;
+            };
 
 
 
@@ -198,14 +230,6 @@ namespace RTBEngine {
 
 
 
-            void Update(float deltaTime);
-
-            void FixedUpdate(float fixedDeltaTime);
-
-            void LateUpdate(float deltaTime);
-
-            void Render(Rendering::Camera* camera);
-
 
 
             bool IsLifecycleInitialized() const { return lifecycleInitialized; }
@@ -227,15 +251,27 @@ namespace RTBEngine {
 
         private:
 
+            // Takes ownership of an already-built component. Reserved for the loaders,
+            // which must finish deserializing before OnAwake sees the values.
+            // Returns false when the component was rejected and destroyed.
+            bool AdoptComponent(Component* component, const Reflection::TypeInfo* typeInfoOverride);
+
+            friend class Prefab;
+            friend class Scripting::SceneLoader;
+            friend struct Rendering::FbxComponentAttacher;
+
             friend class Transform;
 
             void RegisterComponentType(Component* component);
 
             void UnregisterComponentType(Component* component);
 
+            friend class Scene;
+
             void DrainPendingStarts();
             void BeginComponentIteration();
             void EndComponentIteration();
+            bool IsComponentMutationDeferred() const;
             bool IsComponentPendingRemove(const Component* component) const;
             void DestroyComponentImmediate(Component* component);
             void FlushDeferredComponentMutations();
@@ -263,8 +299,6 @@ namespace RTBEngine {
             std::vector<Component*> pendingStart;
 
             std::vector<Component*> pendingComponentRemoves;
-
-            int componentIterationDepth = 0;
 
             bool isActive;
 
