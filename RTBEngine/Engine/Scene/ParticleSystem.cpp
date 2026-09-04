@@ -642,11 +642,6 @@ namespace RTBEngine {
                 return;
             }
 
-            GameObject* owner = GetOwner();
-            if (!owner) {
-                return;
-            }
-
             Scene* scene = SceneManager::GetInstance().GetActiveScene();
             if (!scene || !scene->IsLifecycleComplete()) {
                 return;

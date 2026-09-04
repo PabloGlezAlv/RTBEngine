@@ -48,16 +48,12 @@ namespace RTBEngine {
 		}
 
 		void Canvas::PrepareForHitTest(const Math::Vector2& screenSize) {
-			if (!owner) return;
-
 			CollectUIElementsIfNeeded();
 			ApplyLayoutGroups();
 			UpdateRectTransforms(screenSize);
 		}
 
 		void Canvas::RenderCanvas(const Math::Vector2& screenSize) {
-			if (!owner) return;
-
 			PrepareForHitTest(screenSize);
 
 			for (UIElement* element : cachedUIElements) {
@@ -80,8 +76,6 @@ namespace RTBEngine {
 
 			cachedUIElements.clear();
 
-			if (!owner) return;
-
 			// Helper for recursive collection
 			std::function<void(Scene::GameObject*)> collectRecursive = [&](Scene::GameObject* obj) {
 				if (!obj) {
@@ -102,10 +96,6 @@ namespace RTBEngine {
 		}
 
 		void Canvas::ApplyLayoutGroups() {
-			if (!owner) {
-				return;
-			}
-
 			std::function<void(Scene::GameObject*)> applyRecursive = [&](Scene::GameObject* obj) {
 				if (!obj || !obj->IsActiveInHierarchy()) {
 					return;
@@ -134,10 +124,6 @@ namespace RTBEngine {
 		}
 
 		void Canvas::UpdateRectTransforms(const Math::Vector2& screenSize) {
-			if (!owner) {
-				return;
-			}
-
 			const Math::Vector2 rootSize =
 				renderMode == RenderMode::WorldSpace ? canvasSize : screenSize;
 

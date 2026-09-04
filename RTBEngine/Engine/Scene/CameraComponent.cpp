@@ -59,7 +59,7 @@ namespace RTBEngine {
         }
 
         void CameraComponent::SyncWithTransform() {
-            if (!camera || !owner) return;
+            if (!camera) return;
 
             // Sync position
             camera->SetPosition(owner->GetWorldPosition());

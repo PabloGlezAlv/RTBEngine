@@ -21,10 +21,6 @@ namespace RTBEngine {
 
         Math::Vector3 OcclusionTarget::GetFocusPosition() const
         {
-            if (!owner) {
-                return Math::Vector3::Zero();
-            }
-
             Math::Vector3 focusPosition = owner->GetWorldPosition();
             focusPosition.x += focusOffset.x;
             focusPosition.y += focusOffset.y;

@@ -54,10 +54,6 @@ namespace RTBEngine {
 
         std::uint32_t NetworkTransform::ResolveNetworkId() const
         {
-            if (!owner) {
-                return Online::OnlineGameplayNet::kInvalidNetworkObjectId;
-            }
-
             const NetworkIdentity* identity = owner->GetComponent<NetworkIdentity>();
             return identity ? identity->GetNetworkId() : Online::OnlineGameplayNet::kInvalidNetworkObjectId;
         }
@@ -78,7 +74,7 @@ namespace RTBEngine {
 
         void NetworkTransform::OnFixedUpdate(float fixedDeltaTime)
         {
-            if (!owner || !Online::OnlineSystem::GetInstance().IsInLobby()) {
+            if (!Online::OnlineSystem::GetInstance().IsInLobby()) {
                 return;
             }
 
@@ -88,7 +84,7 @@ namespace RTBEngine {
 
         void NetworkTransform::OnLateUpdate(float deltaTime)
         {
-            if (!owner || !Online::OnlineSystem::GetInstance().IsInLobby()) {
+            if (!Online::OnlineSystem::GetInstance().IsInLobby()) {
                 return;
             }
 
@@ -131,10 +127,9 @@ namespace RTBEngine {
             }
 
             if (!Online::OnlineGameplayNet::RegisterNetworkObjectId(networkId)) {
-                const std::string ownerName = owner ? owner->GetName() : "unknown";
                 RTB_ERROR(
                     "NetworkTransform: duplicate network id " + std::to_string(networkId) +
-                    " on '" + ownerName + "'.");
+                    " on '" + owner->GetName() + "'.");
                 return;
             }
 
@@ -158,10 +153,9 @@ namespace RTBEngine {
             const std::uint32_t networkId = ResolveNetworkId();
             if (networkId == Online::OnlineGameplayNet::kInvalidNetworkObjectId) {
                 if (!loggedMissingNetworkIdError) {
-                    const std::string ownerName = owner ? owner->GetName() : "unknown";
                     RTB_ERROR(
                         "NetworkTransform: cannot send transform snapshot without a network id on '" +
-                        ownerName + "'.");
+                        owner->GetName() + "'.");
                     loggedMissingNetworkIdError = true;
                 }
                 return;

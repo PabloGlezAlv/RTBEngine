@@ -89,8 +89,6 @@ namespace RTBEngine {
 
 		void UIJoystick::ResolveImages()
 		{
-			if (!owner) return;
-
 			backgroundImage = owner->GetComponent<UIImage>();
 
 			if (handleImage && !hasHandleCenterPosition) {

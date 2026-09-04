@@ -111,7 +111,6 @@ namespace RTBEngine {
 		}
 
 		void UISlider::ResolveTrackPanel() {
-			if (!owner) return;
 			if (!targetPanel) {
 				targetPanel = owner->GetComponent<UIPanel>();
 			}

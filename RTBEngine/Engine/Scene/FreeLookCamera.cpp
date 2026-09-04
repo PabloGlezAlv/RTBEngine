@@ -24,18 +24,13 @@ namespace RTBEngine {
 
         void FreeLookCamera::OnStart()
         {
-            // Get initial rotation from transform
-            if (owner) {
-                Math::Vector3 euler = owner->GetTransform().GetRotation().ToEulerAngles();
-                pitch = euler.x * (180.0f / 3.14159265f);
-                yaw = euler.y * (180.0f / 3.14159265f);
-            }
+            Math::Vector3 euler = owner->GetTransform().GetRotation().ToEulerAngles();
+            pitch = euler.x * (180.0f / 3.14159265f);
+            yaw = euler.y * (180.0f / 3.14159265f);
         }
 
         void FreeLookCamera::OnUpdate(float deltaTime)
         {
-            if (!owner) return;
-
             Input::InputManager& input = Input::InputManager::GetInstance();
             Transform& transform = owner->GetTransform();
 

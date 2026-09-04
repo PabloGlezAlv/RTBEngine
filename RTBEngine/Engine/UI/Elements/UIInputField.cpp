@@ -213,10 +213,6 @@ namespace RTBEngine {
 		}
 
 		void UIInputField::ResolveReferences() {
-			if (!owner) {
-				return;
-			}
-
 			if (!backgroundPanel) {
 				backgroundPanel = owner->GetComponent<UIPanel>();
 			}

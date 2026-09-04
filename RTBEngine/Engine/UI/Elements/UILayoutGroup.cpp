@@ -8,10 +8,6 @@ namespace RTBEngine {
 
         void UILayoutGroup::ApplyAxisLayout(bool horizontal) const
         {
-            if (!owner) {
-                return;
-            }
-
             float cursorX = padding.x;
             float cursorY = -padding.y;
 

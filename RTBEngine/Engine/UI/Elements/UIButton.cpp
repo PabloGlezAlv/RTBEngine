@@ -32,7 +32,6 @@ namespace RTBEngine {
 		}
 
 		void UIButton::ResolveTarget() {
-			if (!owner) return;
 			if (!targetImage) targetImage = owner->GetComponent<UIImage>();
 			if (!targetPanel) targetPanel = owner->GetComponent<UIPanel>();
 		}

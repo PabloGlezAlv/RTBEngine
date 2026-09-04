@@ -360,8 +360,6 @@ namespace RTBEngine {
                 comp->SetFarPlane(comp->farClip);
                 comp->SetProjectionType(comp->projectionType);
                 comp->SetOrthographicSize(comp->orthographicSize);
-
-                comp->OnValidate();
             }
 
             void ConfigureFreeLookCamera(lua_State* L, int tableIndex, Scene::FreeLookCamera* comp) {
