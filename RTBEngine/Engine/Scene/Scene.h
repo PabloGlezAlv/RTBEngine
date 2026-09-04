@@ -129,6 +129,7 @@ namespace RTBEngine {
             void FlushPendingComponentRemovals();
             void TrackPendingStarts(GameObject* owner);
             void DrainPendingStarts();
+            bool IsTickableNow(Component* component) const;
 
             friend class GameObject;
 

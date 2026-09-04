@@ -31,16 +31,6 @@
 #include "../Rendering/RHI/RenderDevice.h"
 
 namespace {
-	bool IsTickableNow(RTBEngine::Scene::Component* component)
-	{
-		if (!component || !component->IsEnabled() || !component->IsUpdateTickEnabled()) {
-			return false;
-		}
-
-		RTBEngine::Scene::GameObject* owner = component->GetOwner();
-		return owner && owner->IsActiveInHierarchy();
-	}
-
 	RTBEngine::Scene::CameraComponent* FindCameraComponent(
 		const std::vector<std::unique_ptr<RTBEngine::Scene::GameObject>>& objects,
 		bool requireActive,
@@ -480,7 +470,11 @@ void RTBEngine::Scene::Scene::RebuildTickCache() const
 
 			for (const GameObject::ComponentPtr& component : gameObject->GetComponents()) {
 				Component* raw = component.get();
-				if (raw && raw->enabledInHierarchy && raw->IsEnabled() && raw->IsUpdateTickEnabled()) {
+				if (raw &&
+					raw->enabledInHierarchy &&
+					raw->IsEnabled() &&
+					raw->IsUpdateTickEnabled() &&
+					!gameObject->IsComponentPendingRemove(raw)) {
 					cachedTickComponents.push_back(raw);
 				}
 			}
@@ -934,6 +928,20 @@ void RTBEngine::Scene::Scene::TrackPendingStarts(GameObject* owner)
 		== gameObjectsWithPendingStarts.end()) {
 		gameObjectsWithPendingStarts.push_back(owner);
 	}
+}
+
+bool RTBEngine::Scene::Scene::IsTickableNow(Component* component) const
+{
+	if (!component || !component->IsEnabled() || !component->IsUpdateTickEnabled()) {
+		return false;
+	}
+
+	GameObject* owner = component->GetOwner();
+	if (!owner || !owner->IsActiveInHierarchy() || owner->IsComponentPendingRemove(component)) {
+		return false;
+	}
+
+	return true;
 }
 
 void RTBEngine::Scene::Scene::DrainPendingStarts()
