@@ -291,19 +291,20 @@ namespace RTBEngine {
                 return false;
             }
 
-            for (const auto& comp : gameObject->GetComponents()) {
+            for (std::size_t i = 0, count = gameObject->GetComponentCount(); i < count; ++i) {
+                Component* comp = gameObject->GetComponentAt(i);
                 if (!comp) {
                     continue;
                 }
 
-                if (IsAddedComponent(comp.get(), baselineNode)) {
+                if (IsAddedComponent(comp, baselineNode)) {
                     return true;
                 }
 
                 const ComponentSnapshot* baselineSnap = FindBaselineSnapshot(
                     baselineNode,
                     comp->GetTypeName());
-                if (!GetOverriddenProperties(comp.get(), baselineSnap).empty()) {
+                if (!GetOverriddenProperties(comp, baselineSnap).empty()) {
                     return true;
                 }
             }
@@ -373,7 +374,7 @@ namespace RTBEngine {
                 return true;
             }
 
-            if (!gameObject->GetComponents().empty() && baselineNode->GetSnapshots().empty()) {
+            if (gameObject->GetComponentCount() > 0 && baselineNode->GetSnapshots().empty()) {
                 return true;
             }
 

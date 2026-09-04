@@ -517,7 +517,7 @@ static void ClearQuitRequest();
 
 `Scene::Update` has two passes at the component level. First it drains the scene-wide pending-start queue, so every component activated since the last frame gets its single `OnStart()` before any `OnUpdate()` runs. Then it walks a flat registry of tickable components and calls `OnUpdate()`.
 
-That registry is the `cachedTickComponents` list the scene rebuilds on demand, not a walk over the GameObject tree. It holds only components that are enabled, whose owner is enabled in the hierarchy, and that have `SetUpdateTickEnabled(true)` — the mechanism that lets event-driven scripts stay alive while opting out of idle per-frame work. It is built in hierarchy traversal order, so the execution order scripts implicitly rely on is preserved. Toggling `SetEnabled` or `SetUpdateTickEnabled` invalidates only this list, which is a cheap pointer copy, and never the type-lookup maps.
+That registry is the `cachedTickComponents` list the scene rebuilds on demand, not a walk over the GameObject tree. It holds only components that are enabled, whose owner is enabled in the hierarchy, and that have `SetUpdateTickEnabled(true)` — the mechanism that lets event-driven scripts stay alive while opting out of idle per-frame work. It is built in hierarchy traversal order, so the execution order scripts implicitly rely on is preserved. Toggling `SetEnabled` or `SetUpdateTickEnabled` invalidates only this list, which is a cheap pointer copy, and never the type-lookup maps. `OnEnable` only queues `OnStart`; the drain in `Update` is what invokes it. Components already queued for `RemoveComponent` are skipped for the rest of that dispatch.
 
 `RequestQuit()` is the script-facing path for asking the host to stop play mode or close the runtime. The host consumes that request with `ConsumeQuitRequest()` and can clear it explicitly with `ClearQuitRequest()` when a play session ends or is cancelled.
 
@@ -844,7 +844,6 @@ These are overridden by the `RTB_COMPONENT(ClassName)` macro. Non-reflected comp
 **Owner and enable state:**
 
 ```cpp
-void           SetOwner(Scene::GameObject* owner);
 Scene::GameObject* GetOwner() const;
 
 void SetEnabled(bool enabled);
@@ -854,12 +853,16 @@ void SetUpdateTickEnabled(bool enabled);
 bool IsUpdateTickEnabled() const;
 ```
 
-A component does not receive `OnUpdate` or `OnFixedUpdate` when disabled. `OnDestroy` is still called even on disabled components when the owner is destroyed.
+`SetOwner` is private. The scene layer assigns ownership when a component is adopted.
+
+A component does not receive `OnUpdate`, `OnFixedUpdate`, or `OnLateUpdate` when disabled. `OnDestroy` is still called even on disabled components when the owner is destroyed.
 
 `SetUpdateTickEnabled(false)` is a lighter-weight switch than `SetEnabled(false)`:
 
-- `SetEnabled(false)` disables the component as a whole. In the current engine implementation it blocks `OnUpdate`, `OnFixedUpdate`, and also prevents `OnStart` from being called during the owning `GameObject`'s first update pass.
-- `SetUpdateTickEnabled(false)` only suppresses `OnUpdate`. The component remains enabled and can still participate in other systems that address it directly, such as editor validation, fixed-step logic, or UI/physics event dispatch.
+- `SetEnabled(false)` disables the component as a whole: no `OnUpdate` / `OnFixedUpdate` / `OnLateUpdate`, and `OnStart` is not queued while it stays disabled.
+- `SetUpdateTickEnabled(false)` only drops the component from `Scene`'s tick registry (`cachedTickComponents`). It still receives `OnEnable` / `OnStart`, collisions, and UI events.
+
+`OnEnable` queues a pending start; it does not call `OnStart`. `Scene::Update` drains that queue before any `OnUpdate`.
 
 This split exists for event-driven scripts. A component such as a UI animation controller can stay "alive" for pointer events, but keep its per-frame cost at zero while idle. When work starts, it re-enables its update tick; when the work finishes, it disables the tick again.
 
@@ -1041,21 +1044,7 @@ bool IsTransient() const;
 
 Transient GameObjects are excluded from scene serialization. Used for editor-only objects (e.g., gizmo handles).
 
-**Lifecycle (called by Scene):**
-
-```cpp
-void Update(float deltaTime);    // Calls OnStart once, then OnUpdate on enabled components with update tick enabled
-void FixedUpdate();              // Calls OnFixedUpdate on all enabled components
-void Render(Rendering::Camera* camera);  // Calls MeshRenderer / Animator / etc.
-void Start();                    // Calls OnStart on all components (once, at first Update)
-```
-
-`GameObject::Update` now has two distinct gates:
-
-1. The one-time start phase checks `IsEnabled()` only. This preserves the existing rule that update-tick sleeping does not suppress initialization.
-2. The per-frame phase checks both `IsEnabled()` and `IsUpdateTickEnabled()`. A component can therefore remain enabled for events and ownership/lifecycle purposes while opting out of steady-state frame work.
-
-`FixedUpdate` is unchanged in this iteration and still depends only on `IsEnabled()`.
+**Lifecycle (called by Scene):** GameObject no longer has public `Update` / `FixedUpdate` / `LateUpdate` / `Render`. `Scene` dispatches ticks from `cachedTickComponents`. `OnStart` is queued from `OnEnable` and drained at the start of `Scene::Update` (or immediately via `SceneLifecycle::InvokeStartForHierarchy` for runtime prefab spawns).
 
 ### 6.4 Scene
 
@@ -1077,15 +1066,18 @@ const std::vector<std::unique_ptr<GameObject>>& GetGameObjects() const;
 **Lifecycle (called by Application):**
 
 ```cpp
-void Update(float deltaTime);    // Propagates to all active root GameObjects
-void FixedUpdate();
+void Update();                   // Drain pending OnStart, then OnUpdate on cachedTickComponents
+void FixedUpdate(float fixedDeltaTime);
+void LateUpdate();
 void Render(Rendering::Camera* camera);
 void RenderTransparentEffects(Rendering::Camera* camera);
 ```
 
-Update is called on all root-level `GameObject` instances (those without a parent). Each `GameObject::Update` recurses into its children.
+`Update` / `FixedUpdate` / `LateUpdate` walk the flat tick list, not the GameObject tree. A component is ticked only if it is enabled, its owner is active in the hierarchy, `SetUpdateTickEnabled(true)`, and it is not pending removal. `Update` and `LateUpdate` read delta time from `Core::Time`.
 
-`RenderTransparentEffects` walks every active `GameObject` and draws enabled `TrailRenderer` and `ParticleSystem` components. `Application::RenderGeometryPass` calls it after the skybox so billboards and trails are not covered by the cubemap and still depth-test against opaque geometry.
+During those methods (and Render) the scene holds a `DispatchScope`: add/remove of GameObjects and components is deferred to `FlushPendingCommands` when the outermost scope exits.
+
+`RenderTransparentEffects` uses the scene component caches (`TrailRenderer`, `ParticleSystem`, `WantsTransparentRender`). `Application::RenderGeometryPass` calls it after the skybox so billboards and trails are not covered by the cubemap and still depth-test against opaque geometry.
 
 **Camera:**
 

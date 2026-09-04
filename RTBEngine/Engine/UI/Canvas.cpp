@@ -111,14 +111,16 @@ namespace RTBEngine {
 					return;
 				}
 
-				for (const auto& component : obj->GetComponents()) {
+				Scene::GameObject::ComponentIteration iteration(obj);
+				for (std::size_t i = 0; i < iteration.Count(); ++i) {
+					Scene::Component* component = iteration.At(i);
 					if (!component) {
 						continue;
 					}
 
-					if (const UIHorizontalLayout* horizontalLayout = dynamic_cast<const UIHorizontalLayout*>(component.get())) {
+					if (const UIHorizontalLayout* horizontalLayout = dynamic_cast<const UIHorizontalLayout*>(component)) {
 						horizontalLayout->ApplyLayout();
-					} else if (const UIVerticalLayout* verticalLayout = dynamic_cast<const UIVerticalLayout*>(component.get())) {
+					} else if (const UIVerticalLayout* verticalLayout = dynamic_cast<const UIVerticalLayout*>(component)) {
 						verticalLayout->ApplyLayout();
 					}
 				}

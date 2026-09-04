@@ -535,9 +535,10 @@ namespace RTBEngine {
                         continue;
                     }
 
-                    for (const auto& comp : targetGO->GetComponents()) {
-                        if (std::string(comp->GetTypeName()) == type) {
-                            (*values)[static_cast<size_t>(req.listIndex)] = comp.get();
+                    for (std::size_t i = 0, count = targetGO->GetComponentCount(); i < count; ++i) {
+                        Scene::Component* comp = targetGO->GetComponentAt(i);
+                        if (comp && std::string(comp->GetTypeName()) == type) {
+                            (*values)[static_cast<size_t>(req.listIndex)] = comp;
                             break;
                         }
                     }
@@ -559,9 +560,10 @@ namespace RTBEngine {
                         std::string type = uuidStr.substr(slash + 1);
                         Scene::GameObject* targetGO = scene->FindGameObjectByUUID(uuid);
                         if (targetGO) {
-                            for (const auto& comp : targetGO->GetComponents()) {
-                                if (std::string(comp->GetTypeName()) == type) {
-                                    *(Scene::Component**)data = comp.get();
+                            for (std::size_t i = 0, count = targetGO->GetComponentCount(); i < count; ++i) {
+                                Scene::Component* comp = targetGO->GetComponentAt(i);
+                                if (comp && std::string(comp->GetTypeName()) == type) {
+                                    *(Scene::Component**)data = comp;
                                     break;
                                 }
                             }
@@ -624,9 +626,10 @@ namespace RTBEngine {
                 }
 
                 Scene::Component* existing = nullptr;
-                for (const auto& c : gameObject->GetComponents()) {
-                    if (std::string(c->GetTypeName()) == componentType) {
-                        existing = c.get();
+                for (std::size_t i = 0, count = gameObject->GetComponentCount(); i < count; ++i) {
+                    Scene::Component* candidate = gameObject->GetComponentAt(i);
+                    if (candidate && std::string(candidate->GetTypeName()) == componentType) {
+                        existing = candidate;
                         break;
                     }
                 }

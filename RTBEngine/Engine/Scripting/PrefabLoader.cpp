@@ -122,8 +122,6 @@ namespace RTBEngine {
                 else if (typeName == "UIVerticalLayout")
                     Scripting::SceneComponentConfigurator::ConfigureUILayout(L, compTableIndex, static_cast<UI::UIVerticalLayout*>(comp));
 
-                comp->OnValidate();
-
                 Scene::ComponentSnapshot snap;
                 Scene::Prefab::SnapshotComponent(snap, comp);
                 CaptureLuaReferenceProperties(L, compTableIndex, comp, snap);

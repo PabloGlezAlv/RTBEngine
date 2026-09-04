@@ -362,9 +362,10 @@ namespace RTBEngine {
             }
 
             Component* component = nullptr;
-            for (const auto& comp : gameObject->GetComponents()) {
-                if (comp && std::string(comp->GetTypeName()) == typeName) {
-                    component = comp.get();
+            for (std::size_t i = 0, count = gameObject->GetComponentCount(); i < count; ++i) {
+                Component* candidate = gameObject->GetComponentAt(i);
+                if (candidate && std::string(candidate->GetTypeName()) == typeName) {
+                    component = candidate;
                     break;
                 }
             }
@@ -419,9 +420,10 @@ namespace RTBEngine {
             }
 
             Component* component = nullptr;
-            for (const auto& comp : gameObject->GetComponents()) {
-                if (comp && std::string(comp->GetTypeName()) == typeName) {
-                    component = comp.get();
+            for (std::size_t i = 0, count = gameObject->GetComponentCount(); i < count; ++i) {
+                Component* candidate = gameObject->GetComponentAt(i);
+                if (candidate && std::string(candidate->GetTypeName()) == typeName) {
+                    component = candidate;
                     break;
                 }
             }

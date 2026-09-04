@@ -273,15 +273,15 @@ namespace RTBEngine {
 
         void SceneSaver::WriteComponents(std::ofstream& file, const Scene::GameObject* go, int indent) {
             std::string ind = ScenePropertySerializer::Indent(indent);
-            const auto& components = go->GetComponents();
+            const std::size_t componentCount = go->GetComponentCount();
 
-            if (components.empty())
+            if (componentCount == 0)
                 return;
 
             file << ind << "components = {\n";
 
-            for (const auto& comp : components)
-                ScenePropertySerializer::WriteComponent(file, comp.get(), indent + 1);
+            for (std::size_t i = 0; i < componentCount; ++i)
+                ScenePropertySerializer::WriteComponent(file, go->GetComponentAt(i), indent + 1);
 
             bool hasChildren = !go->GetChildren().empty();
             file << ind << (hasChildren ? "},\n" : "}\n");
@@ -308,12 +308,16 @@ namespace RTBEngine {
                 return;
             }
 
-            const auto& components = go->GetComponents();
+            const std::size_t componentCount = go->GetComponentCount();
 
             file << ind << "components = {\n";
 
-            for (const auto& comp : components)
+            for (std::size_t i = 0; i < componentCount; ++i)
             {
+                Scene::Component* comp = go->GetComponentAt(i);
+                if (!comp) {
+                    continue;
+                }
                 const std::string typeName = comp->GetTypeName();
                 const Scene::ComponentSnapshot* snap = Scene::PrefabOverrideDiff::FindBaselineSnapshot(
                     context.baselineNode,
@@ -321,12 +325,12 @@ namespace RTBEngine {
 
                 if (!snap)
                 {
-                    ScenePropertySerializer::WriteComponent(file, comp.get(), indent + 1);
+                    ScenePropertySerializer::WriteComponent(file, comp, indent + 1);
                     continue;
                 }
 
                 const std::vector<const Reflection::PropertyInfo*> overrideProps =
-                    Scene::PrefabOverrideDiff::GetOverriddenProperties(comp.get(), snap);
+                    Scene::PrefabOverrideDiff::GetOverriddenProperties(comp, snap);
 
                 if (overrideProps.empty()) continue;
 
@@ -334,7 +338,7 @@ namespace RTBEngine {
 
                 for (const Reflection::PropertyInfo* prop : overrideProps)
                 {
-                    ScenePropertySerializer::WriteProperty(file, comp.get(), *prop, indent + 2);
+                    ScenePropertySerializer::WriteProperty(file, comp, *prop, indent + 2);
                     file << ",\n";
                 }
 

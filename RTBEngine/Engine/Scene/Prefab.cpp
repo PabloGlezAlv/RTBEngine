@@ -331,10 +331,14 @@ namespace RTBEngine {
             prefab->collisionLayer = source->GetCollisionLayer();
             prefab->staticFlags = source->GetStaticFlags();
 
-            for (const auto& comp : source->GetComponents())
+            for (std::size_t i = 0, count = source->GetComponentCount(); i < count; ++i)
             {
+                Component* comp = source->GetComponentAt(i);
+                if (!comp) {
+                    continue;
+                }
                 ComponentSnapshot snap;
-                SnapshotComponent(snap, comp.get());
+                SnapshotComponent(snap, comp);
                 prefab->componentSnapshots.push_back(std::move(snap));
             }
 
@@ -513,9 +517,10 @@ namespace RTBEngine {
 
                     Component* resolvedComponent = nullptr;
                     if (targetGameObject) {
-                        for (const auto& component : targetGameObject->GetComponents()) {
+                        for (std::size_t i = 0, count = targetGameObject->GetComponentCount(); i < count; ++i) {
+                            Component* component = targetGameObject->GetComponentAt(i);
                             if (component && std::string(component->GetTypeName()) == targetType) {
-                                resolvedComponent = component.get();
+                                resolvedComponent = component;
                                 break;
                             }
                         }
@@ -811,9 +816,10 @@ namespace RTBEngine {
 
                 Component* resolvedComponent = nullptr;
                 if (targetGO) {
-                    for (const auto& comp : targetGO->GetComponents()) {
+                    for (std::size_t i = 0, count = targetGO->GetComponentCount(); i < count; ++i) {
+                        Component* comp = targetGO->GetComponentAt(i);
                         if (comp && std::string(comp->GetTypeName()) == typeName) {
-                            resolvedComponent = comp.get();
+                            resolvedComponent = comp;
                             break;
                         }
                     }
