@@ -5,6 +5,7 @@
 #include "GameObject.h"
 #include "PrefabRegistry.h"
 #include "Scene.h"
+#include "SceneLifecycle.h"
 #include "SceneManager.h"
 
 #include <algorithm>
@@ -174,6 +175,19 @@ namespace RTBEngine {
             SetHierarchyActive(instance, true);
         }
 
+        void ObjectPool::RestartInstanceLifecycle(GameObject* instance)
+        {
+            if (!instance) {
+                return;
+            }
+
+            // Reset before activating: ResetStartInvocation only queues components that
+            // are already enabled, so the activation below is what schedules OnStart.
+            SceneLifecycle::ResetStartForHierarchy(instance);
+            SetHierarchyActive(instance, true);
+            SceneLifecycle::InvokeStartForHierarchy(instance);
+        }
+
         void ObjectPool::PrepareInstanceForRelease(GameObject* instance)
         {
             if (!instance) {
@@ -209,7 +223,7 @@ namespace RTBEngine {
                     recordIt->second.inFreeList = false;
                     instance->GetTransform().SetPosition(position);
                     instance->GetTransform().SetRotation(rotation);
-                    PrepareInstanceForAcquire(instance);
+                    RestartInstanceLifecycle(instance);
                     return instance;
                 }
 

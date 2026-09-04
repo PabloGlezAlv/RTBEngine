@@ -57,6 +57,7 @@ namespace RTBEngine {
                                        const Math::Vector3& position,
                                        const Math::Quaternion& rotation);
             void PrepareInstanceForAcquire(GameObject* instance);
+            void RestartInstanceLifecycle(GameObject* instance);
             void PrepareInstanceForRelease(GameObject* instance);
             void DestroyPooledInstance(GameObject* instance);
             int ResolveMaxPoolSize(const std::string& prefabPath) const;
