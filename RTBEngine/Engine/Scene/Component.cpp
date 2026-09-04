@@ -45,6 +45,14 @@ namespace RTBEngine {
             OnAwake();
         }
 
+        void Component::ResetStartInvocation()
+        {
+            startInvoked = false;
+            if (owner && enabledInHierarchy && isEnabled) {
+                owner->QueueComponentForStart(this);
+            }
+        }
+
         void Component::TryInvokeStart()
         {
             if (startInvoked || !owner || !isEnabled || !owner->IsActiveInHierarchy()) {
@@ -65,6 +73,9 @@ namespace RTBEngine {
             if (shouldEnable) {
                 enabledInHierarchy = true;
                 OnEnable();
+                if (isEnabled && owner && owner->IsActiveInHierarchy()) {
+                    owner->QueueComponentForStart(this);
+                }
             } else {
                 NotifyDisabled();
             }

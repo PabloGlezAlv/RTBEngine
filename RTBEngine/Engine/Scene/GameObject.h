@@ -64,6 +64,8 @@ namespace RTBEngine {
 
             void RemoveComponent(Component* component);
 
+            void QueueComponentForStart(Component* component);
+
 
 
             template<typename T>
@@ -208,7 +210,7 @@ namespace RTBEngine {
 
             bool IsLifecycleInitialized() const { return lifecycleInitialized; }
 
-            void SetLifecycleInitialized(bool initialized) { lifecycleInitialized = initialized; }
+            void SetLifecycleInitialized(bool initialized);
 
             // Fast-path lookup — implemented only in RTBEngine.dll (never touch private STL from GameScripts).
             Component* LookupComponentByTypeId(std::uint32_t typeId);
@@ -231,6 +233,14 @@ namespace RTBEngine {
 
             void UnregisterComponentType(Component* component);
 
+            void DrainPendingStarts();
+            void BeginComponentIteration();
+            void EndComponentIteration();
+            bool IsComponentPendingRemove(const Component* component) const;
+            void DestroyComponentImmediate(Component* component);
+            void FlushDeferredComponentMutations();
+            Component* GetLiveComponentAt(std::size_t index) const;
+
 
 
             void MarkWorldMatrixDirty();
@@ -249,6 +259,12 @@ namespace RTBEngine {
             std::vector<ComponentPtr> components;
 
             std::unordered_map<std::uint32_t, Component*> componentsByTypeId;
+
+            std::vector<Component*> pendingStart;
+
+            std::vector<Component*> pendingComponentRemoves;
+
+            int componentIterationDepth = 0;
 
             bool isActive;
 
