@@ -643,7 +643,12 @@ namespace RTBEngine {
                 }
 
                 SceneReflectionUtils::ApplyLuaTableToComponent(L, componentTableIndex, componentType.c_str(), comp);
-                SceneReflectionUtils::ClearReferenceProperties(comp, registeredTypeInfo);
+                if (existing) {
+                    SceneReflectionUtils::ClearReferencePropertiesPresentInLuaTable(
+                        L, componentTableIndex, comp, registeredTypeInfo);
+                } else {
+                    SceneReflectionUtils::ClearReferenceProperties(comp, registeredTypeInfo);
+                }
 
                 if (componentType == "MeshRenderer")
                     SceneComponentConfigurator::ConfigureMeshRenderer(L, componentTableIndex, static_cast<Scene::MeshRenderer*>(comp));

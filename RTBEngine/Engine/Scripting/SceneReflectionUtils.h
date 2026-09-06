@@ -25,6 +25,14 @@ namespace RTBEngine {
             // GameObjectRef / ComponentRef values are resolved later; keep pointers null until then.
             void ClearReferenceProperties(Scene::Component* component, const Reflection::TypeInfo* typeInfo = nullptr);
 
+            // Prefab-instance overrides are partial. Only refs named in this Lua table
+            // are cleared so omitted prefab pointers survive the merge.
+            void ClearReferencePropertiesPresentInLuaTable(
+                lua_State* L,
+                int tableIndex,
+                Scene::Component* component,
+                const Reflection::TypeInfo* typeInfo = nullptr);
+
         }
     }
 }

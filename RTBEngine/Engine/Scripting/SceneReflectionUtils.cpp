@@ -339,6 +339,72 @@ namespace RTBEngine {
                 }
             }
 
+            void ClearReferencePropertiesPresentInLuaTable(
+                lua_State* L,
+                int tableIndex,
+                Scene::Component* component,
+                const Reflection::TypeInfo* typeInfoOverride)
+            {
+                if (!L || !component) {
+                    return;
+                }
+
+                const Reflection::TypeInfo* typeInfo = typeInfoOverride ? typeInfoOverride : component->GetTypeInfo();
+                if (!typeInfo) {
+                    return;
+                }
+
+                const int absIndex = lua_absindex(L, tableIndex);
+                for (const Reflection::PropertyInfo* prop : typeInfo->GetSerializableProperties()) {
+                    if (!prop) {
+                        continue;
+                    }
+
+                    if (prop->type != PropertyType::GameObjectRef &&
+                        prop->type != PropertyType::ComponentRef &&
+                        prop->type != PropertyType::List) {
+                        continue;
+                    }
+
+                    lua_getfield(L, absIndex, prop->name.c_str());
+                    const bool namedInTable = lua_isnil(L, -1) == 0;
+                    lua_pop(L, 1);
+                    if (!namedInTable) {
+                        continue;
+                    }
+
+                    void* data = prop->GetMutableData(component);
+                    if (!data) {
+                        continue;
+                    }
+
+                    if (prop->type == PropertyType::GameObjectRef) {
+                        *static_cast<Scene::GameObject**>(data) = nullptr;
+                    } else if (prop->type == PropertyType::ComponentRef) {
+                        *static_cast<Scene::Component**>(data) = nullptr;
+                    } else if (prop->type == PropertyType::List) {
+                        switch (prop->listElementType) {
+                        case ListElementType::GameObjectRef: {
+                            auto* values = ListPropertyAccess::AsGameObjectVector(data);
+                            if (values) {
+                                std::fill(values->begin(), values->end(), nullptr);
+                            }
+                            break;
+                        }
+                        case ListElementType::ComponentRef: {
+                            auto* values = ListPropertyAccess::AsComponentVector(data);
+                            if (values) {
+                                std::fill(values->begin(), values->end(), nullptr);
+                            }
+                            break;
+                        }
+                        default:
+                            break;
+                        }
+                    }
+                }
+            }
+
         }
     }
 }
