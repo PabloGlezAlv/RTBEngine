@@ -644,7 +644,7 @@ void RTBEngine::Core::Application::Render()
 		canvasSystem.RenderToDrawList(ImGui::GetBackgroundDrawList(), screenSize, Math::Vector2(0.0f, 0.0f));
 
 		ImGui::Render();
-		device.QueueImGuiDrawData(ImGui::GetDrawData());
+		device.RecordImGuiDrawData(ImGui::GetDrawData());
 	}
 
 	window->SwapBuffers();

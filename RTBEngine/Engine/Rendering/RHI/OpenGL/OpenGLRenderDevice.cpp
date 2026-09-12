@@ -652,7 +652,7 @@ namespace RTBEngine {
                 ImGui_ImplSDL2_NewFrame();
             }
 
-            void OpenGLRenderDevice::QueueImGuiDrawData(ImDrawData* drawData)
+            void OpenGLRenderDevice::RecordImGuiDrawData(ImDrawData* drawData)
             {
                 // OpenGL has no deferred pass system: render immediately.
                 if (imguiBackendInitialized && drawData) {

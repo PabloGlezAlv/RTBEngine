@@ -72,7 +72,7 @@ namespace RTBEngine {
 					const Rendering::RHI::GpuId drawVbo = AcquireVbo(device);
 					device.BindVertexArray(vao);
 					// Point the shared VAO at this draw's private VBO before upload+draw so
-					// Vulkan deferred replay can snapshot a unique VkBuffer per quad.
+					// Vulkan can snapshot a unique VkBuffer per quad at EncodeDraw.
 					device.BindArrayBuffer(drawVbo);
 					device.EnableVertexAttribFloat(
 						0, 3, static_cast<int>(sizeof(WorldUIVertex)), offsetof(WorldUIVertex, x));

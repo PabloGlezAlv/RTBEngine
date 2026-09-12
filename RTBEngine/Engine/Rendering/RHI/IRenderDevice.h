@@ -114,7 +114,7 @@ namespace RTBEngine {
                 virtual void ShutdownImGuiBackend() = 0;
                 virtual void BeginImGuiFrame() = 0;
                 // Records ImGui into the current frame. OpenGL: gl* now. Vulkan: swapchain pass + vkCmd*.
-                virtual void QueueImGuiDrawData(ImDrawData* drawData) = 0;
+                virtual void RecordImGuiDrawData(ImDrawData* drawData) = 0;
 
                 // ImGui texture bridge. OpenGL: GL texture name. Vulkan: VkDescriptorSet as uintptr_t.
                 virtual std::uintptr_t GetNativeTextureIdForImGui(GpuId texture) const = 0;

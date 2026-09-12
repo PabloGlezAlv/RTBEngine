@@ -104,7 +104,7 @@ namespace RTBEngine {
                 bool InitializeImGuiBackend(SDL_Window* window) override;
                 void ShutdownImGuiBackend() override;
                 void BeginImGuiFrame() override;
-                void QueueImGuiDrawData(ImDrawData* drawData) override;
+                void RecordImGuiDrawData(ImDrawData* drawData) override;
                 std::uintptr_t GetNativeTextureIdForImGui(GpuId texture) const override;
 
                 GiCapabilities GetGiCapabilities() const override;

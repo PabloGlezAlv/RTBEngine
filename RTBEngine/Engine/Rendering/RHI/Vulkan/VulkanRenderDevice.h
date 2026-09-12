@@ -18,7 +18,7 @@ namespace RTBEngine {
     namespace Rendering {
         namespace RHI {
 
-            // Vulkan backend. Draw* / QueueImGuiDrawData record vkCmd* into the frame
+            // Vulkan backend. Draw* / RecordImGuiDrawData encode vkCmd* into the frame
             // command buffer (render-pass segments via EnsurePass). Present() ends the
             // buffer, submits, and presents. Swapchain acquire happens at the first
             // pass targeting the window (target 0), not at BeginFrame.
@@ -121,7 +121,7 @@ namespace RTBEngine {
                 bool InitializeImGuiBackend(SDL_Window* window) override;
                 void ShutdownImGuiBackend() override;
                 void BeginImGuiFrame() override;
-                void QueueImGuiDrawData(ImDrawData* drawData) override;
+                void RecordImGuiDrawData(ImDrawData* drawData) override;
                 std::uintptr_t GetNativeTextureIdForImGui(GpuId texture) const override;
 
                 GiCapabilities GetGiCapabilities() const override;
@@ -322,7 +322,7 @@ namespace RTBEngine {
                     std::size_t operator()(const PipelineKey& key) const;
                 };
 
-                struct DrawCommand {
+                struct DrawSnapshot {
                     GpuId program = kInvalidGpuId;
                     GpuId vao = kInvalidGpuId;
                     std::uint32_t vaoGeneration = 0;
@@ -410,7 +410,7 @@ namespace RTBEngine {
                 void InvalidatePipelinesForFramebuffer(GpuId framebufferId);
                 static std::vector<unsigned int> ParseVertexInputLocations(const std::string& vertexSource);
 
-                void ReplayDraw(VkCommandBuffer cmd, const DrawCommand& draw, std::uint32_t drawSlot);
+                void EncodeDraw(VkCommandBuffer cmd, const DrawSnapshot& draw, std::uint32_t drawSlot);
                 bool BeginTargetRenderPass(VkCommandBuffer cmd, GpuId target, std::uint32_t swapImageIndex,
                                           float clearCol[4], bool& inPass, GpuId& activeTarget);
                 bool EnsureSwapchainImage();
@@ -456,13 +456,13 @@ namespace RTBEngine {
                 static VkCompareOp ToVkCompareOp(DepthFunc func);
                 static VkBlendFactor ToVkBlendFactor(int glBlendFactor);
 
-                VkPipeline GetOrCreatePipeline(const DrawCommand& cmd);
+                VkPipeline GetOrCreatePipeline(const DrawSnapshot& draw);
                 VkRenderPass ResolveRenderPassForTarget(GpuId targetFramebuffer) const;
                 static std::vector<GpuId> ComputeVaoBufferOrder(const VaoResource& vao);
                 std::string TransformShaderSource(const std::string& source, bool isFragment) const;
                 static const PerDrawField* FindPerDrawField(const char* name);
                 void* PerDrawFieldPtr(int location);
-                void RecordDrawCommand(PrimitiveTopology topology, bool indexed, IndexType indexType,
+                void EncodeCurrentDraw(PrimitiveTopology topology, bool indexed, IndexType indexType,
                                       int count, int first, int instanceCount);
                 void RemoveImGuiTexture(GpuId texture);
                 void RetireOrphanedBuffers();
@@ -549,7 +549,7 @@ namespace RTBEngine {
                 void* shadercCompiler = nullptr;
 
                 float clearColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
-                int pendingViewport[4] = { 0, 0, 0, 0 };
+                int stateViewport[4] = { 0, 0, 0, 0 };
 
                 GpuId currentProgram = kInvalidGpuId;
                 GpuId currentVAO = kInvalidGpuId;

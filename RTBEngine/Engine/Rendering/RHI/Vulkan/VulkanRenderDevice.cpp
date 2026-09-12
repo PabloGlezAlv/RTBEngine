@@ -256,10 +256,10 @@ namespace RTBEngine {
                     return false;
                 }
 
-                pendingViewport[0] = 0;
-                pendingViewport[1] = 0;
-                pendingViewport[2] = static_cast<int>(swapchainExtent.width);
-                pendingViewport[3] = static_cast<int>(swapchainExtent.height);
+                stateViewport[0] = 0;
+                stateViewport[1] = 0;
+                stateViewport[2] = static_cast<int>(swapchainExtent.width);
+                stateViewport[3] = static_cast<int>(swapchainExtent.height);
 
                 initialized = true;
                 giContext = std::make_unique<VulkanGiContext>(*this);
@@ -743,7 +743,7 @@ namespace RTBEngine {
                 return renderPass;
             }
 
-            void VulkanRenderDevice::ReplayDraw(VkCommandBuffer cmd, const DrawCommand& draw, std::uint32_t drawSlot)
+            void VulkanRenderDevice::EncodeDraw(VkCommandBuffer cmd, const DrawSnapshot& draw, std::uint32_t drawSlot)
             {
                 auto progIt = programs.find(draw.program);
                 auto vaoIt = vaos.find(draw.vao);
@@ -985,10 +985,10 @@ namespace RTBEngine {
 
             void VulkanRenderDevice::SetViewport(int x, int y, int width, int height)
             {
-                pendingViewport[0] = x;
-                pendingViewport[1] = y;
-                pendingViewport[2] = width;
-                pendingViewport[3] = height;
+                stateViewport[0] = x;
+                stateViewport[1] = y;
+                stateViewport[2] = width;
+                stateViewport[3] = height;
             }
 
             void VulkanRenderDevice::SetClearColor(float r, float g, float b, float a)
@@ -2410,7 +2410,7 @@ namespace RTBEngine {
                 ++it->second.generation;
             }
 
-            void VulkanRenderDevice::RecordDrawCommand(PrimitiveTopology topology, bool indexed, IndexType indexType,
+            void VulkanRenderDevice::EncodeCurrentDraw(PrimitiveTopology topology, bool indexed, IndexType indexType,
                                                       int count, int first, int instanceCount)
             {
                 if (!initialized) return;
@@ -2421,83 +2421,83 @@ namespace RTBEngine {
                 auto vaoIt = vaos.find(currentVAO);
                 if (vaoIt == vaos.end()) return;
 
-                DrawCommand cmd{};
-                cmd.program = currentProgram;
-                cmd.vao = currentVAO;
-                cmd.vaoGeneration = vaoIt->second.generation;
-                cmd.topology = topology;
-                cmd.indexed = indexed;
-                cmd.indexType = indexType;
-                cmd.count = count;
-                cmd.first = first;
-                cmd.instanceCount = std::max(1, instanceCount);
-                cmd.depthTest = stateDepthTest;
-                cmd.depthWrite = stateDepthWrite;
-                cmd.depthFunc = stateDepthFunc;
-                cmd.cullFace = stateCullFace;
-                cmd.blend = stateBlend;
-                cmd.srcRGB = stateSrcRGB;
-                cmd.dstRGB = stateDstRGB;
-                cmd.srcAlpha = stateSrcAlpha;
-                cmd.dstAlpha = stateDstAlpha;
-                for (int i = 0; i < 4; ++i) cmd.colorMask[i] = stateColorMask[i];
-                for (int i = 0; i < 4; ++i) cmd.viewport[i] = pendingViewport[i];
-                cmd.uboLighting = boundUBO[0];
-                cmd.uboCamera = boundUBO[1];
-                cmd.uboBone = boundUBO[2];
-                cmd.vkLighting = ResolveBufferHandle(boundUBO[0]);
-                cmd.vkCamera = ResolveBufferHandle(boundUBO[1]);
-                cmd.vkBone = ResolveBufferHandle(boundUBO[2]);
+                DrawSnapshot snapshot{};
+                snapshot.program = currentProgram;
+                snapshot.vao = currentVAO;
+                snapshot.vaoGeneration = vaoIt->second.generation;
+                snapshot.topology = topology;
+                snapshot.indexed = indexed;
+                snapshot.indexType = indexType;
+                snapshot.count = count;
+                snapshot.first = first;
+                snapshot.instanceCount = std::max(1, instanceCount);
+                snapshot.depthTest = stateDepthTest;
+                snapshot.depthWrite = stateDepthWrite;
+                snapshot.depthFunc = stateDepthFunc;
+                snapshot.cullFace = stateCullFace;
+                snapshot.blend = stateBlend;
+                snapshot.srcRGB = stateSrcRGB;
+                snapshot.dstRGB = stateDstRGB;
+                snapshot.srcAlpha = stateSrcAlpha;
+                snapshot.dstAlpha = stateDstAlpha;
+                for (int i = 0; i < 4; ++i) snapshot.colorMask[i] = stateColorMask[i];
+                for (int i = 0; i < 4; ++i) snapshot.viewport[i] = stateViewport[i];
+                snapshot.uboLighting = boundUBO[0];
+                snapshot.uboCamera = boundUBO[1];
+                snapshot.uboBone = boundUBO[2];
+                snapshot.vkLighting = ResolveBufferHandle(boundUBO[0]);
+                snapshot.vkCamera = ResolveBufferHandle(boundUBO[1]);
+                snapshot.vkBone = ResolveBufferHandle(boundUBO[2]);
                 {
                     const std::vector<GpuId> bufferOrder = ComputeVaoBufferOrder(vaoIt->second);
-                    cmd.vkVertexBuffers.reserve(bufferOrder.size());
+                    snapshot.vkVertexBuffers.reserve(bufferOrder.size());
                     for (GpuId bid : bufferOrder) {
-                        cmd.vkVertexBuffers.push_back(ResolveBufferHandle(bid));
+                        snapshot.vkVertexBuffers.push_back(ResolveBufferHandle(bid));
                     }
                     if (indexed) {
-                        cmd.vkIndexBuffer = ResolveBufferHandle(vaoIt->second.elementBuffer);
+                        snapshot.vkIndexBuffer = ResolveBufferHandle(vaoIt->second.elementBuffer);
                     }
                 }
                 auto t0 = boundTextureSlots.find(0);
                 auto t1 = boundTextureSlots.find(1);
-                cmd.texSlot0 = (t0 != boundTextureSlots.end()) ? t0->second : kInvalidGpuId;
-                cmd.texSlot1 = (t1 != boundTextureSlots.end()) ? t1->second : kInvalidGpuId;
-                cmd.cubemapSlot0 = boundCubemapSlot0;
-                cmd.ddgiUBO = boundDDGIUBO;
-                cmd.ddgiIrradiance = boundDDGIIrradiance;
-                cmd.ddgiDistance = boundDDGIDistance;
-                cmd.perDraw = currentPerDraw;
-                cmd.targetFramebuffer = currentBoundFramebuffer;
+                snapshot.texSlot0 = (t0 != boundTextureSlots.end()) ? t0->second : kInvalidGpuId;
+                snapshot.texSlot1 = (t1 != boundTextureSlots.end()) ? t1->second : kInvalidGpuId;
+                snapshot.cubemapSlot0 = boundCubemapSlot0;
+                snapshot.ddgiUBO = boundDDGIUBO;
+                snapshot.ddgiIrradiance = boundDDGIIrradiance;
+                snapshot.ddgiDistance = boundDDGIDistance;
+                snapshot.perDraw = currentPerDraw;
+                snapshot.targetFramebuffer = currentBoundFramebuffer;
                 if (currentBoundFramebuffer != 0) {
                     auto fbIt = framebuffers.find(currentBoundFramebuffer);
-                    cmd.depthOnly = (fbIt != framebuffers.end()) && fbIt->second.depthOnly;
+                    snapshot.depthOnly = (fbIt != framebuffers.end()) && fbIt->second.depthOnly;
                 }
-                
-                if (!EnsurePass(cmd.targetFramebuffer)) {
+
+                if (!EnsurePass(snapshot.targetFramebuffer)) {
                     return;
                 }
-                ReplayDraw(commandBuffers[currentFrame], cmd, currentDrawSlot);
+                EncodeDraw(commandBuffers[currentFrame], snapshot, currentDrawSlot);
                 ++currentDrawSlot;
             }
 
             void VulkanRenderDevice::DrawIndexed(PrimitiveTopology topology, int indexCount, IndexType indexType)
             {
-                RecordDrawCommand(topology, true, indexType, indexCount, 0, 1);
+                EncodeCurrentDraw(topology, true, indexType, indexCount, 0, 1);
             }
 
             void VulkanRenderDevice::DrawIndexedInstanced(PrimitiveTopology topology, int indexCount, IndexType indexType, int instanceCount)
             {
-                RecordDrawCommand(topology, true, indexType, indexCount, 0, instanceCount);
+                EncodeCurrentDraw(topology, true, indexType, indexCount, 0, instanceCount);
             }
 
             void VulkanRenderDevice::DrawArrays(PrimitiveTopology topology, int first, int count)
             {
-                RecordDrawCommand(topology, false, IndexType::UInt32, count, first, 1);
+                EncodeCurrentDraw(topology, false, IndexType::UInt32, count, first, 1);
             }
 
             void VulkanRenderDevice::DrawArraysInstanced(PrimitiveTopology topology, int first, int count, int instanceCount)
             {
-                RecordDrawCommand(topology, false, IndexType::UInt32, count, first, instanceCount);
+                EncodeCurrentDraw(topology, false, IndexType::UInt32, count, first, instanceCount);
             }
 
             std::uintptr_t VulkanRenderDevice::GetNativeTextureIdForImGui(GpuId texture) const
@@ -2588,7 +2588,7 @@ namespace RTBEngine {
                 ImGui_ImplSDL2_NewFrame();
             }
 
-            void VulkanRenderDevice::QueueImGuiDrawData(ImDrawData* drawData)
+            void VulkanRenderDevice::RecordImGuiDrawData(ImDrawData* drawData)
             {
                 if (!drawData || skipFrame || !frameRecording) {
                     return;
@@ -2619,31 +2619,31 @@ namespace RTBEngine {
             // Pipeline cache
             // ---------------------------------------------------------------------------
 
-            VkPipeline VulkanRenderDevice::GetOrCreatePipeline(const DrawCommand& cmd)
+            VkPipeline VulkanRenderDevice::GetOrCreatePipeline(const DrawSnapshot& draw)
             {
-                auto progIt = programs.find(cmd.program);
-                auto vaoIt = vaos.find(cmd.vao);
+                auto progIt = programs.find(draw.program);
+                auto vaoIt = vaos.find(draw.vao);
                 if (progIt == programs.end() || !progIt->second.valid || vaoIt == vaos.end()) {
                     return VK_NULL_HANDLE;
                 }
 
                 PipelineKey key{};
-                key.program = cmd.program;
-                key.vao = cmd.vao;
+                key.program = draw.program;
+                key.vao = draw.vao;
                 // Pipeline identity uses the VAO layout at encode time (generation can
                 // change if instance attributes are added later in the same frame).
                 key.vaoGeneration = vaoIt->second.generation;
-                key.topology = static_cast<int>(cmd.topology);
-                key.depthTest = cmd.depthTest;
-                key.depthWrite = cmd.depthWrite;
-                key.depthFunc = static_cast<int>(cmd.depthFunc);
-                key.cullFace = cmd.cullFace;
-                key.blend = cmd.blend;
-                key.srcRGB = cmd.srcRGB; key.dstRGB = cmd.dstRGB;
-                key.srcAlpha = cmd.srcAlpha; key.dstAlpha = cmd.dstAlpha;
-                for (int i = 0; i < 4; ++i) key.colorMask[i] = cmd.colorMask[i];
-                key.targetFramebuffer = cmd.targetFramebuffer;
-                key.depthOnly = cmd.depthOnly;
+                key.topology = static_cast<int>(draw.topology);
+                key.depthTest = draw.depthTest;
+                key.depthWrite = draw.depthWrite;
+                key.depthFunc = static_cast<int>(draw.depthFunc);
+                key.cullFace = draw.cullFace;
+                key.blend = draw.blend;
+                key.srcRGB = draw.srcRGB; key.dstRGB = draw.dstRGB;
+                key.srcAlpha = draw.srcAlpha; key.dstAlpha = draw.dstAlpha;
+                for (int i = 0; i < 4; ++i) key.colorMask[i] = draw.colorMask[i];
+                key.targetFramebuffer = draw.targetFramebuffer;
+                key.depthOnly = draw.depthOnly;
 
                 auto pit = pipelineCache.find(key);
                 if (pit != pipelineCache.end()) {
@@ -2655,7 +2655,7 @@ namespace RTBEngine {
 
                 // Only declare attributes the vertex shader consumes (shadow.vert skips
                 // normals/UVs that a full mesh VAO still exposes). Binding order must
-                // stay identical to ReplayDraw's ComputeVaoBufferOrder.
+                // match ComputeVaoBufferOrder used by EncodeDraw.
                 auto shaderUsesLoc = [&](unsigned int loc) -> bool {
                     if (prog.usedVertexLocations.empty()) return true;
                     return std::find(prog.usedVertexLocations.begin(), prog.usedVertexLocations.end(), loc)
@@ -2767,7 +2767,7 @@ namespace RTBEngine {
 
                 VkPipelineInputAssemblyStateCreateInfo ia{};
                 ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-                ia.topology = ToVkTopology(cmd.topology);
+                ia.topology = ToVkTopology(draw.topology);
 
                 VkPipelineViewportStateCreateInfo vp{};
                 vp.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -2777,10 +2777,10 @@ namespace RTBEngine {
                 VkPipelineRasterizationStateCreateInfo rs{};
                 rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
                 rs.polygonMode = VK_POLYGON_MODE_FILL;
-                rs.cullMode = cmd.cullFace ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE;
+                rs.cullMode = draw.cullFace ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE;
                 rs.frontFace = VK_FRONT_FACE_CLOCKWISE; // positive viewport + GL-style projection
                 rs.lineWidth = 1.0f;
-                if (cmd.depthOnly) {
+                if (draw.depthOnly) {
                     rs.depthBiasEnable = VK_TRUE;
                     rs.depthBiasConstantFactor = 1.25f;
                     rs.depthBiasClamp = 0.0f;
@@ -2793,27 +2793,27 @@ namespace RTBEngine {
 
                 VkPipelineDepthStencilStateCreateInfo ds{};
                 ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-                ds.depthTestEnable = cmd.depthTest ? VK_TRUE : VK_FALSE;
-                ds.depthWriteEnable = cmd.depthWrite ? VK_TRUE : VK_FALSE;
-                ds.depthCompareOp = ToVkCompareOp(cmd.depthFunc);
+                ds.depthTestEnable = draw.depthTest ? VK_TRUE : VK_FALSE;
+                ds.depthWriteEnable = draw.depthWrite ? VK_TRUE : VK_FALSE;
+                ds.depthCompareOp = ToVkCompareOp(draw.depthFunc);
 
                 VkPipelineColorBlendAttachmentState blendAtt{};
                 blendAtt.colorWriteMask =
-                    (cmd.colorMask[0] ? VK_COLOR_COMPONENT_R_BIT : 0)
-                    | (cmd.colorMask[1] ? VK_COLOR_COMPONENT_G_BIT : 0)
-                    | (cmd.colorMask[2] ? VK_COLOR_COMPONENT_B_BIT : 0)
-                    | (cmd.colorMask[3] ? VK_COLOR_COMPONENT_A_BIT : 0);
-                blendAtt.blendEnable = cmd.blend ? VK_TRUE : VK_FALSE;
-                blendAtt.srcColorBlendFactor = ToVkBlendFactor(cmd.srcRGB);
-                blendAtt.dstColorBlendFactor = ToVkBlendFactor(cmd.dstRGB);
+                    (draw.colorMask[0] ? VK_COLOR_COMPONENT_R_BIT : 0)
+                    | (draw.colorMask[1] ? VK_COLOR_COMPONENT_G_BIT : 0)
+                    | (draw.colorMask[2] ? VK_COLOR_COMPONENT_B_BIT : 0)
+                    | (draw.colorMask[3] ? VK_COLOR_COMPONENT_A_BIT : 0);
+                blendAtt.blendEnable = draw.blend ? VK_TRUE : VK_FALSE;
+                blendAtt.srcColorBlendFactor = ToVkBlendFactor(draw.srcRGB);
+                blendAtt.dstColorBlendFactor = ToVkBlendFactor(draw.dstRGB);
                 blendAtt.colorBlendOp = VK_BLEND_OP_ADD;
-                blendAtt.srcAlphaBlendFactor = ToVkBlendFactor(cmd.srcAlpha);
-                blendAtt.dstAlphaBlendFactor = ToVkBlendFactor(cmd.dstAlpha);
+                blendAtt.srcAlphaBlendFactor = ToVkBlendFactor(draw.srcAlpha);
+                blendAtt.dstAlphaBlendFactor = ToVkBlendFactor(draw.dstAlpha);
                 blendAtt.alphaBlendOp = VK_BLEND_OP_ADD;
 
                 VkPipelineColorBlendStateCreateInfo cb{};
                 cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-                if (cmd.depthOnly) {
+                if (draw.depthOnly) {
                     cb.attachmentCount = 0;
                     cb.pAttachments = nullptr;
                 }
@@ -2841,7 +2841,7 @@ namespace RTBEngine {
                 pci.pColorBlendState = &cb;
                 pci.pDynamicState = &dyn;
                 pci.layout = pipelineLayout;
-                pci.renderPass = ResolveRenderPassForTarget(cmd.targetFramebuffer);
+                pci.renderPass = ResolveRenderPassForTarget(draw.targetFramebuffer);
                 pci.subpass = 0;
 
                 VkPipeline pipeline = VK_NULL_HANDLE;
@@ -3927,8 +3927,8 @@ namespace RTBEngine {
                     || !CreateDepthResources() || !CreateFramebuffers()) {
                     return false;
                 }
-                pendingViewport[2] = static_cast<int>(swapchainExtent.width);
-                pendingViewport[3] = static_cast<int>(swapchainExtent.height);
+                stateViewport[2] = static_cast<int>(swapchainExtent.width);
+                stateViewport[3] = static_cast<int>(swapchainExtent.height);
 
                 if (imguiBackendInitialized) {
                     // renderPass itself is not recreated here (only destroyed on full
