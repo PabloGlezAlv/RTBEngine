@@ -219,7 +219,6 @@ namespace RTBEngine {
 
                 window = sdlWindow;
                 vSyncEnabled = vSync;
-                pendingDraws.reserve(1024);
 
                 shadercCompiler = shaderc_compiler_initialize();
                 if (!shadercCompiler) {
@@ -265,7 +264,7 @@ namespace RTBEngine {
                 initialized = true;
                 giContext = std::make_unique<VulkanGiContext>(*this);
                 giContext->Initialize(physicalDevice, device, graphicsQueueFamily, graphicsQueue);
-                RTB_INFO("VulkanRenderDevice initialized (depth + deferred draws + SPIR-V)");
+                RTB_INFO("VulkanRenderDevice initialized (record-on-draw + SPIR-V)");
                 return true;
             }
 
@@ -281,8 +280,6 @@ namespace RTBEngine {
                     giContext.reset();
                 }
 
-                pendingDraws.clear();
-                pendingImGuiDrawData = nullptr;
                 // ImGui backend must already be shut down by Application before device destruction.
                 if (imguiBackendInitialized) {
                     ShutdownImGuiBackend();
@@ -427,70 +424,29 @@ namespace RTBEngine {
 
                 skipFrame = false;
 
-				//Create sawpchain if it was destroyed by window resize or other event.
                 if (swapchain == VK_NULL_HANDLE) {
                     RecreateSwapchain();
                     if (swapchain == VK_NULL_HANDLE) {
                         skipFrame = true;
-                        pendingDraws.clear();
-                        pendingClearMask = ClearMask::None;
-                        pendingImGuiDrawData = nullptr;
                         return;
                     }
                 }
 
-				// Wait for the previous frame to finish before starting a new one.
                 const VkFence currentFence = inFlightFences[currentFrame];
                 vkWaitForFences(device, 1, &currentFence, VK_TRUE, UINT64_MAX);
                 RetireOrphanedBuffers();
 
-				// Acquire the next image from the swapchain.
-                std::uint32_t imageIndex = 0;
-                const VkResult acquireResult = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX,
-                    imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
-
-				// Handle swapchain recreation if the swapchain is out of date or suboptimal.
-                if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
-                    RecreateSwapchain();
-                    skipFrame = true;
-                    pendingDraws.clear();
-                    pendingClearMask = ClearMask::None;
-                    pendingImGuiDrawData = nullptr;
-                    return;
-                }
-                if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR) {
-                    RTB_ERROR("VulkanRenderDevice: vkAcquireNextImageKHR failed");
-                    skipFrame = true;
-                    pendingDraws.clear();
-                    pendingImGuiDrawData = nullptr;
-                    return;
-                }
-
-				// Store the acquired image index for use in the current frame.
-                swapImageIndex = imageIndex;
-
-				// Wait for the fence associated with the acquired image to ensure it's not in use.
-                if (imageIndex < imagesInFlight.size() && imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-                    vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-                }
-                imagesInFlight[imageIndex] = currentFence;
-
-				// Reset the descriptor pool for the current frame to free up descriptor sets.
                 if (descriptorPools[currentFrame]) {
                     vkResetDescriptorPool(device, descriptorPools[currentFrame], 0);
                 }
-				// Reset the command buffer for the current frame to prepare for recording new commands.
                 const VkCommandBuffer cmd = commandBuffers[currentFrame];
                 vkResetCommandBuffer(cmd, 0);
 
-				// Begin recording commands into the command buffer.
                 VkCommandBufferBeginInfo beginInfo{};
                 beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
                 if (vkBeginCommandBuffer(cmd, &beginInfo) != VK_SUCCESS) {
                     RTB_ERROR("VulkanRenderDevice: vkBeginCommandBuffer failed");
                     skipFrame = true;
-                    pendingDraws.clear();
-                    pendingImGuiDrawData = nullptr;
                     return;
                 }
 
@@ -498,7 +454,7 @@ namespace RTBEngine {
                 activeTarget = kInvalidGpuId;
                 touchedSwapchain = false;
                 currentDrawSlot = 0;
-                swapchainAcquired = true;
+                swapchainAcquired = false;
                 frameRecording = true;
             }
 
@@ -508,11 +464,16 @@ namespace RTBEngine {
             {
                 if (vSyncEnabled == enabled) return;
                 vSyncEnabled = enabled;
-                if (initialized) RecreateSwapchain();
+                if (!initialized) return;
+                if (frameRecording) {
+                    pendingSwapchainRecreate = true;
+                    return;
+                }
+                RecreateSwapchain();
             }
 
             // ---------------------------------------------------------------------------
-            // Present / deferred draw replay
+            // Present (end command buffer, submit, show)
             // ---------------------------------------------------------------------------
 
             void VulkanRenderDevice::Present()
@@ -521,46 +482,38 @@ namespace RTBEngine {
                     return;
                 }
 
-				// If the frame was skipped (e.g., due to swapchain recreation), clear pending draws and return early.
                 if (skipFrame || !frameRecording) {
-                    pendingDraws.clear();
-                    pendingClearMask = ClearMask::None;
-                    pendingImGuiDrawData = nullptr;
+                    if (frameRecording) {
+                        vkResetCommandBuffer(commandBuffers[currentFrame], 0);
+                        frameRecording = false;
+                    }
                     skipFrame = false;
                     return;
                 }
                 const VkFence currentFence = inFlightFences[currentFrame];
                 const VkCommandBuffer cmd = commandBuffers[currentFrame];
-                const std::uint32_t imageIndex = swapImageIndex;
 
-				// Render any pending ImGui draw data, ensuring it's done in the correct render pass.
-                if (pendingImGuiDrawData) {
-                    if (!inPass || activeTarget != 0) {
-                        EndActiveRenderPass(cmd, inPass, activeTarget);
-                        BeginTargetRenderPass(cmd, 0, imageIndex, clearColor, inPass, activeTarget);
-                    }
-                    touchedSwapchain = true;
-                    ImGui_ImplVulkan_RenderDrawData(pendingImGuiDrawData, cmd);
-                    pendingImGuiDrawData = nullptr;
-                }
-
-				// If no draws or ImGui rendering occurred, ensure we still have a render pass for the swapchain.
+				// No window draws this frame: still acquire so the swapchain image is
+				// cleared and left in a presentable layout.
                 if (!touchedSwapchain) {
-                    EndActiveRenderPass(cmd, inPass, activeTarget);
-                    BeginTargetRenderPass(cmd, 0, imageIndex, clearColor, inPass, activeTarget);
+                    if (!EnsurePass(0)) {
+                        vkResetCommandBuffer(cmd, 0);
+                        frameRecording = false;
+                        skipFrame = false;
+                        return;
+                    }
                 }
+
+                const std::uint32_t imageIndex = swapImageIndex;
 
                 EndActiveRenderPass(cmd, inPass, activeTarget);
 
                 if (vkEndCommandBuffer(cmd) != VK_SUCCESS) {
                     RTB_ERROR("VulkanRenderDevice: vkEndCommandBuffer failed");
-                    pendingDraws.clear();
-                    pendingClearMask = ClearMask::None;
                     frameRecording = false;
                     return;
                 }
 
-				// Submit the command buffer to the graphics queue for execution, waiting on the image available semaphore and signaling the render finished semaphore.
                 const VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
                 const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
                 const VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[imageIndex] };
@@ -575,10 +528,8 @@ namespace RTBEngine {
                 submitInfo.signalSemaphoreCount = 1;
                 submitInfo.pSignalSemaphores = signalSemaphores;
 
-				// Reset the fence for the current frame before submitting the command buffer.
                 vkResetFences(device, 1, &currentFence);
 
-				// Submit the command buffer to the graphics queue and check for success.
                 const VkResult submitResult = vkQueueSubmit(graphicsQueue, 1, &submitInfo, currentFence);
                 if (submitResult != VK_SUCCESS) {
                     RTB_ERROR(std::string("VulkanRenderDevice: vkQueueSubmit failed (")
@@ -594,10 +545,11 @@ namespace RTBEngine {
                 presentInfo.pSwapchains = swapchains;
                 presentInfo.pImageIndices = &imageIndex;
 
-				// Present the rendered image to the swapchain, handling any out-of-date or suboptimal results by recreating the swapchain.
                 const VkResult presentResult = vkQueuePresentKHR(presentQueue, &presentInfo);
-                if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR) {
+                if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR
+                    || pendingSwapchainRecreate) {
                     RecreateSwapchain();
+                    pendingSwapchainRecreate = false;
                 }
                 else if (presentResult != VK_SUCCESS) {
                     RTB_ERROR("VulkanRenderDevice: vkQueuePresentKHR failed");
@@ -613,8 +565,6 @@ namespace RTBEngine {
                     slot.insert(slot.end(), pendingTextureOrphans.begin(), pendingTextureOrphans.end());
                     pendingTextureOrphans.clear();
                 }
-                pendingDraws.clear();
-                pendingClearMask = ClearMask::None;
                 FlushDeferredResourceDestroys();
                 currentFrame = (currentFrame + 1) % static_cast<std::size_t>(kMaxFramesInFlight);
                 frameRecording = false;
@@ -695,10 +645,8 @@ namespace RTBEngine {
                     return false;
                 }
 
-				// Wait for the previous frame to finish before starting a new one.
                 const VkFence currentFence = inFlightFences[currentFrame];
 
-				// Acquire the next image from the swapchain, waiting indefinitely for an available image.
                 std::uint32_t imageIndex = 0;
                 const VkResult acquireResult = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX,
                     imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
@@ -716,7 +664,6 @@ namespace RTBEngine {
 
                 swapImageIndex = imageIndex;
 
-				// Wait for the fence associated with the acquired image to ensure it's not in use.
                 if (imageIndex < imagesInFlight.size() && imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
                     vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
                 }
@@ -738,7 +685,6 @@ namespace RTBEngine {
                     return true;
                 }
 
-				// End the current render pass if we're in one, and begin a new render pass for the specified target.
                 const VkCommandBuffer cmd = commandBuffers[currentFrame];
                 EndActiveRenderPass(cmd, inPass, activeTarget);
                 if (!BeginTargetRenderPass(cmd, target, swapImageIndex, clearColor, inPass, activeTarget)) {
@@ -826,9 +772,7 @@ namespace RTBEngine {
                 int vpY = draw.viewport[1];
                 int vpW = draw.viewport[2] > 0 ? draw.viewport[2] : static_cast<int>(targetWidth);
                 int vpH = draw.viewport[3] > 0 ? draw.viewport[3] : static_cast<int>(targetHeight);
-                                // Vulkan clip Y is down; engine projection is OpenGL-style (Y up). Prefer a
-                // positive viewport + ImGui UV flip (same as the OpenGL editor path) instead of
-                // a negative viewport height, which double-flips with ImGui and confuses some paths.
+                // Engine projection is OpenGL Y-up; keep viewport height positive.
                 VkViewport viewport{};
                 viewport.x = static_cast<float>(vpX);
                 viewport.y = static_cast<float>(vpY);
@@ -844,15 +788,12 @@ namespace RTBEngine {
                 scissor.extent.height = static_cast<std::uint32_t>(std::max(0, vpH));
                 vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-                // Upload PerDraw slot
                 const VkDeviceSize slotOffset = static_cast<VkDeviceSize>(drawSlot) * perDrawSlotStride;
                 void* perDrawBase = perDrawMapped[currentFrame];
                 if (perDrawBase) {
                     std::memcpy(static_cast<char*>(perDrawBase) + slotOffset, &draw.perDraw, sizeof(PerDrawCPU));
                 }
 
-                // Vertex / index buffers â€” prefer record-time VkBuffer snapshots so later
-                // SetArrayBufferData orphans cannot rewrite geometry for earlier draws.
                 const VaoResource& vao = vaoIt->second;
                 std::vector<VkBuffer> vbuffers;
                 std::vector<VkDeviceSize> offsets;
@@ -910,7 +851,6 @@ namespace RTBEngine {
                     vkCmdBindIndexBuffer(cmd, indexBuffer, 0, idxType);
                 }
 
-                // Descriptor set
                 VkDescriptorSetAllocateInfo allocInfo{};
                 allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
                 allocInfo.descriptorPool = descriptorPools[currentFrame];
@@ -986,8 +926,6 @@ namespace RTBEngine {
                     writes[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                     writes[i].pBufferInfo = &uboInfos[i];
                 }
-                // PerDraw is dynamic offset style via offset in buffer info (static UBO with offset).
-                // Using UNIFORM_BUFFER with non-zero offset is valid.
                 for (int i = 0; i < 3; ++i) {
                     writes[4 + i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                     writes[4 + i].dstSet = dset;
@@ -1060,18 +998,15 @@ namespace RTBEngine {
 
             void VulkanRenderDevice::Clear(ClearMask mask)
             {
+                (void)mask;
                 if (currentBoundFramebuffer != 0) {
                     auto it = framebuffers.find(currentBoundFramebuffer);
                     if (it != framebuffers.end()) {
-                        it->second.pendingClearMask = it->second.pendingClearMask | mask;
                         it->second.clearColor[0] = clearColor[0];
                         it->second.clearColor[1] = clearColor[1];
                         it->second.clearColor[2] = clearColor[2];
                         it->second.clearColor[3] = clearColor[3];
                     }
-                }
-                else {
-                    pendingClearMask = pendingClearMask | mask;
                 }
             }
 
@@ -1179,8 +1114,7 @@ namespace RTBEngine {
                     src = std::regex_replace(src, std::regex(pattern), "");
                 }
 
-                // Strip any remaining non-opaque / sampler loose uniforms (Vulkan forbids them).
-                // Known ones are already in PerDraw; unknowns become compile errors if still referenced.
+                // Strip remaining loose uniforms (Vulkan forbids them; PerDraw already has the known ones).
                 src = std::regex_replace(src,
                     std::regex(R"(^\s*uniform\s+(?!sampler)[\w]+\s+[\w]+\s*;\s*$)", std::regex::multiline),
                     "");
@@ -1240,7 +1174,6 @@ namespace RTBEngine {
                     const auto pos = src.find(from);
                     if (pos != std::string::npos) {
                         src.replace(pos, from.size(), to);
-                        // Apply uShadowBias (basic.frag declared it but never used it).
                         const std::string depthFrom = "float currentDepth = projCoords.z - slopeBias;";
                         const std::string depthTo =
                             "float currentDepth = projCoords.z - slopeBias - _shadowBias;";
@@ -1248,7 +1181,6 @@ namespace RTBEngine {
                         if (dpos != std::string::npos) {
                             src.replace(dpos, depthFrom.size(), depthTo);
                         }
-                        // Soften point-light specular streaks (torch/floor rays).
                         const std::string specFrom =
                             "    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);\n"
                             "    vec3 specular = spec * light.color * light.intensity * 0.5;\n"
@@ -1427,12 +1359,8 @@ namespace RTBEngine {
             {
                 auto it = buffers.find(buffer);
                 if (it == buffers.end()) return;
-                // Pending draws snapshot VkBuffer for UBOs and resolve VBOs by GpuId at Present.
-                // Never destroy/erase immediately while deferred work may still need them.
-                if (!pendingDraws.empty()
-                    || IsBufferInFlight(it->second.buffer)
-                    || IsBufferReferencedByPendingDraws(it->second.buffer)) {
-                                        deferredBufferDestroys.push_back(buffer);
+                if (IsBufferInFlight(it->second.buffer)) {
+                    deferredBufferDestroys.push_back(buffer);
                     return;
                 }
                 if (it->second.buffer) {
@@ -1450,8 +1378,6 @@ namespace RTBEngine {
                     return;
                 }
                 if (res.buffer) {
-                    // Always defer destruction â€” pending draws may still hold this VkBuffer
-                    // snapshot (Bone/Camera/Lighting UBOs) even when not yet marked in-flight.
                     pendingOrphans.push_back({ res.buffer, res.memory });
                 }
                 res = {};
@@ -1481,8 +1407,6 @@ namespace RTBEngine {
                 EnsureBufferCapacity(buffer, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
                 auto it = buffers.find(buffer);
                 if (it == buffers.end() || !it->second.memory) return;
-                // In-place write is safe only when this VkBuffer is not referenced by an
-                // in-flight CB. OrphanBufferIfInFlight above ensures that.
                 UploadHostVisibleBuffer(it->second.memory, data, size);
             }
 
@@ -1525,32 +1449,6 @@ namespace RTBEngine {
                     return it->second.buffer;
                 }
                 return VK_NULL_HANDLE;
-            }
-
-            void VulkanRenderDevice::OrphanUniformBufferIfDeferred(GpuId buffer)
-            {
-                if (buffer == kInvalidGpuId || pendingDraws.empty()) {
-                    return;
-                }
-                bool referenced = false;
-                for (const DrawCommand& draw : pendingDraws) {
-                    if (draw.uboLighting == buffer || draw.uboCamera == buffer || draw.uboBone == buffer) {
-                        referenced = true;
-                        break;
-                    }
-                }
-                if (!referenced) {
-                    return;
-                }
-                auto it = buffers.find(buffer);
-                if (it == buffers.end() || !it->second.buffer) {
-                    return;
-                }
-                                pendingOrphans.push_back({ it->second.buffer, it->second.memory });
-                it->second.buffer = VK_NULL_HANDLE;
-                it->second.memory = VK_NULL_HANDLE;
-                it->second.size = 0;
-                it->second.usage = 0;
             }
 
             void VulkanRenderDevice::RetireOrphanedBuffers()
@@ -1605,37 +1503,6 @@ namespace RTBEngine {
                 return false;
             }
 
-            bool VulkanRenderDevice::IsBufferReferencedByPendingDraws(VkBuffer buffer) const
-            {
-                if (!buffer) return false;
-                for (const DrawCommand& draw : pendingDraws) {
-                    if (draw.vkLighting == buffer || draw.vkCamera == buffer || draw.vkBone == buffer) {
-                        return true;
-                    }
-                    if (draw.vkIndexBuffer == buffer) {
-                        return true;
-                    }
-                    for (VkBuffer vb : draw.vkVertexBuffers) {
-                        if (vb == buffer) return true;
-                    }
-                }
-                return false;
-            }
-
-            bool VulkanRenderDevice::IsGpuBufferUsedByPendingVaos(GpuId buffer) const
-            {
-                if (buffer == kInvalidGpuId || pendingDraws.empty()) return false;
-                for (const DrawCommand& draw : pendingDraws) {
-                    auto vaoIt = vaos.find(draw.vao);
-                    if (vaoIt == vaos.end()) continue;
-                    if (vaoIt->second.elementBuffer == buffer) return true;
-                    for (const auto& pair : vaoIt->second.attributes) {
-                        if (pair.second.buffer == buffer) return true;
-                    }
-                }
-                return false;
-            }
-
             void VulkanRenderDevice::FlushDeferredResourceDestroys()
             {
                 if (deferredBufferDestroys.empty()
@@ -1643,7 +1510,7 @@ namespace RTBEngine {
                     && deferredVaoDestroys.empty()) {
                     return;
                 }
-                                // Pending draws have been submitted; wait so in-flight CBs finish before teardown.
+                                // In-flight CBs may still reference these objects.
                 if (device != VK_NULL_HANDLE) {
                     vkDeviceWaitIdle(device);
                 }
@@ -1672,41 +1539,18 @@ namespace RTBEngine {
             {
                 auto it = buffers.find(buffer);
                 if (it == buffers.end() || !it->second.buffer) return;
-                if (!IsBufferInFlight(it->second.buffer)
-                    && !IsBufferReferencedByPendingDraws(it->second.buffer)
-                    && !IsGpuBufferUsedByPendingVaos(buffer)) {
+                if (!IsBufferInFlight(it->second.buffer)) {
                     return;
                 }
-                                pendingOrphans.push_back({ it->second.buffer, it->second.memory });
+                pendingOrphans.push_back({ it->second.buffer, it->second.memory });
                 it->second.buffer = VK_NULL_HANDLE;
                 it->second.memory = VK_NULL_HANDLE;
                 it->second.size = 0;
                 it->second.usage = 0;
             }
 
-            void VulkanRenderDevice::ClampPendingDrawViewportsToFramebuffer(GpuId framebufferId,
-                                                                            const FramebufferResource& fb)
-            {
-                if (framebufferId == 0 || fb.width <= 0 || fb.height <= 0 || pendingDraws.empty()) {
-                    return;
-                }
-                int clamped = 0;
-                for (DrawCommand& draw : pendingDraws) {
-                    if (draw.targetFramebuffer != framebufferId) continue;
-                    if (draw.viewport[2] > fb.width) {
-                        draw.viewport[2] = fb.width;
-                        ++clamped;
-                    }
-                    if (draw.viewport[3] > fb.height) {
-                        draw.viewport[3] = fb.height;
-                        ++clamped;
-                    }
-                }
-                }
-
             void VulkanRenderDevice::UpdateUniformBufferData(GpuId buffer, const void* data, std::size_t size)
             {
-                                OrphanUniformBufferIfDeferred(buffer);
                 OrphanBufferIfInFlight(buffer);
                 SetUniformBufferData(buffer, data, size, BufferUsage::Dynamic);
             }
@@ -1862,10 +1706,7 @@ namespace RTBEngine {
                     vkFormat = (format == TextureFormat::SRGB8) ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
                 }
 
-                // Drop any ImGui descriptor that still references the old view/sampler.
                 RemoveImGuiTexture(texture);
-                // Never destroy GPU objects immediately â€” prior frames' descriptor sets may
-                // still reference them (font atlas re-uploads are the common trigger).
                 OrphanTextureGpuResources(res);
 
                 int channels = 4;
@@ -2090,8 +1931,7 @@ namespace RTBEngine {
             }
 
             // ---------------------------------------------------------------------------
-            // Framebuffers (real offscreen color+depth / depth-only targets, replayed as
-            // ordered render-pass segments in Present())
+            // Framebuffers (offscreen color+depth / depth-only / color-only load)
             // ---------------------------------------------------------------------------
 
             GpuId VulkanRenderDevice::CreateFramebuffer()
@@ -2105,12 +1945,8 @@ namespace RTBEngine {
             {
                 auto it = framebuffers.find(framebuffer);
                 if (it == framebuffers.end()) return;
-                std::size_t references = 0;
-                for (const DrawCommand& draw : pendingDraws) {
-                    if (draw.targetFramebuffer == framebuffer) ++references;
-                }
-                if (references > 0) {
-                                        deferredFramebufferDestroys.push_back(framebuffer);
+                if (frameRecording) {
+                    deferredFramebufferDestroys.push_back(framebuffer);
                     if (currentBoundFramebuffer == framebuffer) {
                         currentBoundFramebuffer = 0;
                     }
@@ -2129,7 +1965,6 @@ namespace RTBEngine {
                 if (newTarget == kInvalidGpuId || framebuffers.find(newTarget) == framebuffers.end()) {
                     newTarget = 0;
                 }
-				// If a render pass is active, we must end it before switching framebuffers.
                 if (frameRecording && inPass && activeTarget != newTarget) {
                     EndActiveRenderPass(commandBuffers[currentFrame], inPass, activeTarget);
                 }
@@ -2219,13 +2054,8 @@ namespace RTBEngine {
                     fb.complete = false;
                     return;
                 }
-                // Offscreen targets can be rebuilt (editor viewport resize) while a prior
-                // frame's command buffer still references them — drain the GPU first.
-                // Skip Vulkan calls if the device is already torn down (static/atexit path).
                 if (device != VK_NULL_HANDLE && initialized) {
                     vkDeviceWaitIdle(device);
-                    // Pipelines bind a specific VkRenderPass; drop any that targeted this FBO
-                    // before destroying the pass, otherwise Present() reuses a dead pipeline.
                     InvalidatePipelinesForFramebuffer(framebufferId);
                     if (fb.framebuffer) {
                         vkDestroyFramebuffer(device, fb.framebuffer, nullptr);
@@ -2273,7 +2103,6 @@ namespace RTBEngine {
                         return false;
                     }
                     fb.complete = true;
-                                        ClampPendingDrawViewportsToFramebuffer(framebufferId, fb);
                     return true;
                 }
 
@@ -2305,7 +2134,6 @@ namespace RTBEngine {
                         return false;
                     }
                     fb.complete = true;
-                    ClampPendingDrawViewportsToFramebuffer(framebufferId, fb);
                     return true;
                 }
 
@@ -2338,7 +2166,6 @@ namespace RTBEngine {
                     return false;
                 }
                 fb.complete = true;
-                                ClampPendingDrawViewportsToFramebuffer(framebufferId, fb);
                 return true;
             }
 
@@ -2518,12 +2345,8 @@ namespace RTBEngine {
 
             void VulkanRenderDevice::DestroyVertexArray(GpuId vao)
             {
-                std::size_t references = 0;
-                for (const DrawCommand& draw : pendingDraws) {
-                    if (draw.vao == vao) ++references;
-                }
-                if (references > 0) {
-                                        deferredVaoDestroys.push_back(vao);
+                if (frameRecording) {
+                    deferredVaoDestroys.push_back(vao);
                     if (currentVAO == vao) currentVAO = kInvalidGpuId;
                     return;
                 }
@@ -2539,8 +2362,6 @@ namespace RTBEngine {
                 if (currentVAO == kInvalidGpuId) return;
                 auto it = vaos.find(currentVAO);
                 if (it == vaos.end()) return;
-                // Preserve divisor: Draw* paths often re-bind attribs each frame; resetting
-                // divisor to 0 breaks instancing (particle quads become streaks/lines).
                 unsigned int prevDivisor = 0;
                 const auto existing = it->second.attributes.find(location);
                 if (existing != it->second.attributes.end()) {
@@ -2652,11 +2473,9 @@ namespace RTBEngine {
                     cmd.depthOnly = (fbIt != framebuffers.end()) && fbIt->second.depthOnly;
                 }
                 
-				// If the framebuffer is incomplete, skip the draw. This avoids Vulkan validation errors
                 if (!EnsurePass(cmd.targetFramebuffer)) {
                     return;
                 }
-				// Record the draw command for replay in Present().
                 ReplayDraw(commandBuffers[currentFrame], cmd, currentDrawSlot);
                 ++currentDrawSlot;
             }
@@ -2760,7 +2579,6 @@ namespace RTBEngine {
                 ImGui_ImplVulkan_Shutdown();
                 ImGui_ImplSDL2_Shutdown();
                 imguiBackendInitialized = false;
-                pendingImGuiDrawData = nullptr;
             }
 
             void VulkanRenderDevice::BeginImGuiFrame()
@@ -2772,7 +2590,13 @@ namespace RTBEngine {
 
             void VulkanRenderDevice::QueueImGuiDrawData(ImDrawData* drawData)
             {
-                pendingImGuiDrawData = drawData;
+                if (!drawData || skipFrame || !frameRecording) {
+                    return;
+                }
+                if (!EnsurePass(0)) {
+                    return;
+                }
+                ImGui_ImplVulkan_RenderDrawData(drawData, commandBuffers[currentFrame]);
             }
 
             std::vector<GpuId> VulkanRenderDevice::ComputeVaoBufferOrder(const VaoResource& vao)
@@ -2806,9 +2630,8 @@ namespace RTBEngine {
                 PipelineKey key{};
                 key.program = cmd.program;
                 key.vao = cmd.vao;
-                // Vulkan records draws until Present(). A VAO can gain optional instance
-                // attributes later in the same frame, so pipeline identity must use the
-                // layout that will actually be replayed, not the earlier recorded version.
+                // Pipeline identity uses the VAO layout at encode time (generation can
+                // change if instance attributes are added later in the same frame).
                 key.vaoGeneration = vaoIt->second.generation;
                 key.topology = static_cast<int>(cmd.topology);
                 key.depthTest = cmd.depthTest;
@@ -2957,7 +2780,6 @@ namespace RTBEngine {
                 rs.cullMode = cmd.cullFace ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE;
                 rs.frontFace = VK_FRONT_FACE_CLOCKWISE; // positive viewport + GL-style projection
                 rs.lineWidth = 1.0f;
-                // Depth bias on shadow pass reduces acne / streak artifacts on flat floors.
                 if (cmd.depthOnly) {
                     rs.depthBiasEnable = VK_TRUE;
                     rs.depthBiasConstantFactor = 1.25f;
@@ -3836,8 +3658,7 @@ namespace RTBEngine {
 
             VkSurfaceFormatKHR VulkanRenderDevice::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) const
             {
-                // Prefer UNORM so ImGui (and other linear-ish UI writes) match OpenGL appearance.
-                // SRGB swapchains cause the editor UI to look washed / too bright.
+                // Prefer UNORM so ImGui matches the OpenGL editor.
                 for (const auto& f : formats) {
                     if (f.format == VK_FORMAT_B8G8R8A8_UNORM && f.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) return f;
                 }

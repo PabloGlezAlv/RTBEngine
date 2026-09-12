@@ -113,7 +113,7 @@ namespace RTBEngine {
                 virtual bool InitializeImGuiBackend(SDL_Window* window) = 0;
                 virtual void ShutdownImGuiBackend() = 0;
                 virtual void BeginImGuiFrame() = 0;
-                // OpenGL: renders immediately. Vulkan: queues for Present() inside the swapchain pass.
+                // Records ImGui into the current frame. OpenGL: gl* now. Vulkan: swapchain pass + vkCmd*.
                 virtual void QueueImGuiDrawData(ImDrawData* drawData) = 0;
 
                 // ImGui texture bridge. OpenGL: GL texture name. Vulkan: VkDescriptorSet as uintptr_t.

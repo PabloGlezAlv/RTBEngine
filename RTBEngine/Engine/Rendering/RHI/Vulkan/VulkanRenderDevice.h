@@ -18,11 +18,10 @@ namespace RTBEngine {
     namespace Rendering {
         namespace RHI {
 
-            // Vulkan backend. Draw* calls made during a frame are recorded into a deferred
-            // command list (capturing all bound state + a per-draw uniform snapshot); the
-            // list is replayed in Present() as ordered render-pass segments (offscreen
-            // targets then swapchain), with optional ImGui draw data at the end of the
-            // swapchain pass.
+            // Vulkan backend. Draw* / QueueImGuiDrawData record vkCmd* into the frame
+            // command buffer (render-pass segments via EnsurePass). Present() ends the
+            // buffer, submits, and presents. Swapchain acquire happens at the first
+            // pass targeting the window (target 0), not at BeginFrame.
             class VulkanRenderDevice final : public IRenderDevice {
             public:
                 VulkanRenderDevice() = default;
@@ -90,7 +89,7 @@ namespace RTBEngine {
                 void SetCubemapFilterWrap(GpuId cubemap) override;
                 void BindCubemap(GpuId cubemap, unsigned int slot) override;
 
-                // Framebuffers (real offscreen color+depth and depth-only targets)
+                // Framebuffers (offscreen color+depth and depth-only targets)
                 GpuId CreateFramebuffer() override;
                 void DestroyFramebuffer(GpuId framebuffer) override;
                 void BindFramebuffer(GpuId framebuffer) override;
@@ -284,8 +283,7 @@ namespace RTBEngine {
                     VkShaderModule vertModule = VK_NULL_HANDLE;
                     VkShaderModule fragModule = VK_NULL_HANDLE;
                     bool valid = false;
-                    // Locations declared as `layout(location=N) in` in the vertex shader.
-                    // Used to omit unused VAO attrs (avoids Vulkan validation spam).
+                    // Vertex locations declared as `layout(location=N) in` in this program.
                     std::vector<unsigned int> usedVertexLocations;
                 };
 
@@ -299,7 +297,6 @@ namespace RTBEngine {
                     bool depthOnly = false;
                     bool colorOnlyLoad = false;
                     bool complete = false;
-                    ClearMask pendingClearMask = ClearMask::None;
                     float clearColor[4] = { 0.f, 0.f, 0.f, 1.f };
                 };
 
@@ -348,13 +345,11 @@ namespace RTBEngine {
                     GpuId uboLighting = kInvalidGpuId;
                     GpuId uboCamera = kInvalidGpuId;
                     GpuId uboBone = kInvalidGpuId;
-                    // Resolved at record time so later Upload() cannot overwrite data
-                    // still referenced by deferred draws awaiting Present().
+                    // VkBuffer handles at encode time.
                     VkBuffer vkLighting = VK_NULL_HANDLE;
                     VkBuffer vkCamera = VK_NULL_HANDLE;
                     VkBuffer vkBone = VK_NULL_HANDLE;
-                    // Vertex/index VkBuffers snapshotted like UBOs — shared dynamic VBOs
-                    // (world UI) are orphaned+rewritten between DrawArrays in one frame.
+                    // Same for vertex/index buffers (dynamic VBOs may be replaced later this frame).
                     std::vector<VkBuffer> vkVertexBuffers;
                     VkBuffer vkIndexBuffer = VK_NULL_HANDLE;
                     GpuId texSlot0 = kInvalidGpuId;
@@ -470,14 +465,10 @@ namespace RTBEngine {
                 void RecordDrawCommand(PrimitiveTopology topology, bool indexed, IndexType indexType,
                                       int count, int first, int instanceCount);
                 void RemoveImGuiTexture(GpuId texture);
-                void OrphanUniformBufferIfDeferred(GpuId buffer);
                 void RetireOrphanedBuffers();
                 void OrphanTextureGpuResources(TextureResource& res);
-                void ClampPendingDrawViewportsToFramebuffer(GpuId framebufferId, const FramebufferResource& fb);
                 void NoteBufferInFlight(VkBuffer buffer);
                 bool IsBufferInFlight(VkBuffer buffer) const;
-                bool IsBufferReferencedByPendingDraws(VkBuffer buffer) const;
-                bool IsGpuBufferUsedByPendingVaos(GpuId buffer) const;
                 void OrphanBufferIfInFlight(GpuId buffer);
                 void FlushDeferredResourceDestroys();
                 VkBuffer ResolveBufferHandle(GpuId id) const;
@@ -558,7 +549,6 @@ namespace RTBEngine {
                 void* shadercCompiler = nullptr;
 
                 float clearColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
-                ClearMask pendingClearMask = ClearMask::None;
                 int pendingViewport[4] = { 0, 0, 0, 0 };
 
                 GpuId currentProgram = kInvalidGpuId;
@@ -595,22 +585,16 @@ namespace RTBEngine {
                 std::uint32_t currentDrawSlot = 0;
                 bool pendingSwapchainRecreate = false;
 
-                std::vector<DrawCommand> pendingDraws;
-                // Buffers orphaned while deferred draws still hold their VkBuffer handles.
                 // pendingOrphans → moved into orphanedBuffersByFrame[currentFrame] at Present,
                 // retired after that frame's fence is waited on the next time around.
                 std::vector<OrphanedBuffer> pendingOrphans;
                 std::array<std::vector<OrphanedBuffer>, kMaxFramesInFlight> orphanedBuffersByFrame{};
                 std::vector<OrphanedTexture> pendingTextureOrphans;
                 std::array<std::vector<OrphanedTexture>, kMaxFramesInFlight> orphanedTexturesByFrame{};
-                // Host-visible VkBuffers referenced by submitted command buffers. Writing them
-                // before the fence signals causes VK_ERROR_DEVICE_LOST (-4).
                 std::array<std::vector<VkBuffer>, kMaxFramesInFlight> buffersInFlightByFrame{};
-                // GpuIds whose CPU-side maps must stay alive until Present replays pending draws.
                 std::vector<GpuId> deferredBufferDestroys;
                 std::vector<GpuId> deferredFramebufferDestroys;
                 std::vector<GpuId> deferredVaoDestroys;
-                ImDrawData* pendingImGuiDrawData = nullptr;
                 bool imguiBackendInitialized = false;
                 mutable std::unordered_map<GpuId, VkDescriptorSet> imguiTextureSets;
 
