@@ -21,6 +21,7 @@ namespace RTBEngine {
                 void Shutdown() override;
                 GraphicsAPI GetAPI() const override { return GraphicsAPI::OpenGL; }
 
+                void BeginFrame() override;
                 void MakeCurrent() override;
                 void Present() override;
                 void SetVSync(bool enabled) override;

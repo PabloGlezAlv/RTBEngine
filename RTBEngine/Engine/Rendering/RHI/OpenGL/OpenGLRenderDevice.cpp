@@ -74,6 +74,10 @@ namespace RTBEngine {
                 initialized = false;
             }
 
+            void OpenGLRenderDevice::BeginFrame()
+            {
+            }
+
             void OpenGLRenderDevice::MakeCurrent()
             {
                 if (window && glContext) {

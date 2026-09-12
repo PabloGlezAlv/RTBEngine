@@ -22,6 +22,7 @@ namespace RTBEngine {
                 virtual void Shutdown() = 0;
                 virtual GraphicsAPI GetAPI() const = 0;
 
+                virtual void BeginFrame() = 0;
                 virtual void MakeCurrent() = 0;
                 virtual void Present() = 0;
                 virtual void SetVSync(bool enabled) = 0;

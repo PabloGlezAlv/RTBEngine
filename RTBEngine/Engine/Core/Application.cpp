@@ -377,9 +377,7 @@ bool RTBEngine::Core::Application::Initialize()
 		if (ecsWorld) {
 			ecsWorld->Clear();
 		}
-		// Remove all Bullet objects from the world BEFORE GameObjects are destroyed.
-		// This prevents btDbvtBroadphase::destroyProxy from accessing a freed proxy
-		// when ~BoxColliderComponent() deletes the raw btCollisionObject.
+		
 		ResetPhysics();
 	});
 
@@ -461,8 +459,6 @@ void RTBEngine::Core::Application::Shutdown()
 
 	ShutdownImGui();
 
-	// Destroy the scene while physics is still alive so component OnDestroy paths
-	// can detach Bullet state through the normal scene-unloading callback.
 	Scene::SceneManager::GetInstance().Shutdown();
 
 	if (ecsWorld) {
@@ -482,8 +478,6 @@ void RTBEngine::Core::Application::Shutdown()
 		physicsWorld = nullptr;
 	}
 
-	// Only after all GameObjects are destroyed, unload the script DLL.
-	// UnloadScripts() also evicts script-owned DataAssets while the DLL is still mapped.
 	Scripting::ScriptManager::GetInstance().UnloadScripts();
 
 	ResourceManager::GetInstance().Clear();
@@ -493,8 +487,7 @@ void RTBEngine::Core::Application::Shutdown()
 	Rendering::GI::DDGISystem::GetInstance().Shutdown();
 	Rendering::VolumetricFogPass::GetInstance().Shutdown();
 	Rendering::BloomPass::GetInstance().Shutdown();
-	// Scene is already unloaded; prevent any late Texture dtors (static teardown) from
-	// touching Vulkan after the device/layers are destroyed.
+	
 	Rendering::Texture::SetGpuDestroyEnabled(false);
 	Rendering::RHI::RenderDevice::Shutdown();
 	window.reset();
@@ -617,6 +610,9 @@ void RTBEngine::Core::Application::Render()
 		canvasSystem.Update(scene);
 	}
 
+	auto& device = Rendering::RHI::RenderDevice::Get();
+	device.BeginFrame();
+
 	RenderShadowPass(scene);
 
 	UploadSceneLighting(scene);
@@ -626,7 +622,6 @@ void RTBEngine::Core::Application::Render()
 	RenderGeometryPass(scene, activeCamera);
 
 	if (imguiInitialized) {
-		auto& device = Rendering::RHI::RenderDevice::Get();
 		device.BeginImGuiFrame();
 		ImGui::NewFrame();
 
@@ -638,14 +633,14 @@ void RTBEngine::Core::Application::Render()
 
 		canvasSystem.UpdateAllRectTransforms(screenSize);
 
-		// Mouse position in window space (no offset for standalone)
+		// Mouse position in window space 
 		if (!IsMouseOwnedByGameplay(window.get())) {
 			int mx, my;
 			SDL_GetMouseState(&mx, &my);
 			canvasSystem.ProcessInput(Math::Vector2(static_cast<float>(mx), static_cast<float>(my)));
 		}
 
-		// Render to the background draw list (full screen, no offset)
+		// Render to the background draw list
 		canvasSystem.RenderToDrawList(ImGui::GetBackgroundDrawList(), screenSize, Math::Vector2(0.0f, 0.0f));
 
 		ImGui::Render();
@@ -702,7 +697,7 @@ void RTBEngine::Core::Application::RenderShadowPass(Scene::Scene* scene)
 		device.SetViewport(0, 0, shadowMap->GetResolution(), shadowMap->GetResolution());
 		device.Clear(Rendering::RHI::ClearMask::Depth);
 
-		// Disable culling to render all faces (fixes shadow issues with single-sided geometry)
+		// Disable culling to render all faces 
 		device.SetCullFace(false);
 		RenderSceneDepthOnly(scene, shadowShader, shadowFrustum);
 
@@ -735,8 +730,8 @@ void RTBEngine::Core::Application::UploadSceneLighting(Scene::Scene* scene)
 
 void RTBEngine::Core::Application::RenderSceneDepthOnly(Scene::Scene* scene, Rendering::Shader* shader, const Rendering::Frustum& frustum)
 {
-	// 1) Collect every visible mesh into a flat list. Culling stays per-renderer
-	//    (using the combined AABB), matching the previous behaviour.
+	// Collect every visible mesh into a flat list. Culling stays per-renderer
+	// (using the combined AABB), matching the previous behaviour.
 	std::vector<ShadowDraw>& draws = g_shadowDrawScratch;
 	draws.clear();
 
@@ -769,8 +764,8 @@ void RTBEngine::Core::Application::RenderSceneDepthOnly(Scene::Scene* scene, Ren
 
 	if (draws.empty()) return;
 
-	// 2) Group identical meshes together. Depth-only ignores material, so batching
-	//    by mesh pointer alone maximises instancing opportunities.
+	// Group identical meshes together. Depth-only ignores material, so batching
+	// by mesh pointer alone maximises instancing opportunities.
 	std::sort(draws.begin(), draws.end(), [](const ShadowDraw& a, const ShadowDraw& b) {
 		return a.mesh < b.mesh;
 	});
@@ -932,10 +927,8 @@ void RTBEngine::Core::Application::RenderGeometryPass(Scene::Scene* scene, Rende
 		skybox->Render(camera);
 	}
 
-	// Transparent effects must render after the skybox because they skip depth writes.
 	scene->RenderTransparentEffects(camera);
 
-	// World-space UI uses ImGui font atlases; skip when ImGui is not available (e.g. Vulkan MVP).
 	if (imguiInitialized) {
 		UI::CanvasSystem::GetInstance().RenderWorldSpace(camera);
 	}

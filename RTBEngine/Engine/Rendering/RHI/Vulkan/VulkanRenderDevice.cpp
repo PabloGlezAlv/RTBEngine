@@ -419,6 +419,89 @@ namespace RTBEngine {
                 nextId = 1;
             }
 
+            void VulkanRenderDevice::BeginFrame()
+            {
+                if (!initialized || frameRecording) {
+                    return;
+                }
+
+                skipFrame = false;
+
+				//Create sawpchain if it was destroyed by window resize or other event.
+                if (swapchain == VK_NULL_HANDLE) {
+                    RecreateSwapchain();
+                    if (swapchain == VK_NULL_HANDLE) {
+                        skipFrame = true;
+                        pendingDraws.clear();
+                        pendingClearMask = ClearMask::None;
+                        pendingImGuiDrawData = nullptr;
+                        return;
+                    }
+                }
+
+				// Wait for the previous frame to finish before starting a new one.
+                const VkFence currentFence = inFlightFences[currentFrame];
+                vkWaitForFences(device, 1, &currentFence, VK_TRUE, UINT64_MAX);
+                RetireOrphanedBuffers();
+
+				// Acquire the next image from the swapchain.
+                std::uint32_t imageIndex = 0;
+                const VkResult acquireResult = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX,
+                    imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+				// Handle swapchain recreation if the swapchain is out of date or suboptimal.
+                if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
+                    RecreateSwapchain();
+                    skipFrame = true;
+                    pendingDraws.clear();
+                    pendingClearMask = ClearMask::None;
+                    pendingImGuiDrawData = nullptr;
+                    return;
+                }
+                if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR) {
+                    RTB_ERROR("VulkanRenderDevice: vkAcquireNextImageKHR failed");
+                    skipFrame = true;
+                    pendingDraws.clear();
+                    pendingImGuiDrawData = nullptr;
+                    return;
+                }
+
+				// Store the acquired image index for use in the current frame.
+                swapImageIndex = imageIndex;
+
+				// Wait for the fence associated with the acquired image to ensure it's not in use.
+                if (imageIndex < imagesInFlight.size() && imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
+                    vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+                }
+                imagesInFlight[imageIndex] = currentFence;
+
+				// Reset the descriptor pool for the current frame to free up descriptor sets.
+                if (descriptorPools[currentFrame]) {
+                    vkResetDescriptorPool(device, descriptorPools[currentFrame], 0);
+                }
+				// Reset the command buffer for the current frame to prepare for recording new commands.
+                const VkCommandBuffer cmd = commandBuffers[currentFrame];
+                vkResetCommandBuffer(cmd, 0);
+
+				// Begin recording commands into the command buffer.
+                VkCommandBufferBeginInfo beginInfo{};
+                beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+                if (vkBeginCommandBuffer(cmd, &beginInfo) != VK_SUCCESS) {
+                    RTB_ERROR("VulkanRenderDevice: vkBeginCommandBuffer failed");
+                    skipFrame = true;
+                    pendingDraws.clear();
+                    pendingImGuiDrawData = nullptr;
+                    return;
+                }
+
+                inPass = false;
+                activeTarget = kInvalidGpuId;
+                touchedSwapchain = false;
+                currentDrawSlot = 0;
+                swapchainAcquired = true;
+                frameRecording = true;
+            }
+
             void VulkanRenderDevice::MakeCurrent() {}
 
             void VulkanRenderDevice::SetVSync(bool enabled)
@@ -437,86 +520,20 @@ namespace RTBEngine {
                 if (!initialized) {
                     return;
                 }
-                if (swapchain == VK_NULL_HANDLE) {
-                    RecreateSwapchain();
+
+				// If the frame was skipped (e.g., due to swapchain recreation), clear pending draws and return early.
+                if (skipFrame || !frameRecording) {
                     pendingDraws.clear();
                     pendingClearMask = ClearMask::None;
                     pendingImGuiDrawData = nullptr;
+                    skipFrame = false;
                     return;
                 }
-
                 const VkFence currentFence = inFlightFences[currentFrame];
-                vkWaitForFences(device, 1, &currentFence, VK_TRUE, UINT64_MAX);
-                RetireOrphanedBuffers();
-
-                std::uint32_t imageIndex = 0;
-                const VkResult acquireResult = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX,
-                    imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
-
-                if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
-                    RecreateSwapchain();
-                    pendingDraws.clear();
-                    pendingClearMask = ClearMask::None;
-                    pendingImGuiDrawData = nullptr;
-                    return;
-                }
-                if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR) {
-                    RTB_ERROR("VulkanRenderDevice: vkAcquireNextImageKHR failed");
-                    pendingDraws.clear();
-                    pendingImGuiDrawData = nullptr;
-                    return;
-                }
-
-                if (imageIndex < imagesInFlight.size() && imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-                    vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-                }
-                imagesInFlight[imageIndex] = currentFence;
-
-                if (descriptorPools[currentFrame]) {
-                    vkResetDescriptorPool(device, descriptorPools[currentFrame], 0);
-                }
-
                 const VkCommandBuffer cmd = commandBuffers[currentFrame];
-                vkResetCommandBuffer(cmd, 0);
+                const std::uint32_t imageIndex = swapImageIndex;
 
-                VkCommandBufferBeginInfo beginInfo{};
-                beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-                if (vkBeginCommandBuffer(cmd, &beginInfo) != VK_SUCCESS) {
-                    RTB_ERROR("VulkanRenderDevice: vkBeginCommandBuffer failed");
-                    pendingDraws.clear();
-                    pendingImGuiDrawData = nullptr;
-                    return;
-                }
-
-                bool inPass = false;
-                GpuId activeTarget = kInvalidGpuId;
-                bool touchedSwapchain = false;
-
-                const std::uint32_t drawCount = static_cast<std::uint32_t>(
-                    std::min<std::size_t>(pendingDraws.size(), kMaxDrawsPerFrame));
-
-                for (std::uint32_t di = 0; di < drawCount; ++di) {
-                    const DrawCommand& draw = pendingDraws[di];
-                    auto progIt = programs.find(draw.program);
-                    auto vaoIt = vaos.find(draw.vao);
-                    if (progIt == programs.end() || !progIt->second.valid
-                        || vaoIt == vaos.end()) {
-                                                continue;
-                    }
-
-                    if (!inPass || activeTarget != draw.targetFramebuffer) {
-                        EndActiveRenderPass(cmd, inPass, activeTarget);
-                        if (!BeginTargetRenderPass(cmd, draw.targetFramebuffer, imageIndex, clearColor, inPass, activeTarget)) {
-                                                        continue;
-                        }
-                        if (activeTarget == 0) {
-                            touchedSwapchain = true;
-                        }
-                    }
-
-                    ReplayDraw(cmd, draw, di);
-                }
-
+				// Render any pending ImGui draw data, ensuring it's done in the correct render pass.
                 if (pendingImGuiDrawData) {
                     if (!inPass || activeTarget != 0) {
                         EndActiveRenderPass(cmd, inPass, activeTarget);
@@ -527,9 +544,8 @@ namespace RTBEngine {
                     pendingImGuiDrawData = nullptr;
                 }
 
+				// If no draws or ImGui rendering occurred, ensure we still have a render pass for the swapchain.
                 if (!touchedSwapchain) {
-                    // Ensure the swapchain image is always cleared + transitioned to a
-                    // presentable layout even on frames with no draws targeting it.
                     EndActiveRenderPass(cmd, inPass, activeTarget);
                     BeginTargetRenderPass(cmd, 0, imageIndex, clearColor, inPass, activeTarget);
                 }
@@ -540,9 +556,11 @@ namespace RTBEngine {
                     RTB_ERROR("VulkanRenderDevice: vkEndCommandBuffer failed");
                     pendingDraws.clear();
                     pendingClearMask = ClearMask::None;
+                    frameRecording = false;
                     return;
                 }
 
+				// Submit the command buffer to the graphics queue for execution, waiting on the image available semaphore and signaling the render finished semaphore.
                 const VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
                 const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
                 const VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[imageIndex] };
@@ -557,8 +575,10 @@ namespace RTBEngine {
                 submitInfo.signalSemaphoreCount = 1;
                 submitInfo.pSignalSemaphores = signalSemaphores;
 
+				// Reset the fence for the current frame before submitting the command buffer.
                 vkResetFences(device, 1, &currentFence);
 
+				// Submit the command buffer to the graphics queue and check for success.
                 const VkResult submitResult = vkQueueSubmit(graphicsQueue, 1, &submitInfo, currentFence);
                 if (submitResult != VK_SUCCESS) {
                     RTB_ERROR(std::string("VulkanRenderDevice: vkQueueSubmit failed (")
@@ -574,6 +594,7 @@ namespace RTBEngine {
                 presentInfo.pSwapchains = swapchains;
                 presentInfo.pImageIndices = &imageIndex;
 
+				// Present the rendered image to the swapchain, handling any out-of-date or suboptimal results by recreating the swapchain.
                 const VkResult presentResult = vkQueuePresentKHR(presentQueue, &presentInfo);
                 if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR) {
                     RecreateSwapchain();
@@ -596,6 +617,7 @@ namespace RTBEngine {
                 pendingClearMask = ClearMask::None;
                 FlushDeferredResourceDestroys();
                 currentFrame = (currentFrame + 1) % static_cast<std::size_t>(kMaxFramesInFlight);
+                frameRecording = false;
             }
 
             bool VulkanRenderDevice::BeginTargetRenderPass(VkCommandBuffer cmd, GpuId target, std::uint32_t swapImageIndex,
@@ -661,6 +683,70 @@ namespace RTBEngine {
 
                 inPass = true;
                 activeTarget = target;
+                return true;
+            }
+
+            bool VulkanRenderDevice::EnsureSwapchainImage()
+            {
+                if (swapchainAcquired) {
+                    return true;
+                }
+                if (skipFrame || !initialized || swapchain == VK_NULL_HANDLE) {
+                    return false;
+                }
+
+				// Wait for the previous frame to finish before starting a new one.
+                const VkFence currentFence = inFlightFences[currentFrame];
+
+				// Acquire the next image from the swapchain, waiting indefinitely for an available image.
+                std::uint32_t imageIndex = 0;
+                const VkResult acquireResult = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX,
+                    imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+                if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
+                    RecreateSwapchain();
+                    skipFrame = true;
+                    return false;
+                }
+                if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR) {
+                    RTB_ERROR("VulkanRenderDevice: vkAcquireNextImageKHR failed");
+                    skipFrame = true;
+                    return false;
+                }
+
+                swapImageIndex = imageIndex;
+
+				// Wait for the fence associated with the acquired image to ensure it's not in use.
+                if (imageIndex < imagesInFlight.size() && imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
+                    vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+                }
+                imagesInFlight[imageIndex] = currentFence;
+
+                swapchainAcquired = true;
+                return true;
+            }
+
+            bool VulkanRenderDevice::EnsurePass(GpuId target)
+            {
+                if (skipFrame || !frameRecording) {
+                    return false;
+                }
+                if (target == 0 && !EnsureSwapchainImage()) {
+                    return false;
+                }
+                if (inPass && activeTarget == target) {
+                    return true;
+                }
+
+				// End the current render pass if we're in one, and begin a new render pass for the specified target.
+                const VkCommandBuffer cmd = commandBuffers[currentFrame];
+                EndActiveRenderPass(cmd, inPass, activeTarget);
+                if (!BeginTargetRenderPass(cmd, target, swapImageIndex, clearColor, inPass, activeTarget)) {
+                    return false;
+                }
+                if (activeTarget == 0) {
+                    touchedSwapchain = true;
+                }
                 return true;
             }
 
@@ -2039,15 +2125,22 @@ namespace RTBEngine {
 
             void VulkanRenderDevice::BindFramebuffer(GpuId framebuffer)
             {
-                if (framebuffer == kInvalidGpuId || framebuffers.find(framebuffer) == framebuffers.end()) {
-                    currentBoundFramebuffer = 0;
+                GpuId newTarget = framebuffer;
+                if (newTarget == kInvalidGpuId || framebuffers.find(newTarget) == framebuffers.end()) {
+                    newTarget = 0;
                 }
-                else {
-                    currentBoundFramebuffer = framebuffer;
+				// If a render pass is active, we must end it before switching framebuffers.
+                if (frameRecording && inPass && activeTarget != newTarget) {
+                    EndActiveRenderPass(commandBuffers[currentFrame], inPass, activeTarget);
                 }
+
+                currentBoundFramebuffer = newTarget;
             }
 
-            void VulkanRenderDevice::UnbindFramebuffer() { currentBoundFramebuffer = 0; }
+            void VulkanRenderDevice::UnbindFramebuffer()
+            {
+                BindFramebuffer(0);
+            }
 
             void VulkanRenderDevice::AttachFramebufferColorTexture(GpuId framebuffer, GpuId texture)
             {
@@ -2500,8 +2593,9 @@ namespace RTBEngine {
                                                       int count, int first, int instanceCount)
             {
                 if (!initialized) return;
+                if (!frameRecording || skipFrame) return;
                 if (currentProgram == kInvalidGpuId || currentVAO == kInvalidGpuId || count <= 0) return;
-                if (pendingDraws.size() >= kMaxDrawsPerFrame) return;
+                if (currentDrawSlot >= kMaxDrawsPerFrame) return;
 
                 auto vaoIt = vaos.find(currentVAO);
                 if (vaoIt == vaos.end()) return;
@@ -2557,7 +2651,14 @@ namespace RTBEngine {
                     auto fbIt = framebuffers.find(currentBoundFramebuffer);
                     cmd.depthOnly = (fbIt != framebuffers.end()) && fbIt->second.depthOnly;
                 }
-                                pendingDraws.push_back(cmd);
+                
+				// If the framebuffer is incomplete, skip the draw. This avoids Vulkan validation errors
+                if (!EnsurePass(cmd.targetFramebuffer)) {
+                    return;
+                }
+				// Record the draw command for replay in Present().
+                ReplayDraw(commandBuffers[currentFrame], cmd, currentDrawSlot);
+                ++currentDrawSlot;
             }
 
             void VulkanRenderDevice::DrawIndexed(PrimitiveTopology topology, int indexCount, IndexType indexType)

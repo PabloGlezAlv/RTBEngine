@@ -32,6 +32,7 @@ namespace RTBEngine {
                 void Shutdown() override;
                 GraphicsAPI GetAPI() const override { return GraphicsAPI::Vulkan; }
 
+                void BeginFrame() override;
                 void MakeCurrent() override;
                 void Present() override;
                 void SetVSync(bool enabled) override;
@@ -417,6 +418,8 @@ namespace RTBEngine {
                 void ReplayDraw(VkCommandBuffer cmd, const DrawCommand& draw, std::uint32_t drawSlot);
                 bool BeginTargetRenderPass(VkCommandBuffer cmd, GpuId target, std::uint32_t swapImageIndex,
                                           float clearCol[4], bool& inPass, GpuId& activeTarget);
+                bool EnsureSwapchainImage();
+                bool EnsurePass(GpuId target);
                 void EndActiveRenderPass(VkCommandBuffer cmd, bool& inPass, GpuId endingTarget = kInvalidGpuId);
 
                 std::vector<const char*> GetRequiredInstanceExtensions();
@@ -580,6 +583,17 @@ namespace RTBEngine {
                 GpuId boundDDGIDistance = kInvalidGpuId;
 
                 PerDrawCPU currentPerDraw;
+
+                bool frameRecording = false;
+                bool skipFrame = false;
+                std::uint32_t swapImageIndex = 0;
+
+                bool inPass = false;
+                GpuId activeTarget = kInvalidGpuId;
+                bool touchedSwapchain = false;
+                bool swapchainAcquired = false;
+                std::uint32_t currentDrawSlot = 0;
+                bool pendingSwapchainRecreate = false;
 
                 std::vector<DrawCommand> pendingDraws;
                 // Buffers orphaned while deferred draws still hold their VkBuffer handles.
