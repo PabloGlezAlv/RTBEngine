@@ -13,7 +13,6 @@
 #include "../../GI/RayTracingScene.h"
 #include <cstdint>
 #include <filesystem>
-#include <functional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -40,11 +39,10 @@ namespace RTBEngine {
                 explicit VulkanGiContext(VulkanRenderDevice& owner);
                 ~VulkanGiContext();
 
-                bool Initialize(VkPhysicalDevice physDev, VkDevice dev, std::uint32_t queueFamily, VkQueue queue);
+                bool Initialize(VkDevice dev);
                 void Shutdown();
 
                 bool IsRayQueryAvailable() const { return rayQueryAvailable; }
-                bool IsComputeAvailable() const { return computeAvailable; }
                 bool HasTracePipeline() const { return ddgiTracePipeline != VK_NULL_HANDLE; }
                 bool EnsureTracePipeline()
                 {
@@ -58,7 +56,7 @@ namespace RTBEngine {
                     return CreateDDGIResources();
                 }
 
-                void UpdateDDGI(GI::DDGIVolume& volume, GI::RayTracingScene& rtScene, Scene::Scene* scene, int frameIndex);
+                void UpdateDDGI(GI::DDGIVolume& volume, int frameIndex);
 
                 GpuId CreateDeviceLocalBuffer(const void* data, std::size_t size, VkBufferUsageFlags extraUsage);
                 std::uint64_t GetBufferDeviceAddress(GpuId buffer) const;
@@ -79,14 +77,6 @@ namespace RTBEngine {
                 void RebuildAccelerationStructures(GI::RayTracingScene& rtScene, Scene::Scene* scene);
 
             private:
-                struct ComputeProgramResource {
-                    VkShaderModule module = VK_NULL_HANDLE;
-                    VkPipeline pipeline = VK_NULL_HANDLE;
-                    VkPipelineLayout layout = VK_NULL_HANDLE;
-                    VkDescriptorSetLayout descLayout = VK_NULL_HANDLE;
-                    bool valid = false;
-                };
-
                 struct DeviceBuffer {
                     VkBuffer buffer = VK_NULL_HANDLE;
                     VkDeviceMemory memory = VK_NULL_HANDLE;
@@ -102,7 +92,6 @@ namespace RTBEngine {
                     DeviceBuffer vertices{};
                     DeviceBuffer indices{};
                     VkDeviceAddress blasDeviceAddress = 0;
-                    std::uint32_t primitiveCount = 0;
                     bool built = false;
                 };
 
@@ -141,20 +130,14 @@ namespace RTBEngine {
                 void OrphanTlasResources();
                 bool PrepareBlasBuild(Mesh* mesh, std::size_t geometrySignature, CachedBlas& entry, FrameBlasBuild& outBuild);
                 bool PrepareTlasBuild(const std::vector<GI::RayTracingMeshInstance>& instances, FrameTlasBuild& outBuild);
-                bool LoadTraceShader();
                 std::string LoadShaderFile(const char* relativePath) const;
                 std::string PreprocessComputeShader(const std::string& source) const;
                 VkShaderModule CompileComputeModule(const std::string& source) const;
-                void ExecuteOneShot(std::function<void(VkCommandBuffer)> recordFn) const;
 
                 VulkanRenderDevice& deviceOwner;
-                VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
                 VkDevice device = VK_NULL_HANDLE;
-                VkQueue graphicsQueue = VK_NULL_HANDLE;
-                std::uint32_t graphicsQueueFamily = 0;
 
                 bool rayQueryAvailable = false;
-                bool computeAvailable = false;
                 bool initialized = false;
 
                 VkDescriptorSetLayout giDescLayout = VK_NULL_HANDLE;
@@ -171,14 +154,9 @@ namespace RTBEngine {
 
                 std::unordered_map<Mesh*, CachedBlas> blasCache;
 
-                GpuId traceComputeProgram = kInvalidGpuId;
                 GpuId ddgiParamsBuffer = kInvalidGpuId;
-                GpuId scratchBuffer = kInvalidGpuId;
 
-                std::unordered_map<GpuId, ComputeProgramResource> computePrograms;
                 std::unordered_map<GpuId, DeviceBuffer> deviceLocalBuffers;
-                std::unordered_map<GpuId, GpuId> storageImages; // maps to texture id in main device
-                std::unordered_map<GpuId, DeviceBuffer> storageBuffers;
                 GpuId nextGiId = 100000;
                 std::size_t cachedInstanceSignature = 0;
                 bool asBuilt = false;

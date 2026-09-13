@@ -29,7 +29,7 @@ namespace RTBEngine {
                 }
 
                 gi->RebuildAccelerationStructures(rtScene, scene);
-                gi->UpdateDDGI(volume, rtScene, scene, frameIndex);
+                gi->UpdateDDGI(volume, frameIndex);
                 gi->MemoryBarrierComputeToGraphics();
             }
 

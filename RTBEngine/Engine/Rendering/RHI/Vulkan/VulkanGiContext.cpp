@@ -15,7 +15,6 @@
 #include <fstream>
 #include <sstream>
 #include <cstring>
-#include <functional>
 #include <cstdint>
 #include <unordered_set>
 
@@ -99,14 +98,10 @@ namespace RTBEngine {
                 return rayQueryAvailable;
             }
 
-            bool VulkanGiContext::Initialize(VkPhysicalDevice physDev, VkDevice dev, std::uint32_t queueFamily, VkQueue queue)
+            bool VulkanGiContext::Initialize(VkDevice dev)
             {
                 if (initialized) return true;
-                physicalDevice = physDev;
                 device = dev;
-                graphicsQueueFamily = queueFamily;
-                graphicsQueue = queue;
-                computeAvailable = true;
                 LoadRayQueryExtensions();
                 // DDGI pipeline is created lazily on first update (ResourceManager/cwd ready).
                 initialized = true;
@@ -120,28 +115,12 @@ namespace RTBEngine {
                 }
                 DestroyDDGIResources();
 
-                for (auto& [id, prog] : computePrograms) {
-                    (void)id;
-                    if (prog.pipeline) vkDestroyPipeline(device, prog.pipeline, nullptr);
-                    if (prog.layout) vkDestroyPipelineLayout(device, prog.layout, nullptr);
-                    if (prog.descLayout) vkDestroyDescriptorSetLayout(device, prog.descLayout, nullptr);
-                    if (prog.module) vkDestroyShaderModule(device, prog.module, nullptr);
-                }
-                computePrograms.clear();
-
                 for (auto& [id, buf] : deviceLocalBuffers) {
                     (void)id;
                     if (buf.buffer) vkDestroyBuffer(device, buf.buffer, nullptr);
                     if (buf.memory) vkFreeMemory(device, buf.memory, nullptr);
                 }
                 deviceLocalBuffers.clear();
-
-                for (auto& [id, buf] : storageBuffers) {
-                    (void)id;
-                    if (buf.buffer) vkDestroyBuffer(device, buf.buffer, nullptr);
-                    if (buf.memory) vkFreeMemory(device, buf.memory, nullptr);
-                }
-                storageBuffers.clear();
 
                 initialized = false;
             }
@@ -234,11 +213,6 @@ namespace RTBEngine {
                 shaderc_result_release(result);
                 shaderc_compiler_release(compiler);
                 return module;
-            }
-
-            void VulkanGiContext::ExecuteOneShot(std::function<void(VkCommandBuffer)> recordFn) const
-            {
-                deviceOwner.ExecuteOneShotCommand(recordFn);
             }
 
             bool VulkanGiContext::CreateDDGIResources()
@@ -505,7 +479,6 @@ namespace RTBEngine {
                 outBuild.mesh = mesh;
 
                 entry.geometrySignature = geometrySignature;
-                entry.primitiveCount = primitiveCount;
                 entry.built = false;
                 if (vkGetAccelerationStructureDeviceAddressKHR) {
                     VkAccelerationStructureDeviceAddressInfoKHR asAddrInfo{};
@@ -784,9 +757,8 @@ namespace RTBEngine {
                 asBuilt = (tlas != VK_NULL_HANDLE);
             }
 
-            void VulkanGiContext::UpdateDDGI(GI::DDGIVolume& volume, GI::RayTracingScene& rtScene, Scene::Scene* scene, int frameIndex)
+            void VulkanGiContext::UpdateDDGI(GI::DDGIVolume& volume, int frameIndex)
             {
-                (void)rtScene;
                 if (!rayQueryAvailable || !ddgiTracePipeline || !tlas) return;
 
                 const GI::DDGISettings& settings = volume.GetSettings();
@@ -907,13 +879,9 @@ namespace RTBEngine {
 
             GpuId VulkanGiContext::CreateComputeProgram(const std::string&) { return kInvalidGpuId; }
             void VulkanGiContext::DestroyComputeProgram(GpuId) {}
-            VkPipeline VulkanGiContext::GetComputePipeline(GpuId program) const
+            VkPipeline VulkanGiContext::GetComputePipeline(GpuId) const
             {
-                auto it = computePrograms.find(program);
-                if (it == computePrograms.end() || !it->second.pipeline) {
-                    return VK_NULL_HANDLE;
-                }
-                return it->second.pipeline;
+                return VK_NULL_HANDLE;
             }
             void VulkanGiContext::BindStorageImage2D(GpuId, unsigned int, StorageAccess) {}
             GpuId VulkanGiContext::CreateStorageBuffer(std::size_t) { return kInvalidGpuId; }

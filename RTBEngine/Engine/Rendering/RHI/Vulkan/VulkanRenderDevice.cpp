@@ -263,7 +263,7 @@ namespace RTBEngine {
 
                 initialized = true;
                 giContext = std::make_unique<VulkanGiContext>(*this);
-                giContext->Initialize(physicalDevice, device, graphicsQueueFamily, graphicsQueue);
+                giContext->Initialize(device);
                 RTB_INFO("VulkanRenderDevice initialized (record-on-draw + SPIR-V)");
                 return true;
             }
