@@ -275,6 +275,19 @@ namespace RTBEngine {
                     vkDeviceWaitIdle(device);
                 }
 
+                auto destroyImGuiSets = [&](std::vector<VkDescriptorSet>& sets) {
+                    for (VkDescriptorSet set : sets) {
+                        if (set && imguiBackendInitialized) {
+                            ImGui_ImplVulkan_RemoveTexture(set);
+                        }
+                    }
+                    sets.clear();
+                };
+                destroyImGuiSets(pendingImGuiSetOrphans);
+                for (auto& slot : orphanedImGuiSetsByFrame) {
+                    destroyImGuiSets(slot);
+                }
+
                 if (giContext) {
                     giContext->Shutdown();
                     giContext.reset();
@@ -284,10 +297,6 @@ namespace RTBEngine {
                 if (imguiBackendInitialized) {
                     ShutdownImGuiBackend();
                 }
-                for (auto& [id, set] : imguiTextureSets) {
-                    (void)id;
-                    (void)set;
-                }
                 imguiTextureSets.clear();
                 DestroyAllPipelines();
 
@@ -295,6 +304,21 @@ namespace RTBEngine {
                     DestroyFramebufferGpu(id, fb);
                 }
                 framebuffers.clear();
+
+                auto destroyFbOrphans = [&](std::vector<OrphanedFramebuffer>& orphans) {
+                    for (OrphanedFramebuffer& orphan : orphans) {
+                        for (VkPipeline pipeline : orphan.pipelines) {
+                            if (pipeline) vkDestroyPipeline(device, pipeline, nullptr);
+                        }
+                        if (orphan.framebuffer) vkDestroyFramebuffer(device, orphan.framebuffer, nullptr);
+                        if (orphan.renderPass) vkDestroyRenderPass(device, orphan.renderPass, nullptr);
+                    }
+                    orphans.clear();
+                };
+                destroyFbOrphans(pendingFramebufferOrphans);
+                for (auto& slot : orphanedFramebuffersByFrame) {
+                    destroyFbOrphans(slot);
+                }
 
                 for (auto& [id, prog] : programs) {
                     if (prog.vertModule) vkDestroyShaderModule(device, prog.vertModule, nullptr);
@@ -320,6 +344,19 @@ namespace RTBEngine {
                 destroyOrphans(pendingOrphans);
                 for (auto& frameOrphans : orphanedBuffersByFrame) {
                     destroyOrphans(frameOrphans);
+                }
+
+                auto destroyRtAsOrphans = [&](std::vector<OrphanedAccelerationStructure>& orphans) {
+                    for (OrphanedAccelerationStructure& orphan : orphans) {
+                        if (orphan.as && vkDestroyAccelerationStructureKHR) {
+                            vkDestroyAccelerationStructureKHR(device, orphan.as, nullptr);
+                        }
+                    }
+                    orphans.clear();
+                };
+                destroyRtAsOrphans(pendingRtAsOrphans);
+                for (auto& frameOrphans : orphanedRtAsByFrame) {
+                    destroyRtAsOrphans(frameOrphans);
                 }
 
                 auto destroyTexOrphans = [&](std::vector<OrphanedTexture>& orphans) {
@@ -434,7 +471,7 @@ namespace RTBEngine {
 
                 const VkFence currentFence = inFlightFences[currentFrame];
                 vkWaitForFences(device, 1, &currentFence, VK_TRUE, UINT64_MAX);
-                RetireOrphanedBuffers();
+                RetireOrphanedResources();
 
                 if (descriptorPools[currentFrame]) {
                     vkResetDescriptorPool(device, descriptorPools[currentFrame], 0);
@@ -565,7 +602,21 @@ namespace RTBEngine {
                     slot.insert(slot.end(), pendingTextureOrphans.begin(), pendingTextureOrphans.end());
                     pendingTextureOrphans.clear();
                 }
-                FlushDeferredResourceDestroys();
+                if (!pendingFramebufferOrphans.empty()) {
+                    auto& slot = orphanedFramebuffersByFrame[currentFrame];
+                    slot.insert(slot.end(), pendingFramebufferOrphans.begin(), pendingFramebufferOrphans.end());
+                    pendingFramebufferOrphans.clear();
+                }
+                if (!pendingImGuiSetOrphans.empty()) {
+                    auto& slot = orphanedImGuiSetsByFrame[currentFrame];
+                    slot.insert(slot.end(), pendingImGuiSetOrphans.begin(), pendingImGuiSetOrphans.end());
+                    pendingImGuiSetOrphans.clear();
+                }
+                if (!pendingRtAsOrphans.empty()) {
+                    auto& slot = orphanedRtAsByFrame[currentFrame];
+                    slot.insert(slot.end(), pendingRtAsOrphans.begin(), pendingRtAsOrphans.end());
+                    pendingRtAsOrphans.clear();
+                }
                 currentFrame = (currentFrame + 1) % static_cast<std::size_t>(kMaxFramesInFlight);
                 frameRecording = false;
             }
@@ -1359,10 +1410,6 @@ namespace RTBEngine {
             {
                 auto it = buffers.find(buffer);
                 if (it == buffers.end()) return;
-                if (IsBufferInFlight(it->second.buffer)) {
-                    deferredBufferDestroys.push_back(buffer);
-                    return;
-                }
                 if (it->second.buffer) {
                     pendingOrphans.push_back({ it->second.buffer, it->second.memory });
                 }
@@ -1451,7 +1498,7 @@ namespace RTBEngine {
                 return VK_NULL_HANDLE;
             }
 
-            void VulkanRenderDevice::RetireOrphanedBuffers()
+            void VulkanRenderDevice::RetireOrphanedResources()
             {
                 auto& slot = orphanedBuffersByFrame[currentFrame];
                 for (OrphanedBuffer& orphan : slot) {
@@ -1469,6 +1516,32 @@ namespace RTBEngine {
                     if (orphan.memory) vkFreeMemory(device, orphan.memory, nullptr);
                 }
                 texSlot.clear();
+
+                auto& fbSlot = orphanedFramebuffersByFrame[currentFrame];
+                for (OrphanedFramebuffer& orphan : fbSlot) {
+                    for (VkPipeline pipeline : orphan.pipelines) {
+                        if (pipeline) vkDestroyPipeline(device, pipeline, nullptr);
+                    }
+                    if (orphan.framebuffer) vkDestroyFramebuffer(device, orphan.framebuffer, nullptr);
+                    if (orphan.renderPass) vkDestroyRenderPass(device, orphan.renderPass, nullptr);
+                }
+                fbSlot.clear();
+
+                auto& imguiSlot = orphanedImGuiSetsByFrame[currentFrame];
+                for (VkDescriptorSet set : imguiSlot) {
+                    if (set && imguiBackendInitialized) {
+                        ImGui_ImplVulkan_RemoveTexture(set);
+                    }
+                }
+                imguiSlot.clear();
+
+                auto& rtAsSlot = orphanedRtAsByFrame[currentFrame];
+                for (OrphanedAccelerationStructure& orphan : rtAsSlot) {
+                    if (orphan.as && vkDestroyAccelerationStructureKHR) {
+                        vkDestroyAccelerationStructureKHR(device, orphan.as, nullptr);
+                    }
+                }
+                rtAsSlot.clear();
             }
 
             void VulkanRenderDevice::OrphanTextureGpuResources(TextureResource& res)
@@ -1501,38 +1574,6 @@ namespace RTBEngine {
                     }
                 }
                 return false;
-            }
-
-            void VulkanRenderDevice::FlushDeferredResourceDestroys()
-            {
-                if (deferredBufferDestroys.empty()
-                    && deferredFramebufferDestroys.empty()
-                    && deferredVaoDestroys.empty()) {
-                    return;
-                }
-                                // In-flight CBs may still reference these objects.
-                if (device != VK_NULL_HANDLE) {
-                    vkDeviceWaitIdle(device);
-                }
-                for (GpuId id : deferredBufferDestroys) {
-                    auto it = buffers.find(id);
-                    if (it == buffers.end()) continue;
-                    if (it->second.buffer) vkDestroyBuffer(device, it->second.buffer, nullptr);
-                    if (it->second.memory) vkFreeMemory(device, it->second.memory, nullptr);
-                    buffers.erase(it);
-                }
-                deferredBufferDestroys.clear();
-                for (GpuId id : deferredFramebufferDestroys) {
-                    auto it = framebuffers.find(id);
-                    if (it == framebuffers.end()) continue;
-                    DestroyFramebufferGpu(id, it->second);
-                    framebuffers.erase(it);
-                }
-                deferredFramebufferDestroys.clear();
-                for (GpuId id : deferredVaoDestroys) {
-                    vaos.erase(id);
-                }
-                deferredVaoDestroys.clear();
             }
 
             void VulkanRenderDevice::OrphanBufferIfInFlight(GpuId buffer)
@@ -1667,12 +1708,16 @@ namespace RTBEngine {
                 RemoveImGuiTexture(texture);
 
                 for (auto& [fbId, fb] : framebuffers) {
-                    bool touched = false;
-                    if (fb.colorTexture == texture) { fb.colorTexture = kInvalidGpuId; touched = true; }
-                    if (fb.depthTexture == texture) { fb.depthTexture = kInvalidGpuId; touched = true; }
-                    if (touched) {
-                        DestroyFramebufferGpu(fbId, fb);
+                    const bool attached = (fb.colorTexture == texture) || (fb.depthTexture == texture);
+                    if (!attached) {
+                        continue;
                     }
+                    if (frameRecording && inPass && activeTarget == fbId) {
+                        EndActiveRenderPass(commandBuffers[currentFrame], inPass, activeTarget);
+                    }
+                    if (fb.colorTexture == texture) fb.colorTexture = kInvalidGpuId;
+                    if (fb.depthTexture == texture) fb.depthTexture = kInvalidGpuId;
+                    DestroyFramebufferGpu(fbId, fb);
                 }
 
                 auto it = textures.find(texture);
@@ -1945,12 +1990,8 @@ namespace RTBEngine {
             {
                 auto it = framebuffers.find(framebuffer);
                 if (it == framebuffers.end()) return;
-                if (frameRecording) {
-                    deferredFramebufferDestroys.push_back(framebuffer);
-                    if (currentBoundFramebuffer == framebuffer) {
-                        currentBoundFramebuffer = 0;
-                    }
-                    return;
+                if (frameRecording && inPass && activeTarget == framebuffer) {
+                    EndActiveRenderPass(commandBuffers[currentFrame], inPass, activeTarget);
                 }
                 DestroyFramebufferGpu(framebuffer, it->second);
                 framebuffers.erase(it);
@@ -2035,42 +2076,33 @@ namespace RTBEngine {
                 return id;
             }
 
-            void VulkanRenderDevice::InvalidatePipelinesForFramebuffer(GpuId framebufferId)
-            {
-                for (auto it = pipelineCache.begin(); it != pipelineCache.end(); ) {
-                    if (it->first.targetFramebuffer == framebufferId) {
-                        if (it->second) vkDestroyPipeline(device, it->second, nullptr);
-                        it = pipelineCache.erase(it);
-                    }
-                    else {
-                        ++it;
-                    }
-                }
-            }
-
             void VulkanRenderDevice::DestroyFramebufferGpu(GpuId framebufferId, FramebufferResource& fb)
             {
                 if (!fb.framebuffer && !fb.renderPass) {
                     fb.complete = false;
                     return;
                 }
-                if (device != VK_NULL_HANDLE && initialized) {
-                    vkDeviceWaitIdle(device);
-                    InvalidatePipelinesForFramebuffer(framebufferId);
-                    if (fb.framebuffer) {
-                        vkDestroyFramebuffer(device, fb.framebuffer, nullptr);
-                        fb.framebuffer = VK_NULL_HANDLE;
+
+                OrphanedFramebuffer orphan{};
+                orphan.framebuffer = fb.framebuffer;
+                orphan.renderPass = fb.renderPass;
+                for (auto it = pipelineCache.begin(); it != pipelineCache.end(); ) {
+                    if (it->first.targetFramebuffer == framebufferId) {
+                        if (it->second) {
+                            orphan.pipelines.push_back(it->second);
+                        }
+                        it = pipelineCache.erase(it);
                     }
-                    if (fb.renderPass) {
-                        vkDestroyRenderPass(device, fb.renderPass, nullptr);
-                        fb.renderPass = VK_NULL_HANDLE;
+                    else {
+                        ++it;
                     }
                 }
-                else {
-                    fb.framebuffer = VK_NULL_HANDLE;
-                    fb.renderPass = VK_NULL_HANDLE;
-                }
+                fb.framebuffer = VK_NULL_HANDLE;
+                fb.renderPass = VK_NULL_HANDLE;
                 fb.complete = false;
+                if (orphan.framebuffer || orphan.renderPass || !orphan.pipelines.empty()) {
+                    pendingFramebufferOrphans.push_back(std::move(orphan));
+                }
             }
 
             bool VulkanRenderDevice::RebuildFramebufferGpu(GpuId framebufferId, FramebufferResource& fb)
@@ -2345,11 +2377,6 @@ namespace RTBEngine {
 
             void VulkanRenderDevice::DestroyVertexArray(GpuId vao)
             {
-                if (frameRecording) {
-                    deferredVaoDestroys.push_back(vao);
-                    if (currentVAO == vao) currentVAO = kInvalidGpuId;
-                    return;
-                }
                 vaos.erase(vao);
                 if (currentVAO == vao) currentVAO = kInvalidGpuId;
             }
@@ -2527,11 +2554,7 @@ namespace RTBEngine {
                 auto it = imguiTextureSets.find(texture);
                 if (it == imguiTextureSets.end()) return;
                 if (it->second && imguiBackendInitialized) {
-                    // Descriptor sets may still be referenced by in-flight ImGui draws.
-                    if (device != VK_NULL_HANDLE) {
-                        vkDeviceWaitIdle(device);
-                    }
-                    ImGui_ImplVulkan_RemoveTexture(it->second);
+                    pendingImGuiSetOrphans.push_back(it->second);
                 }
                 imguiTextureSets.erase(it);
             }
@@ -3651,6 +3674,8 @@ namespace RTBEngine {
                 vkGetDeviceQueue(device, graphicsQueueFamily, 0, &graphicsQueue);
                 vkGetDeviceQueue(device, presentQueueFamily, 0, &presentQueue);
                 if (rayQuerySupported) {
+                    vkDestroyAccelerationStructureKHR = reinterpret_cast<PFN_vkDestroyAccelerationStructureKHR>(
+                        vkGetDeviceProcAddr(device, "vkDestroyAccelerationStructureKHR"));
                     RTB_INFO("VulkanRenderDevice: ray query extensions enabled");
                 }
                 return true;
@@ -3959,6 +3984,16 @@ namespace RTBEngine {
                 return caps;
             }
 
+            void VulkanRenderDevice::RecordToFrameCommandBuffer(const std::function<void(VkCommandBuffer)>& recordFn)
+            {
+                if (!initialized || !recordFn || skipFrame || !frameRecording) {
+                    return;
+                }
+                const VkCommandBuffer cmd = commandBuffers[currentFrame];
+                EndActiveRenderPass(cmd, inPass, activeTarget);
+                recordFn(cmd);
+            }
+
             void VulkanRenderDevice::ExecuteOneShotCommand(const std::function<void(VkCommandBuffer)>& recordFn)
             {
                 if (!initialized || !recordFn) return;
@@ -3994,6 +4029,52 @@ namespace RTBEngine {
                 EndSingleTimeCommands(cmd);
                 vkDestroyBuffer(device, staging, nullptr);
                 vkFreeMemory(device, stagingMem, nullptr);
+            }
+
+            bool VulkanRenderDevice::CreateHostStagingBuffer(const void* data, VkDeviceSize size,
+                                                             VkBuffer& outBuffer, VkDeviceMemory& outMemory)
+            {
+                outBuffer = VK_NULL_HANDLE;
+                outMemory = VK_NULL_HANDLE;
+                if (!data || size == 0) {
+                    return false;
+                }
+                if (!CreateBufferRaw(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                        outBuffer, outMemory)) {
+                    return false;
+                }
+                UploadHostVisibleBuffer(outMemory, data, size);
+                return true;
+            }
+
+            void VulkanRenderDevice::RecordBufferCopyAndOrphanStaging(VkCommandBuffer cmd, VkBuffer staging,
+                                                                      VkDeviceMemory stagingMem, VkBuffer dst,
+                                                                      VkDeviceSize size)
+            {
+                if (!cmd || !staging || !dst || size == 0) {
+                    return;
+                }
+                VkBufferCopy region{};
+                region.size = size;
+                vkCmdCopyBuffer(cmd, staging, dst, 1, &region);
+                pendingOrphans.push_back({ staging, stagingMem });
+            }
+
+            void VulkanRenderDevice::OrphanGpuBuffer(VkBuffer buffer, VkDeviceMemory memory)
+            {
+                if (!buffer && !memory) {
+                    return;
+                }
+                pendingOrphans.push_back({ buffer, memory });
+            }
+
+            void VulkanRenderDevice::OrphanAccelerationStructure(VkAccelerationStructureKHR as)
+            {
+                if (!as) {
+                    return;
+                }
+                pendingRtAsOrphans.push_back({ as });
             }
 
             VkBuffer VulkanRenderDevice::GetBufferHandle(GpuId id) const
@@ -4070,7 +4151,7 @@ namespace RTBEngine {
 
             void VulkanRenderDevice::MemoryBarrierComputeToGraphicsInternal()
             {
-                ExecuteOneShotCommand([](VkCommandBuffer cmd) {
+                RecordToFrameCommandBuffer([](VkCommandBuffer cmd) {
                     VkMemoryBarrier barrier{};
                     barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
                     barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
@@ -4121,12 +4202,20 @@ namespace RTBEngine {
 
             void VulkanRenderDevice::BindComputeProgram(GpuId program)
             {
-                if (giContext) giContext->BindComputeProgram(program);
+                boundComputePipeline = (giContext && program != kInvalidGpuId)
+                    ? giContext->GetComputePipeline(program)
+                    : VK_NULL_HANDLE;
             }
 
             void VulkanRenderDevice::DispatchCompute(unsigned int groupCountX, unsigned int groupCountY, unsigned int groupCountZ)
             {
-                if (giContext) giContext->DispatchCompute(kInvalidGpuId, groupCountX, groupCountY, groupCountZ);
+                if (!boundComputePipeline) {
+                    return;
+                }
+                RecordToFrameCommandBuffer([&](VkCommandBuffer cmd) {
+                    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, boundComputePipeline);
+                    vkCmdDispatch(cmd, groupCountX, groupCountY, groupCountZ);
+                });
             }
 
             GpuId VulkanRenderDevice::CreateStorageBuffer(std::size_t size)

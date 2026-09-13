@@ -24,6 +24,8 @@ namespace RTBEngine {
     }
 
     namespace Rendering {
+        class Mesh;
+
         namespace GI {
             class DDGIVolume;
         }
@@ -63,8 +65,7 @@ namespace RTBEngine {
 
                 GpuId CreateComputeProgram(const std::string& computeSource);
                 void DestroyComputeProgram(GpuId program);
-                void BindComputeProgram(GpuId program);
-                void DispatchCompute(GpuId program, unsigned int x, unsigned int y, unsigned int z);
+                VkPipeline GetComputePipeline(GpuId program) const;
 
                 GpuId CreateStorageImage2D(int width, int height, TextureFormat format);
                 void BindStorageImage2D(GpuId texture, unsigned int binding, StorageAccess access);
@@ -93,21 +94,58 @@ namespace RTBEngine {
                     VkBufferUsageFlags usage = 0;
                 };
 
+                struct CachedBlas {
+                    std::size_t geometrySignature = 0;
+                    VkAccelerationStructureKHR blas = VK_NULL_HANDLE;
+                    VkBuffer blasBuffer = VK_NULL_HANDLE;
+                    VkDeviceMemory blasMemory = VK_NULL_HANDLE;
+                    DeviceBuffer vertices{};
+                    DeviceBuffer indices{};
+                    VkDeviceAddress blasDeviceAddress = 0;
+                    std::uint32_t primitiveCount = 0;
+                    bool built = false;
+                };
+
+                struct FrameBlasBuild {
+                    Mesh* mesh = nullptr;
+                    VkAccelerationStructureBuildGeometryInfoKHR buildInfo{};
+                    VkAccelerationStructureGeometryKHR geometry{};
+                    VkAccelerationStructureBuildRangeInfoKHR rangeInfo{};
+                    VkBuffer scratchBuffer = VK_NULL_HANDLE;
+                    VkDeviceMemory scratchMemory = VK_NULL_HANDLE;
+                    VkBuffer vertexStaging = VK_NULL_HANDLE;
+                    VkDeviceMemory vertexStagingMemory = VK_NULL_HANDLE;
+                    VkBuffer indexStaging = VK_NULL_HANDLE;
+                    VkDeviceMemory indexStagingMemory = VK_NULL_HANDLE;
+                    VkDeviceSize vertexBytes = 0;
+                    VkDeviceSize indexBytes = 0;
+                };
+
+                struct FrameTlasBuild {
+                    bool needed = false;
+                    VkAccelerationStructureBuildGeometryInfoKHR buildInfo{};
+                    VkAccelerationStructureGeometryKHR geometry{};
+                    VkAccelerationStructureBuildRangeInfoKHR rangeInfo{};
+                    VkBuffer scratchBuffer = VK_NULL_HANDLE;
+                    VkDeviceMemory scratchMemory = VK_NULL_HANDLE;
+                    VkBuffer instanceStaging = VK_NULL_HANDLE;
+                    VkDeviceMemory instanceStagingMemory = VK_NULL_HANDLE;
+                    VkDeviceSize instanceBytes = 0;
+                };
+
                 bool LoadRayQueryExtensions();
                 bool CreateDDGIResources();
                 void DestroyDDGIResources();
                 void DestroyAccelerationStructures();
+                void OrphanBlasEntry(CachedBlas& entry);
+                void OrphanTlasResources();
+                bool PrepareBlasBuild(Mesh* mesh, std::size_t geometrySignature, CachedBlas& entry, FrameBlasBuild& outBuild);
+                bool PrepareTlasBuild(const std::vector<GI::RayTracingMeshInstance>& instances, FrameTlasBuild& outBuild);
                 bool LoadTraceShader();
                 std::string LoadShaderFile(const char* relativePath) const;
                 std::string PreprocessComputeShader(const std::string& source) const;
                 VkShaderModule CompileComputeModule(const std::string& source) const;
                 void ExecuteOneShot(std::function<void(VkCommandBuffer)> recordFn) const;
-
-                bool BuildBlasForInstance(const GI::RayTracingMeshInstance& inst, VkAccelerationStructureKHR& outBlas,
-                                          DeviceBuffer& outVertex, DeviceBuffer& outIndex);
-                bool BuildTlas(const std::vector<GI::RayTracingMeshInstance>& instances,
-                               const std::vector<VkAccelerationStructureKHR>& blases,
-                               VkAccelerationStructureKHR& outTlas);
 
                 VulkanRenderDevice& deviceOwner;
                 VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -128,11 +166,10 @@ namespace RTBEngine {
                 VkAccelerationStructureKHR tlas = VK_NULL_HANDLE;
                 VkBuffer tlasBuffer = VK_NULL_HANDLE;
                 VkDeviceMemory tlasMemory = VK_NULL_HANDLE;
+                VkBuffer tlasInstanceBuffer = VK_NULL_HANDLE;
+                VkDeviceMemory tlasInstanceMemory = VK_NULL_HANDLE;
 
-                std::vector<VkAccelerationStructureKHR> blasList;
-                std::vector<VkBuffer> blasBuffers;
-                std::vector<VkDeviceMemory> blasMemories;
-                std::vector<DeviceBuffer> rtDeviceBuffers;
+                std::unordered_map<Mesh*, CachedBlas> blasCache;
 
                 GpuId traceComputeProgram = kInvalidGpuId;
                 GpuId ddgiParamsBuffer = kInvalidGpuId;
@@ -143,7 +180,7 @@ namespace RTBEngine {
                 std::unordered_map<GpuId, GpuId> storageImages; // maps to texture id in main device
                 std::unordered_map<GpuId, DeviceBuffer> storageBuffers;
                 GpuId nextGiId = 100000;
-                std::size_t cachedAsSignature = 0;
+                std::size_t cachedInstanceSignature = 0;
                 bool asBuilt = false;
                 bool ddgiCreateAttempted = false;
 

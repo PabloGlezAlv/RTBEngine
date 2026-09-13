@@ -152,9 +152,15 @@ namespace RTBEngine {
                 std::uint64_t GetBufferDeviceAddress(GpuId buffer) const override;
 
                 // Internal helpers for VulkanGiContext
+                void RecordToFrameCommandBuffer(const std::function<void(VkCommandBuffer)>& recordFn);
                 void ExecuteOneShotCommand(const std::function<void(VkCommandBuffer)>& recordFn);
                 void CreateDeviceLocalBufferRaw(VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer& outBuffer, VkDeviceMemory& outMemory);
                 void UploadToDeviceLocalBuffer(VkBuffer buffer, const void* data, std::size_t size);
+                bool CreateHostStagingBuffer(const void* data, VkDeviceSize size, VkBuffer& outBuffer, VkDeviceMemory& outMemory);
+                void RecordBufferCopyAndOrphanStaging(VkCommandBuffer cmd, VkBuffer staging, VkDeviceMemory stagingMem,
+                                                      VkBuffer dst, VkDeviceSize size);
+                void OrphanGpuBuffer(VkBuffer buffer, VkDeviceMemory memory);
+                void OrphanAccelerationStructure(VkAccelerationStructureKHR as);
                 VkBuffer GetBufferHandle(GpuId id) const;
                 VkImageView GetTextureImageView(GpuId id) const;
                 GpuId CreateStorageImage2DInternal(int width, int height, TextureFormat format);
@@ -377,6 +383,16 @@ namespace RTBEngine {
                     VkSampler sampler = VK_NULL_HANDLE;
                 };
 
+                struct OrphanedFramebuffer {
+                    VkFramebuffer framebuffer = VK_NULL_HANDLE;
+                    VkRenderPass renderPass = VK_NULL_HANDLE;
+                    std::vector<VkPipeline> pipelines;
+                };
+
+                struct OrphanedAccelerationStructure {
+                    VkAccelerationStructureKHR as = VK_NULL_HANDLE;
+                };
+
                 bool CreateInstance();
                 bool SetupDebugMessenger();
                 bool CreateSurface();
@@ -407,7 +423,6 @@ namespace RTBEngine {
                 bool CreateOffscreenColorDepthRenderPass(VkFormat colorFmt, VkFormat depthFmt, VkRenderPass& outPass) const;
                 bool CreateOffscreenDepthOnlyRenderPass(VkFormat depthFmt, VkRenderPass& outPass) const;
                 bool CreateOffscreenColorOnlyLoadRenderPass(VkFormat colorFmt, VkRenderPass& outPass) const;
-                void InvalidatePipelinesForFramebuffer(GpuId framebufferId);
                 static std::vector<unsigned int> ParseVertexInputLocations(const std::string& vertexSource);
 
                 void EncodeDraw(VkCommandBuffer cmd, const DrawSnapshot& draw, std::uint32_t drawSlot);
@@ -465,12 +480,11 @@ namespace RTBEngine {
                 void EncodeCurrentDraw(PrimitiveTopology topology, bool indexed, IndexType indexType,
                                       int count, int first, int instanceCount);
                 void RemoveImGuiTexture(GpuId texture);
-                void RetireOrphanedBuffers();
+                void RetireOrphanedResources();
                 void OrphanTextureGpuResources(TextureResource& res);
                 void NoteBufferInFlight(VkBuffer buffer);
                 bool IsBufferInFlight(VkBuffer buffer) const;
                 void OrphanBufferIfInFlight(GpuId buffer);
-                void FlushDeferredResourceDestroys();
                 VkBuffer ResolveBufferHandle(GpuId id) const;
 
                 static constexpr int kMaxFramesInFlight = 2;
@@ -551,6 +565,9 @@ namespace RTBEngine {
                 float clearColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
                 int stateViewport[4] = { 0, 0, 0, 0 };
 
+                // Compute pipeline (shader + layout)
+                VkPipeline boundComputePipeline = VK_NULL_HANDLE;
+
                 GpuId currentProgram = kInvalidGpuId;
                 GpuId currentVAO = kInvalidGpuId;
                 GpuId currentArrayBuffer = kInvalidGpuId;
@@ -585,16 +602,20 @@ namespace RTBEngine {
                 std::uint32_t currentDrawSlot = 0;
                 bool pendingSwapchainRecreate = false;
 
-                // pendingOrphans → moved into orphanedBuffersByFrame[currentFrame] at Present,
+                // pending*Orphans → moved into *ByFrame[currentFrame] at Present,
                 // retired after that frame's fence is waited on the next time around.
                 std::vector<OrphanedBuffer> pendingOrphans;
                 std::array<std::vector<OrphanedBuffer>, kMaxFramesInFlight> orphanedBuffersByFrame{};
                 std::vector<OrphanedTexture> pendingTextureOrphans;
                 std::array<std::vector<OrphanedTexture>, kMaxFramesInFlight> orphanedTexturesByFrame{};
                 std::array<std::vector<VkBuffer>, kMaxFramesInFlight> buffersInFlightByFrame{};
-                std::vector<GpuId> deferredBufferDestroys;
-                std::vector<GpuId> deferredFramebufferDestroys;
-                std::vector<GpuId> deferredVaoDestroys;
+                std::vector<OrphanedFramebuffer> pendingFramebufferOrphans;
+                std::array<std::vector<OrphanedFramebuffer>, kMaxFramesInFlight> orphanedFramebuffersByFrame{};
+                std::vector<VkDescriptorSet> pendingImGuiSetOrphans;
+                std::array<std::vector<VkDescriptorSet>, kMaxFramesInFlight> orphanedImGuiSetsByFrame{};
+                std::vector<OrphanedAccelerationStructure> pendingRtAsOrphans;
+                std::array<std::vector<OrphanedAccelerationStructure>, kMaxFramesInFlight> orphanedRtAsByFrame{};
+                PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR = nullptr;
                 bool imguiBackendInitialized = false;
                 mutable std::unordered_map<GpuId, VkDescriptorSet> imguiTextureSets;
 

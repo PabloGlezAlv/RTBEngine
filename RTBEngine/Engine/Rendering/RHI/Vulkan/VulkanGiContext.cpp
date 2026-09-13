@@ -17,6 +17,7 @@
 #include <cstring>
 #include <functional>
 #include <cstdint>
+#include <unordered_set>
 
 namespace RTBEngine {
     namespace Rendering {
@@ -34,6 +35,40 @@ namespace RTBEngine {
                 struct RtVertex {
                     float px, py, pz;
                 };
+
+                std::size_t ComputeMeshGeometrySignature(Mesh* mesh)
+                {
+                    if (!mesh) {
+                        return 0;
+                    }
+                    const auto& verts = mesh->GetCpuVertices();
+                    const auto& indices = mesh->GetCpuIndices();
+                    std::size_t signature = verts.size();
+                    signature ^= indices.size() + 0x9e3779b9 + (signature << 6) + (signature >> 2);
+                    for (std::size_t i = 0; i < verts.size(); ++i) {
+                        std::uint32_t bits = 0;
+                        std::memcpy(&bits, &verts[i].position.x, sizeof(bits));
+                        signature ^= static_cast<std::size_t>(bits) + 0x9e3779b9 + (signature << 6) + (signature >> 2);
+                        if (i >= 31) {
+                            break;
+                        }
+                    }
+                    return signature;
+                }
+
+                std::size_t ComputeInstanceSignature(const std::vector<GI::RayTracingMeshInstance>& instances)
+                {
+                    std::size_t signature = instances.size();
+                    for (const GI::RayTracingMeshInstance& inst : instances) {
+                        signature ^= reinterpret_cast<std::uintptr_t>(inst.mesh) + 0x9e3779b9 + (signature << 6) + (signature >> 2);
+                        for (int i = 0; i < 16; ++i) {
+                            std::uint32_t bits = 0;
+                            std::memcpy(&bits, &inst.worldMatrix.m[i], sizeof(bits));
+                            signature ^= static_cast<std::size_t>(bits) + 0x9e3779b9 + (signature << 6) + (signature >> 2);
+                        }
+                    }
+                    return signature;
+                }
 
             } // namespace
 
@@ -287,27 +322,46 @@ namespace RTBEngine {
                 return true;
             }
 
+            void VulkanGiContext::OrphanBlasEntry(CachedBlas& entry)
+            {
+                if (entry.blas) {
+                    deviceOwner.OrphanAccelerationStructure(entry.blas);
+                }
+                deviceOwner.OrphanGpuBuffer(entry.blasBuffer, entry.blasMemory);
+                deviceOwner.OrphanGpuBuffer(entry.vertices.buffer, entry.vertices.memory);
+                deviceOwner.OrphanGpuBuffer(entry.indices.buffer, entry.indices.memory);
+                entry = {};
+            }
+
+            void VulkanGiContext::OrphanTlasResources()
+            {
+                if (tlas) {
+                    deviceOwner.OrphanAccelerationStructure(tlas);
+                }
+                deviceOwner.OrphanGpuBuffer(tlasBuffer, tlasMemory);
+                deviceOwner.OrphanGpuBuffer(tlasInstanceBuffer, tlasInstanceMemory);
+                tlas = VK_NULL_HANDLE;
+                tlasBuffer = VK_NULL_HANDLE;
+                tlasMemory = VK_NULL_HANDLE;
+                tlasInstanceBuffer = VK_NULL_HANDLE;
+                tlasInstanceMemory = VK_NULL_HANDLE;
+            }
+
             void VulkanGiContext::DestroyAccelerationStructures()
             {
-                for (VkAccelerationStructureKHR blas : blasList) {
-                    if (blas && vkDestroyAccelerationStructureKHR) {
-                        vkDestroyAccelerationStructureKHR(device, blas, nullptr);
+                for (auto& [mesh, entry] : blasCache) {
+                    (void)mesh;
+                    if (entry.blas && vkDestroyAccelerationStructureKHR) {
+                        vkDestroyAccelerationStructureKHR(device, entry.blas, nullptr);
                     }
+                    if (entry.blasBuffer) vkDestroyBuffer(device, entry.blasBuffer, nullptr);
+                    if (entry.blasMemory) vkFreeMemory(device, entry.blasMemory, nullptr);
+                    if (entry.vertices.buffer) vkDestroyBuffer(device, entry.vertices.buffer, nullptr);
+                    if (entry.vertices.memory) vkFreeMemory(device, entry.vertices.memory, nullptr);
+                    if (entry.indices.buffer) vkDestroyBuffer(device, entry.indices.buffer, nullptr);
+                    if (entry.indices.memory) vkFreeMemory(device, entry.indices.memory, nullptr);
                 }
-                blasList.clear();
-                for (VkBuffer buf : blasBuffers) {
-                    if (buf) vkDestroyBuffer(device, buf, nullptr);
-                }
-                blasBuffers.clear();
-                for (VkDeviceMemory mem : blasMemories) {
-                    if (mem) vkFreeMemory(device, mem, nullptr);
-                }
-                blasMemories.clear();
-                for (DeviceBuffer& buf : rtDeviceBuffers) {
-                    if (buf.buffer) vkDestroyBuffer(device, buf.buffer, nullptr);
-                    if (buf.memory) vkFreeMemory(device, buf.memory, nullptr);
-                }
-                rtDeviceBuffers.clear();
+                blasCache.clear();
 
                 if (tlas && vkDestroyAccelerationStructureKHR) {
                     vkDestroyAccelerationStructureKHR(device, tlas, nullptr);
@@ -315,8 +369,10 @@ namespace RTBEngine {
                 }
                 if (tlasBuffer) { vkDestroyBuffer(device, tlasBuffer, nullptr); tlasBuffer = VK_NULL_HANDLE; }
                 if (tlasMemory) { vkFreeMemory(device, tlasMemory, nullptr); tlasMemory = VK_NULL_HANDLE; }
+                if (tlasInstanceBuffer) { vkDestroyBuffer(device, tlasInstanceBuffer, nullptr); tlasInstanceBuffer = VK_NULL_HANDLE; }
+                if (tlasInstanceMemory) { vkFreeMemory(device, tlasInstanceMemory, nullptr); tlasInstanceMemory = VK_NULL_HANDLE; }
                 asBuilt = false;
-                cachedAsSignature = 0;
+                cachedInstanceSignature = 0;
             }
 
             void VulkanGiContext::DestroyDDGIResources()
@@ -357,11 +413,212 @@ namespace RTBEngine {
                 return vkGetBufferDeviceAddressKHR(device, &info);
             }
 
+            bool VulkanGiContext::PrepareBlasBuild(Mesh* mesh, std::size_t geometrySignature, CachedBlas& entry, FrameBlasBuild& outBuild)
+            {
+                const auto& verts = mesh->GetCpuVertices();
+                const auto& indices = mesh->GetCpuIndices();
+                if (verts.empty() || indices.empty()) {
+                    return false;
+                }
+
+                std::vector<RtVertex> rtVerts(verts.size());
+                for (std::size_t i = 0; i < verts.size(); ++i) {
+                    rtVerts[i] = { verts[i].position.x, verts[i].position.y, verts[i].position.z };
+                }
+
+                const VkDeviceSize vertexBytes = rtVerts.size() * sizeof(RtVertex);
+                const VkDeviceSize indexBytes = indices.size() * sizeof(std::uint32_t);
+                const VkBufferUsageFlags geoUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+                    | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
+                    | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+                deviceOwner.CreateDeviceLocalBufferRaw(vertexBytes, geoUsage, entry.vertices.buffer, entry.vertices.memory);
+                deviceOwner.CreateDeviceLocalBufferRaw(indexBytes, geoUsage, entry.indices.buffer, entry.indices.memory);
+                if (!entry.vertices.buffer || !entry.indices.buffer) {
+                    return false;
+                }
+                entry.vertices.size = vertexBytes;
+                entry.indices.size = indexBytes;
+
+                if (!deviceOwner.CreateHostStagingBuffer(rtVerts.data(), vertexBytes, outBuild.vertexStaging, outBuild.vertexStagingMemory)) {
+                    return false;
+                }
+                if (!deviceOwner.CreateHostStagingBuffer(indices.data(), indexBytes, outBuild.indexStaging, outBuild.indexStagingMemory)) {
+                    return false;
+                }
+                outBuild.vertexBytes = vertexBytes;
+                outBuild.indexBytes = indexBytes;
+
+                VkBufferDeviceAddressInfo addrInfo{};
+                addrInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+                addrInfo.buffer = entry.vertices.buffer;
+                const VkDeviceAddress vertexAddress = vkGetBufferDeviceAddressKHR(device, &addrInfo);
+                addrInfo.buffer = entry.indices.buffer;
+                const VkDeviceAddress indexAddress = vkGetBufferDeviceAddressKHR(device, &addrInfo);
+
+                outBuild.geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+                outBuild.geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+                outBuild.geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
+                outBuild.geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+                outBuild.geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
+                outBuild.geometry.geometry.triangles.vertexData.deviceAddress = vertexAddress;
+                outBuild.geometry.geometry.triangles.vertexStride = sizeof(RtVertex);
+                outBuild.geometry.geometry.triangles.maxVertex = static_cast<std::uint32_t>(rtVerts.size() - 1);
+                outBuild.geometry.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
+                outBuild.geometry.geometry.triangles.indexData.deviceAddress = indexAddress;
+
+                outBuild.buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+                outBuild.buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+                outBuild.buildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+                outBuild.buildInfo.geometryCount = 1;
+                outBuild.buildInfo.pGeometries = &outBuild.geometry;
+
+                const std::uint32_t primitiveCount = static_cast<std::uint32_t>(indices.size() / 3);
+                VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
+                sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+                vkGetAccelerationStructureBuildSizesKHR(device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+                    &outBuild.buildInfo, &primitiveCount, &sizeInfo);
+
+                deviceOwner.CreateDeviceLocalBufferRaw(sizeInfo.accelerationStructureSize,
+                    VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                    entry.blasBuffer, entry.blasMemory);
+                deviceOwner.CreateDeviceLocalBufferRaw(sizeInfo.buildScratchSize,
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                    outBuild.scratchBuffer, outBuild.scratchMemory);
+                if (!entry.blasBuffer || !outBuild.scratchBuffer) {
+                    return false;
+                }
+
+                VkAccelerationStructureCreateInfoKHR createInfo{};
+                createInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+                createInfo.buffer = entry.blasBuffer;
+                createInfo.size = sizeInfo.accelerationStructureSize;
+                createInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+                if (vkCreateAccelerationStructureKHR(device, &createInfo, nullptr, &entry.blas) != VK_SUCCESS) {
+                    return false;
+                }
+
+                outBuild.buildInfo.dstAccelerationStructure = entry.blas;
+                addrInfo.buffer = outBuild.scratchBuffer;
+                outBuild.buildInfo.scratchData.deviceAddress = vkGetBufferDeviceAddressKHR(device, &addrInfo);
+                outBuild.rangeInfo.primitiveCount = primitiveCount;
+                outBuild.mesh = mesh;
+
+                entry.geometrySignature = geometrySignature;
+                entry.primitiveCount = primitiveCount;
+                entry.built = false;
+                if (vkGetAccelerationStructureDeviceAddressKHR) {
+                    VkAccelerationStructureDeviceAddressInfoKHR asAddrInfo{};
+                    asAddrInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+                    asAddrInfo.accelerationStructure = entry.blas;
+                    entry.blasDeviceAddress = vkGetAccelerationStructureDeviceAddressKHR(device, &asAddrInfo);
+                }
+                return true;
+            }
+
+            bool VulkanGiContext::PrepareTlasBuild(const std::vector<GI::RayTracingMeshInstance>& instances, FrameTlasBuild& outBuild)
+            {
+                std::vector<VkAccelerationStructureInstanceKHR> tlasInstances;
+                std::uint32_t instanceIndex = 0;
+                for (const GI::RayTracingMeshInstance& inst : instances) {
+                    if (!inst.mesh) {
+                        continue;
+                    }
+                    auto cacheIt = blasCache.find(inst.mesh);
+                    if (cacheIt == blasCache.end() || !cacheIt->second.blas) {
+                        continue;
+                    }
+                    const CachedBlas& cached = cacheIt->second;
+
+                    VkAccelerationStructureInstanceKHR tlasInst{};
+                    std::memset(&tlasInst.transform, 0, sizeof(tlasInst.transform));
+                    const float* m = inst.worldMatrix.GetData();
+                    for (int col = 0; col < 4; ++col) {
+                        for (int row = 0; row < 3; ++row) {
+                            tlasInst.transform.matrix[row][col] = m[col * 4 + row];
+                        }
+                    }
+                    tlasInst.instanceCustomIndex = instanceIndex++;
+                    tlasInst.mask = 0xFF;
+                    tlasInst.instanceShaderBindingTableRecordOffset = 0;
+                    tlasInst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+                    tlasInst.accelerationStructureReference = cached.blasDeviceAddress;
+                    tlasInstances.push_back(tlasInst);
+                }
+
+                if (tlasInstances.empty()) {
+                    return false;
+                }
+
+                const VkDeviceSize instanceBytes = tlasInstances.size() * sizeof(VkAccelerationStructureInstanceKHR);
+                deviceOwner.CreateDeviceLocalBufferRaw(instanceBytes,
+                    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+                        | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
+                    tlasInstanceBuffer, tlasInstanceMemory);
+                if (!tlasInstanceBuffer) {
+                    return false;
+                }
+
+                if (!deviceOwner.CreateHostStagingBuffer(tlasInstances.data(), instanceBytes,
+                        outBuild.instanceStaging, outBuild.instanceStagingMemory)) {
+                    return false;
+                }
+                outBuild.instanceBytes = instanceBytes;
+
+                VkBufferDeviceAddressInfo addrInfo{};
+                addrInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+                addrInfo.buffer = tlasInstanceBuffer;
+                const VkDeviceAddress instanceAddress = vkGetBufferDeviceAddressKHR(device, &addrInfo);
+
+                outBuild.geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+                outBuild.geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+                outBuild.geometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+                outBuild.geometry.geometry.instances.arrayOfPointers = VK_FALSE;
+                outBuild.geometry.geometry.instances.data.deviceAddress = instanceAddress;
+
+                outBuild.buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+                outBuild.buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+                outBuild.buildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+                outBuild.buildInfo.geometryCount = 1;
+                outBuild.buildInfo.pGeometries = &outBuild.geometry;
+
+                const std::uint32_t tlasPrimitiveCount = static_cast<std::uint32_t>(tlasInstances.size());
+                VkAccelerationStructureBuildSizesInfoKHR tlasSize{};
+                tlasSize.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+                vkGetAccelerationStructureBuildSizesKHR(device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+                    &outBuild.buildInfo, &tlasPrimitiveCount, &tlasSize);
+
+                deviceOwner.CreateDeviceLocalBufferRaw(tlasSize.accelerationStructureSize,
+                    VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                    tlasBuffer, tlasMemory);
+                deviceOwner.CreateDeviceLocalBufferRaw(tlasSize.buildScratchSize,
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                    outBuild.scratchBuffer, outBuild.scratchMemory);
+                if (!tlasBuffer || !outBuild.scratchBuffer) {
+                    return false;
+                }
+
+                VkAccelerationStructureCreateInfoKHR tlasCreate{};
+                tlasCreate.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+                tlasCreate.buffer = tlasBuffer;
+                tlasCreate.size = tlasSize.accelerationStructureSize;
+                tlasCreate.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+                if (vkCreateAccelerationStructureKHR(device, &tlasCreate, nullptr, &tlas) != VK_SUCCESS) {
+                    return false;
+                }
+
+                outBuild.buildInfo.dstAccelerationStructure = tlas;
+                addrInfo.buffer = outBuild.scratchBuffer;
+                outBuild.buildInfo.scratchData.deviceAddress = vkGetBufferDeviceAddressKHR(device, &addrInfo);
+                outBuild.rangeInfo.primitiveCount = tlasPrimitiveCount;
+                outBuild.needed = true;
+                return true;
+            }
+
             void VulkanGiContext::RebuildAccelerationStructures(GI::RayTracingScene& rtScene, Scene::Scene* scene)
             {
                 if (!rayQueryAvailable || !scene) return;
                 if (!ddgiTracePipeline) return;
-
 
                 std::vector<GI::RayTracingMeshInstance> instances;
                 for (Scene::MeshRenderer* renderer : scene->GetCachedMeshRenderers()) {
@@ -387,229 +644,144 @@ namespace RTBEngine {
                     }
                 }
 
-                std::size_t signature = instances.size();
+                const std::size_t instanceSignature = ComputeInstanceSignature(instances);
+
+                std::unordered_set<Mesh*> sceneMeshes;
                 for (const GI::RayTracingMeshInstance& inst : instances) {
-                    signature ^= reinterpret_cast<std::uintptr_t>(inst.mesh) + 0x9e3779b9 + (signature << 6) + (signature >> 2);
-                    for (int i = 0; i < 16; ++i) {
-                        std::uint32_t bits = 0;
-                        std::memcpy(&bits, &inst.worldMatrix.m[i], sizeof(bits));
-                        signature ^= static_cast<std::size_t>(bits) + 0x9e3779b9 + (signature << 6) + (signature >> 2);
+                    if (inst.mesh) {
+                        sceneMeshes.insert(inst.mesh);
                     }
                 }
 
-                if (asBuilt && tlas && signature == cachedAsSignature) {
+                for (auto it = blasCache.begin(); it != blasCache.end();) {
+                    if (sceneMeshes.count(it->first) == 0) {
+                        OrphanBlasEntry(it->second);
+                        it = blasCache.erase(it);
+                    } else {
+                        ++it;
+                    }
+                }
+
+                std::vector<FrameBlasBuild> blasBuilds;
+                bool blasRebuilt = false;
+                for (Mesh* mesh : sceneMeshes) {
+                    const std::size_t geometrySignature = ComputeMeshGeometrySignature(mesh);
+                    CachedBlas& cached = blasCache[mesh];
+                    if (cached.built && cached.geometrySignature == geometrySignature && cached.blas) {
+                        continue;
+                    }
+                    if (cached.blas) {
+                        OrphanBlasEntry(cached);
+                        cached = {};
+                    }
+
+                    FrameBlasBuild buildJob{};
+                    if (!PrepareBlasBuild(mesh, geometrySignature, cached, buildJob)) {
+                        blasCache.erase(mesh);
+                        continue;
+                    }
+                    blasBuilds.push_back(std::move(buildJob));
+                    blasRebuilt = true;
+                }
+
+                const bool needTlas = blasRebuilt || !asBuilt || !tlas || instanceSignature != cachedInstanceSignature;
+                if (!blasRebuilt && !needTlas) {
+                    return;
+                }
+
+                if (instances.empty()) {
+                    OrphanTlasResources();
+                    asBuilt = false;
+                    cachedInstanceSignature = 0;
                     return;
                 }
 
                 rtScene.Rebuild(scene);
-                DestroyAccelerationStructures();
-                asBuilt = false;
-                cachedAsSignature = 0;
 
-                std::vector<VkAccelerationStructureInstanceKHR> tlasInstances;
-                std::uint32_t instanceIndex = 0;
-
-                for (const GI::RayTracingMeshInstance& inst : instances) {
-                    const auto& verts = inst.mesh->GetCpuVertices();
-                    const auto& indices = inst.mesh->GetCpuIndices();
-                    if (verts.empty() || indices.empty()) continue;
-
-                    std::vector<RtVertex> rtVerts(verts.size());
-                    for (std::size_t i = 0; i < verts.size(); ++i) {
-                        rtVerts[i] = { verts[i].position.x, verts[i].position.y, verts[i].position.z };
+                FrameTlasBuild tlasBuild{};
+                if (needTlas) {
+                    OrphanTlasResources();
+                    if (!PrepareTlasBuild(instances, tlasBuild)) {
+                        asBuilt = false;
+                        cachedInstanceSignature = 0;
+                        return;
                     }
-
-                    DeviceBuffer vBuf{}, iBuf{};
-                    const VkDeviceSize vSize = rtVerts.size() * sizeof(RtVertex);
-                    const VkDeviceSize iSize = indices.size() * sizeof(std::uint32_t);
-
-                    deviceOwner.CreateDeviceLocalBufferRaw(vSize,
-                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-                            | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
-                            | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                        vBuf.buffer, vBuf.memory);
-                    deviceOwner.CreateDeviceLocalBufferRaw(iSize,
-                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-                            | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
-                            | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                        iBuf.buffer, iBuf.memory);
-
-                    if (!vBuf.buffer || !iBuf.buffer) continue;
-
-                    deviceOwner.UploadToDeviceLocalBuffer(vBuf.buffer, rtVerts.data(), vSize);
-                    deviceOwner.UploadToDeviceLocalBuffer(iBuf.buffer, indices.data(), iSize);
-                    rtDeviceBuffers.push_back(vBuf);
-                    rtDeviceBuffers.push_back(iBuf);
-
-                    VkBufferDeviceAddressInfo addrInfo{};
-                    addrInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-
-                    addrInfo.buffer = vBuf.buffer;
-                    const VkDeviceAddress vAddr = vkGetBufferDeviceAddressKHR(device, &addrInfo);
-                    addrInfo.buffer = iBuf.buffer;
-                    const VkDeviceAddress iAddr = vkGetBufferDeviceAddressKHR(device, &addrInfo);
-
-                    VkAccelerationStructureGeometryKHR geom{};
-                    geom.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
-                    geom.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-                    geom.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
-                    geom.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-                    geom.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
-                    geom.geometry.triangles.vertexData.deviceAddress = vAddr;
-                    geom.geometry.triangles.vertexStride = sizeof(RtVertex);
-                    geom.geometry.triangles.maxVertex = static_cast<std::uint32_t>(rtVerts.size() - 1);
-                    geom.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
-                    geom.geometry.triangles.indexData.deviceAddress = iAddr;
-
-                    VkAccelerationStructureBuildGeometryInfoKHR buildInfo{};
-                    buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
-                    buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-                    buildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
-                    buildInfo.geometryCount = 1;
-                    buildInfo.pGeometries = &geom;
-
-                    const std::uint32_t primitiveCount = static_cast<std::uint32_t>(indices.size() / 3);
-                    VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
-                    sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-                    vkGetAccelerationStructureBuildSizesKHR(device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
-                        &buildInfo, &primitiveCount, &sizeInfo);
-
-                    VkBuffer blasBuffer = VK_NULL_HANDLE;
-                    VkDeviceMemory blasMemory = VK_NULL_HANDLE;
-                    deviceOwner.CreateDeviceLocalBufferRaw(sizeInfo.accelerationStructureSize,
-                        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                        blasBuffer, blasMemory);
-
-                    VkBuffer scratchBuffer = VK_NULL_HANDLE;
-                    VkDeviceMemory scratchMemory = VK_NULL_HANDLE;
-                    deviceOwner.CreateDeviceLocalBufferRaw(sizeInfo.buildScratchSize,
-                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                        scratchBuffer, scratchMemory);
-
-                    VkAccelerationStructureCreateInfoKHR createInfo{};
-                    createInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-                    createInfo.buffer = blasBuffer;
-                    createInfo.size = sizeInfo.accelerationStructureSize;
-                    createInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-
-                    VkAccelerationStructureKHR blas = VK_NULL_HANDLE;
-                    vkCreateAccelerationStructureKHR(device, &createInfo, nullptr, &blas);
-                    buildInfo.dstAccelerationStructure = blas;
-
-                    addrInfo.buffer = scratchBuffer;
-                    buildInfo.scratchData.deviceAddress = vkGetBufferDeviceAddressKHR(device, &addrInfo);
-
-                    VkAccelerationStructureBuildRangeInfoKHR rangeInfo{};
-                    rangeInfo.primitiveCount = static_cast<std::uint32_t>(indices.size() / 3);
-                    const VkAccelerationStructureBuildRangeInfoKHR* pRange = &rangeInfo;
-
-                    ExecuteOneShot([&](VkCommandBuffer cmd) {
-                        vkCmdBuildAccelerationStructuresKHR(cmd, 1, &buildInfo, &pRange);
-                    });
-
-                    blasList.push_back(blas);
-                    blasBuffers.push_back(blasBuffer);
-                    blasMemories.push_back(blasMemory);
-                    vkDestroyBuffer(device, scratchBuffer, nullptr);
-                    vkFreeMemory(device, scratchMemory, nullptr);
-
-                    VkAccelerationStructureInstanceKHR tlasInst{};
-                    std::memset(&tlasInst.transform, 0, sizeof(tlasInst.transform));
-                    const float* m = inst.worldMatrix.GetData();
-                    // Column-major 3x4 for VkTransformMatrixKHR (row-major layout in spec)
-                    for (int col = 0; col < 4; ++col) {
-                        for (int row = 0; row < 3; ++row) {
-                            tlasInst.transform.matrix[row][col] = m[col * 4 + row];
-                        }
-                    }
-                    tlasInst.instanceCustomIndex = instanceIndex++;
-                    tlasInst.mask = 0xFF;
-                    tlasInst.instanceShaderBindingTableRecordOffset = 0;
-                    tlasInst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-                    tlasInst.accelerationStructureReference = 0;
-                    if (vkGetAccelerationStructureDeviceAddressKHR) {
-                        VkAccelerationStructureDeviceAddressInfoKHR addrInfoAS{};
-                        addrInfoAS.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
-                        addrInfoAS.accelerationStructure = blas;
-                        tlasInst.accelerationStructureReference = vkGetAccelerationStructureDeviceAddressKHR(device, &addrInfoAS);
-                    }
-                    tlasInstances.push_back(tlasInst);
                 }
 
-                if (tlasInstances.empty()) return;
+                deviceOwner.RecordToFrameCommandBuffer([&, blasBuilds = std::move(blasBuilds), tlasBuild = std::move(tlasBuild)] (VkCommandBuffer cmd) {
+                    bool didTransfer = false;
 
-                // Upload instances buffer
-                const VkDeviceSize instSize = tlasInstances.size() * sizeof(VkAccelerationStructureInstanceKHR);
-                VkBuffer instBuffer = VK_NULL_HANDLE;
-                VkDeviceMemory instMemory = VK_NULL_HANDLE;
-                deviceOwner.CreateDeviceLocalBufferRaw(instSize,
-                    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-                        | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
-                    instBuffer, instMemory);
-                deviceOwner.UploadToDeviceLocalBuffer(instBuffer, tlasInstances.data(), instSize);
+                    for (const FrameBlasBuild& job : blasBuilds) {
+                        auto cacheIt = blasCache.find(job.mesh);
+                        if (cacheIt == blasCache.end()) {
+                            continue;
+                        }
+                        CachedBlas& cached = cacheIt->second;
+                        if (job.vertexStaging) {
+                            deviceOwner.RecordBufferCopyAndOrphanStaging(cmd, job.vertexStaging, job.vertexStagingMemory,
+                                cached.vertices.buffer, job.vertexBytes);
+                            didTransfer = true;
+                        }
+                        if (job.indexStaging) {
+                            deviceOwner.RecordBufferCopyAndOrphanStaging(cmd, job.indexStaging, job.indexStagingMemory,
+                                cached.indices.buffer, job.indexBytes);
+                            didTransfer = true;
+                        }
+                    }
 
-                VkBufferDeviceAddressInfo addrInfo{};
-                addrInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-                addrInfo.buffer = instBuffer;
-                const VkDeviceAddress instAddr = vkGetBufferDeviceAddressKHR(device, &addrInfo);
+                    if (tlasBuild.needed && tlasBuild.instanceStaging) {
+                        deviceOwner.RecordBufferCopyAndOrphanStaging(cmd, tlasBuild.instanceStaging, tlasBuild.instanceStagingMemory,
+                            tlasInstanceBuffer, tlasBuild.instanceBytes);
+                        didTransfer = true;
+                    }
 
-                VkAccelerationStructureGeometryKHR tlasGeom{};
-                tlasGeom.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
-                tlasGeom.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
-                tlasGeom.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
-                tlasGeom.geometry.instances.arrayOfPointers = VK_FALSE;
-                tlasGeom.geometry.instances.data.deviceAddress = instAddr;
+                    if (didTransfer) {
+                        VkMemoryBarrier transferBarrier{};
+                        transferBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+                        transferBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                        transferBarrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+                        vkCmdPipelineBarrier(cmd,
+                            VK_PIPELINE_STAGE_TRANSFER_BIT,
+                            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+                            0, 1, &transferBarrier, 0, nullptr, 0, nullptr);
+                    }
 
-                VkAccelerationStructureBuildGeometryInfoKHR tlasBuild{};
-                tlasBuild.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
-                tlasBuild.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-                tlasBuild.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
-                tlasBuild.geometryCount = 1;
-                tlasBuild.pGeometries = &tlasGeom;
+                    bool didAsBuild = false;
+                    for (const FrameBlasBuild& job : blasBuilds) {
+                        auto cacheIt = blasCache.find(job.mesh);
+                        if (cacheIt == blasCache.end()) {
+                            continue;
+                        }
+                        FrameBlasBuild mutableJob = job;
+                        const VkAccelerationStructureBuildRangeInfoKHR* range = &mutableJob.rangeInfo;
+                        vkCmdBuildAccelerationStructuresKHR(cmd, 1, &mutableJob.buildInfo, &range);
+                        deviceOwner.OrphanGpuBuffer(mutableJob.scratchBuffer, mutableJob.scratchMemory);
+                        cacheIt->second.built = true;
+                        didAsBuild = true;
+                    }
 
-                const std::uint32_t tlasPrimitiveCount = static_cast<std::uint32_t>(tlasInstances.size());
-                VkAccelerationStructureBuildSizesInfoKHR tlasSize{};
-                tlasSize.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-                vkGetAccelerationStructureBuildSizesKHR(device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
-                    &tlasBuild, &tlasPrimitiveCount, &tlasSize);
+                    if (tlasBuild.needed) {
+                        FrameTlasBuild mutableTlas = tlasBuild;
+                        const VkAccelerationStructureBuildRangeInfoKHR* range = &mutableTlas.rangeInfo;
+                        vkCmdBuildAccelerationStructuresKHR(cmd, 1, &mutableTlas.buildInfo, &range);
+                        deviceOwner.OrphanGpuBuffer(mutableTlas.scratchBuffer, mutableTlas.scratchMemory);
+                        didAsBuild = true;
+                    }
 
-                deviceOwner.CreateDeviceLocalBufferRaw(tlasSize.accelerationStructureSize,
-                    VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                    tlasBuffer, tlasMemory);
-
-                VkBuffer tlasScratch = VK_NULL_HANDLE;
-                VkDeviceMemory tlasScratchMem = VK_NULL_HANDLE;
-                deviceOwner.CreateDeviceLocalBufferRaw(tlasSize.buildScratchSize,
-                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                    tlasScratch, tlasScratchMem);
-
-                VkAccelerationStructureCreateInfoKHR tlasCreate{};
-                tlasCreate.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-                tlasCreate.buffer = tlasBuffer;
-                tlasCreate.size = tlasSize.accelerationStructureSize;
-                tlasCreate.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-                vkCreateAccelerationStructureKHR(device, &tlasCreate, nullptr, &tlas);
-
-                tlasBuild.dstAccelerationStructure = tlas;
-                addrInfo.buffer = tlasScratch;
-                tlasBuild.scratchData.deviceAddress = vkGetBufferDeviceAddressKHR(device, &addrInfo);
-
-                VkAccelerationStructureBuildRangeInfoKHR tlasRange{};
-                tlasRange.primitiveCount = static_cast<std::uint32_t>(tlasInstances.size());
-                const VkAccelerationStructureBuildRangeInfoKHR* pTlasRange = &tlasRange;
-
-                ExecuteOneShot([&](VkCommandBuffer cmd) {
-                    vkCmdBuildAccelerationStructuresKHR(cmd, 1, &tlasBuild, &pTlasRange);
+                    if (didAsBuild) {
+                        VkMemoryBarrier asBarrier{};
+                        asBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+                        asBarrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+                        asBarrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+                        vkCmdPipelineBarrier(cmd,
+                            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+                            0, 1, &asBarrier, 0, nullptr, 0, nullptr);
+                    }
                 });
 
-                vkDestroyBuffer(device, tlasScratch, nullptr);
-                vkFreeMemory(device, tlasScratchMem, nullptr);
-                vkDestroyBuffer(device, instBuffer, nullptr);
-                vkFreeMemory(device, instMemory, nullptr);
-
+                cachedInstanceSignature = instanceSignature;
                 asBuilt = (tlas != VK_NULL_HANDLE);
-                cachedAsSignature = signature;
-
             }
 
             void VulkanGiContext::UpdateDDGI(GI::DDGIVolume& volume, GI::RayTracingScene& rtScene, Scene::Scene* scene, int frameIndex)
@@ -715,14 +887,12 @@ namespace RTBEngine {
                 deviceOwner.UpdateStorageImageLayout(volume.GetIrradianceAtlas(), VK_IMAGE_LAYOUT_GENERAL);
                 deviceOwner.UpdateStorageImageLayout(volume.GetDistanceAtlas(), VK_IMAGE_LAYOUT_GENERAL);
 
-                ExecuteOneShot([&](VkCommandBuffer cmd) {
+                deviceOwner.RecordToFrameCommandBuffer([&](VkCommandBuffer cmd) {
                     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, ddgiTracePipeline);
                     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, giPipelineLayout, 0, 1, &giDescSet, 0, nullptr);
                     const std::uint32_t groups = (params.probesThisFrame + 63) / 64;
                     vkCmdDispatch(cmd, groups, 1, 1);
                 });
-
-                // Keep atlases in GENERAL so compute storage + fragment sampling share one layout.
             }
 
             GpuId VulkanGiContext::CreateStorageImage2D(int width, int height, TextureFormat format)
@@ -735,11 +905,16 @@ namespace RTBEngine {
                 deviceOwner.MemoryBarrierComputeToGraphicsInternal();
             }
 
-            // Stub implementations for interface completeness
             GpuId VulkanGiContext::CreateComputeProgram(const std::string&) { return kInvalidGpuId; }
             void VulkanGiContext::DestroyComputeProgram(GpuId) {}
-            void VulkanGiContext::BindComputeProgram(GpuId) {}
-            void VulkanGiContext::DispatchCompute(GpuId, unsigned int, unsigned int, unsigned int) {}
+            VkPipeline VulkanGiContext::GetComputePipeline(GpuId program) const
+            {
+                auto it = computePrograms.find(program);
+                if (it == computePrograms.end() || !it->second.pipeline) {
+                    return VK_NULL_HANDLE;
+                }
+                return it->second.pipeline;
+            }
             void VulkanGiContext::BindStorageImage2D(GpuId, unsigned int, StorageAccess) {}
             GpuId VulkanGiContext::CreateStorageBuffer(std::size_t) { return kInvalidGpuId; }
             void VulkanGiContext::UpdateStorageBuffer(GpuId, const void*, std::size_t, std::size_t) {}
