@@ -29,6 +29,10 @@ namespace RTBEngine {
         class Shader;
         class Skybox;
     }
+
+    namespace Math {
+        class Vector3;
+    }
 }
 
 namespace RTBEngine {
@@ -98,6 +102,7 @@ namespace RTBEngine {
             void RenderSceneDepthOnly(Scene::Scene* scene,
                                       Rendering::Shader* shader,
                                       const Rendering::Frustum& frustum);
+            static void ComputeDirectionalShadowBounds(Scene::Scene* scene, Math::Vector3& outCenter, float& outRadius);
             void OnWindowResized(int width, int height);
             void InitializePhysicsForGameObject(Scene::GameObject* gameObject);
             void InitializePhysicsForHierarchy(Scene::GameObject* root);

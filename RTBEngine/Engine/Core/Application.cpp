@@ -678,8 +678,9 @@ void RTBEngine::Core::Application::RenderShadowPass(Scene::Scene* scene)
 		Rendering::ShadowMap* shadowMap = dirLight->GetShadowMap();
 		if (!shadowMap) continue;
 
-		Math::Vector3 sceneCenter(0.0f, 2.0f, 0.0f);
-		float sceneRadius = 50.0f;
+		Math::Vector3 sceneCenter;
+		float sceneRadius = 0.0f;
+		ComputeDirectionalShadowBounds(scene, sceneCenter, sceneRadius);
 		Math::Matrix4 lightSpaceMatrix = dirLight->GetLightSpaceMatrix(sceneCenter, sceneRadius);
 
 		// Frustum cull in engine/OpenGL light space; Vulkan needs a clip fix for the GPU.
@@ -707,6 +708,63 @@ void RTBEngine::Core::Application::RenderShadowPass(Scene::Scene* scene)
 	}
 
 	Rendering::RHI::RenderDevice::Get().SetViewport(0, 0, window->GetWidth(), window->GetHeight());
+}
+
+void RTBEngine::Core::Application::ComputeDirectionalShadowBounds(Scene::Scene* scene, Math::Vector3& outCenter, float& outRadius)
+{
+	outCenter = Math::Vector3(0.0f, 2.0f, 0.0f);
+	outRadius = 50.0f;
+	if (!scene) {
+		return;
+	}
+
+	bool hasBounds = false;
+	Math::Vector3 worldMin;
+	Math::Vector3 worldMax;
+
+	for (Scene::MeshRenderer* meshRenderer : scene->GetCachedMeshRenderers()) {
+		if (!meshRenderer || !meshRenderer->IsEnabled()) {
+			continue;
+		}
+
+		Scene::GameObject* go = meshRenderer->GetOwner();
+		if (!go || !go->IsActiveInHierarchy()) {
+			continue;
+		}
+
+		Math::Vector3 localMin;
+		Math::Vector3 localMax;
+		meshRenderer->GetCombinedAABB(localMin, localMax);
+		if (localMin == localMax) {
+			continue;
+		}
+
+		Math::Vector3 aabbMin;
+		Math::Vector3 aabbMax;
+		Rendering::Frustum::TransformAABB(go->GetWorldMatrix(), localMin, localMax, aabbMin, aabbMax);
+
+		if (!hasBounds) {
+			worldMin = aabbMin;
+			worldMax = aabbMax;
+			hasBounds = true;
+			continue;
+		}
+
+		worldMin.x = std::min(worldMin.x, aabbMin.x);
+		worldMin.y = std::min(worldMin.y, aabbMin.y);
+		worldMin.z = std::min(worldMin.z, aabbMin.z);
+		worldMax.x = std::max(worldMax.x, aabbMax.x);
+		worldMax.y = std::max(worldMax.y, aabbMax.y);
+		worldMax.z = std::max(worldMax.z, aabbMax.z);
+	}
+
+	if (!hasBounds) {
+		return;
+	}
+
+	outCenter = (worldMin + worldMax) * 0.5f;
+	const Math::Vector3 halfExtent = (worldMax - worldMin) * 0.5f;
+	outRadius = std::max(halfExtent.Length() * 1.05f, 1.0f);
 }
 
 void RTBEngine::Core::Application::UploadSceneLighting(Scene::Scene* scene)
@@ -900,8 +958,9 @@ void RTBEngine::Core::Application::RenderGeometryPass(Scene::Scene* scene, Rende
 		shadowCastingLight->GetShadowMap()->BindForReading(1);
 		shader->SetInt("uShadowMap", 1);
 
-		Math::Vector3 sceneCenter(0.0f, 2.0f, 0.0f);
-		float sceneRadius = 50.0f;
+		Math::Vector3 sceneCenter;
+		float sceneRadius = 0.0f;
+		ComputeDirectionalShadowBounds(scene, sceneCenter, sceneRadius);
 		Math::Matrix4 lightSpaceMatrix = shadowCastingLight->GetLightSpaceMatrix(sceneCenter, sceneRadius);
 		if (Rendering::RHI::RenderDevice::Get().GetAPI() == Rendering::RHI::GraphicsAPI::Vulkan) {
 			lightSpaceMatrix = Math::Matrix4::VulkanClipCorrection() * lightSpaceMatrix;
@@ -967,8 +1026,9 @@ void RTBEngine::Core::Application::RenderVolumetricFogPass(Scene::Scene* scene,
 
 	Math::Matrix4 lightSpaceMatrix = Math::Matrix4::Identity();
 	if (shadowCastingLight) {
-		Math::Vector3 sceneCenter(0.0f, 2.0f, 0.0f);
-		float sceneRadius = 50.0f;
+		Math::Vector3 sceneCenter;
+		float sceneRadius = 0.0f;
+		ComputeDirectionalShadowBounds(scene, sceneCenter, sceneRadius);
 		lightSpaceMatrix = shadowCastingLight->GetLightSpaceMatrix(sceneCenter, sceneRadius);
 		if (Rendering::RHI::RenderDevice::Get().GetAPI() == Rendering::RHI::GraphicsAPI::Vulkan) {
 			lightSpaceMatrix = Math::Matrix4::VulkanClipCorrection() * lightSpaceMatrix;
