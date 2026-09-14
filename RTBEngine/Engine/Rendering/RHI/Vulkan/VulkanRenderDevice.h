@@ -304,6 +304,7 @@ namespace RTBEngine {
                     bool colorOnlyLoad = false;
                     bool complete = false;
                     float clearColor[4] = { 0.f, 0.f, 0.f, 1.f };
+                    ClearMask pendingClear = ClearMask::None;
                 };
 
                 struct PipelineKey {
@@ -431,6 +432,9 @@ namespace RTBEngine {
                 bool EnsureSwapchainImage();
                 bool EnsurePass(GpuId target);
                 void EndActiveRenderPass(VkCommandBuffer cmd, bool& inPass, GpuId endingTarget = kInvalidGpuId);
+                void RecordClearAttachments(VkCommandBuffer cmd, GpuId target, ClearMask mask);
+                void AccumulatePendingClear(GpuId target, ClearMask mask);
+                ClearMask TakePendingClear(GpuId target);
 
                 std::vector<const char*> GetRequiredInstanceExtensions();
                 bool CheckValidationLayerSupport() const;
@@ -601,6 +605,7 @@ namespace RTBEngine {
                 bool swapchainAcquired = false;
                 std::uint32_t currentDrawSlot = 0;
                 bool pendingSwapchainRecreate = false;
+                ClearMask pendingClearMask = ClearMask::None;
 
                 // pending*Orphans → moved into *ByFrame[currentFrame] at Present,
                 // retired after that frame's fence is waited on the next time around.

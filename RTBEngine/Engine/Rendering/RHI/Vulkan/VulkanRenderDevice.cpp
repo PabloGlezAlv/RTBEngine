@@ -469,6 +469,12 @@ namespace RTBEngine {
                     }
                 }
 
+                pendingClearMask = ClearMask::None;
+                for (auto& [id, fb] : framebuffers) {
+                    (void)id;
+                    fb.pendingClear = ClearMask::None;
+                }
+
                 const VkFence currentFence = inFlightFences[currentFrame];
                 vkWaitForFences(device, 1, &currentFence, VK_TRUE, UINT64_MAX);
                 RetireOrphanedResources();
@@ -625,6 +631,7 @@ namespace RTBEngine {
                                                            float clearCol[4], bool& inPass, GpuId& activeTarget)
             {
                 if (target == 0) {
+                    const ClearMask pendingMask = TakePendingClear(target);
                     std::array<VkClearValue, 2> clearValues{};
                     clearValues[0].color = { { clearCol[0], clearCol[1], clearCol[2], clearCol[3] } };
                     clearValues[1].depthStencil = { 1.0f, 0 };
@@ -641,6 +648,9 @@ namespace RTBEngine {
 
                     inPass = true;
                     activeTarget = 0;
+                    if (pendingMask != ClearMask::None) {
+                        RecordClearAttachments(cmd, target, pendingMask);
+                    }
                     return true;
                 }
 
@@ -650,6 +660,7 @@ namespace RTBEngine {
                     return false;
                 }
                 FramebufferResource& fb = it->second;
+                const ClearMask pendingMask = TakePendingClear(target);
 
                 VkRenderPassBeginInfo rpInfo{};
                 rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -684,6 +695,9 @@ namespace RTBEngine {
 
                 inPass = true;
                 activeTarget = target;
+                if (pendingMask != ClearMask::None) {
+                    RecordClearAttachments(cmd, target, pendingMask);
+                }
                 return true;
             }
 
@@ -780,6 +794,87 @@ namespace RTBEngine {
                         }
                     }
                 }
+            }
+
+            void VulkanRenderDevice::AccumulatePendingClear(GpuId target, ClearMask mask)
+            {
+                if (mask == ClearMask::None) {
+                    return;
+                }
+                if (target == 0) {
+                    pendingClearMask = pendingClearMask | mask;
+                    return;
+                }
+                auto it = framebuffers.find(target);
+                if (it != framebuffers.end()) {
+                    it->second.pendingClear = it->second.pendingClear | mask;
+                }
+            }
+
+            ClearMask VulkanRenderDevice::TakePendingClear(GpuId target)
+            {
+                if (target == 0) {
+                    const ClearMask mask = pendingClearMask;
+                    pendingClearMask = ClearMask::None;
+                    return mask;
+                }
+                auto it = framebuffers.find(target);
+                if (it == framebuffers.end()) {
+                    return ClearMask::None;
+                }
+                const ClearMask mask = it->second.pendingClear;
+                it->second.pendingClear = ClearMask::None;
+                return mask;
+            }
+
+            void VulkanRenderDevice::RecordClearAttachments(VkCommandBuffer cmd, GpuId target, ClearMask mask)
+            {
+                if (!cmd || mask == ClearMask::None) {
+                    return;
+                }
+
+                const bool wantColor = (mask & ClearMask::Color) != ClearMask::None;
+                const bool wantDepth = (mask & ClearMask::Depth) != ClearMask::None;
+
+                bool hasColor = true;
+                bool hasDepth = true;
+                VkExtent2D extent = swapchainExtent;
+
+                if (target != 0) {
+                    auto it = framebuffers.find(target);
+                    if (it == framebuffers.end() || !it->second.complete) {
+                        return;
+                    }
+                    const FramebufferResource& fb = it->second;
+                    hasColor = !fb.depthOnly;
+                    hasDepth = !fb.colorOnlyLoad;
+                    extent = { static_cast<std::uint32_t>(fb.width), static_cast<std::uint32_t>(fb.height) };
+                }
+
+                std::array<VkClearAttachment, 2> attachments{};
+                std::uint32_t count = 0;
+
+                if (wantColor && hasColor) {
+                    VkClearAttachment& attachment = attachments[count++];
+                    attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                    attachment.colorAttachment = 0;
+                    attachment.clearValue.color = { { clearColor[0], clearColor[1], clearColor[2], clearColor[3] } };
+                }
+                if (wantDepth && hasDepth) {
+                    VkClearAttachment& attachment = attachments[count++];
+                    attachment.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+                    attachment.clearValue.depthStencil = { 1.0f, 0 };
+                }
+                if (count == 0) {
+                    return;
+                }
+
+                VkClearRect rect{};
+                rect.rect.offset = { 0, 0 };
+                rect.rect.extent = extent;
+                rect.baseArrayLayer = 0;
+                rect.layerCount = 1;
+                vkCmdClearAttachments(cmd, count, attachments.data(), 1, &rect);
             }
 
             VkRenderPass VulkanRenderDevice::ResolveRenderPassForTarget(GpuId targetFramebuffer) const
@@ -1046,10 +1141,15 @@ namespace RTBEngine {
             {
                 clearColor[0] = r; clearColor[1] = g; clearColor[2] = b; clearColor[3] = a;
             }
-
             void VulkanRenderDevice::Clear(ClearMask mask)
             {
-                (void)mask;
+                if (!initialized || skipFrame || !frameRecording) {
+                    return;
+                }
+                if (mask == ClearMask::None) {
+                    return;
+                }
+
                 if (currentBoundFramebuffer != 0) {
                     auto it = framebuffers.find(currentBoundFramebuffer);
                     if (it != framebuffers.end()) {
@@ -1058,6 +1158,13 @@ namespace RTBEngine {
                         it->second.clearColor[2] = clearColor[2];
                         it->second.clearColor[3] = clearColor[3];
                     }
+                }
+
+                AccumulatePendingClear(currentBoundFramebuffer, mask);
+
+                if (inPass && activeTarget == currentBoundFramebuffer) {
+                    RecordClearAttachments(commandBuffers[currentFrame], currentBoundFramebuffer, mask);
+                    (void)TakePendingClear(currentBoundFramebuffer);
                 }
             }
 
