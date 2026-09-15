@@ -8,6 +8,7 @@
 #include "../Rendering/RHI/GraphicsAPI.h"
 #include "../Rendering/Rendering.h"
 #include "../Rendering/Texture.h"
+#include "../Rendering/Framebuffer.h"
 #include "../Scene/Scene.h"
 #include "../Scene/GameObject.h"
 #include "../Scene/LightComponent.h"
@@ -613,13 +614,7 @@ void RTBEngine::Core::Application::Render()
 	auto& device = Rendering::RHI::RenderDevice::Get();
 	device.BeginFrame();
 
-	RenderShadowPass(scene);
-
-	UploadSceneLighting(scene);
-	Rendering::LightingUBO::GetInstance().Bind();
-	Rendering::GI::DDGISystem::GetInstance().Update(scene);
-
-	RenderGeometryPass(scene, activeCamera);
+	RenderScene(scene, activeCamera);
 
 	if (imguiInitialized) {
 		device.BeginImGuiFrame();
@@ -750,12 +745,12 @@ void RTBEngine::Core::Application::ComputeDirectionalShadowBounds(Scene::Scene* 
 			continue;
 		}
 
-		worldMin.x = std::min(worldMin.x, aabbMin.x);
-		worldMin.y = std::min(worldMin.y, aabbMin.y);
-		worldMin.z = std::min(worldMin.z, aabbMin.z);
-		worldMax.x = std::max(worldMax.x, aabbMax.x);
-		worldMax.y = std::max(worldMax.y, aabbMax.y);
-		worldMax.z = std::max(worldMax.z, aabbMax.z);
+		worldMin.x = (std::min)(worldMin.x, aabbMin.x);
+		worldMin.y = (std::min)(worldMin.y, aabbMin.y);
+		worldMin.z = (std::min)(worldMin.z, aabbMin.z);
+		worldMax.x = (std::max)(worldMax.x, aabbMax.x);
+		worldMax.y = (std::max)(worldMax.y, aabbMax.y);
+		worldMax.z = (std::max)(worldMax.z, aabbMax.z);
 	}
 
 	if (!hasBounds) {
@@ -764,7 +759,7 @@ void RTBEngine::Core::Application::ComputeDirectionalShadowBounds(Scene::Scene* 
 
 	outCenter = (worldMin + worldMax) * 0.5f;
 	const Math::Vector3 halfExtent = (worldMax - worldMin) * 0.5f;
-	outRadius = std::max(halfExtent.Length() * 1.05f, 1.0f);
+	outRadius = (std::max)(halfExtent.Length() * 1.05f, 1.0f);
 }
 
 void RTBEngine::Core::Application::UploadSceneLighting(Scene::Scene* scene)
@@ -991,6 +986,32 @@ void RTBEngine::Core::Application::RenderGeometryPass(Scene::Scene* scene, Rende
 	if (imguiInitialized) {
 		UI::CanvasSystem::GetInstance().RenderWorldSpace(camera);
 	}
+}
+
+void RTBEngine::Core::Application::RenderScene(Scene::Scene* scene, Rendering::Camera* camera,
+	Rendering::Framebuffer* target)
+{
+	if (!scene || !camera) {
+		return;
+	}
+
+	auto& device = Rendering::RHI::RenderDevice::Get();
+
+	RenderShadowPass(scene);
+
+	if (target) {
+		target->Bind();
+		device.SetViewport(0, 0, target->GetWidth(), target->GetHeight());
+	}
+	else if (window) {
+		device.SetViewport(0, 0, window->GetWidth(), window->GetHeight());
+	}
+
+	UploadSceneLighting(scene);
+	Rendering::LightingUBO::GetInstance().Bind();
+	Rendering::GI::DDGISystem::GetInstance().Update(scene);
+
+	RenderGeometryPass(scene, camera);
 }
 
 void RTBEngine::Core::Application::RenderVolumetricFogPass(Scene::Scene* scene,

@@ -25,13 +25,10 @@ namespace RTBEngine {
 
     namespace Rendering {
         class Camera;
+        class Framebuffer;
         class Frustum;
         class Shader;
         class Skybox;
-    }
-
-    namespace Math {
-        class Vector3;
     }
 }
 
@@ -68,8 +65,11 @@ namespace RTBEngine {
             void Render();
 
             void RenderShadowPass(Scene::Scene* scene);
+            static void ComputeDirectionalShadowBounds(Scene::Scene* scene, Math::Vector3& outCenter, float& outRadius);
             void UploadSceneLighting(Scene::Scene* scene);
             void RenderGeometryPass(Scene::Scene* scene, Rendering::Camera* camera);
+            void RenderScene(Scene::Scene* scene, Rendering::Camera* camera,
+                             Rendering::Framebuffer* target = nullptr);
             void RenderVolumetricFogPass(Scene::Scene* scene,
                                         Rendering::Camera* camera,
                                         Rendering::RHI::GpuId sceneDepthTexture);
@@ -102,7 +102,6 @@ namespace RTBEngine {
             void RenderSceneDepthOnly(Scene::Scene* scene,
                                       Rendering::Shader* shader,
                                       const Rendering::Frustum& frustum);
-            static void ComputeDirectionalShadowBounds(Scene::Scene* scene, Math::Vector3& outCenter, float& outRadius);
             void OnWindowResized(int width, int height);
             void InitializePhysicsForGameObject(Scene::GameObject* gameObject);
             void InitializePhysicsForHierarchy(Scene::GameObject* root);
