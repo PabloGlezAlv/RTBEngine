@@ -41,7 +41,6 @@ namespace RTBEngine {
             Shader* extractShader = nullptr;
             Shader* blurShader = nullptr;
             Shader* compositeShader = nullptr;
-            Shader* copyShader = nullptr;
 
             RHI::GpuId vao = RHI::kInvalidGpuId;
             RHI::GpuId vbo = RHI::kInvalidGpuId;

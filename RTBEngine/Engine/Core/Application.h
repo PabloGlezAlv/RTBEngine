@@ -102,6 +102,7 @@ namespace RTBEngine {
                                       Rendering::Shader* shader,
                                       const Rendering::Frustum& frustum);
             void OnWindowResized(int width, int height);
+            void EnsurePlayerSceneTarget(int width, int height);
             void InitializePhysicsForGameObject(Scene::GameObject* gameObject);
             void InitializePhysicsForHierarchy(Scene::GameObject* root);
             void DetachPhysicsFromGameObject(Scene::GameObject* gameObject);
@@ -113,6 +114,7 @@ namespace RTBEngine {
             std::uint32_t lastTime = 0;
 
             std::unique_ptr<Window> window;
+            std::unique_ptr<Rendering::Framebuffer> playerSceneTarget;
             bool imguiInitialized = false;
             Physics::PhysicsWorld* physicsWorld = nullptr;
             Physics::PhysicsSystem* physicsSystem = nullptr;

@@ -2,6 +2,7 @@
 
 #include "../Core/Logger.h"
 #include "../Core/ResourceManager.h"
+#include "FullscreenCopyPass.h"
 #include "Shader.h"
 #include "RHI/RenderDevice.h"
 
@@ -89,13 +90,15 @@ namespace RTBEngine {
                 "bloom_composite",
                 "Default/Shaders/fullscreen.vert",
                 "Default/Shaders/bloom_composite.frag");
-            copyShader = resources.LoadShader(
-                "bloom_copy",
-                "Default/Shaders/fullscreen.vert",
-                "Default/Shaders/bloom_copy.frag");
 
-            if (!extractShader || !blurShader || !compositeShader || !copyShader) {
+            if (!extractShader || !blurShader || !compositeShader) {
                 RTB_WARN("BloomPass: one or more bloom shaders failed to load (bloom disabled)");
+                Shutdown();
+                return false;
+            }
+
+            if (!FullscreenCopyPass::GetInstance().IsReady()) {
+                RTB_WARN("BloomPass: fullscreen copy pass is not ready");
                 Shutdown();
                 return false;
             }
@@ -112,12 +115,11 @@ namespace RTBEngine {
             extractShader = nullptr;
             blurShader = nullptr;
             compositeShader = nullptr;
-            copyShader = nullptr;
         }
 
         bool BloomPass::IsReady() const
         {
-            return extractShader && blurShader && compositeShader && copyShader
+            return extractShader && blurShader && compositeShader
                 && vao != RHI::kInvalidGpuId;
         }
 
@@ -341,15 +343,8 @@ namespace RTBEngine {
             device.DrawArrays(RHI::PrimitiveTopology::Triangles, 0, 3);
             compositeShader->Unbind();
 
-            // 4) Copy scratch back to the scene color attachment.
             device.BindFramebuffer(outputFbo);
-            copyShader->Bind();
-            device.BindTexture2D(scratchTexture, 0);
-            copyShader->SetInt("uSource", 0);
-            device.BindVertexArray(vao);
-            device.DrawArrays(RHI::PrimitiveTopology::Triangles, 0, 3);
-            copyShader->Unbind();
-            device.UnbindVertexArray();
+            FullscreenCopyPass::GetInstance().CopyToBoundTarget(scratchTexture);
 
             device.BindTexture2D(RHI::kInvalidGpuId, 0);
             device.BindTexture2D(RHI::kInvalidGpuId, 1);

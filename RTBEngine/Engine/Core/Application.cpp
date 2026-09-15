@@ -46,6 +46,7 @@
 #include "../Rendering/PostProcess/VolumeStack.h"
 #include "../Rendering/VolumetricFogPass.h"
 #include "../Rendering/BloomPass.h"
+#include "../Rendering/FullscreenCopyPass.h"
 
 #include "../Rendering/Frustum.h"
 #include "../Online/OnlineSystem.h"
@@ -317,6 +318,10 @@ bool RTBEngine::Core::Application::Initialize()
 		RTB_WARN("Failed to initialize volumetric fog pass");
 	}
 
+	if (!Rendering::FullscreenCopyPass::GetInstance().Initialize()) {
+		RTB_WARN("Failed to initialize fullscreen copy pass");
+	}
+
 	if (!Rendering::BloomPass::GetInstance().Initialize()) {
 		RTB_WARN("Failed to initialize bloom pass");
 	}
@@ -488,6 +493,8 @@ void RTBEngine::Core::Application::Shutdown()
 	Rendering::GI::DDGISystem::GetInstance().Shutdown();
 	Rendering::VolumetricFogPass::GetInstance().Shutdown();
 	Rendering::BloomPass::GetInstance().Shutdown();
+	Rendering::FullscreenCopyPass::GetInstance().Shutdown();
+	playerSceneTarget.reset();
 	
 	Rendering::Texture::SetGpuDestroyEnabled(false);
 	Rendering::RHI::RenderDevice::Shutdown();
@@ -614,7 +621,21 @@ void RTBEngine::Core::Application::Render()
 	auto& device = Rendering::RHI::RenderDevice::Get();
 	device.BeginFrame();
 
-	RenderScene(scene, activeCamera);
+	const int width = window->GetWidth();
+	const int height = window->GetHeight();
+	EnsurePlayerSceneTarget(width, height);
+
+	if (playerSceneTarget) {
+		RenderScene(scene, activeCamera, playerSceneTarget.get());
+		RenderScenePostProcess(scene, activeCamera, playerSceneTarget.get());
+		playerSceneTarget->Unbind();
+		device.SetViewport(0, 0, width, height);
+		Rendering::FullscreenCopyPass::GetInstance().CopyToBoundTarget(
+			playerSceneTarget->GetColorTextureID());
+	}
+	else {
+		RenderScene(scene, activeCamera);
+	}
 
 	if (imguiInitialized) {
 		device.BeginImGuiFrame();
@@ -643,6 +664,25 @@ void RTBEngine::Core::Application::Render()
 	}
 
 	window->SwapBuffers();
+}
+
+void RTBEngine::Core::Application::EnsurePlayerSceneTarget(int width, int height)
+{
+	if (width <= 0 || height <= 0
+		|| !Rendering::FullscreenCopyPass::GetInstance().IsReady()) {
+		playerSceneTarget.reset();
+		return;
+	}
+
+	if (!playerSceneTarget) {
+		playerSceneTarget = std::make_unique<Rendering::Framebuffer>();
+		if (!playerSceneTarget->CreateWithColorAndDepth(width, height)) {
+			playerSceneTarget.reset();
+		}
+		return;
+	}
+
+	playerSceneTarget->Resize(width, height);
 }
 
 void RTBEngine::Core::Application::RenderShadowPass(Scene::Scene* scene)
