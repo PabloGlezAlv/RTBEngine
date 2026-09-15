@@ -92,7 +92,6 @@ namespace RTBEngine {
 
             Bind();
             AttachColorTexture(colorTextureID);
-            // No depth attachment on purpose — allows sampling source depth safely.
             const bool ok = IsComplete();
             Unbind();
             if (!ok) {

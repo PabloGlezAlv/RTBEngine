@@ -1014,6 +1014,35 @@ void RTBEngine::Core::Application::RenderScene(Scene::Scene* scene, Rendering::C
 	RenderGeometryPass(scene, camera);
 }
 
+void RTBEngine::Core::Application::RenderScenePostProcess(Scene::Scene* scene, Rendering::Camera* camera,
+	Rendering::Framebuffer* target)
+{
+	if (!scene || !camera || !target) {
+		return;
+	}
+
+	const int width = target->GetWidth();
+	const int height = target->GetHeight();
+	if (width <= 0 || height <= 0) {
+		return;
+	}
+
+	auto& device = Rendering::RHI::RenderDevice::Get();
+	if (Rendering::Framebuffer* colorOnly = target->GetColorOnlyContinueTarget()) {
+		colorOnly->Bind();
+		device.SetViewport(0, 0, width, height);
+		RenderPostProcessPasses(scene, camera, {
+			target->GetColorTextureID(),
+			target->GetDepthTextureID(),
+			width,
+			height
+		});
+		return;
+	}
+
+	RenderBloomPass(target->GetColorTextureID(), width, height);
+}
+
 void RTBEngine::Core::Application::RenderVolumetricFogPass(Scene::Scene* scene,
 	Rendering::Camera* camera,
 	Rendering::RHI::GpuId sceneDepthTexture)

@@ -16,8 +16,7 @@ namespace RTBEngine {
 
             bool Create();
             bool CreateWithColorAndDepth(int width, int height);
-            // Shares the color attachment of `source` with no depth, so a later pass can
-            // sample the source depth texture without a framebuffer feedback loop.
+            // Shares `source` color with no depth so later passes can sample source depth.
             bool SyncColorOnlyContinue(const Framebuffer& source);
             void Resize(int width, int height);
             void Bind() const;
