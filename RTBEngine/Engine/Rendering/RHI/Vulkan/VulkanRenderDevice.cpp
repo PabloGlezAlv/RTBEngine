@@ -76,6 +76,10 @@ namespace RTBEngine {
                     "    float uCameraFar;\n"
                     "    bool uDepthZeroToOne;\n"
                     "    float uVolumetricMaxLuminance;\n"
+                    "    float uThreshold;\n"
+                    "    float uTexelSizeX;\n"
+                    "    float uTexelSizeY;\n"
+                    "    float uIntensity;\n"
                     "};\n";
 
                 constexpr const char* kSamplerBindingsGlsl =
@@ -85,7 +89,11 @@ namespace RTBEngine {
                     "layout(set = 0, binding = 8) uniform sampler2D uDDGIIrradiance;\n"
                     "layout(set = 0, binding = 9) uniform sampler2D uDDGIDistance;\n"
                     "#define uDiffuse uTexture\n"
-                    "#define uSceneDepth uTexture\n";
+                    "#define uSceneDepth uTexture\n"
+                    "#define uSource uTexture\n"
+                    "#define uSceneColor uTexture\n"
+                    "#define uInput uTexture\n"
+                    "#define uBloom uShadowMap\n";
 
                 const char* kLooseUniformNames[] = {
                     "uModel", "uLightSpaceMatrix", "uViewProjection", "uColor", "uDiffuseColor", "uShininess",
@@ -97,7 +105,9 @@ namespace RTBEngine {
                     "uFogStart", "uFogEnd", "uVolumetricFogEnabled", "uVolumetricIntensity",
                     "uVolumetricAnisotropy", "uVolumetricSamples", "uCameraNear", "uCameraFar",
                     "uDepthZeroToOne", "uVolumetricMaxLuminance",
+                    "uThreshold", "uTexelSizeX", "uTexelSizeY", "uIntensity",
                     "uTexture", "uShadowMap", "uSkybox", "uDiffuse", "uSceneDepth",
+                    "uSource", "uSceneColor", "uInput", "uBloom",
                     "uDDGIIrradiance", "uDDGIDistance", "uDDGIEnabled"
                 };
 
@@ -1229,12 +1239,19 @@ namespace RTBEngine {
                     { "uCameraFar", "float", static_cast<int>(offsetof(PerDrawCPU, uCameraFar)), false },
                     { "uDepthZeroToOne", "bool", static_cast<int>(offsetof(PerDrawCPU, uDepthZeroToOne)), true },
                     { "uVolumetricMaxLuminance", "float", static_cast<int>(offsetof(PerDrawCPU, uVolumetricMaxLuminance)), false },
-                    // Sampler uniforms map to no PerDraw field; return sentinel offsets for GetUniformLocation
+                    { "uThreshold", "float", static_cast<int>(offsetof(PerDrawCPU, uThreshold)), false },
+                    { "uTexelSizeX", "float", static_cast<int>(offsetof(PerDrawCPU, uTexelSizeX)), false },
+                    { "uTexelSizeY", "float", static_cast<int>(offsetof(PerDrawCPU, uTexelSizeY)), false },
+                    { "uIntensity", "float", static_cast<int>(offsetof(PerDrawCPU, uIntensity)), false },
                     { "uTexture", "sampler", -100, false },
                     { "uShadowMap", "sampler", -101, false },
                     { "uSkybox", "sampler", -102, false },
                     { "uDiffuse", "sampler", -100, false },
                     { "uSceneDepth", "sampler", -100, false },
+                    { "uSource", "sampler", -100, false },
+                    { "uSceneColor", "sampler", -100, false },
+                    { "uInput", "sampler", -100, false },
+                    { "uBloom", "sampler", -101, false },
                 };
                 if (!name) return nullptr;
                 for (const auto& f : kFields) {

@@ -232,6 +232,10 @@ namespace RTBEngine {
                     float uCameraFar = 500.0f;
                     std::int32_t uDepthZeroToOne = 0;
                     float uVolumetricMaxLuminance = 0.85f;
+                    float uThreshold = 1.0f;
+                    float uTexelSizeX = 0.0f;
+                    float uTexelSizeY = 0.0f;
+                    float uIntensity = 0.8f;
                     float _perDrawPad0 = 0.0f;
                 };
                 static_assert(sizeof(PerDrawCPU) % 16 == 0, "PerDrawCPU must be a multiple of 16");
