@@ -292,7 +292,10 @@ namespace RTBEngine {
 
             file << ind << "    prefab = \"" << go->GetPrefabName() << "\",\n";
 
-            WriteTransform(file, go, indent + 1);
+            const Scene::Prefab* asset = Scene::PrefabRegistry::GetInstance().Get(go->GetPrefabName());
+            if (!asset || Scene::PrefabOverrideDiff::IsTransformOverridden(go, asset)) {
+                WriteTransform(file, go, indent + 1);
+            }
 
             file << ind << "    overrides = {\n";
             WritePrefabOverrides(file, go, indent + 2);

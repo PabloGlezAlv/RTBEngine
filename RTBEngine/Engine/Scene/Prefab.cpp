@@ -360,6 +360,18 @@ namespace RTBEngine {
                     nested->scale = childTransform.GetScale();
                     nested->collisionLayer = child->GetCollisionLayer();
                     nested->staticFlags = child->GetStaticFlags();
+
+                    const Prefab* nestedAsset = PrefabRegistry::GetInstance().Get(child->GetPrefabName());
+                    if (!nestedAsset || nested->position != nestedAsset->GetPosition()) {
+                        nested->positionSpecified = true;
+                    }
+                    if (!nestedAsset || nested->rotation != nestedAsset->GetRotation()) {
+                        nested->rotationSpecified = true;
+                    }
+                    if (!nestedAsset || nested->scale != nestedAsset->GetScale()) {
+                        nested->scaleSpecified = true;
+                    }
+
                     prefab->childPrefabs.push_back(std::move(nested));
                     continue;
                 }
@@ -412,9 +424,15 @@ namespace RTBEngine {
                         if (nestedRoot) {
                             nestedRoot->SetName(nodePrefab.name);
                             nestedRoot->SetPrefabName(nodePrefab.nestedPrefabName);
-                            nestedRoot->GetTransform().SetPosition(nodePrefab.position);
-                            nestedRoot->GetTransform().SetRotation(nodePrefab.rotation);
-                            nestedRoot->GetTransform().SetScale(nodePrefab.scale);
+                            if (nodePrefab.positionSpecified) {
+                                nestedRoot->GetTransform().SetPosition(nodePrefab.position);
+                            }
+                            if (nodePrefab.rotationSpecified) {
+                                nestedRoot->GetTransform().SetRotation(nodePrefab.rotation);
+                            }
+                            if (nodePrefab.scaleSpecified) {
+                                nestedRoot->GetTransform().SetScale(nodePrefab.scale);
+                            }
 
                             if (!nodePrefab.sourceUuid.empty()) {
                                 if (regenerateUuids) {
@@ -600,6 +618,9 @@ namespace RTBEngine {
             clone->position = position;
             clone->rotation = rotation;
             clone->scale = scale;
+            clone->positionSpecified = positionSpecified;
+            clone->rotationSpecified = rotationSpecified;
+            clone->scaleSpecified = scaleSpecified;
             clone->collisionLayer = collisionLayer;
             clone->staticFlags = staticFlags;
             clone->componentSnapshots = componentSnapshots;

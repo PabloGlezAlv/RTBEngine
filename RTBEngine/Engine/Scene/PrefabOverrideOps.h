@@ -39,6 +39,9 @@ namespace RTBEngine {
             static bool RevertAll(GameObject* gameObject, Scene* scene, GameObject** outReplacementRoot = nullptr);
             static bool ApplyAll(GameObject* gameObject);
 
+            // Reloads the .prefab asset and pushes non-overridden properties onto live instances.
+            static bool ReloadAssetAndRefreshInstances(const std::string& assetName);
+
             static bool IsPropertyOverridden(
                 GameObject* gameObject,
                 Component* component,

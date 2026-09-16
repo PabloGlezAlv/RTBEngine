@@ -174,21 +174,30 @@ namespace RTBEngine {
             lua_getfield(L, nodeTableIndex, "position");
             if (lua_isuserdata(L, -1)) {
                 auto result = luabridge::Stack<Math::Vector3>::get(L, -1);
-                if (result) prefab.SetPosition(result.value());
+                if (result) {
+                    prefab.SetPosition(result.value());
+                    prefab.SetPositionSpecified(true);
+                }
             }
             lua_pop(L, 1);
 
             lua_getfield(L, nodeTableIndex, "rotation");
             if (lua_isuserdata(L, -1)) {
                 auto result = luabridge::Stack<Math::Quaternion>::get(L, -1);
-                if (result) prefab.SetRotation(result.value());
+                if (result) {
+                    prefab.SetRotation(result.value());
+                    prefab.SetRotationSpecified(true);
+                }
             }
             lua_pop(L, 1);
 
             lua_getfield(L, nodeTableIndex, "scale");
             if (lua_isuserdata(L, -1)) {
                 auto result = luabridge::Stack<Math::Vector3>::get(L, -1);
-                if (result) prefab.SetScale(result.value());
+                if (result) {
+                    prefab.SetScale(result.value());
+                    prefab.SetScaleSpecified(true);
+                }
             }
             lua_pop(L, 1);
         }

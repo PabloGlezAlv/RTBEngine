@@ -1,5 +1,6 @@
 #include "PrefabSaver.h"
 #include "../Scene/Prefab.h"
+#include "../Scene/PrefabRegistry.h"
 #include "../Scene/Component.h"
 #include "ComponentRegistry.h"
 #include "ScenePropertySerializer.h"
@@ -35,6 +36,31 @@ namespace RTBEngine {
                 file << ind << "scale = " << ScenePropertySerializer::FormatVector3(scale) << ",\n";
         }
 
+        static void WriteNestedInstanceTransform(std::ofstream& file, const Scene::Prefab& prefab, int depth)
+        {
+            std::string ind = Indent(depth);
+            const Scene::Prefab* nestedAsset =
+                Scene::PrefabRegistry::GetInstance().Get(prefab.GetNestedPrefabName());
+
+            if (prefab.IsPositionSpecified() &&
+                (!nestedAsset || prefab.GetPosition() != nestedAsset->GetPosition())) {
+                file << ind << "position = "
+                    << ScenePropertySerializer::FormatVector3(prefab.GetPosition()) << ",\n";
+            }
+
+            if (prefab.IsRotationSpecified() &&
+                (!nestedAsset || prefab.GetRotation() != nestedAsset->GetRotation())) {
+                file << ind << "rotation = "
+                    << ScenePropertySerializer::FormatQuaternion(prefab.GetRotation()) << ",\n";
+            }
+
+            if (prefab.IsScaleSpecified() &&
+                (!nestedAsset || prefab.GetScale() != nestedAsset->GetScale())) {
+                file << ind << "scale = "
+                    << ScenePropertySerializer::FormatVector3(prefab.GetScale()) << ",\n";
+            }
+        }
+
         static void WriteNode(std::ofstream& file, const Scene::Prefab& prefab, int depth)
         {
             std::string ind = Indent(depth);
@@ -57,12 +83,13 @@ namespace RTBEngine {
                 file << ind << "    staticFlags = "
                     << static_cast<std::uint32_t>(prefab.GetStaticFlags()) << ",\n";
             }
-            WriteTransform(file, prefab, depth + 1);
-
             if (!prefab.GetNestedPrefabName().empty()) {
+                WriteNestedInstanceTransform(file, prefab, depth + 1);
                 file << ind << "}";
                 return;
             }
+
+            WriteTransform(file, prefab, depth + 1);
 
             file << ind << "    components = {\n";
 

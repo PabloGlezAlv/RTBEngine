@@ -1,13 +1,17 @@
 #include "PrefabOverrideOps.h"
 #include "PrefabOverrideDiff.h"
+#include "Prefab.h"
 #include "GameObject.h"
 #include "Component.h"
+#include "Transform.h"
 #include "Scene.h"
 #include "SceneManager.h"
 #include "PrefabRegistry.h"
 #include "../Scripting/PrefabSaver.h"
 #include "../Core/Logger.h"
+#include "../Math/Math.h"
 #include <filesystem>
+#include <string>
 #include <vector>
 
 namespace RTBEngine {
@@ -48,8 +52,7 @@ namespace RTBEngine {
                     return false;
                 }
 
-                PrefabRegistry::GetInstance().Reload(assetName);
-                return true;
+                return PrefabOverrideOps::ReloadAssetAndRefreshInstances(assetName);
             }
 
             void ValidateComponents(GameObject* gameObject)
@@ -76,7 +79,8 @@ namespace RTBEngine {
                 GameObject* gameObject,
                 const Prefab* baselineNode,
                 Scene* scene,
-                GameObject* instanceRoot)
+                GameObject* instanceRoot,
+                bool addMissingChildren = false)
             {
                 if (!gameObject || !baselineNode) {
                     return;
@@ -153,15 +157,210 @@ namespace RTBEngine {
                         }
                     }
 
-                    if (childBaseline) {
-                        SyncNodeFromBaseline(child, childBaseline, scene, instanceRoot);
+                    if (!childBaseline) {
+                        continue;
                     }
+
+                    if (child->IsPrefabInstance() &&
+                        PrefabRegistry::GetInstance().Has(child->GetPrefabName())) {
+                        const Prefab* nestedAsset = PrefabRegistry::GetInstance().Get(child->GetPrefabName());
+                        SyncNodeFromBaseline(child, nestedAsset, scene, child, addMissingChildren);
+                        if (childBaseline->IsNestedPrefabInstance()) {
+                            if (childBaseline->IsPositionSpecified()) {
+                                child->GetTransform().SetPosition(childBaseline->GetPosition());
+                            }
+                            if (childBaseline->IsRotationSpecified()) {
+                                child->GetTransform().SetRotation(childBaseline->GetRotation());
+                            }
+                            if (childBaseline->IsScaleSpecified()) {
+                                child->GetTransform().SetScale(childBaseline->GetScale());
+                            }
+                        }
+                        continue;
+                    }
+
+                    SyncNodeFromBaseline(child, childBaseline, scene, instanceRoot, addMissingChildren);
                 }
 
                 for (GameObject* child : childrenToRemove) {
                     if (scene) {
                         scene->RemoveGameObject(child);
                     }
+                }
+
+                if (!addMissingChildren) {
+                    return;
+                }
+
+                for (const auto& baselineChild : baselineNode->GetChildPrefabs()) {
+                    if (!baselineChild) {
+                        continue;
+                    }
+
+                    bool exists = false;
+                    for (GameObject* child : gameObject->GetChildren()) {
+                        if (child && child->GetName() == baselineChild->GetName()) {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (exists || !scene) {
+                        continue;
+                    }
+
+                    std::vector<GameObject*> created;
+                    GameObject* spawned = baselineChild->Instantiate(gameObject, created, false);
+                    if (!spawned) {
+                        continue;
+                    }
+
+                    scene->AddGameObject(spawned);
+                    for (GameObject* createdChild : created) {
+                        if (createdChild) {
+                            scene->AddGameObject(createdChild);
+                        }
+                    }
+                    scene->BringGameObjectToLife(spawned);
+                }
+            }
+
+            struct CapturedPropertyOverride {
+                std::string componentType;
+                std::string propertyName;
+                ComponentSnapshot snapshot;
+            };
+
+            struct CapturedNodeOverride {
+                GameObject* target = nullptr;
+                bool transformOverridden = false;
+                Math::Vector3 position;
+                Math::Quaternion rotation;
+                Math::Vector3 scale = Math::Vector3(1.0f, 1.0f, 1.0f);
+                std::vector<CapturedPropertyOverride> properties;
+            };
+
+            void CaptureNodeOverrides(
+                GameObject* gameObject,
+                const Prefab* baselineNode,
+                std::vector<CapturedNodeOverride>& outCaptures)
+            {
+                if (!gameObject || !baselineNode) {
+                    return;
+                }
+
+                CapturedNodeOverride captured;
+                captured.target = gameObject;
+                if (PrefabOverrideDiff::IsTransformOverridden(gameObject, baselineNode)) {
+                    captured.transformOverridden = true;
+                    captured.position = gameObject->GetTransform().GetPosition();
+                    captured.rotation = gameObject->GetTransform().GetRotation();
+                    captured.scale = gameObject->GetTransform().GetScale();
+                }
+
+                {
+                    GameObject::ComponentIteration iteration(gameObject);
+                    for (std::size_t i = 0; i < iteration.Count(); ++i) {
+                        Component* comp = iteration.At(i);
+                        if (!comp || PrefabOverrideDiff::IsAddedComponent(comp, baselineNode)) {
+                            continue;
+                        }
+
+                        const ComponentSnapshot* baselineSnap = PrefabOverrideDiff::FindBaselineSnapshot(
+                            baselineNode,
+                            comp->GetTypeName());
+                        const std::vector<const Reflection::PropertyInfo*> overridden =
+                            PrefabOverrideDiff::GetOverriddenProperties(comp, baselineSnap);
+                        for (const Reflection::PropertyInfo* prop : overridden) {
+                            if (!prop) {
+                                continue;
+                            }
+
+                            CapturedPropertyOverride propertyOverride;
+                            propertyOverride.componentType = comp->GetTypeName();
+                            propertyOverride.propertyName = prop->name;
+                            Prefab::SnapshotProperty(propertyOverride.snapshot, comp, prop);
+                            captured.properties.push_back(std::move(propertyOverride));
+                        }
+                    }
+                }
+
+                if (captured.transformOverridden || !captured.properties.empty()) {
+                    outCaptures.push_back(std::move(captured));
+                }
+
+                for (GameObject* child : gameObject->GetChildren()) {
+                    if (!child || child->IsTransient()) {
+                        continue;
+                    }
+
+                    if (child->IsPrefabInstance() &&
+                        PrefabRegistry::GetInstance().Has(child->GetPrefabName())) {
+                        CaptureNodeOverrides(
+                            child,
+                            PrefabRegistry::GetInstance().Get(child->GetPrefabName()),
+                            outCaptures);
+                        continue;
+                    }
+
+                    const Prefab* childBaseline = nullptr;
+                    for (const auto& baselineChild : baselineNode->GetChildPrefabs()) {
+                        if (baselineChild && baselineChild->GetName() == child->GetName()) {
+                            childBaseline = baselineChild.get();
+                            break;
+                        }
+                    }
+                    if (childBaseline) {
+                        CaptureNodeOverrides(child, childBaseline, outCaptures);
+                    }
+                }
+            }
+
+            void RestoreCapturedOverrides(
+                const CapturedNodeOverride& captured,
+                Scene* scene,
+                GameObject* instanceRoot)
+            {
+                if (!captured.target) {
+                    return;
+                }
+
+                if (captured.transformOverridden && !captured.target->IsAnimatorBone()) {
+                    captured.target->GetTransform().SetPosition(captured.position);
+                    captured.target->GetTransform().SetRotation(captured.rotation);
+                    captured.target->GetTransform().SetScale(captured.scale);
+                }
+
+                for (const CapturedPropertyOverride& propertyOverride : captured.properties) {
+                    Component* component = nullptr;
+                    for (std::size_t i = 0, count = captured.target->GetComponentCount(); i < count; ++i) {
+                        Component* candidate = captured.target->GetComponentAt(i);
+                        if (candidate && std::string(candidate->GetTypeName()) == propertyOverride.componentType) {
+                            component = candidate;
+                            break;
+                        }
+                    }
+                    if (!component) {
+                        continue;
+                    }
+
+                    const Reflection::TypeInfo* typeInfo = component->GetTypeInfo();
+                    if (!typeInfo) {
+                        continue;
+                    }
+
+                    const Reflection::PropertyInfo* property =
+                        typeInfo->GetProperty(propertyOverride.propertyName);
+                    if (!property) {
+                        continue;
+                    }
+
+                    Prefab::ApplySnapshotProperty(
+                        component,
+                        propertyOverride.snapshot,
+                        property,
+                        scene,
+                        instanceRoot);
+                    component->OnValidate();
                 }
             }
 
@@ -592,6 +791,56 @@ namespace RTBEngine {
             }
 
             return SavePrefabAsset(context.assetName, std::move(updatedAsset));
+        }
+
+        bool PrefabOverrideOps::ReloadAssetAndRefreshInstances(const std::string& assetName)
+        {
+            if (assetName.empty()) {
+                return false;
+            }
+
+            Scene* scene = SceneManager::GetInstance().GetActiveScene();
+            const Prefab* oldAsset = PrefabRegistry::GetInstance().Get(assetName);
+
+            std::vector<GameObject*> instances;
+            std::vector<std::vector<CapturedNodeOverride>> captures;
+            if (scene && oldAsset) {
+                for (const auto& gameObject : scene->GetGameObjects()) {
+                    if (gameObject && gameObject->GetPrefabName() == assetName) {
+                        instances.push_back(gameObject.get());
+                        std::vector<CapturedNodeOverride> captured;
+                        CaptureNodeOverrides(gameObject.get(), oldAsset, captured);
+                        captures.push_back(std::move(captured));
+                    }
+                }
+            }
+
+            PrefabRegistry::GetInstance().Reload(assetName);
+            const Prefab* newAsset = PrefabRegistry::GetInstance().Get(assetName);
+            if (!newAsset) {
+                return false;
+            }
+
+            if (scene) {
+                for (std::size_t i = 0; i < instances.size(); ++i) {
+                    GameObject* instance = instances[i];
+                    if (!instance) {
+                        continue;
+                    }
+
+                    SyncNodeFromBaseline(instance, newAsset, scene, instance, true);
+                    for (const CapturedNodeOverride& captured : captures[i]) {
+                        RestoreCapturedOverrides(captured, scene, instance);
+                    }
+                    ValidateComponents(instance);
+                }
+
+                if (!instances.empty()) {
+                    MarkSceneDirtyIfNeeded();
+                }
+            }
+
+            return true;
         }
 
     }

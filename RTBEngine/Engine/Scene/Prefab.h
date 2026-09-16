@@ -68,6 +68,13 @@ namespace RTBEngine {
             const Math::Quaternion& GetRotation() const { return rotation; }
             const Math::Vector3& GetScale() const { return scale; }
 
+            void SetPositionSpecified(bool specified) { positionSpecified = specified; }
+            void SetRotationSpecified(bool specified) { rotationSpecified = specified; }
+            void SetScaleSpecified(bool specified) { scaleSpecified = specified; }
+            bool IsPositionSpecified() const { return positionSpecified; }
+            bool IsRotationSpecified() const { return rotationSpecified; }
+            bool IsScaleSpecified() const { return scaleSpecified; }
+
             int GetCollisionLayer() const { return collisionLayer; }
             void SetCollisionLayer(int layerIndex) { collisionLayer = layerIndex; }
 
@@ -109,6 +116,9 @@ namespace RTBEngine {
             Math::Vector3 position;
             Math::Quaternion rotation;
             Math::Vector3 scale = Math::Vector3(1.0f, 1.0f, 1.0f);
+            bool positionSpecified = false;
+            bool rotationSpecified = false;
+            bool scaleSpecified = false;
             int collisionLayer = 0;
             StaticFlags staticFlags = StaticFlags::None;
             std::vector<ComponentSnapshot> componentSnapshots;
