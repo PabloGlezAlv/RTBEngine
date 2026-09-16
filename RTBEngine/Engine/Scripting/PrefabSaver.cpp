@@ -44,6 +44,9 @@ namespace RTBEngine {
             if (!prefab.GetSourceUuid().empty()) {
                 file << ind << "    uuid = \"" << prefab.GetSourceUuid() << "\",\n";
             }
+            if (!prefab.GetNestedPrefabName().empty()) {
+                file << ind << "    prefab = \"" << prefab.GetNestedPrefabName() << "\",\n";
+            }
             if (prefab.GetCollisionLayer() != 0) {
                 file << ind << "    collisionLayer = "
                     << ScenePropertySerializer::FormatString(
@@ -55,6 +58,12 @@ namespace RTBEngine {
                     << static_cast<std::uint32_t>(prefab.GetStaticFlags()) << ",\n";
             }
             WriteTransform(file, prefab, depth + 1);
+
+            if (!prefab.GetNestedPrefabName().empty()) {
+                file << ind << "}";
+                return;
+            }
+
             file << ind << "    components = {\n";
 
             for (const Scene::ComponentSnapshot& snap : prefab.GetSnapshots())

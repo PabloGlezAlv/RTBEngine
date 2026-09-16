@@ -77,6 +77,10 @@ namespace RTBEngine {
             void SetSourceUuid(const std::string& uuid) { sourceUuid = uuid; }
             const std::string& GetSourceUuid() const { return sourceUuid; }
 
+            void SetNestedPrefabName(const std::string& assetName) { nestedPrefabName = assetName; }
+            const std::string& GetNestedPrefabName() const { return nestedPrefabName; }
+            bool IsNestedPrefabInstance() const { return !nestedPrefabName.empty(); }
+
             static void ApplySnapshot(Component* target, const ComponentSnapshot& snap);
             static void ApplySnapshotProperty(
                 Component* target,
@@ -101,6 +105,7 @@ namespace RTBEngine {
         private:
             std::string name;
             std::string sourceUuid;
+            std::string nestedPrefabName;
             Math::Vector3 position;
             Math::Quaternion rotation;
             Math::Vector3 scale = Math::Vector3(1.0f, 1.0f, 1.0f);

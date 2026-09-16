@@ -207,9 +207,20 @@ namespace RTBEngine {
             }
             lua_pop(L, 1);
 
+            lua_getfield(L, nodeTableIndex, "prefab");
+            if (lua_isstring(L, -1)) {
+                prefab->SetNestedPrefabName(lua_tostring(L, -1));
+            }
+            lua_pop(L, 1);
+
             LoadTransform(L, nodeTableIndex, *prefab);
             LoadCollisionLayer(L, nodeTableIndex, *prefab);
             LoadStaticFlags(L, nodeTableIndex, *prefab);
+
+            if (!prefab->GetNestedPrefabName().empty()) {
+                return prefab;
+            }
+
             LoadComponents(L, nodeTableIndex, *prefab);
 
             // Recursively load children if present

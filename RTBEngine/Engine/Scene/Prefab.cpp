@@ -18,6 +18,7 @@
 #include "../Rendering/ModelLoader.h"
 #include "../Animation/Animator.h"
 #include "../Audio/AudioClip.h"
+#include "PrefabRegistry.h"
 
 #include <unordered_map>
 #include <functional>
@@ -345,8 +346,25 @@ namespace RTBEngine {
             // Recursively snapshot all child GameObjects (skip transient bone GOs)
             for (const auto* child : source->GetChildren())
             {
-                if (child && !child->IsTransient())
-                    prefab->childPrefabs.push_back(CreateFromGameObject(child));
+                if (!child || child->IsTransient()) {
+                    continue;
+                }
+
+                if (child->IsPrefabInstance()) {
+                    auto nested = std::make_unique<Prefab>(child->GetName());
+                    nested->nestedPrefabName = child->GetPrefabName();
+                    nested->sourceUuid = child->GetUUID();
+                    const auto& childTransform = child->GetTransform();
+                    nested->position = childTransform.GetPosition();
+                    nested->rotation = childTransform.GetRotation();
+                    nested->scale = childTransform.GetScale();
+                    nested->collisionLayer = child->GetCollisionLayer();
+                    nested->staticFlags = child->GetStaticFlags();
+                    prefab->childPrefabs.push_back(std::move(nested));
+                    continue;
+                }
+
+                prefab->childPrefabs.push_back(CreateFromGameObject(child));
             }
 
             return prefab;
@@ -382,6 +400,38 @@ namespace RTBEngine {
             std::function<GameObject*(const Prefab&, GameObject*)> instantiateNode =
                 [&](const Prefab& nodePrefab, GameObject* nodeParent) -> GameObject*
             {
+                if (!nodePrefab.nestedPrefabName.empty()) {
+                    const Prefab* nestedPrefab = PrefabRegistry::GetInstance().Get(nodePrefab.nestedPrefabName);
+                    if (!nestedPrefab) {
+                        RTB_WARN("Prefab: nested prefab '" + nodePrefab.nestedPrefabName
+                            + "' not found while instantiating '" + nodePrefab.name + "'");
+                    } else if (nestedPrefab == &nodePrefab || nestedPrefab == this) {
+                        RTB_WARN("Prefab: skipped recursive nested prefab '" + nodePrefab.nestedPrefabName + "'");
+                    } else {
+                        GameObject* nestedRoot = instantiateNode(*nestedPrefab, nodeParent);
+                        if (nestedRoot) {
+                            nestedRoot->SetName(nodePrefab.name);
+                            nestedRoot->SetPrefabName(nodePrefab.nestedPrefabName);
+                            nestedRoot->GetTransform().SetPosition(nodePrefab.position);
+                            nestedRoot->GetTransform().SetRotation(nodePrefab.rotation);
+                            nestedRoot->GetTransform().SetScale(nodePrefab.scale);
+
+                            if (!nodePrefab.sourceUuid.empty()) {
+                                if (regenerateUuids) {
+                                    const std::string instanceUuid = GameObject::GenerateNewUUID();
+                                    context.uuidRemap[nodePrefab.sourceUuid] = instanceUuid;
+                                    nestedRoot->SetUUID(instanceUuid);
+                                    context.sourceUuidToInstance[instanceUuid] = nestedRoot;
+                                } else {
+                                    nestedRoot->SetUUID(nodePrefab.sourceUuid);
+                                    context.sourceUuidToInstance[nodePrefab.sourceUuid] = nestedRoot;
+                                }
+                            }
+                        }
+                        return nestedRoot;
+                    }
+                }
+
                 auto* go = new GameObject(nodePrefab.name);
                 // Only the instance root is a prefab instance. Child nodes keep empty prefabName
                 // so SceneSaver does not treat them as nested prefab assets.
@@ -546,6 +596,7 @@ namespace RTBEngine {
         {
             auto clone = std::make_unique<Prefab>(name);
             clone->sourceUuid = sourceUuid;
+            clone->nestedPrefabName = nestedPrefabName;
             clone->position = position;
             clone->rotation = rotation;
             clone->scale = scale;

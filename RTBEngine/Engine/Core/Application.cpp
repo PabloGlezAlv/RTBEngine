@@ -54,6 +54,7 @@
 
 #include <imgui.h>
 #include <backends/imgui_impl_sdl2.h>
+#include <SDL.h>
 #include <iostream>
 #include <filesystem>
 #include <atomic>
@@ -176,6 +177,86 @@ bool RTBEngine::Core::Application::InitializeImGui()
 	return true;
 }
 
+void RTBEngine::Core::Application::PumpLoadingEvents()
+{
+	SDL_Event event;
+	while (SDL_PollEvent(&event)) {
+		if (imguiInitialized) {
+			ImGui_ImplSDL2_ProcessEvent(&event);
+		}
+
+		if (event.type == SDL_QUIT) {
+			RequestQuit();
+		}
+	}
+}
+
+void RTBEngine::Core::Application::PresentLoadingSplash()
+{
+	if (!window || !Rendering::RHI::RenderDevice::HasDevice() || !imguiInitialized) {
+		return;
+	}
+
+	PumpLoadingEvents();
+
+	auto& device = Rendering::RHI::RenderDevice::Get();
+	const int width = window->GetWidth();
+	const int height = window->GetHeight();
+	if (width <= 0 || height <= 0) {
+		return;
+	}
+
+	device.BeginFrame();
+	device.SetViewport(0, 0, width, height);
+	device.SetClearColor(0.04f, 0.045f, 0.06f, 1.0f);
+	device.Clear(Rendering::RHI::ClearMask::ColorDepth);
+
+	device.BeginImGuiFrame();
+	ImGui::NewFrame();
+
+	ImDrawList* drawList = ImGui::GetBackgroundDrawList();
+	const ImVec2 display(static_cast<float>(width), static_cast<float>(height));
+	drawList->AddRectFilled(ImVec2(0.0f, 0.0f), display, IM_COL32(10, 12, 16, 255));
+
+	Rendering::Texture* logo = ResourceManager::GetInstance().GetLogoTexture();
+	if (logo && logo->GetID() != Rendering::RHI::kInvalidGpuId) {
+		const std::uintptr_t nativeTexID = device.GetNativeTextureIdForImGui(logo->GetID());
+		if (nativeTexID != 0) {
+			const float maxSide = std::min(display.x, display.y) * 0.38f;
+			const float aspect = logo->GetHeight() > 0
+				? static_cast<float>(logo->GetWidth()) / static_cast<float>(logo->GetHeight())
+				: 1.0f;
+			float drawWidth = maxSide;
+			float drawHeight = maxSide;
+			if (aspect >= 1.0f) {
+				drawHeight = maxSide / aspect;
+			} else {
+				drawWidth = maxSide * aspect;
+			}
+
+			const ImVec2 min((display.x - drawWidth) * 0.5f, (display.y - drawHeight) * 0.5f);
+			const ImVec2 max(min.x + drawWidth, min.y + drawHeight);
+			drawList->AddImage(
+				(ImTextureID)nativeTexID,
+				min,
+				max,
+				ImVec2(0.0f, 1.0f),
+				ImVec2(1.0f, 0.0f));
+		}
+	} else {
+		const char* title = "RTBEngine";
+		const ImVec2 textSize = ImGui::CalcTextSize(title);
+		drawList->AddText(
+			ImVec2((display.x - textSize.x) * 0.5f, (display.y - textSize.y) * 0.5f),
+			IM_COL32(230, 235, 245, 255),
+			title);
+	}
+
+	ImGui::Render();
+	device.RecordImGuiDrawData(ImGui::GetDrawData());
+	window->SwapBuffers();
+}
+
  void* RTBEngine::Core::Application::GetImGuiContext()
  {
  	return ImGui::GetCurrentContext();
@@ -235,10 +316,22 @@ bool RTBEngine::Core::Application::Initialize()
 	Time::Reset();
 	Time::SetFixedDeltaTime(config.physics.timeStep);
 
+	if (!InitializeImGui()) {
+		RTB_ERROR("Failed to initialize ImGui");
+		return false;
+	}
+	PresentLoadingSplash();
+
 	if (!Online::OnlineSystem::GetInstance().Initialize(config.online)) {
 		RTB_ERROR("Failed to initialize OnlineSystem");
 		return false;
 	}
+
+	if (!Audio::AudioSystem::GetInstance().Initialize()) {
+		RTB_ERROR("Failed to initialize audio system");
+		return false;
+	}
+	PresentLoadingSplash();
 
 	Scripting::ComponentRegistry::GetInstance().RegisterBuiltInComponents();
 
@@ -261,6 +354,7 @@ bool RTBEngine::Core::Application::Initialize()
 			Scene::PrefabRegistry::GetInstance().LoadAll(assetsPath.string());
 		}
 	}
+	PresentLoadingSplash();
 
 	ResourceManager& resources = ResourceManager::GetInstance();
 
@@ -325,6 +419,7 @@ bool RTBEngine::Core::Application::Initialize()
 	if (!Rendering::BloomPass::GetInstance().Initialize()) {
 		RTB_WARN("Failed to initialize bloom pass");
 	}
+	PresentLoadingSplash();
 
 	if (!config.initialScenePath.empty()) {
 		namespace fs = std::filesystem;
@@ -347,20 +442,20 @@ bool RTBEngine::Core::Application::Initialize()
 		}
 	}
 
+	{
+		auto& lightingSettings = Rendering::LightingProjectSettings::Get();
+		const std::filesystem::path lightingSettingsPath =
+			std::filesystem::current_path() / Rendering::LightingProjectSettings::GetDefaultSettingsFileName();
+		if (std::filesystem::exists(lightingSettingsPath)) {
+			lightingSettings.LoadFromFile(lightingSettingsPath);
+			Rendering::GI::DDGISystem::GetInstance().SyncFromProjectSettings();
+		}
+	}
+
 	// Initialize physics
 	physicsWorld = new Physics::PhysicsWorld();
 	physicsWorld->Initialize();
 	physicsSystem = new Physics::PhysicsSystem(physicsWorld);
-
-	if (!Audio::AudioSystem::GetInstance().Initialize()) {
-		RTB_ERROR("Failed to initialize audio system");
-		return false;
-	}
-
-	if (!InitializeImGui()) {
-		RTB_ERROR("Failed to initialize ImGui");
-		return false;
-	}
 
 	// Load fonts after ImGui context is ready (skipped on Vulkan MVP without ImGui).
 	if (imguiInitialized) {
@@ -368,6 +463,7 @@ bool RTBEngine::Core::Application::Initialize()
 	}
 
 	RTB_INFO("RTBEngine Initialized Successfully");
+	PresentLoadingSplash();
 
 	Scene::SceneManager& sceneMgr = Scene::SceneManager::GetInstance();
 	sceneMgr.Initialize();

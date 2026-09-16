@@ -44,6 +44,7 @@ namespace RTBEngine {
             ~Application();
 
             bool Initialize();
+            void PresentLoadingSplash();
             void Run();
             void Shutdown();
 
@@ -98,6 +99,7 @@ namespace RTBEngine {
         private:
             bool InitializeImGui();
             void ShutdownImGui();
+            void PumpLoadingEvents();
             void RenderSceneDepthOnly(Scene::Scene* scene,
                                       Rendering::Shader* shader,
                                       const Rendering::Frustum& frustum);
