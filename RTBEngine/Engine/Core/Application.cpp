@@ -163,6 +163,13 @@ bool RTBEngine::Core::Application::InitializeImGui()
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	if (config.imguiDocking) {
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	}
+	if (config.imguiViewports
+		&& config.rendering.graphicsAPI == Rendering::RHI::GraphicsAPI::OpenGL) {
+		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+	}
 
 	ImGui::StyleColorsDark();
 
@@ -255,6 +262,14 @@ void RTBEngine::Core::Application::PresentLoadingSplash()
 
 	ImGui::Render();
 	device.RecordImGuiDrawData(ImGui::GetDrawData());
+
+	ImGui::UpdatePlatformWindows();
+	ImGuiIO& io = ImGui::GetIO();
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+		ImGui::RenderPlatformWindowsDefault();
+		device.MakeCurrent();
+	}
+
 	window->SwapBuffers();
 }
 

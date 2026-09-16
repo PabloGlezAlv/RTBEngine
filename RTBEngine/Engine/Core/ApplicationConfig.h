@@ -36,6 +36,8 @@ namespace RTBEngine {
             RenderingConfig rendering;
             Online::OnlineConfig online;
             std::string initialScenePath;
+            bool imguiDocking = false;
+            bool imguiViewports = false;
         };
 
     }
