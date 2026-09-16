@@ -222,7 +222,8 @@ void RTBEngine::Core::Application::PresentLoadingSplash()
 	if (logo && logo->GetID() != Rendering::RHI::kInvalidGpuId) {
 		const std::uintptr_t nativeTexID = device.GetNativeTextureIdForImGui(logo->GetID());
 		if (nativeTexID != 0) {
-			const float maxSide = std::min(display.x, display.y) * 0.38f;
+			const float shortestSide = display.x < display.y ? display.x : display.y;
+			const float maxSide = shortestSide * 0.38f;
 			const float aspect = logo->GetHeight() > 0
 				? static_cast<float>(logo->GetWidth()) / static_cast<float>(logo->GetHeight())
 				: 1.0f;
@@ -234,12 +235,12 @@ void RTBEngine::Core::Application::PresentLoadingSplash()
 				drawWidth = maxSide * aspect;
 			}
 
-			const ImVec2 min((display.x - drawWidth) * 0.5f, (display.y - drawHeight) * 0.5f);
-			const ImVec2 max(min.x + drawWidth, min.y + drawHeight);
+			const ImVec2 logoMin((display.x - drawWidth) * 0.5f, (display.y - drawHeight) * 0.5f);
+			const ImVec2 logoMax(logoMin.x + drawWidth, logoMin.y + drawHeight);
 			drawList->AddImage(
 				(ImTextureID)nativeTexID,
-				min,
-				max,
+				logoMin,
+				logoMax,
 				ImVec2(0.0f, 1.0f),
 				ImVec2(1.0f, 0.0f));
 		}
@@ -320,6 +321,9 @@ bool RTBEngine::Core::Application::Initialize()
 		RTB_ERROR("Failed to initialize ImGui");
 		return false;
 	}
+
+	ResourceManager& resources = ResourceManager::GetInstance();
+	resources.GetDefaultFont();
 	PresentLoadingSplash();
 
 	if (!Online::OnlineSystem::GetInstance().Initialize(config.online)) {
@@ -355,8 +359,6 @@ bool RTBEngine::Core::Application::Initialize()
 		}
 	}
 	PresentLoadingSplash();
-
-	ResourceManager& resources = ResourceManager::GetInstance();
 
 	// Shader
 	Rendering::Shader* shader = resources.LoadShader(
@@ -456,11 +458,6 @@ bool RTBEngine::Core::Application::Initialize()
 	physicsWorld = new Physics::PhysicsWorld();
 	physicsWorld->Initialize();
 	physicsSystem = new Physics::PhysicsSystem(physicsWorld);
-
-	// Load fonts after ImGui context is ready (skipped on Vulkan MVP without ImGui).
-	if (imguiInitialized) {
-		resources.GetDefaultFont();
-	}
 
 	RTB_INFO("RTBEngine Initialized Successfully");
 	PresentLoadingSplash();

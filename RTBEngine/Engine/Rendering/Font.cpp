@@ -151,6 +151,9 @@ namespace RTBEngine {
 					return false;
 				}
 				fontSizes[sizes[i]] = imFont;
+				if (i == 0) {
+					io.FontDefault = imFont;
+				}
 			}
 
 			io.Fonts->Build();
