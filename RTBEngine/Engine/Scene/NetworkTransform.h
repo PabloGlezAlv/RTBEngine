@@ -24,6 +24,7 @@ namespace RTBEngine {
 
         public:
             void OnStart() override;
+            void OnUpdate(float deltaTime) override;
             void OnFixedUpdate(float fixedDeltaTime) override;
             void OnLateUpdate(float deltaTime) override;
             void OnValidate() override;

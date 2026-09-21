@@ -236,6 +236,11 @@ namespace RTBEngine {
                     btTransform btTrans = BuildColliderTransform(transform, GetColliderCenterOffset(gameObject));
 
                     btBody->setWorldTransform(btTrans);
+                    if (btBody->getBroadphaseHandle() && physicsWorld) {
+                        if (btDynamicsWorld* dynamicsWorld = physicsWorld->GetDynamicsWorld()) {
+                            dynamicsWorld->updateSingleAabb(btBody);
+                        }
+                    }
                 }
             }
         }

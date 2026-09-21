@@ -1,8 +1,11 @@
 #include "NetworkTransform.h"
 
+#include "BoxColliderComponent.h"
+#include "CapsuleColliderComponent.h"
 #include "GameObject.h"
 #include "NetworkIdentity.h"
 #include "RigidBodyComponent.h"
+#include "SphereColliderComponent.h"
 #include "../Core/Logger.h"
 #include "../Math/Quaternions/Quaternion.h"
 #include "../Math/Vectors/Vector3.h"
@@ -33,6 +36,23 @@ namespace RTBEngine {
                 return from + (to - from) * t;
             }
 
+            Math::Vector3 ColliderCenterOffset(GameObject* owner)
+            {
+                if (CapsuleColliderComponent* capsule = owner->GetComponent<CapsuleColliderComponent>()) {
+                    return capsule->GetCenterOffset();
+                }
+
+                if (SphereColliderComponent* sphere = owner->GetComponent<SphereColliderComponent>()) {
+                    return sphere->GetCenterOffset();
+                }
+
+                if (BoxColliderComponent* box = owner->GetComponent<BoxColliderComponent>()) {
+                    return box->GetCenterOffset();
+                }
+
+                return Math::Vector3(0.0f, 0.0f, 0.0f);
+            }
+
             void SyncRigidBodyIfPresent(
                 GameObject* owner,
                 const Math::Vector3& position,
@@ -47,7 +67,9 @@ namespace RTBEngine {
                     return;
                 }
 
-                rigidBodyComponent->GetRigidBody()->SetWorldTransform(position, rotation);
+                // Body origin is the collider center, same as PhysicsSystem::SyncTransformsToPhysics.
+                const Math::Vector3 center = position + (rotation * ColliderCenterOffset(owner));
+                rigidBodyComponent->GetRigidBody()->SetWorldTransform(center, rotation);
             }
 
         }
@@ -82,6 +104,20 @@ namespace RTBEngine {
             (void)fixedDeltaTime;
         }
 
+        void NetworkTransform::OnUpdate(float deltaTime)
+        {
+            if (!Online::OnlineSystem::GetInstance().IsInLobby()) {
+                return;
+            }
+
+            EnsureNetworkIdRegistered();
+
+            // Projectile sweeps run after OnUpdate. The kinematic body has to match this pose first.
+            if (HasReceiveAuthority()) {
+                ApplyRemoteSnapshot(deltaTime);
+            }
+        }
+
         void NetworkTransform::OnLateUpdate(float deltaTime)
         {
             if (!Online::OnlineSystem::GetInstance().IsInLobby()) {
@@ -92,10 +128,6 @@ namespace RTBEngine {
 
             if (HasSendAuthority()) {
                 SendSnapshot(deltaTime);
-            }
-
-            if (HasReceiveAuthority()) {
-                ApplyRemoteSnapshot(deltaTime);
             }
         }
 

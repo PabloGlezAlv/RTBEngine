@@ -163,6 +163,12 @@ namespace RTBEngine {
                 motionState->setWorldTransform(worldTransform);
             }
             bulletRigidBody->activate(true);
+
+            if (physicsWorldRef && bulletRigidBody->getBroadphaseHandle()) {
+                if (btDynamicsWorld* dynamicsWorld = physicsWorldRef->GetDynamicsWorld()) {
+                    dynamicsWorld->updateSingleAabb(bulletRigidBody.get());
+                }
+            }
         }
 
         void RigidBody::ClearBulletRigidBody() {
