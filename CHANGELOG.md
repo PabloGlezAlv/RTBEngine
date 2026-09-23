@@ -1,10 +1,10 @@
 # Changelog — RTBEngine
 
-**Current version:** `0.11.0`
+**Current version:** `1.0.0`
 
 API documentation: [`README.md`](README.md)
 
-**Compatibility:** use with **RTBEngineEditor 0.11.x**. After SDK or Script Bridge ABI changes: rebuild the engine → `BuildSDK.bat` → `GameScripts`.
+**Compatibility:** use with **RTBEngineEditor 1.0.x**. After SDK or Script Bridge ABI changes: rebuild the engine → `BuildSDK.bat` → `GameScripts`.
 
 ---
 
@@ -17,6 +17,34 @@ API documentation: [`README.md`](README.md)
 | NavMesh sidecar (`.navmesh`) | **1** | `RTBEngine/Engine/Navigation/NavMeshFile.cpp` |
 
 ---
+
+## [1.0.0] — 2026
+
+### Added
+- Loading splash (`Default/Textures/logo.png`) before the first frame, with fonts loaded ahead of it.
+- Window icon (`Default/Textures/icon.png`) separate from the splash wordmark. An empty game logo path keeps both engine defaults; a custom path replaces splash and icon together.
+- Scene color is drawn to an offscreen framebuffer and copied to the window, so the editor, the game view, and the standalone player share one present path.
+- Render-device `BeginFrame` and a clearer Vulkan frame flow.
+- Component lifecycle: `OnEnable` / `OnDisable`. `OnStart` runs once per instance and is scheduled from `OnEnable`.
+- Reflection for components that inherit a reflected base, and `AddComponent` through `TypeInfo`.
+- Flat component tick registry and index-based iteration in loaders and UI.
+- HDR bloom post-process with per-volume overrides.
+- `TrailRenderer` additive expansion and camera-facing trails.
+- Circle emission on the particle system.
+- `GameObject` static / dynamic flags, wired into DDGI and the scene.
+
+### Changed
+- Prefab instances merge overrides instead of clearing every component reference. Nested prefabs instantiate correctly, and an open scene refreshes prefabs after an edit.
+- Pooled instances restart `OnStart` when they are reused.
+- Directional shadow bounds come from the scene AABB.
+- DDGI caches BLAS and rebuilds TLAS on a command buffer, without `WaitIdle`.
+
+### Fixed
+- OpenGL splash, and bloom shaders compiled through SPIR-V.
+- Vulkan clear actually clears, and destroying a texture no longer errors.
+- Object-pool delete crash and trail-renderer default values.
+- Kinematic bodies are posed, and their broadphase AABB is updated, before projectile sweeps.
+- Components pending erase are not ticked.
 
 ## [0.11.0] — 2026
 
