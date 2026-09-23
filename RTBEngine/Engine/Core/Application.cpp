@@ -310,6 +310,23 @@ bool RTBEngine::Core::Application::Initialize()
 	}
 
 	{
+		ResourceManager& resources = ResourceManager::GetInstance();
+		std::string splashPath = ResourceManager::DEFAULT_LOGO_PATH;
+		std::string iconPath = ResourceManager::DEFAULT_ICON_PATH;
+		if (!config.logoPath.empty()) {
+			const std::string resolvedCustomLogo = resources.ResolvePathForRead(config.logoPath);
+			if (std::filesystem::exists(resolvedCustomLogo)) {
+				splashPath = config.logoPath;
+				iconPath = config.logoPath;
+			} else {
+				RTB_WARN("Logo not found, using the engine logo: " + config.logoPath);
+			}
+		}
+		resources.SetLogoPath(splashPath);
+		window->SetIcon(resources.ResolvePathForRead(iconPath));
+	}
+
+	{
 		auto device = Rendering::RHI::RenderDeviceFactory::Create(config.rendering.graphicsAPI);
 		if (!device || !device->Initialize(window->GetSDLWindow(), config.window.vSync)) {
 			RTB_ERROR("Failed to initialize RenderDevice");

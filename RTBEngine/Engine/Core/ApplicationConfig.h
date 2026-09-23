@@ -36,6 +36,8 @@ namespace RTBEngine {
             RenderingConfig rendering;
             Online::OnlineConfig online;
             std::string initialScenePath;
+            // Empty keeps the engine splash logo and the engine window icon.
+            std::string logoPath;
             bool imguiDocking = false;
             bool imguiViewports = false;
         };

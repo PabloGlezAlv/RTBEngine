@@ -789,9 +789,19 @@ namespace RTBEngine {
             return LoadTexture(DEFAULT_TEXTURE_PATH);
         }
 
+        void ResourceManager::SetLogoPath(const std::string& path)
+        {
+            logoPath = path;
+        }
+
+        std::string ResourceManager::GetLogoPath() const
+        {
+            return logoPath.empty() ? std::string(DEFAULT_LOGO_PATH) : logoPath;
+        }
+
         Rendering::Texture* ResourceManager::GetLogoTexture()
         {
-            return LoadTexture(DEFAULT_LOGO_PATH);
+            return LoadTexture(GetLogoPath());
         }
 
         Rendering::Mesh* ResourceManager::GetDefaultCube()

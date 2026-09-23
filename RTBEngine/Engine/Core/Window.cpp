@@ -1,6 +1,9 @@
 #include "Window.h"
 #include "../Rendering/RHI/RenderDevice.h"
 #include "../RTBEngine.h"
+#include "../../ThirdParty/stb/stb_image.h"
+
+#include <cstring>
 
 RTBEngine::Core::Window::Window(const std::string& title, int width, int height, bool fullscreen, bool maximized) : title(title),
 width(width),
@@ -150,6 +153,45 @@ bool RTBEngine::Core::Window::IsCursorVisible() const
 	}
 
 	return SDL_ShowCursor(SDL_QUERY) == SDL_ENABLE;
+}
+
+bool RTBEngine::Core::Window::SetIcon(const std::string& imagePath)
+{
+	if (!sdlWindow || imagePath.empty()) {
+		return false;
+	}
+
+	int imageWidth = 0;
+	int imageHeight = 0;
+	int channels = 0;
+	unsigned char* pixels = stbi_load(imagePath.c_str(), &imageWidth, &imageHeight, &channels, 4);
+	if (!pixels || imageWidth <= 0 || imageHeight <= 0) {
+		if (pixels) {
+			stbi_image_free(pixels);
+		}
+		RTB_WARN("Window icon not loaded: " + imagePath);
+		return false;
+	}
+
+	SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, imageWidth, imageHeight, 32, SDL_PIXELFORMAT_RGBA32);
+	if (!surface) {
+		stbi_image_free(pixels);
+		RTB_WARN("Window icon surface failed: " + std::string(SDL_GetError()));
+		return false;
+	}
+
+	if (SDL_MUSTLOCK(surface)) {
+		SDL_LockSurface(surface);
+	}
+	std::memcpy(surface->pixels, pixels, static_cast<std::size_t>(imageWidth) * static_cast<std::size_t>(imageHeight) * 4);
+	if (SDL_MUSTLOCK(surface)) {
+		SDL_UnlockSurface(surface);
+	}
+
+	stbi_image_free(pixels);
+	SDL_SetWindowIcon(sdlWindow, surface);
+	SDL_FreeSurface(surface);
+	return true;
 }
 
 void RTBEngine::Core::Window::UpdateSize(int newWidth, int newHeight)

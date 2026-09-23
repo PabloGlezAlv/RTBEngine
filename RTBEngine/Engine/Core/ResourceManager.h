@@ -36,6 +36,7 @@ namespace RTBEngine {
             // Default asset paths
             static constexpr const char* DEFAULT_TEXTURE_PATH = "Default/Textures/default.png";
             static constexpr const char* DEFAULT_LOGO_PATH = "Default/Textures/logo.png";
+            static constexpr const char* DEFAULT_ICON_PATH = "Default/Textures/icon.png";
             static constexpr const char* DEFAULT_FONT_PATH = "Default/Fonts/SourceSans3-Black.ttf";
             static constexpr const char* DEFAULT_CUBE_PATH = "Default/Models/cube.obj";
             static constexpr const char* DEFAULT_SPHERE_PATH = "Default/Models/sphere.obj";
@@ -105,6 +106,8 @@ namespace RTBEngine {
 
             // Default resources
             Rendering::Texture* GetDefaultTexture();
+            void SetLogoPath(const std::string& path);
+            std::string GetLogoPath() const;
             Rendering::Texture* GetLogoTexture();
             Rendering::Mesh* GetDefaultCube();
             Rendering::Mesh* GetDefaultSphere();
@@ -168,6 +171,7 @@ namespace RTBEngine {
 
             std::unique_ptr<Rendering::Skybox> defaultSkybox;
             std::filesystem::path assetRootPath;
+            std::string logoPath;
         };
         #pragma warning(pop)
 

@@ -40,6 +40,8 @@ namespace RTBEngine {
 
 			void UpdateSize(int newWidth, int newHeight);
 
+			bool SetIcon(const std::string& imagePath);
+
 			using WindowResizeCallback = std::function<void(int, int)>;
 			void SetResizeCallback(WindowResizeCallback callback) { resizeCallback = callback; }
         private:
