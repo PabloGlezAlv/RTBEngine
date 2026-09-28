@@ -332,6 +332,10 @@ namespace RTBEngine {
 
         #pragma warning(pop)
 
+        // Runs before components are destroyed so contacts can end while listeners still exist.
+        RTB_API void SetGameObjectDestroyingCallback(void (*callback)(GameObject* gameObject));
+        RTB_API void NotifyGameObjectDestroying(GameObject* gameObject);
+
 
 
         namespace ComponentLookup {

@@ -112,6 +112,7 @@ namespace RTBEngine {
         private:
             //Deferred command buffer
             void FlushPendingCommands();
+            void DestroyHierarchyNow(GameObject* root);
             void QueueLifecycleInitialization(GameObject* root);
             void FlushPendingLifecycle();
             bool OwnsGameObject(GameObject* target) const;

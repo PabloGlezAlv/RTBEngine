@@ -49,6 +49,9 @@ namespace RTBEngine {
             void InitializeCollider(Scene::GameObject* gameObject, Scene::CapsuleColliderComponent* capsuleCollider);
             void Reset();
 
+            // Drops stored contacts for an object that is leaving the simulation and notifies whoever is still alive.
+            void EndContactsFor(Scene::GameObject* gameObject);
+
         private:
             std::set<CollisionPair> previousCollisions;
             std::set<CollisionPair> currentCollisions;

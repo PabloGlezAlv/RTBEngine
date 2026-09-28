@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <atomic>
 #include <mutex>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -21,6 +22,69 @@ namespace {
 
     constexpr Uint64 kPhysicsDebugQueryLifetimeMs = 5000;
     constexpr std::size_t kMaxStoredPhysicsDebugQueries = 256;
+
+    struct ContactTracker {
+        void (*endContacts)(RTBEngine::Scene::GameObject* gameObject, void* user) = nullptr;
+        void* user = nullptr;
+    };
+
+    std::unordered_map<RTBEngine::Physics::PhysicsWorld*, ContactTracker> g_contactTrackers;
+
+    void EndTrackedContacts(RTBEngine::Physics::PhysicsWorld* world, RTBEngine::Scene::GameObject* gameObject)
+    {
+        if (!world || !gameObject) {
+            return;
+        }
+
+        const auto it = g_contactTrackers.find(world);
+        if (it == g_contactTrackers.end() || !it->second.endContacts) {
+            return;
+        }
+
+        it->second.endContacts(gameObject, it->second.user);
+    }
+
+    void ReleaseCollisionProxy(RTBEngine::Physics::PhysicsWorld* world, btCollisionObject* object, bool rigidBody)
+    {
+        if (!world || !object) {
+            return;
+        }
+
+        RTBEngine::Scene::GameObject* gameObject =
+            static_cast<RTBEngine::Scene::GameObject*>(object->getUserPointer());
+        object->setUserPointer(nullptr);
+
+        if (btDynamicsWorld* dynamicsWorld = world->GetDynamicsWorld()) {
+            if (object->getBroadphaseHandle() != nullptr) {
+                if (rigidBody) {
+                    dynamicsWorld->removeRigidBody(static_cast<btRigidBody*>(object));
+                } else {
+                    dynamicsWorld->removeCollisionObject(object);
+                }
+            }
+        }
+
+        EndTrackedContacts(world, gameObject);
+    }
+
+    void ReleaseAllCollisionProxies(RTBEngine::Physics::PhysicsWorld* world)
+    {
+        btDynamicsWorld* dynamicsWorld = world ? world->GetDynamicsWorld() : nullptr;
+        if (!dynamicsWorld) {
+            return;
+        }
+
+        btCollisionObject* previousTail = nullptr;
+        while (dynamicsWorld->getNumCollisionObjects() > 0) {
+            btCollisionObject* object = dynamicsWorld->getCollisionObjectArray()[dynamicsWorld->getNumCollisionObjects() - 1];
+            if (object == previousTail) {
+                break;
+            }
+            previousTail = object;
+            const bool rigidBody = btRigidBody::upcast(object) != nullptr;
+            ReleaseCollisionProxy(world, object, rigidBody);
+        }
+    }
 
     std::atomic_bool gPhysicsDebugQueriesEnabled{ false };
     std::mutex gPhysicsDebugQueriesMutex;
@@ -380,7 +444,25 @@ namespace RTBEngine {
 
         PhysicsWorld::~PhysicsWorld()
         {
+            SetContactTracker(this, nullptr, nullptr);
             Cleanup();
+        }
+
+        void SetContactTracker(
+            PhysicsWorld* world,
+            void (*endContacts)(Scene::GameObject* gameObject, void* user),
+            void* user)
+        {
+            if (!world) {
+                return;
+            }
+
+            if (!endContacts) {
+                g_contactTrackers.erase(world);
+                return;
+            }
+
+            g_contactTrackers[world] = ContactTracker{ endContacts, user };
         }
 
         void PhysicsWorld::Initialize()
@@ -421,19 +503,7 @@ namespace RTBEngine {
 
         void PhysicsWorld::Cleanup()
         {
-            // Remove all rigid bodies and collision objects from the world
-            if (dynamicsWorld)
-            {
-                for (int i = dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
-                {
-                    btCollisionObject* obj = dynamicsWorld->getCollisionObjectArray()[i];
-                    btRigidBody* body = btRigidBody::upcast(obj);
-                    if (body)
-                        dynamicsWorld->removeRigidBody(body);
-                    else
-                        dynamicsWorld->removeCollisionObject(obj);
-                }
-            }
+            ReleaseAllCollisionProxies(this);
 
             // Clear all unique_ptr members (automatically deletes Bullet objects)
             dynamicsWorld.reset();
@@ -448,18 +518,8 @@ namespace RTBEngine {
             if (!dynamicsWorld)
                 return;
 
-            // Only remove objects from the world — do NOT delete them.
-            // Ownership of btRigidBody belongs to RigidBody (unique_ptr).
-            // Ownership of static btCollisionObject belongs to BoxColliderComponent.
-            for (int i = dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
-            {
-                btCollisionObject* obj = dynamicsWorld->getCollisionObjectArray()[i];
-                btRigidBody* body = btRigidBody::upcast(obj);
-                if (body)
-                    dynamicsWorld->removeRigidBody(body);
-                else
-                    dynamicsWorld->removeCollisionObject(obj);
-            }
+            // Bullet objects stay owned by their components. Contacts end in the same release as a single body.
+            ReleaseAllCollisionProxies(this);
         }
 
         void PhysicsWorld::AddRigidBody(btRigidBody* body)
@@ -480,10 +540,7 @@ namespace RTBEngine {
 
         void PhysicsWorld::RemoveRigidBody(btRigidBody* body)
         {
-            if (dynamicsWorld && body)
-            {
-                dynamicsWorld->removeRigidBody(body);
-            }
+            ReleaseCollisionProxy(this, body, true);
         }
 
         void PhysicsWorld::AddCollisionObject(btCollisionObject* obj)
@@ -504,10 +561,7 @@ namespace RTBEngine {
 
         void PhysicsWorld::RemoveCollisionObject(btCollisionObject* obj)
         {
-            if (dynamicsWorld && obj)
-            {
-                dynamicsWorld->removeCollisionObject(obj);
-            }
+            ReleaseCollisionProxy(this, obj, false);
         }
 
         void PhysicsWorld::SetGravity(const Math::Vector3& gravity)

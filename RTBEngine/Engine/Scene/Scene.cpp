@@ -391,49 +391,52 @@ RTBEngine::Scene::Scene::Scene(const std::string& name) : name(name)
 
 RTBEngine::Scene::Scene::~Scene()
 {
-	while (!gameObjects.empty()) {
-		GameObject* root = nullptr;
+	struct HoldDispatch {
+		int& depth;
+		explicit HoldDispatch(int& depth) : depth(depth) { ++depth; }
+		~HoldDispatch() { --depth; }
+	} holdDispatch(dispatchDepth);
 
-		for (const auto& gameObject : gameObjects) {
+	const auto findLooseRoot = [this](const std::vector<std::unique_ptr<GameObject>>& objects) -> GameObject* {
+		for (const auto& gameObject : objects) {
 			GameObject* candidate = gameObject.get();
 			if (!candidate) {
 				continue;
 			}
 
 			GameObject* parent = candidate->GetParent();
-			const bool parentInScene = parent && std::any_of(
-				gameObjects.begin(),
-				gameObjects.end(),
-				[parent](const std::unique_ptr<GameObject>& obj) {
-					return obj.get() == parent;
-				});
-
-			if (!parentInScene) {
-				root = candidate;
-				break;
+			if (!parent || !OwnsGameObject(parent)) {
+				return candidate;
 			}
+		}
+		return nullptr;
+	};
+
+	while (!gameObjects.empty() || !pendingAdds.empty()) {
+		GameObject* root = findLooseRoot(gameObjects);
+		if (!root) {
+			root = findLooseRoot(pendingAdds);
 		}
 
 		if (!root) {
+			for (const auto& gameObject : gameObjects) {
+				NotifyGameObjectDestroying(gameObject.get());
+			}
+			for (const auto& gameObject : pendingAdds) {
+				NotifyGameObjectDestroying(gameObject.get());
+			}
 			gameObjects.clear();
+			pendingAdds.clear();
 			break;
 		}
 
-		std::vector<GameObject*> hierarchy;
-		CollectHierarchyPostOrder(root, hierarchy);
-
-		for (GameObject* node : hierarchy) {
-			if (node && node->GetParent()) {
-				node->SetParent(nullptr);
-			}
-		}
-
-		for (GameObject* node : hierarchy) {
-			DestroyOwnedGameObject(gameObjects, node);
-		}
+		DestroyHierarchyNow(root);
 	}
 
-	pendingAdds.clear();
+	pendingRemoves.clear();
+	pendingLifecycleRoots.clear();
+	gameObjectsWithPendingComponentRemovals.clear();
+	gameObjectsWithPendingStarts.clear();
 	gameObjectsByUuid.clear();
 }
 
@@ -830,7 +833,23 @@ void RTBEngine::Scene::Scene::RemoveGameObject(GameObject* gameObject)
 	}
 
 	if (dispatchDepth > 0) {
-		pendingRemoves.push_back(gameObject);
+		if (std::find(pendingRemoves.begin(), pendingRemoves.end(), gameObject) == pendingRemoves.end()) {
+			pendingRemoves.push_back(gameObject);
+		}
+		return;
+	}
+
+	++dispatchDepth;
+	DestroyHierarchyNow(gameObject);
+	--dispatchDepth;
+	if (dispatchDepth == 0) {
+		FlushPendingCommands();
+	}
+}
+
+void RTBEngine::Scene::Scene::DestroyHierarchyNow(GameObject* gameObject)
+{
+	if (!gameObject) {
 		return;
 	}
 
@@ -855,6 +874,10 @@ void RTBEngine::Scene::Scene::RemoveGameObject(GameObject* gameObject)
 		pendingRemoves.end());
 
 	for (GameObject* node : hierarchy) {
+		NotifyGameObjectDestroying(node);
+	}
+
+	for (GameObject* node : hierarchy) {
 		if (node && node->GetParent()) {
 			node->SetParent(nullptr);
 		}
@@ -866,6 +889,15 @@ void RTBEngine::Scene::Scene::RemoveGameObject(GameObject* gameObject)
 		DestroyOwnedGameObject(gameObjects, node);
 		DestroyOwnedGameObject(pendingAdds, node);
 	}
+
+	pendingRemoves.erase(
+		std::remove_if(
+			pendingRemoves.begin(),
+			pendingRemoves.end(),
+			[this](GameObject* queued) {
+				return !queued || !OwnsGameObject(queued);
+			}),
+		pendingRemoves.end());
 
 	InvalidateComponentCaches();
 }

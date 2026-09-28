@@ -13,6 +13,9 @@
 #include "../Math/Math.h"
 #include "CollisionInfo.h"
 #include <BulletCollision/NarrowPhaseCollision/btPersistentManifold.h>
+#include <algorithm>
+#include <memory>
+#include <vector>
 
 namespace RTBEngine {
     namespace Physics {
@@ -85,17 +88,42 @@ namespace RTBEngine {
             }
         }
 
+        namespace {
+            PhysicsSystem* g_contactSystem = nullptr;
+
+            void OnGameObjectDestroying(Scene::GameObject* gameObject)
+            {
+                if (g_contactSystem) {
+                    g_contactSystem->EndContactsFor(gameObject);
+                }
+            }
+
+            void OnBodyLeftWorld(Scene::GameObject* gameObject, void* user)
+            {
+                static_cast<PhysicsSystem*>(user)->EndContactsFor(gameObject);
+            }
+        }
+
         PhysicsSystem::PhysicsSystem(PhysicsWorld* physicsWorld)
             : physicsWorld(physicsWorld)
         {
+            g_contactSystem = this;
+            Scene::SetGameObjectDestroyingCallback(&OnGameObjectDestroying);
+            SetContactTracker(physicsWorld, &OnBodyLeftWorld, this);
         }
 
         PhysicsSystem::~PhysicsSystem()
         {
+            SetContactTracker(physicsWorld, nullptr, nullptr);
+            if (g_contactSystem == this) {
+                g_contactSystem = nullptr;
+                Scene::SetGameObjectDestroyingCallback(nullptr);
+            }
         }
 
         void PhysicsSystem::Reset()
         {
+            // No Exit here. Bodies that left the world already notified through EndContactsFor.
             previousCollisions.clear();
             currentCollisions.clear();
         }
@@ -105,10 +133,72 @@ namespace RTBEngine {
             if (!scene || !physicsWorld)
                 return;
 
+            // Destroy stays queued until manifolds for this step have been read.
+            Scene::Scene::DispatchScope contactDispatch(scene);
+
             SyncTransformsToPhysics(scene);
             physicsWorld->Step(deltaTime);
             ProcessCollisions();
             SyncPhysicsToTransforms(scene, 1.0f);
+        }
+
+        void PhysicsSystem::EndContactsFor(Scene::GameObject* gameObject)
+        {
+            if (!gameObject) {
+                return;
+            }
+
+            std::set<CollisionPair> ended;
+            const auto takePairs = [&](std::set<CollisionPair>& pairs) {
+                for (auto it = pairs.begin(); it != pairs.end(); ) {
+                    if (it->objectA == gameObject || it->objectB == gameObject) {
+                        ended.insert(*it);
+                        it = pairs.erase(it);
+                    } else {
+                        ++it;
+                    }
+                }
+            };
+
+            takePairs(previousCollisions);
+            takePairs(currentCollisions);
+
+            std::vector<Scene::Scene*> heldScenes;
+            const auto holdScene = [&heldScenes](Scene::GameObject* object) {
+                Scene::Scene* scene = object ? object->GetOwningScene() : nullptr;
+                if (!scene || std::find(heldScenes.begin(), heldScenes.end(), scene) != heldScenes.end()) {
+                    return;
+                }
+                heldScenes.push_back(scene);
+            };
+
+            holdScene(gameObject);
+            for (const CollisionPair& pair : ended) {
+                holdScene(pair.objectA);
+                holdScene(pair.objectB);
+            }
+
+            // Destroy stays queued until both sides of each pair have been notified.
+            std::vector<std::unique_ptr<Scene::Scene::DispatchScope>> contactScopes;
+            contactScopes.reserve(heldScenes.size());
+            for (Scene::Scene* scene : heldScenes) {
+                contactScopes.push_back(std::make_unique<Scene::Scene::DispatchScope>(scene));
+            }
+
+            for (const CollisionPair& pair : ended) {
+                const auto notify = [&](Scene::GameObject* target, Scene::GameObject* other) {
+                    if (!target || target->IsBeingDestroyed()) {
+                        return;
+                    }
+
+                    CollisionInfo info;
+                    info.otherObject = other;
+                    NotifyCallbacks(target, info, pair.isTrigger, CollisionState::Exit);
+                };
+
+                notify(pair.objectA, pair.objectB);
+                notify(pair.objectB, pair.objectA);
+            }
         }
 
         void PhysicsSystem::SyncRenderTransforms(Scene::Scene* scene, float interpolationAlpha)
@@ -364,19 +454,22 @@ namespace RTBEngine {
                 }
             }
 
-            for (const auto& pair : previousCollisions)
-            {
-                if (currentCollisions.find(pair) == currentCollisions.end())
-                {
-                    CollisionInfo infoForA;
-                    infoForA.otherObject = pair.objectB;
-
-                    CollisionInfo infoForB;
-                    infoForB.otherObject = pair.objectA;
-
-                    NotifyCallbacks(pair.objectA, infoForA, pair.isTrigger, CollisionState::Exit);
-                    NotifyCallbacks(pair.objectB, infoForB, pair.isTrigger, CollisionState::Exit);
+            std::vector<CollisionPair> endedPairs;
+            for (const CollisionPair& pair : previousCollisions) {
+                if (currentCollisions.find(pair) == currentCollisions.end()) {
+                    endedPairs.push_back(pair);
                 }
+            }
+
+            for (const CollisionPair& pair : endedPairs) {
+                CollisionInfo infoForA;
+                infoForA.otherObject = pair.objectB;
+
+                CollisionInfo infoForB;
+                infoForB.otherObject = pair.objectA;
+
+                NotifyCallbacks(pair.objectA, infoForA, pair.isTrigger, CollisionState::Exit);
+                NotifyCallbacks(pair.objectB, infoForB, pair.isTrigger, CollisionState::Exit);
             }
 
             previousCollisions = currentCollisions;

@@ -13,6 +13,22 @@
 
 namespace RTBEngine {
     namespace Scene {
+        static void (*g_onGameObjectDestroying)(GameObject*) = nullptr;
+
+        void SetGameObjectDestroyingCallback(void (*callback)(GameObject* gameObject))
+        {
+            g_onGameObjectDestroying = callback;
+        }
+
+        void NotifyGameObjectDestroying(GameObject* gameObject)
+        {
+            if (!gameObject || !g_onGameObjectDestroying) {
+                return;
+            }
+
+            g_onGameObjectDestroying(gameObject);
+        }
+
         static std::string GenerateUUID()
         {
             GUID guid;
@@ -84,6 +100,7 @@ namespace RTBEngine {
 
         GameObject::~GameObject()
         {
+            NotifyGameObjectDestroying(this);
             isBeingDestroyed = true;
 
             if (owningScene) {

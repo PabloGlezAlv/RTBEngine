@@ -109,6 +109,12 @@ namespace RTBEngine {
             std::unique_ptr<btSequentialImpulseConstraintSolver> solver;
             std::unique_ptr<btDiscreteDynamicsWorld> dynamicsWorld;
         };
+
+        // PhysicsSystem subscribes so a body removed from this world ends its contact pairs.
+        RTB_API void SetContactTracker(
+            PhysicsWorld* world,
+            void (*endContacts)(Scene::GameObject* gameObject, void* user),
+            void* user);
 #pragma warning(pop)
 
     }
